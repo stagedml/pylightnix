@@ -1,0 +1,7 @@
+.*
+*egg-info
+_*
+*\.log
+*\.pyc
+tags
+result
