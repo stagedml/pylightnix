@@ -400,20 +400,29 @@ def search(cp:State)->List[Ref]:
   `Config` and `Program` (in terms of corresponding `*_hash` functions)."""
   return search_(config_hash(cp[0]), program_hash(cp[1]))
 
-def only(refs:List[Ref])->Ref:
-  """ Take a list and extract it's single item, or complain loudly """
+def single(refs:List[Ref])->List[Ref]:
+  """ Return a resulting list only if it a singleton list """
   for r in refs:
     assert_valid_ref(r)
-  if len(refs)==0:
-    assert False, \
-        (f"Empty list was passed to only(). This may mean that preceeding "
-         f"search founds no results in storage. You may have to either update "
-         f"the storage from elsewhere or re-run the associated computations to "
-         f"produce that nodes locally")
+  if len(refs)==1:
+    return refs
   else:
-    assert len(refs)==1, \
-        (f"only() expected exactly one matched ref, but there are {len(refs)} "
-         f"of them:\n{refs}\n. Probably you need a more clever filter to make "
-         f"a right choice")
-  return refs[0]
+    return []
+
+# def only(refs:List[Ref])->List[Ref]:
+#   """ Take a list and extract it's single item, or complain loudly """
+#   for r in refs:
+#     assert_valid_ref(r)
+#   if len(refs)==0:
+#     assert False, \
+#         (f"Empty list was passed to only(). This may mean that preceeding "
+#          f"search founds no results in storage. You may have to either update "
+#          f"the storage from elsewhere or re-run the associated computations to "
+#          f"produce that nodes locally")
+#   else:
+#     assert len(refs)==1, \
+#         (f"only() expected exactly one matched ref, but there are {len(refs)} "
+#          f"of them:\n{refs}\n. Probably you need a more clever filter to make "
+#          f"a right choice")
+#   return refs[0]
 
