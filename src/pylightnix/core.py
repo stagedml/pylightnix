@@ -141,7 +141,7 @@ def assert_store_initialized()->None:
 def store_initialize(exist_ok:bool=True):
   print(f"Initializing {PYLIGHTNIX_STORE}")
   makedirs(PYLIGHTNIX_STORE, exist_ok=exist_ok)
-  makedirs(PYLIGHTNIX_TMP, exist_ok=exist_ok)
+  makedirs(PYLIGHTNIX_TMP, exist_ok=True)
   assert_store_initialized()
 
 def store_systempath(refpath:RefPath)->Path:
