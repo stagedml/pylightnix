@@ -2,7 +2,7 @@
 FIXME: Implement a random storage generator in Hypothesis, and use it in tests
 """
 
-from pylightnix.tests.imports import (
+from tests.imports import (
     given, assume, example, note, settings, text, decimals, integers, rmtree,
     characters, gettempdir, isdir, join, makedirs, from_regex, islink, listdir )
 
