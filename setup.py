@@ -5,6 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
   name="pylightnix",
+  package_dir={'':'src'},
   version="0.0.1",
   author="grwlf",
   author_email="grrwlf@gmail.com",
