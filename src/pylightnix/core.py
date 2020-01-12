@@ -134,10 +134,14 @@ def assert_store_initialized()->None:
   assert isdir(PYLIGHTNIX_STORE), \
     (f"Looks like the Modelcap store ('{PYLIGHTNIX_STORE}') is not initialized. Did "
      f"you call `store_initialize`?")
+  assert isdir(PYLIGHTNIX_TMP), \
+    (f"Looks like the Modelcap tmp ('{PYLIGHTNIX_TMP}') is not initialized. Did "
+     f"you call `store_initialize`?")
 
 def store_initialize(exist_ok:bool=True):
   print(f"Initializing {PYLIGHTNIX_STORE}")
   makedirs(PYLIGHTNIX_STORE, exist_ok=exist_ok)
+  makedirs(PYLIGHTNIX_TMP, exist_ok=exist_ok)
   assert_store_initialized()
 
 def store_systempath(refpath:RefPath)->Path:
