@@ -122,12 +122,12 @@ def assert_valid_ref(ref:Ref)->None:
   assert len(ref)>4, error_msg
   assert ref[:4] == 'ref:', error_msg
 
-def assert_valid_refpath(refpath):
+def assert_valid_refpath(refpath:RefPath)->None:
   error_msg=(f'Value of type {type(refpath)} is not a valid refpath! Expected '
              f'list of strings starting from a reference, but actual value '
              f'is "{refpath}"')
   assert len(refpath)>0, error_msg
-  assert_valid_ref(refpath[0]), error_msg
+  assert_valid_ref(refpath[0])
 
 
 def assert_store_initialized()->None:
