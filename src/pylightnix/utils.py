@@ -1,8 +1,10 @@
 from pylightnix.imports import ( strftime, join, makedirs,
     symlink, basename, mkdir, isdir, isfile, islink, remove, sha256, EEXIST,
-    json_dumps, json_loads, makedirs, replace, dirname, walk, abspath )
+    json_dumps, json_loads, makedirs, replace, dirname, walk, abspath,
+    normalize, re_sub, split )
 
-from pylightnix.types import ( Hash, Path, List, Any, Optional, Iterable, IO, Ref)
+from pylightnix.types import ( Hash, Path, List, Any, Optional, Iterable, IO,
+    DRef, IRef, Ref)
 
 
 def timestring()->str:
@@ -36,11 +38,45 @@ def mklogdir(
     mkdir(logpath+'/'+sd)
   return Path(logpath)
 
+def splitpath(p:Path)->List[str]:
+  """ Return folders of path as a list """
+  path=str(p)
+  parts=[]
+  while True:
+    path,fname=split(path)
+    if len(fname)>0:
+      parts.append(fname)
+    if len(path)==0 or path[-1]=='/':
+      break
+  return list(reversed(parts))
+
 def forcelink(src:Path,dst:Path,**kwargs)->None:
   """ Create a `dst` symlink poinitnig to `src`. Overwrites existing files, if any """
   makedirs(dirname(dst),exist_ok=True)
   symlink(src,dst+'__',**kwargs)
   replace(dst+'__',dst)
+
+def slugify(value:str)->str:
+  """ Normalizes string, converts to lowercase, removes non-alpha characters,
+  and converts spaces to hyphens.
+
+  Ref. https://stackoverflow.com/a/295466/1133157
+  """
+  value = str(value)
+  value = normalize('NFKC', value)
+  value = re_sub(r'[^\w\s-]', '', value.lower()).strip()
+  value = re_sub(r'[-\s]+', '-', value)
+  return value
+
+def datahash(data:Iterable[str])->Hash:
+  e=sha256()
+  nitems=0
+  for s in data:
+    e.update(s)
+    items+=1
+  if items==0:
+    print('Warning: datahash: called on empty iterator')
+  return Hash(e.hexdigest())
 
 
 def dhash(path:Path)->Hash:
@@ -48,27 +84,21 @@ def dhash(path:Path)->Hash:
   FIXME: stop ignoring file/directory names
   Don't count files starting from underscope ('_')
   """
-  assert isdir(path), f"dhash(path) expects a directory, but '{path}' is not"
-  def _iter()->Iterable[str]:
+  assert isdir(path), f"dhash(path) expects directory path, not '{path}'"
+
+  def _iter()->Iterable[Path]:
     for root, dirs, filenames in walk(abspath(path), topdown=True):
       for filename in filenames:
         if len(filename)>0 and filename[0] != '_':
-          yield abspath(join(root, filename))
+          with open(abspath(join(root, filename)),'r') as f:
+            yield f.read()
 
-  e=sha256()
-  nfiles=0
-  for fpath in _iter():
-    with open(fpath,'rb') as f: # type: IO[Any]
-      e.update(f.read())
-    nfiles+=1
-
-  if nfiles==0:
-    print('Warning: dhash: empty dir')
-
-  return Hash(e.hexdigest())
-
+  return datashash(_iter())
 
 def scanref_list(l:list)->List[Ref]:
+  """
+  FIXME: Add a better reference detection, in the `assert_valid_ref` style
+  """
   assert isinstance(l,list)
   res:list=[]
   for i in l:
@@ -78,8 +108,13 @@ def scanref_list(l:list)->List[Ref]:
       res+=scanref_list(i)
     elif isinstance(i,dict):
       res+=scanref_dict(i)
-    elif isinstance(i,str) and i[:4]=='ref:':
-      res.append(Ref(i))
+    elif isinstance(i,str):
+      if i[:5]=='dref:':
+        res.append(DRef(i))
+      elif i[:5]=='iref:':
+        res.append(IRef(i))
+      else:
+        pass # just a regular string
   return res
 
 def scanref_tuple(t:tuple)->List[Ref]:
@@ -114,4 +149,8 @@ def assert_serializable(d:Any, argname:str)->Any:
 def assert_valid_dict(d:dict, argname:str)->None:
   d2=assert_serializable(d, argname)
   assert dicthash(d)==dicthash(d2)
+
+def readjson(json_path:str)->Any:
+  with open(json_path), "r") as f:
+    return json_load(f)
 

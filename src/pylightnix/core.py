@@ -1,18 +1,73 @@
 from pylightnix.imports import (
-    sha256, deepcopy, isdir, makedirs, join, json_dump, json_load, isfile,
-    relpath, listdir, rmtree, mkdtemp, replace, environ )
+    sha256, deepcopy, isdir, makedirs, join, json_dump, json_load, json_dumps,
+    json_loads, isfile, relpath, listdir, rmtree, mkdtemp, replace, environ,
+    split )
 from pylightnix.utils import (
     dhash, assert_serializable, assert_valid_dict, dicthash, scanref_dict,
-    scanref_list, forcelink, timestring )
+    scanref_list, forcelink, timestring, datahash, slugify, splitpath, readjson
+    )
 from pylightnix.types import (
-    List, Any, Tuple, Union, Optional, Iterable, IO, Path, Hash, Ref, RefPath,
-    Protocol )
+    List, Any, Tuple, Union, Optional, Iterable, IO, Path, Hash, DRef, RRef, Ref, RefPath,
+    Protocol, HashPart )
 
 PYLIGHTNIX_STORE_VERSION = 1
 PYLIGHTNIX_ROOT:str = environ.get('PYLIGHTNIX_ROOT', join(environ.get('HOME','/var/run'),'_pylightnix'))
 PYLIGHTNIX_LOGDIR:str = environ.get('PYLIGHTNIX_LOGDIR', join(PYLIGHTNIX_ROOT,'log'))
 PYLIGHTNIX_TMP:str = environ.get('PYLIGHTNIX_TMP', join(PYLIGHTNIX_ROOT,'tmp'))
 PYLIGHTNIX_STORE:str = join(PYLIGHTNIX_ROOT, f'store-v{PYLIGHTNIX_STORE_VERSION}')
+
+
+
+#  ____       __
+# |  _ \ ___ / _|___
+# | |_) / _ \ |_/ __|
+# |  _ <  __/  _\__ \
+# |_| \_\___|_| |___/
+
+def assert_valid_hash(h:Hash)->None:
+  assert len(h)==64, f"HashPart should have length of 64, but len({h})=={len(h)}"
+  for s in ['-','_','/']:
+    assert s not in h, f"Invalid symbol '{s}' found in {h}"
+
+def trimhash(h:Hash)->HashPart:
+  return HashPart(h[:32])
+
+def assert_valid_hashpart(hp:HashPart)->None:
+  assert len(hp)==32, f"HashPart should have length of 32, but len({hp})=={len(hp)}"
+  for s in ['-','_','/']:
+    assert s not in hp, f"Invalid symbol '{s}' found in {hp}"
+
+def assert_valid_dref(ref:str)->None:
+  error_msg=(f'Value of {ref} is not a valid derivation reference! Expected '
+             f'a string of form \'dref:name-HASH_HASH\'')
+  assert ref[:5] == 'dref:', error_msg
+
+def mkdref(refname:str, dhash:HashPart)->DRef:
+  assert_valid_hashpart(dhash)
+  return DRef('dref:'+dhash+'-'+refname)
+
+def undref(r:DRef)->Tuple[str,HashPart]:
+  assert_valid_rref(r)
+  return (r[5+32+1:], HashPart(r[5:5+32]))
+
+
+
+def assert_valid_rref(ref:str)->None:
+  error_msg=(f'Value of {ref} is not a valid instance reference! Expected '
+             f'a string of form \'dref:name-HASH_HASH\'')
+  assert ref[:5] == 'rref:', error_msg
+
+def mkrref(refname:str, dhash:HashPart, rhash:HashPart)->RRef:
+  assert_valid_hashpart(dhash)
+  assert_valid_hashpart(rhash)
+  return RRef('rref:'+dhash+'-'+ihash+'-'+refname)
+
+def unrref(r:RRef)->Tuple[str, HashPart, HashPart]:
+  assert_valid_rref(r)
+  return (r[5+32+1+32+1:], r[5:5+32], r[5+32+1:5+32+1+32])
+
+
+
 
 # ____
 # |  _ \ _ __ ___   __ _ _ __ __ _ _ __ ___
@@ -22,8 +77,8 @@ PYLIGHTNIX_STORE:str = join(PYLIGHTNIX_ROOT, f'store-v{PYLIGHTNIX_STORE_VERSION}
 #                  |___/
 
 class Program:
-  """ Program is a collection of non-determenistic operations applied to a
-  `Config`.
+  """ Program contains an information of non-determenistic operations applied
+  to a `Config`.
 
   Currently it is represented with a list of operation names, with possible
   arguments. Operation names and arguments should be JSON-serializable
@@ -38,10 +93,16 @@ def program_add(p:Program, op:str, arg:Any=[])->Program:
   p2.ops.append((op,arg))
   return p2
 
+def program_serialize(p:Program)->str:
+  assert_serializable(p.ops, "p.ops")
+  return json_dumps(p.ops, indent=4)
+
 def program_hash(p:Program)->Hash:
   """ Calculate the hashe of a program """
-  string=";".join([f'{nm}({str(args)})' for nm,args in p.ops if nm[0]!='_'])
-  return Hash(sha256(string.encode('utf-8')).hexdigest())
+  return datahash([program_serialize(p)])
+
+  # string=";".join([f'{nm}({str(args)})' for nm,args in p.ops if nm[0]!='_'])
+  # return Hash(sha256(string.encode('utf-8')).hexdigest())
 
 
 #   ____             __ _
@@ -82,10 +143,15 @@ def config_dict(c:Config)->dict:
 def config_ro(c:Config)->Any:
   return ConfigAttrs(c.__dict__)
 
-def config_hash(c:Config)->Hash:
-  """ Calculate the hash of config. Top-level fields starting from '_' are ignored """
-  return dicthash(config_dict(c))
+def config_serialize(c:Config)->str:
+  return json_dumps(config_dict(c), indent=4)
 
+def config_hash(c:Config)->Hash:
+  return datahash([config_serialize(c)])
+
+def config_shortname(c:Config)->str:
+  """ Return short human-readable name of a config """
+  return slugify(config_dict(c).get('name','unnamed'))
 
 #  ____  _        _
 # / ___|| |_ __ _| |_ ___
@@ -94,7 +160,7 @@ def config_hash(c:Config)->Hash:
 # |____/ \__\__,_|\__\___|
 
 
-""" State is a combination of config and program """
+""" State is a combination of a Config and a Program """
 State = Tuple[Config,Program]
 
 def state(c:Config)->State:
@@ -104,11 +170,11 @@ def state(c:Config)->State:
 def state_add(s:State, op:str, arg:Any=[])->State:
   return (s[0],program_add(s[1],op,arg))
 
-def state_deps(s:State)->List[Ref]:
-  (c,p)=s
-  refs=scanref_dict(config_dict(c))+scanref_list(p.ops)
-  return list(set(refs))
+def state_deps(s:State)->List[DRef]:
+  return list(set(scanref_dict(config_dict(s[0]))+scanref_list(s[1].ops)))
 
+def state_hash(s:State)->Hash:
+  return datahash([config_serialize(s[0]), program_serialize(s[1])])
 
 #  ____  _
 # / ___|| |_ ___  _ __ ___
@@ -116,19 +182,12 @@ def state_deps(s:State)->List[Ref]:
 #  ___) | || (_) | | |  __/
 # |____/ \__\___/|_|  \___|
 
-def assert_valid_ref(ref:Ref)->None:
-  error_msg=(f'Value of type {type(ref)} is not a valid reference! Expected '
-             f'string of form \'ref:HASH\', but actual value is "{ref}"')
-  assert len(ref)>4, error_msg
-  assert ref[:4] == 'ref:', error_msg
-
 def assert_valid_refpath(refpath:RefPath)->None:
   error_msg=(f'Value of type {type(refpath)} is not a valid refpath! Expected '
              f'list of strings starting from a reference, but actual value '
              f'is "{refpath}"')
   assert len(refpath)>0, error_msg
-  assert_valid_ref(refpath[0])
-
+  assert_valid_rref(refpath[0])
 
 def assert_store_initialized()->None:
   assert isdir(PYLIGHTNIX_STORE), \
@@ -144,43 +203,41 @@ def store_initialize(exist_ok:bool=True):
   makedirs(PYLIGHTNIX_TMP, exist_ok=True)
   assert_store_initialized()
 
-def store_systempath(refpath:RefPath)->Path:
-  """ Constructs a Refpath into system-specific path
-  TODO: use joins here
-  """
-  assert_valid_refpath(refpath)
-  return Path(join(PYLIGHTNIX_STORE,join(refpath[0][4:],join(*refpath[1:]))))
 
-def store_refpath(ref:Ref, items:List[str]=[])->RefPath:
-  """ Constructs a Refpath out of a reference `ref` and a path within the node """
-  assert_valid_ref(ref)
-  return RefPath([str(ref)]+items)
+def store_dref2path(r:DRef)->Path:
+  (nm,dhash)=undref(r)
+  return Path(join(PYLIGHTNIX_STORE,dhash+'-'+nm))
 
-def store_readjson(refpath:RefPath)->Any:
-  with open(store_systempath(refpath), "r") as f:
-    return json_load(f)
+def store_rref2path(r:RRef)->Path:
+  (nm,dhash,rhash)=unrref(r)
+  return Path(join(PYLIGHTNIX_STORE,dhash+'-'+nm,rhash))
 
-def config_deref(ref:Ref)->Config:
-  assert_valid_ref(ref)
-  return Config(store_readjson(store_refpath(ref, ['config.json'])))
+def store_refpath2path(r:RefPath)->Path:
+  assert_valid_refpath(r)
+  return Path(join(store_rref2path(r[0]),*r[1:]))
 
-def config_deref_ro(ref:Ref)->Any:
-  return config_ro(Config(store_readjson(store_refpath(ref, ['config.json']))))
+def mkrefpath(r:RRef, items:List[str]=[])->RefPath:
+  """ Constructs a RefPath out of a reference `ref` and a path within the node """
+  assert_valid_rref(r)
+  return RefPath([str(r)]+items)
 
-store_config_ro = config_deref_ro
+def store_config(r:DRef)->Config:
+  assert_valid_dref(ref)
+  return Config(readjson(join(store_dref2path(r),'config.json')))
 
-def program_deref(ref:Ref)->Program:
-  return Program(store_readjson(store_refpath(ref, ['program.json'])))
+def store_config_ro(r:DRef)->Any:
+  return config_ro(store_config(r))
 
-def store_deps(ref:Ref)->List[Ref]:
+
+def store_deps(r:DRef)->List[DRef]:
   """ Return a list of reference's dependencies, that is all the other references
   found in current ref's config and program """
-  c=config_deref(ref)
-  p=program_deref(ref)
+  c=store_config(r)
+  p=store_program(r)
   return state_deps((c,p))
 
 
-def store_deepdeps(roots:List[Ref])->List[Ref]:
+def store_deepdeps(roots:List[DRef])->List[DRef]:
   """ Return an exhaustive list of dependencies of the `roots`. `roots`
   themselves are also included. """
   frontier=set(roots)
@@ -194,9 +251,8 @@ def store_deepdeps(roots:List[Ref])->List[Ref]:
   return list(processed)
 
 
-def store_link(ref:Ref, tgtpath:Path, name:str, withtime=True)->None:
-  """ Puts a link pointing to storage node into user-specified directory
-  `tgtpath` """
+def store_link(ref:DRef, tgtpath:Path, name:str, withtime=True)->None:
+  """ Creates a link pointing to node `ref` into directory `tgtpath` """
   assert_valid_ref(ref)
   assert isdir(tgtpath), f"store_link(): `tgt` dir '{tgtpath}' doesn't exist"
   ts:Optional[str]
@@ -210,24 +266,28 @@ def store_link(ref:Ref, tgtpath:Path, name:str, withtime=True)->None:
   else:
     ts=None
   timeprefix=f'{ts}_' if ts is not None else ''
-  forcelink(Path(relpath(store_systempath(store_refpath(ref,[])), tgtpath)),
+  forcelink(Path(relpath(store_dref2path(ref), tgtpath)),
             Path(join(tgtpath,f'{timeprefix}{name}')))
 
-def store_gc(refs_in_use:List[Ref])->List[Ref]:
+def store_drefs()->Iterable[DRef]:
+  for dirname in listdir(PYLIGHTNIX_STORE):
+    yield mkdref(str(dirname[32+1:]), HashPart(dirname[:32]))
+
+
+def store_gc(refs_in_use:List[DRef])->List[DRef]:
   """ Take roots which are in use and should not be removed. Return roots which
   are not used and may be removed. Actual removing is to be done by user-defined
   application. """
   assert_store_initialized()
-
-  roots_with_deps=store_deepdeps(refs_in_use)
-
   to_delete=[]
-  for dirname in sorted(listdir(PYLIGHTNIX_STORE)):
-    ref='ref:'+dirname
-    if not ref in roots_with_deps:
-      to_delete.append(Ref(ref))
+  roots_with_deps=store_deepdeps(refs_in_use)
+  for dref in store_drefs():
+    if not dref in roots_with_deps:
+      to_delete.append(dref)
   return to_delete
 
+def store_deref(m:Model, refpath:RefPath, search:Callable[[DRef],RRef])->Path:
+  pass
 
 #  __  __           _      _
 # |  \/  | ___   __| | ___| |
@@ -242,15 +302,15 @@ class Model:
   Lifecycle of a model starts from its creation from JSON-serializable
   `Config`.
 
-  After the model is created, users typically perform non-determenistic
-  operations on it. To make the model abstraction aware of them, users have to
-  update the _state_ of the model, which is a combination of `config`, `program`
-  and `protocol` field.  The separation of state into `config` and `program` is
-  not strictly important, but we hope it will help us to build a more
-  user-friendly search system. We encourage users to keep config immutable after
-  it was passed to model, and use `program` to track changes.  During
-  operations, users are welcome to save various processing artifacts into
-  temporary folder as returned by `model_outpath(m)` function.
+  After the model is created, users typically want to perform non-determenistic
+  operations on it. To make the model abstraction aware of it, users have to
+  update the _state_ of the model, which is a combination of `config`,
+  `program` and `protocol` field.  The separation of state into `config` and
+  `program` is not strictly important, but we hope it will help us to build a
+  more user-friendly search system. We encourage users to keep config immutable
+  after it was passed to model, and use `program` to track changes.  During
+  those operations, users are to save various artifacts into temporary folder
+  as returned by `model_outpath(m)` function.
 
   Note, that the rational behind `protocol` is unclear, maybe it should be
   moved into userland code completely.
@@ -267,33 +327,26 @@ class Model:
     self.config:Config = config
     self.program:Program = Program([])
     self.protocol:Protocol = []
-    self.outprefix:str=f'{self.timeprefix}_{config_hash(config)[:8]}_'
-    self.outpath:Optional[Path]=None
-    self.storedir:Optional[Path]=None
+    self.outprefix:str = f'{self.timeprefix}_{config_hash(config)[:8]}_'
+    self.outpath:Path = Path(mkdtemp(prefix=m.outprefix, dir=PYLIGHTNIX_TMP))
+    self.deps:List[RRef]=[]
 
   def get_whash(self)->Hash:
-    assert self.storedir is None, \
+    assert self.outref is None, \
       "This model is already saved so we don't want to get the hash of its temporary state"
     return dhash(model_outpath(self))
-
-def model_program(m:Model)->Program:
-  return m.program
-
-def model_outpath(m:Model)->Path:
-  if m.outpath is None:
-    m.outpath=Path(mkdtemp(prefix=m.outprefix, dir=PYLIGHTNIX_TMP))
-  return m.outpath
-
-def model_storepath(m:Model)->str:
-  assert m.storedir is not None, \
-      "Looks like this model is not saved yet and thus it's `storepath` is undefined"
-  return PYLIGHTNIX_STORE+'/'+m.storedir
 
 def model_config(m:Model)->Config:
   return m.config
 
+def model_program(m:Model)->Program:
+  return m.program
+
 def model_config_ro(m:Model)->Any:
   return config_ro(model_config(m))
+
+def model_outpath(m:Model)->Path:
+  return m.outpath
 
 def model_lasthash(m:Model)->Optional[Hash]:
   assert m.protocol is not None
@@ -322,63 +375,102 @@ def protocol_add(m:Model, name:str, arg:Any=[], result:Any=[], expect_wchange:bo
   m.program.ops.append((name, arg))
   m.protocol.append((name, new_whash, result))
 
-def model_storelink(m:Model, expdir:Path, linksuffix:str, withtime:bool=True)->None:
-  """ Puts a link to model's storage into user-specified directory `expdir` """
-  assert m.storedir is not None, \
-      "Looks like this model is not saved yet and thus it's `storelink` is undefined"
-  timeprefix=f'{m.timeprefix}_' if withtime else ''
-  forcelink(Path(relpath(model_storepath(m), expdir)), Path(join(expdir,f'{timeprefix}{linksuffix}')))
+# def model_storelink(m:Model, expdir:Path, linksuffix:str, withtime:bool=True)->None:
+#   """ Puts a link to model's storage into user-specified directory `expdir` """
+#   assert m.outref is not None, \
+#       "Looks like this model is not saved yet and thus it's `outref` is None"
+#   timeprefix=f'{m.timeprefix}_' if withtime else ''
+#   forcelink(Path(relpath(model_storepath(m), expdir)), Path(join(expdir,f'{timeprefix}{linksuffix}')))
 
 # def metricslink(m:Model, expdir:str, tmpname:Optional[str]='tmplink')->None:
 #   """ FIXME: move this out of generic libraty to ML-specific place """
 #   prefix=tmpname if tmpname is not None else f'{m.timeprefix}'
 #   forcelink(relpath(model_metricspath(m), expdir), expdir+f'/{prefix}')
 
-def model_save(m:Model)->Ref:
-  """ Create new node in the storage. Return reference to newly created storage node.
-  Node artifacts should be already prepared in the `model_output` directory.
-  This function saves additional metadata and seals the node with hash. Sealed
-  state is marked by assigning non-empty `storedir`.
+# def model_save(m:Model)->Ref:
+#   """ Create new node in the storage. Return reference to newly created storage node.
+#   Node artifacts should be already prepared in the `model_output` directory.
+#   This function saves additional metadata and seals the node with hash. Sealed
+#   state is marked by assigning non-empty `storedir`.
 
-  TODO: make atomic """
+#   TODO: make atomic """
+#   assert_store_initialized()
+
+#   c = model_config(m)
+#   p = model_program(m)
+#   o = model_outpath(m)
+
+#   oops_message = ("Oops: Attempting to overwrite file %(F)s with builtin"
+#                   "version. Please don't save files with this name in model's"
+#                   "`model_outpath` folder for now.")
+
+#   assert not isfile(join(o,'config.json')), oops_message % {'F':'config.json'}
+#   assert not isfile(join(o,'program.json')), oops_message % {'F':'program.json'}
+#   assert not isfile(join(o,'protocol.json')), oops_message % {'F':'protocol.json'}
+
+#   with open(join(o,'config.json'), 'w') as f:
+#     json_dump(config_dict(c), f, indent=4)
+#   with open(join(o,'program.json'), 'w') as f:
+#     json_dump(m.program.ops, f, indent=4)
+#   with open(join(o,'protocol.json'), 'w') as f:
+#     json_dump(m.protocol, f, indent=4)
+#   with open(join(o,'_timestamp_.txt'), 'w') as f:
+#     f.write(str(m.timeprefix))
+
+#   refname=config_shortname(c)
+#   statehash=fileshash([Path(join(o,'config.json')), Path(join(o,'program.json'))])
+#   nodehash=dhash(o)
+#   ref=store_mkref(refname, statehash, nodehash)
+#   nodepath=store_systempath(store_refpath(ref))
+#   cfgpath,dirname=split(nodepath)
+#   makedirs(cfgpath, exist_ok=True)
+#   replace(o, nodepath)
+
+#   m.outref=ref
+#   print(m.outref)
+#   return ref
+
+############################
+## Actions
+############################
+
+
+def instantiate(s:State)->DRef:
   assert_store_initialized()
+  (c,p)=s
 
-  c = model_config(m)
-  p = model_program(m)
-  o = model_outpath(m)
+  refname=config_shortname(c)
+  dhash=state_hash(s)
 
-  oops_message = ("Oops: Attempting to overwrite file %(F)s with builtin"
-                  "version. Please don't save files with this name in model's"
-                  "`model_outpath` folder for now.")
+  dref=mkdref(refname,trimhash(dhash))
+  dpath=store_dref2path
 
-  assert not isfile(o+'/config.json'), oops_message % {'F':'config.json'}
-  assert not isfile(o+'/program.json'), oops_message % {'F':'program.json'}
-  assert not isfile(o+'/protocol.json'), oops_message % {'F':'protocol.json'}
+  o=Path(mkdtemp(prefix=refname, dir=PYLIGHTNIX_TMP))
+  with open(join(o,'config.json'), 'w') as f:
+    f.write(config_serialize(c))
+  with open(join(o,'program.json'), 'w') as f:
+    f.write(program_serialize(p))
 
-  with open(o+'/config.json', 'w') as f:
-    json_dump(config_dict(c), f, indent=4)
-  with open(o+'/program.json', 'w') as f:
-    json_dump(m.program.ops, f, indent=4)
-  with open(o+'/protocol.json', 'w') as f:
-    json_dump(m.protocol, f, indent=4)
-  with open(o+'/_timestamp_.txt', 'w') as f:
-    f.write(str(m.timeprefix))
+  replace(o, store_dref2path(dref))
+  return dref
 
-  ho=dhash(o)
-  storedir=config_dict(c).get('name','unnamed')+'-'+ho
-  nodepath=Path(join(PYLIGHTNIX_STORE,storedir))
-  if isdir(nodepath):
-    hs=dhash(nodepath)
-    assert ho==hs, f"Oops: {storedir} exists, but have incorrect hash {hs}."
-    rmtree(o)
-  else:
-    replace(o, nodepath)
 
-  m.storedir=storedir
-  print(m.storedir)
-  ref='ref:'+storedir
-  assert_valid_ref(ref)
-  return ref
+def realize(dref:DRef, builder:Callable[[Model],None])->RRef:
+  c=store_config(dref)
+  m=Model(c)
+  builder(b)
+  o=model_outpath(m)
+  p=model_program(m)
+
+  with open(join(o,'links.json'), 'w') as f:
+    f.write(json_dumps(m.deps))
+
+  name=config_shortname(c)
+  dhash=state_hash((c,p))
+  rhash=dhash(o)
+  rref=mkrref(name,trimhash(dhash),trimhash(rhash))
+  replace(o,store_rref2path(rref))
+  return rref
 
 
 #  ____                      _
@@ -388,30 +480,33 @@ def model_save(m:Model)->Ref:
 # |____/ \___|\__,_|_|  \___|_| |_|
 
 
-def search_(chash:Hash, phash:Hash)->List[Ref]:
-  """ Return references matching the hashes of config and program """
-  matched=[]
-  for dirname in sorted(listdir(PYLIGHTNIX_STORE)):
-    ref=Ref('ref:'+dirname)
-    c=config_deref(ref)
-    p=program_deref(ref)
-    if config_hash(c)==chash and program_hash(p)==phash:
-      matched.append(ref)
-  return matched
+# def search_(chash:Hash, phash:Hash)->List[Ref]:
+#   """ Return references matching the hashes of config and program """
+#   matched=[]
+#   store=PYLIGHTNIX_STORE
+#   for name_statehash in listdir(store):
+#     for nodehash in listdir(join(store,name_statehash)):
 
-def search(cp:State)->List[Ref]:
-  """ Return list of references to Store nodes that matches given `State` i.e.
-  `Config` and `Program` (in terms of corresponding `*_hash` functions)."""
-  return search_(config_hash(cp[0]), program_hash(cp[1]))
+#       ref=store_mkref(statehash,nodehash)
+#       c=config_deref(ref)
+#       p=program_deref(ref)
+#       if config_hash(c)==chash and program_hash(p)==phash:
+#         matched.append(ref)
+#   return matched
 
-def single(refs:List[Ref])->List[Ref]:
-  """ Return a resulting list only if it a singleton list """
-  for r in refs:
-    assert_valid_ref(r)
-  if len(refs)==1:
-    return refs
-  else:
-    return []
+# def search(cp:State)->List[Ref]:
+#   """ Return list of references to Store nodes that matches given `State` i.e.
+#   `Config` and `Program` (in terms of corresponding `*_hash` functions)."""
+#   return search_(config_hash(cp[0]), program_hash(cp[1]))
+
+# def single(refs:List[Ref])->List[Ref]:
+#   """ Return a resulting list only if it a singleton list """
+#   for r in refs:
+#     assert_valid_ref(r)
+#   if len(refs)==1:
+#     return refs
+#   else:
+#     return []
 
 # def only(refs:List[Ref])->List[Ref]:
 #   """ Take a list and extract it's single item, or complain loudly """
