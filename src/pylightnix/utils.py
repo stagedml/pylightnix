@@ -1,10 +1,10 @@
 from pylightnix.imports import ( strftime, join, makedirs,
     symlink, basename, mkdir, isdir, isfile, islink, remove, sha256, EEXIST,
     json_dumps, json_loads, makedirs, replace, dirname, walk, abspath,
-    normalize, re_sub, split )
+    normalize, re_sub, split, json_load )
 
 from pylightnix.types import ( Hash, Path, List, Any, Optional, Iterable, IO,
-    DRef, IRef, Ref)
+    DRef, RRef, Ref, Tuple)
 
 
 def timestring()->str:
@@ -72,56 +72,57 @@ def datahash(data:Iterable[str])->Hash:
   e=sha256()
   nitems=0
   for s in data:
-    e.update(s)
-    items+=1
-  if items==0:
+    e.update(bytes(s,'utf-8'))
+    nitems+=1
+  if nitems==0:
     print('Warning: datahash: called on empty iterator')
   return Hash(e.hexdigest())
 
 
-def dhash(path:Path)->Hash:
+def dirhash(path:Path)->Hash:
   """ Calculate recursive SHA256 hash of a directory.
   FIXME: stop ignoring file/directory names
   Don't count files starting from underscope ('_')
   """
-  assert isdir(path), f"dhash(path) expects directory path, not '{path}'"
+  assert isdir(path), f"dirhash(path) expects directory path, not '{path}'"
 
-  def _iter()->Iterable[Path]:
+  def _iter()->Iterable[str]:
     for root, dirs, filenames in walk(abspath(path), topdown=True):
       for filename in filenames:
         if len(filename)>0 and filename[0] != '_':
           with open(abspath(join(root, filename)),'r') as f:
             yield f.read()
 
-  return datashash(_iter())
+  return datahash(_iter())
 
-def scanref_list(l:list)->List[Ref]:
+def scanref_list(l:list)->Tuple[List[DRef],List[RRef]]:
   """
   FIXME: Add a better reference detection, in the `assert_valid_ref` style
   """
   assert isinstance(l,list)
-  res:list=[]
+  drefs:List[DRef]=[]; rrefs:List[RRef]=[]
   for i in l:
     if isinstance(i,tuple):
-      res+=scanref_tuple(i)
+      dref2,rref2=scanref_tuple(i)
     elif isinstance(i,list):
-      res+=scanref_list(i)
+      dref2,rref2=scanref_list(i)
     elif isinstance(i,dict):
-      res+=scanref_dict(i)
+      dref2,rref2=scanref_dict(i)
     elif isinstance(i,str):
       if i[:5]=='dref:':
-        res.append(DRef(i))
-      elif i[:5]=='iref:':
-        res.append(IRef(i))
+        dref2=[DRef(i)]; rref2=[]
+      elif i[:5]=='rref:':
+        dref2=[]; rref2=[RRef(i)]
       else:
-        pass # just a regular string
-  return res
+        dref2=[]; rref2=[]
+    drefs+=dref2; rrefs+=rref2
+  return (drefs,rrefs)
 
-def scanref_tuple(t:tuple)->List[Ref]:
+def scanref_tuple(t:tuple)->Tuple[List[DRef],List[RRef]]:
   assert isinstance(t,tuple)
   return scanref_list(list(t))
 
-def scanref_dict(obj:dict)->List[Ref]:
+def scanref_dict(obj:dict)->Tuple[List[DRef],List[RRef]]:
   assert isinstance(obj,dict)
   return scanref_list(list(obj.values()))
 
@@ -131,7 +132,7 @@ def dicthash(d:dict)->Hash:
   string="_".join(str(k)+"="+str(v) for k,v in sorted(d.items()) if len(k)>0 and k[0]!='_')
   return Hash(sha256(string.encode('utf-8')).hexdigest())
 
-def assert_serializable(d:Any, argname:str)->Any:
+def assert_serializable(d:Any, argname:str='dict')->Any:
   error_msg=(f"Content of this '{argname}' of type {type(d)} is not JSON-serializable!"
              f"\n\n{d}\n\n"
              f"Make sure that `json.dumps`/`json.loads` work on it and are able "
@@ -147,10 +148,20 @@ def assert_serializable(d:Any, argname:str)->Any:
   return d2
 
 def assert_valid_dict(d:dict, argname:str)->None:
+  assert isinstance(d,dict)
   d2=assert_serializable(d, argname)
-  assert dicthash(d)==dicthash(d2)
+  h1=dicthash(d)
+  h2=dicthash(d2)
+  assert h1==h2
 
 def readjson(json_path:str)->Any:
-  with open(json_path), "r") as f:
+  with open((json_path), "r") as f:
     return json_load(f)
+
+def tryread(path:Path)->Optional[str]:
+  try:
+    with open(path,'r') as f:
+      return f.read()
+  except Exception:
+    return None
 

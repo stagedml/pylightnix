@@ -1,21 +1,21 @@
 from pylightnix.imports import (
     sha256, deepcopy, isdir, makedirs, join, json_dump, json_load, json_dumps,
     json_loads, isfile, relpath, listdir, rmtree, mkdtemp, replace, environ,
-    split )
+    split, re_match )
 from pylightnix.utils import (
-    dhash, assert_serializable, assert_valid_dict, dicthash, scanref_dict,
-    scanref_list, forcelink, timestring, datahash, slugify, splitpath, readjson
-    )
+    dirhash, assert_serializable, assert_valid_dict, dicthash, scanref_dict,
+    scanref_list, forcelink, timestring, datahash, slugify, splitpath,
+    readjson, tryread )
 from pylightnix.types import (
-    List, Any, Tuple, Union, Optional, Iterable, IO, Path, Hash, DRef, RRef, Ref, RefPath,
-    Protocol, HashPart )
+    Dict, List, Any, Tuple, Union, Optional, Iterable, IO, Path, Hash, DRef,
+    RRef, Ref, RefPath, HashPart, Callable, Closure, Name )
 
 PYLIGHTNIX_STORE_VERSION = 1
 PYLIGHTNIX_ROOT:str = environ.get('PYLIGHTNIX_ROOT', join(environ.get('HOME','/var/run'),'_pylightnix'))
 PYLIGHTNIX_LOGDIR:str = environ.get('PYLIGHTNIX_LOGDIR', join(PYLIGHTNIX_ROOT,'log'))
 PYLIGHTNIX_TMP:str = environ.get('PYLIGHTNIX_TMP', join(PYLIGHTNIX_ROOT,'tmp'))
 PYLIGHTNIX_STORE:str = join(PYLIGHTNIX_ROOT, f'store-v{PYLIGHTNIX_STORE_VERSION}')
-
+PYLIGHTNIX_NAMEPAT:str = "[a-zA-Z0-9_-]"
 
 
 #  ____       __
@@ -39,34 +39,43 @@ def assert_valid_hashpart(hp:HashPart)->None:
 
 def assert_valid_dref(ref:str)->None:
   error_msg=(f'Value of {ref} is not a valid derivation reference! Expected '
-             f'a string of form \'dref:name-HASH_HASH\'')
+             f'a string of form \'dref:HASH_HASH-name\'')
   assert ref[:5] == 'dref:', error_msg
 
-def mkdref(refname:str, dhash:HashPart)->DRef:
+def mkdref(dhash:HashPart, refname:Name)->DRef:
   assert_valid_hashpart(dhash)
+  assert_valid_name(refname)
   return DRef('dref:'+dhash+'-'+refname)
 
-def undref(r:DRef)->Tuple[str,HashPart]:
-  assert_valid_rref(r)
-  return (r[5+32+1:], HashPart(r[5:5+32]))
+def undref(r:DRef)->Tuple[HashPart, Name]:
+  assert_valid_dref(r)
+  return (HashPart(r[5:5+32]), Name(r[5+32+1:]))
 
 
 
 def assert_valid_rref(ref:str)->None:
   error_msg=(f'Value of {ref} is not a valid instance reference! Expected '
-             f'a string of form \'dref:name-HASH_HASH\'')
+             f'a string of form \'dref:HASH-HASH-name\'')
   assert ref[:5] == 'rref:', error_msg
 
-def mkrref(refname:str, dhash:HashPart, rhash:HashPart)->RRef:
-  assert_valid_hashpart(dhash)
+def mkrref(rhash:HashPart, dhash:HashPart, refname:Name)->RRef:
+  assert_valid_name(refname)
   assert_valid_hashpart(rhash)
-  return RRef('rref:'+dhash+'-'+ihash+'-'+refname)
+  assert_valid_hashpart(dhash)
+  return RRef('rref:'+rhash+'-'+dhash+'-'+refname)
 
-def unrref(r:RRef)->Tuple[str, HashPart, HashPart]:
+def unrref(r:RRef)->Tuple[HashPart, HashPart, Name]:
   assert_valid_rref(r)
-  return (r[5+32+1+32+1:], r[5:5+32], r[5+32+1:5+32+1+32])
+  return (HashPart(r[5:5+32]), HashPart(r[5+32+1:5+32+1+32]), Name(r[5+32+1+32+1:]))
+
+def assert_valid_name(s:Name)->None:
+  assert re_match(f"^{PYLIGHTNIX_NAMEPAT}+$", s), \
+      f"Name {s} contains characters besides {PYLIGHTNIX_NAMEPAT}"
 
 
+def mkname(s:str)->Name:
+  assert_valid_name(Name(s))
+  return Name(s)
 
 
 # ____
@@ -126,15 +135,19 @@ class Config:
   preserved during the serialization."""
   def __init__(self, d:dict):
     assert_valid_dict(d,'dict')
-    uf=[x for x in d if len(x)>0 and x[0]=='_']
-    assert len(uf)==0, \
-        (f"Config shouldn't initially contain fields starting with "
-         f"underscopes '_'. Such filed should be added explicitly, "
-         f"if needed. Got {uf}.")
+    # uf=[x for x in d if len(x)>0 and x[0]=='_']
+    # assert len(uf)==0, \
+    #     (f"Config shouldn't initially contain fields starting with "
+    #      f"underscopes '_'. Such filed should be added explicitly, "
+    #      f"if needed. Got {uf}.")
     self.__dict__=deepcopy(d)
+
+def mkconfig(d:dict)->Config:
+  return Config(d)
 
 def assert_valid_config(c:Config):
   assert c is not None, 'Expected `Config` object, but None was passed'
+  assert_valid_name(config_name(c))
   assert_valid_dict(c.__dict__, 'Config')
 
 def config_dict(c:Config)->dict:
@@ -149,9 +162,9 @@ def config_serialize(c:Config)->str:
 def config_hash(c:Config)->Hash:
   return datahash([config_serialize(c)])
 
-def config_shortname(c:Config)->str:
+def config_name(c:Config)->Name:
   """ Return short human-readable name of a config """
-  return slugify(config_dict(c).get('name','unnamed'))
+  return mkname(config_dict(c).get('name','unnamed'))
 
 #  ____  _        _
 # / ___|| |_ __ _| |_ ___
@@ -163,15 +176,15 @@ def config_shortname(c:Config)->str:
 """ State is a combination of a Config and a Program """
 State = Tuple[Config,Program]
 
-def state(c:Config)->State:
+def mkstate(d:dict)->State:
   """ State constructor """
-  return (c,Program())
+  return (Config(d),Program())
 
 def state_add(s:State, op:str, arg:Any=[])->State:
   return (s[0],program_add(s[1],op,arg))
 
 def state_deps(s:State)->List[DRef]:
-  return list(set(scanref_dict(config_dict(s[0]))+scanref_list(s[1].ops)))
+  return list(set(scanref_dict(config_dict(s[0]))[0]+scanref_list(s[1].ops)[0]))
 
 def state_hash(s:State)->Hash:
   return datahash([config_serialize(s[0]), program_serialize(s[1])])
@@ -184,17 +197,17 @@ def state_hash(s:State)->Hash:
 
 def assert_valid_refpath(refpath:RefPath)->None:
   error_msg=(f'Value of type {type(refpath)} is not a valid refpath! Expected '
-             f'list of strings starting from a reference, but actual value '
+             f'list of strings starting from a d-reference, but actual value '
              f'is "{refpath}"')
   assert len(refpath)>0, error_msg
-  assert_valid_rref(refpath[0])
+  assert_valid_dref(refpath[0])
 
 def assert_store_initialized()->None:
   assert isdir(PYLIGHTNIX_STORE), \
-    (f"Looks like the Modelcap store ('{PYLIGHTNIX_STORE}') is not initialized. Did "
+    (f"Looks like the Pylightnix store ('{PYLIGHTNIX_STORE}') is not initialized. Did "
      f"you call `store_initialize`?")
   assert isdir(PYLIGHTNIX_TMP), \
-    (f"Looks like the Modelcap tmp ('{PYLIGHTNIX_TMP}') is not initialized. Did "
+    (f"Looks like the Pylightnix tmp ('{PYLIGHTNIX_TMP}') is not initialized. Did "
      f"you call `store_initialize`?")
 
 def store_initialize(exist_ok:bool=True):
@@ -205,25 +218,33 @@ def store_initialize(exist_ok:bool=True):
 
 
 def store_dref2path(r:DRef)->Path:
-  (nm,dhash)=undref(r)
+  (dhash,nm)=undref(r)
   return Path(join(PYLIGHTNIX_STORE,dhash+'-'+nm))
 
 def store_rref2path(r:RRef)->Path:
-  (nm,dhash,rhash)=unrref(r)
+  (rhash,dhash,nm)=unrref(r)
   return Path(join(PYLIGHTNIX_STORE,dhash+'-'+nm,rhash))
 
-def store_refpath2path(r:RefPath)->Path:
-  assert_valid_refpath(r)
-  return Path(join(store_rref2path(r[0]),*r[1:]))
+# def store_refpath2path(r:RefPath)->Path:
+#   assert_valid_refpath(r)
+#   return Path(join(store_dref2path(r[0]),*r[1:]))
 
-def mkrefpath(r:RRef, items:List[str]=[])->RefPath:
+def mkrefpath(r:DRef, items:List[str]=[])->RefPath:
   """ Constructs a RefPath out of a reference `ref` and a path within the node """
-  assert_valid_rref(r)
+  assert_valid_dref(r)
   return RefPath([str(r)]+items)
 
 def store_config(r:DRef)->Config:
-  assert_valid_dref(ref)
+  assert_valid_dref(r)
   return Config(readjson(join(store_dref2path(r),'config.json')))
+
+def store_program(r:DRef)->Program:
+  assert_valid_dref(r)
+  return Program(readjson(join(store_dref2path(r),'program.json')))
+
+def store_closure(r:RRef)->Closure:
+  assert_valid_rref(r)
+  return readjson(join(store_rref2path(r),'closure.json'))
 
 def store_config_ro(r:DRef)->Any:
   return config_ro(store_config(r))
@@ -253,16 +274,13 @@ def store_deepdeps(roots:List[DRef])->List[DRef]:
 
 def store_link(ref:DRef, tgtpath:Path, name:str, withtime=True)->None:
   """ Creates a link pointing to node `ref` into directory `tgtpath` """
-  assert_valid_ref(ref)
+  assert_valid_dref(ref)
   assert isdir(tgtpath), f"store_link(): `tgt` dir '{tgtpath}' doesn't exist"
   ts:Optional[str]
   if withtime:
-    tspath=store_systempath(store_refpath(ref,['_timestamp_.txt']))
-    if isfile(tspath):
-      ts=open(tspath,'r').read()
-    else:
-      print(f"Warning: no timestamp for {ref}, probably because of old version of Modelcap")
-      ts=None
+    ts=tryread(Path(join(store_dref2path(ref),'_timestamp_.txt')))
+    if ts is None:
+      print(f"Warning: no timestamp for {ref}, probably because of old version of Pylightnix")
   else:
     ts=None
   timeprefix=f'{ts}_' if ts is not None else ''
@@ -271,7 +289,15 @@ def store_link(ref:DRef, tgtpath:Path, name:str, withtime=True)->None:
 
 def store_drefs()->Iterable[DRef]:
   for dirname in listdir(PYLIGHTNIX_STORE):
-    yield mkdref(str(dirname[32+1:]), HashPart(dirname[:32]))
+    yield mkdref(HashPart(dirname[:32]), Name(dirname[32+1:]))
+
+
+def store_rrefs(dref:DRef)->Iterable[RRef]:
+  (dhash,nm)=undref(dref)
+  drefpath=store_dref2path(dref)
+  for f in listdir(drefpath):
+    if isdir(join(drefpath,f)):
+      yield mkrref(HashPart(f), dhash, nm)
 
 
 def store_gc(refs_in_use:List[DRef])->List[DRef]:
@@ -286,18 +312,16 @@ def store_gc(refs_in_use:List[DRef])->List[DRef]:
       to_delete.append(dref)
   return to_delete
 
-def store_deref(m:Model, refpath:RefPath, search:Callable[[DRef],RRef])->Path:
-  pass
-
-#  __  __           _      _
-# |  \/  | ___   __| | ___| |
-# | |\/| |/ _ \ / _` |/ _ \ |
-# | |  | | (_) | (_| |  __/ |
-# |_|  |_|\___/ \__,_|\___|_|
+#
+#  ____        _ _     _
+# | __ ) _   _(_) | __| |
+# |  _ \| | | | | |/ _` |
+# | |_) | |_| | | | (_| |
+# |____/ \__,_|_|_|\__,_|
 
 
-class Model:
-  """ Model tracks the process of building storage nodes.
+class Build:
+  """ Build tracks the process of building storage nodes.
 
   Lifecycle of a model starts from its creation from JSON-serializable
   `Config`.
@@ -310,218 +334,218 @@ class Model:
   more user-friendly search system. We encourage users to keep config immutable
   after it was passed to model, and use `program` to track changes.  During
   those operations, users are to save various artifacts into temporary folder
-  as returned by `model_outpath(m)` function.
+  as returned by `build_outpath(m)` function.
 
   Note, that the rational behind `protocol` is unclear, maybe it should be
   moved into userland code completely.
 
-  Finally, users typically call `model_save` which finishes the node creation,
+  Finally, users typically call `build_save` which finishes the node creation,
   'seals' the node with a hash and sets the `storedir` field.  The storage item
   is believed to be immutable (but nothing special is done to enforce this
-  restriction). `model_storelink` may be used to drop a symlink to this node
+  restriction). `build_storelink` may be used to drop a symlink to this node
   into user-specified folder """
 
-  def __init__(self, config:Config, timeprefix:Optional[str]=None):
+  def __init__(self, config:Config, closure:Closure, timeprefix:Optional[str]=None):
     assert_valid_config(config)
     self.timeprefix:str = timestring() if timeprefix is None else timeprefix
     self.config:Config = config
     self.program:Program = Program([])
-    self.protocol:Protocol = []
+    # self.protocol:Protocol = []
     self.outprefix:str = f'{self.timeprefix}_{config_hash(config)[:8]}_'
-    self.outpath:Path = Path(mkdtemp(prefix=m.outprefix, dir=PYLIGHTNIX_TMP))
-    self.deps:List[RRef]=[]
+    self.outpath:Path = Path(mkdtemp(prefix=self.outprefix, dir=PYLIGHTNIX_TMP))
+    self.closure:Closure=closure
 
   def get_whash(self)->Hash:
-    assert self.outref is None, \
-      "This model is already saved so we don't want to get the hash of its temporary state"
-    return dhash(model_outpath(self))
+    return dirhash(build_outpath(self))
 
-def model_config(m:Model)->Config:
-  return m.config
+def mkbuild(dref:DRef, closure:Closure)->Build:
+  return Build(store_config(dref), closure)
 
-def model_program(m:Model)->Program:
-  return m.program
+def build_config(b:Build)->Config:
+  return b.config
 
-def model_config_ro(m:Model)->Any:
-  return config_ro(model_config(m))
+def build_closure(b:Build)->Closure:
+  return b.closure
 
-def model_outpath(m:Model)->Path:
+def build_config_ro(m:Build)->Any:
+  return config_ro(build_config(m))
+
+def build_outpath(m:Build)->Path:
   return m.outpath
 
-def model_lasthash(m:Model)->Optional[Hash]:
-  assert m.protocol is not None
-  if len(m.protocol) == 0:
-    return None
-  else:
-    return m.protocol[-1][1]
+# def build_lasthash(m:Build)->Optional[Hash]:
+#   assert m.protocol is not None
+#   if len(m.protocol) == 0:
+#     return None
+#   else:
+#     return m.protocol[-1][1]
 
-def protocol_add(m:Model, name:str, arg:Any=[], result:Any=[], expect_wchange:bool=True)->None:
-  assert_serializable(name,'name')
-  assert_serializable(arg,'arg')
-  assert_serializable(result,'result')
-  new_whash=m.get_whash()
-  old_whash=model_lasthash(m)
-  if expect_wchange:
-    assert new_whash != old_whash, \
-        (f"Modelcap sanity check: Operation was marked as parameter-changing,"
-         f"but Model parameters didn't change their hashes as expected."
-         f"Both hashes are {new_whash}.")
-  else:
-    assert new_whash == old_whash or (old_whash is None), \
-        (f"Modelcap sanity check: Operation was marked as"
-         f"non-paramerer-changing, but Model parameters were in fact changed by"
-         f"something. Expected {old_whash}, got {new_whash}.")
-  c=model_config(m)
-  m.program.ops.append((name, arg))
-  m.protocol.append((name, new_whash, result))
+def build_name(b:Build)->Name:
+  return Name(config_name(build_config(b)))
 
-# def model_storelink(m:Model, expdir:Path, linksuffix:str, withtime:bool=True)->None:
-#   """ Puts a link to model's storage into user-specified directory `expdir` """
-#   assert m.outref is not None, \
-#       "Looks like this model is not saved yet and thus it's `outref` is None"
-#   timeprefix=f'{m.timeprefix}_' if withtime else ''
-#   forcelink(Path(relpath(model_storepath(m), expdir)), Path(join(expdir,f'{timeprefix}{linksuffix}')))
-
-# def metricslink(m:Model, expdir:str, tmpname:Optional[str]='tmplink')->None:
-#   """ FIXME: move this out of generic libraty to ML-specific place """
-#   prefix=tmpname if tmpname is not None else f'{m.timeprefix}'
-#   forcelink(relpath(model_metricspath(m), expdir), expdir+f'/{prefix}')
-
-# def model_save(m:Model)->Ref:
-#   """ Create new node in the storage. Return reference to newly created storage node.
-#   Node artifacts should be already prepared in the `model_output` directory.
-#   This function saves additional metadata and seals the node with hash. Sealed
-#   state is marked by assigning non-empty `storedir`.
-
-#   TODO: make atomic """
-#   assert_store_initialized()
-
-#   c = model_config(m)
-#   p = model_program(m)
-#   o = model_outpath(m)
-
-#   oops_message = ("Oops: Attempting to overwrite file %(F)s with builtin"
-#                   "version. Please don't save files with this name in model's"
-#                   "`model_outpath` folder for now.")
-
-#   assert not isfile(join(o,'config.json')), oops_message % {'F':'config.json'}
-#   assert not isfile(join(o,'program.json')), oops_message % {'F':'program.json'}
-#   assert not isfile(join(o,'protocol.json')), oops_message % {'F':'protocol.json'}
-
-#   with open(join(o,'config.json'), 'w') as f:
-#     json_dump(config_dict(c), f, indent=4)
-#   with open(join(o,'program.json'), 'w') as f:
-#     json_dump(m.program.ops, f, indent=4)
-#   with open(join(o,'protocol.json'), 'w') as f:
-#     json_dump(m.protocol, f, indent=4)
-#   with open(join(o,'_timestamp_.txt'), 'w') as f:
-#     f.write(str(m.timeprefix))
-
-#   refname=config_shortname(c)
-#   statehash=fileshash([Path(join(o,'config.json')), Path(join(o,'program.json'))])
-#   nodehash=dhash(o)
-#   ref=store_mkref(refname, statehash, nodehash)
-#   nodepath=store_systempath(store_refpath(ref))
-#   cfgpath,dirname=split(nodepath)
-#   makedirs(cfgpath, exist_ok=True)
-#   replace(o, nodepath)
-
-#   m.outref=ref
-#   print(m.outref)
-#   return ref
-
-############################
-## Actions
-############################
+# def protocol_add(m:Build, name:str, arg:Any=[], result:Any=[], expect_wchange:bool=True)->None:
+#   assert_serializable(name,'name')
+#   assert_serializable(arg,'arg')
+#   assert_serializable(result,'result')
+#   new_whash=m.get_whash()
+#   old_whash=build_lasthash(m)
+#   if expect_wchange:
+#     assert new_whash != old_whash, \
+#         (f"Pylightnix sanity check: Operation was marked as parameter-changing,"
+#          f"but Build parameters didn't change their hashes as expected."
+#          f"Both hashes are {new_whash}.")
+#   else:
+#     assert new_whash == old_whash or (old_whash is None), \
+#         (f"Pylightnix sanity check: Operation was marked as"
+#          f"non-paramerer-changing, but Build parameters were in fact changed by"
+#          f"something. Expected {old_whash}, got {new_whash}.")
+#   c=build_config(m)
+#   m.program.ops.append((name, arg))
+#   m.protocol.append((name, new_whash, result))
 
 
-def instantiate(s:State)->DRef:
+def build_rref(b:Build, dref:DRef)->RRef:
+  rref=b.closure.get(dref)
+  assert rref is not None, f"Unable to deref {dref} while building {build_name(b)}"
+  return rref
+
+def build_deref(b:Build, refpath:RefPath)->Path:
+  assert_valid_refpath(refpath)
+  return Path(join(store_rref2path(build_rref(b, refpath[0])), *refpath[1:]))
+
+
+#  ___                       _   _
+# / _ \ _ __   ___ _ __ __ _| |_(_) ___  _ __  ___
+#| | | | '_ \ / _ \ '__/ _` | __| |/ _ \| '_ \/ __|
+#| |_| | |_) |  __/ | | (_| | |_| | (_) | | | \__ \
+# \___/| .__/ \___|_|  \__,_|\__|_|\___/|_| |_|___/
+#      |_|
+
+
+def build_instantiate(c:Config)->DRef:
   assert_store_initialized()
-  (c,p)=s
 
-  refname=config_shortname(c)
-  dhash=state_hash(s)
+  refname=config_name(c)
+  dhash=config_hash(c)
 
-  dref=mkdref(refname,trimhash(dhash))
-  dpath=store_dref2path
+  dref=mkdref(trimhash(dhash),refname)
 
   o=Path(mkdtemp(prefix=refname, dir=PYLIGHTNIX_TMP))
   with open(join(o,'config.json'), 'w') as f:
     f.write(config_serialize(c))
-  with open(join(o,'program.json'), 'w') as f:
-    f.write(program_serialize(p))
 
   replace(o, store_dref2path(dref))
   return dref
 
 
-def realize(dref:DRef, builder:Callable[[Model],None])->RRef:
-  c=store_config(dref)
-  m=Model(c)
-  builder(b)
-  o=model_outpath(m)
-  p=model_program(m)
 
-  with open(join(o,'links.json'), 'w') as f:
-    f.write(json_dumps(m.deps))
+def build_realize(dref:DRef, b:Build)->RRef:
+  o=build_outpath(b)
+  c=build_config(b)
+  l=build_closure(b)
+  (dhash,nm)=undref(dref)
 
-  name=config_shortname(c)
-  dhash=state_hash((c,p))
-  rhash=dhash(o)
-  rref=mkrref(name,trimhash(dhash),trimhash(rhash))
+  with open(join(o,'closure.json'), 'w') as f:
+    f.write(closure_serialize(l))
+
+  rhash=dirhash(o)
+  rref=mkrref(trimhash(rhash),dhash,nm)
   replace(o,store_rref2path(rref))
   return rref
 
-
-#  ____                      _
-# / ___|  ___  __ _ _ __ ___| |__
-# \___ \ / _ \/ _` | '__/ __| '_ \
-#  ___) |  __/ (_| | | | (__| | | |
-# |____/ \___|\__,_|_|  \___|_| |_|
+##################
+## Closure
+##################
 
 
-# def search_(chash:Hash, phash:Hash)->List[Ref]:
-#   """ Return references matching the hashes of config and program """
-#   matched=[]
-#   store=PYLIGHTNIX_STORE
-#   for name_statehash in listdir(store):
-#     for nodehash in listdir(join(store,name_statehash)):
+def mkclosure()->Closure:
+  return {}
 
-#       ref=store_mkref(statehash,nodehash)
-#       c=config_deref(ref)
-#       p=program_deref(ref)
-#       if config_hash(c)==chash and program_hash(p)==phash:
-#         matched.append(ref)
-#   return matched
+def assert_valid_closure(c:Closure)->None:
+  assert_serializable(c)
+  for dref,rref in c.items():
+    assert_valid_dref(dref)
+    assert_valid_rref(rref)
 
-# def search(cp:State)->List[Ref]:
-#   """ Return list of references to Store nodes that matches given `State` i.e.
-#   `Config` and `Program` (in terms of corresponding `*_hash` functions)."""
-#   return search_(config_hash(cp[0]), program_hash(cp[1]))
 
-# def single(refs:List[Ref])->List[Ref]:
-#   """ Return a resulting list only if it a singleton list """
-#   for r in refs:
-#     assert_valid_ref(r)
-#   if len(refs)==1:
-#     return refs
-#   else:
-#     return []
+def closure_eq(a:Closure,b:Closure)->bool:
+  return json_dumps(a)==json_dumps(b)
 
-# def only(refs:List[Ref])->List[Ref]:
-#   """ Take a list and extract it's single item, or complain loudly """
-#   for r in refs:
-#     assert_valid_ref(r)
-#   if len(refs)==0:
-#     assert False, \
-#         (f"Empty list was passed to only(). This may mean that preceeding "
-#          f"search founds no results in storage. You may have to either update "
-#          f"the storage from elsewhere or re-run the associated computations to "
-#          f"produce that nodes locally")
-#   else:
-#     assert len(refs)==1, \
-#         (f"only() expected exactly one matched ref, but there are {len(refs)} "
-#          f"of them:\n{refs}\n. Probably you need a more clever filter to make "
-#          f"a right choice")
-#   return refs[0]
+def closure_add(closure:Closure, dref:DRef, rref:RRef)->Closure:
+  rref2=closure.get(dref)
+  if rref2:
+    assert rref==rref2, \
+      ( f"Attempting to re-introduce DRef {dref} to closure with "
+        f"different realization.\n"
+        f" * Old realization: {rref2}\n"
+        f" * New realization: {rref}\n" )
+  else:
+    closure[dref]=rref
+  return closure
+
+def closure_serialize(c:Closure)->str:
+  assert_valid_closure(c)
+  return json_dumps(c, indent=4)
+
+##################
+## Manager
+##################
+
+
+class Manager:
+  def __init__(self):
+    self.builders:List[Tuple[DRef, Callable[[DRef,Closure],Build], Callable[[DRef, Closure],Optional[RRef]]]]=[]
+
+
+def manage(m:Manager, finstantiate, frealize, fselect)->Manager:
+  dref=build_instantiate(finstantiate())
+  m.builders.append((dref,frealize,fselect))
+  return m
+
+# def typecheck(stage:Callable[[Manager],DRef])
+#   print('Going to build')
+#   for (dref,builder,search) in m.builders:
+#     c=store_config(dref)
+#     n=config_name(c)
+#     print(n)
+
+
+def emerge(stage:Callable[[Manager],Manager])->RRef:
+  m=stage(Manager())
+
+  closure:Closure={}
+  rref:Optional[RRef]=None
+  for (dref,frealize,fsearch) in m.builders:
+    c=store_config(dref)
+    n=config_name(c)
+    print(n)
+    rref=fsearch(dref,closure)
+    if not rref:
+      b=frealize(dref,closure)
+      rreftmp=build_realize(dref,b)
+      rref=fsearch(dref,closure)
+      assert rref is not None
+    closure=closure_add(closure,dref,rref)
+  assert rref is not None
+  return rref
+
+
+##################
+## Searches
+##################
+
+def only(dref:DRef, closure:Closure)->Optional[RRef]:
+  matching=[]
+  for rref in store_rrefs(dref):
+    closure2=store_closure(rref)
+    if closure_eq(closure,closure2):
+      matching.append(rref)
+  if len(matching)==0:
+    return None
+  elif len(matching)==1:
+    return matching[0]
+  else:
+    assert False, "Multiple matches"
+
+
 

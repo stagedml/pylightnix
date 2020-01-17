@@ -1,14 +1,13 @@
-from pylightnix.core import Ref, Config, Model, model_save, state, search
+from pylightnix.core import ( Manager, manage, mkconfig, mkbuild, Build, Config,
+    Closure, only )
+from pylightnix.types import DRef, RRef
 
-def mknode(d:dict)->Ref:
-  """ Create a trivial store node consisiting only of a config `d`, with no
-  artifacts """
-  c=Config(d)
-  refs=search(state(c))
-  if len(refs)==0:
-    return model_save(Model(c))
-  elif len(refs)==1:
-    return refs[0]
-  else:
-    assert False, f"mknode: multiple results ({refs})"
 
+def mknode(m:Manager, d:dict)->Manager:
+  """ Create a storage node which doesn't store any artifacts. It's meaning is
+  entirely deternined by it's configuration dict `d`.  """
+  def _instantiate()->Config:
+    return mkconfig(d)
+  def _realize(dref:DRef, closure:Closure)->Build:
+    return mkbuild(dref, closure)
+  return manage(m, _instantiate, _realize, only)

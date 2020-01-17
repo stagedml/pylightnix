@@ -12,4 +12,4 @@ from copy import deepcopy
 from tempfile import mkdtemp
 from shutil import rmtree
 from unicodedata import normalize
-from re import sub as re_sub
+from re import sub as re_sub, match as re_match
