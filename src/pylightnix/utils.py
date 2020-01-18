@@ -4,7 +4,7 @@ from pylightnix.imports import ( strftime, join, makedirs,
     normalize, re_sub, split, json_load )
 
 from pylightnix.types import ( Hash, Path, List, Any, Optional, Iterable, IO,
-    DRef, RRef, Ref, Tuple)
+    DRef, RRef, Tuple)
 
 
 def timestring()->str:
@@ -115,6 +115,8 @@ def scanref_list(l:list)->Tuple[List[DRef],List[RRef]]:
         dref2=[]; rref2=[RRef(i)]
       else:
         dref2=[]; rref2=[]
+    else:
+      dref2=[]; rref2=[]
     drefs+=dref2; rrefs+=rref2
   return (drefs,rrefs)
 

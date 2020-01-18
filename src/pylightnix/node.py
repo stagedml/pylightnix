@@ -10,4 +10,4 @@ def mknode(m:Manager, d:dict)->DRef:
     return mkconfig(d)
   def _realize(dref:DRef, closure:Closure)->Build:
     return mkbuild(dref, closure)
-  return manage(m, _instantiate, _realize, only)
+  return manage(m, _instantiate, only, _realize)

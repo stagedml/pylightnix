@@ -8,7 +8,7 @@ from pylightnix import (
     mknode, store_deps, store_deepdeps, store_gc, assert_valid_hash,
     assert_serializable, assert_valid_config, Manager, mkclosure, build_realize,
     store_rrefs, datahash, PYLIGHTNIX_NAMEPAT, mkdref, mkrref, trimhash, unrref,
-    undref, emerge, mkdrefR, store_config )
+    undref, realize, mkdrefR, store_config )
 
 from tests.imports import (
     given, assume, example, note, settings, text, decimals, integers, rmtree,
@@ -163,32 +163,45 @@ def test_mknode(d)->None:
   dref=m.builders[-1][0]
   assert_valid_dref(dref)
   assert len(list(store_rrefs(dref))) == 0
-  rref=m.builders[-1][2](dref, mkclosure())
+  rref=m.builders[-1].matcher(dref, mkclosure())
   assert rref is None
-  rref=build_realize(dref, m.builders[-1][1](dref, mkclosure()))
+  rref=build_realize(dref, m.builders[-1].realizer(dref, mkclosure()))
   assert len(list(store_rrefs(dref))) == 1
   assert_valid_rref(rref)
-  rref2=m.builders[-1][2](dref, mkclosure())
+  rref2=m.builders[-1].matcher(dref, mkclosure())
   assert rref==rref2
 
 
 @given(d=dicts())
-def test_emerge(d)->None:
-  setup_storage('test_emerge')
+def test_emerge1(d)->None:
+  setup_storage('test_emerge1')
+  n1=None; n2=None; n3=None; toplevel=None
 
   def _setup(m):
+    nonlocal n1,n2,n3,toplevel
     n1=mknode(m, d)
     n2=mknode(m, {'parent1':n1})
     n3=mknode(m, {'parent2':n1})
-    toplevel=mknode(m, {'n1':n1,'n2':n2,'n3':n3})
+    toplevel=mknode(m, {'n2':n2,'n3':n3})
     return toplevel
 
-  rref=emerge(_setup)
+  rref=realize(_setup)
   assert_valid_rref(rref)
+  assert n1 is not None
+  assert n2 is not None
+  assert n3 is not None
+  assert toplevel is not None
 
   c=store_config(mkdrefR(rref))
   assert_valid_config(c)
 
+  assert set(store_deps([n1])) == set([])
+  assert set(store_deps([n2,n3])) == set([n1])
+  assert set(store_deps([toplevel])) == set([n2,n3])
+
+  assert set(store_deepdeps([n1])) == set([])
+  assert set(store_deepdeps([n2,n3])) == set([n1])
+  assert set(store_deepdeps([toplevel])) == set([n1,n2,n3])
 
 
 # @given(key=text(min_size=1,max_size=10),

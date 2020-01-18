@@ -8,7 +8,8 @@ from pylightnix.utils import (
     readjson, tryread )
 from pylightnix.types import (
     Dict, List, Any, Tuple, Union, Optional, Iterable, IO, Path, Hash, DRef,
-    RRef, Ref, RefPath, HashPart, Callable, Closure, Name )
+    RRef, RefPath, HashPart, Callable, Closure, Name, NamedTuple, Build,
+    Config, ConfigAttrs, Derivation, Stage, Manager, Instantiator, Matcher, Realizer )
 
 PYLIGHTNIX_STORE_VERSION = 1
 PYLIGHTNIX_ROOT:str = environ.get('PYLIGHTNIX_ROOT', join(environ.get('HOME','/var/run'),'_pylightnix'))
@@ -82,41 +83,6 @@ def mkname(s:str)->Name:
   return Name(s)
 
 
-# ____
-# |  _ \ _ __ ___   __ _ _ __ __ _ _ __ ___
-# | |_) | '__/ _ \ / _` | '__/ _` | '_ ` _ \
-# |  __/| | | (_) | (_| | | | (_| | | | | | |
-# |_|   |_|  \___/ \__, |_|  \__,_|_| |_| |_|
-#                  |___/
-
-class Program:
-  """ Program contains an information of non-determenistic operations applied
-  to a `Config`.
-
-  Currently it is represented with a list of operation names, with possible
-  arguments. Operation names and arguments should be JSON-serializable
-  """
-  def __init__(self, ops:list=[]):
-    self.ops:List[Tuple[str,Any]]=ops
-
-def program_add(p:Program, op:str, arg:Any=[])->Program:
-  """ Add new operation to a program. Builds new program object """
-  assert_serializable({'op':op,'arg':arg}, "op/arg")
-  p2=deepcopy(p)
-  p2.ops.append((op,arg))
-  return p2
-
-def program_serialize(p:Program)->str:
-  assert_serializable(p.ops, "p.ops")
-  return json_dumps(p.ops, indent=4)
-
-def program_hash(p:Program)->Hash:
-  """ Calculate the hashe of a program """
-  return datahash([program_serialize(p)])
-
-  # string=";".join([f'{nm}({str(args)})' for nm,args in p.ops if nm[0]!='_'])
-  # return Hash(sha256(string.encode('utf-8')).hexdigest())
-
 
 #   ____             __ _
 #  / ___|___  _ __  / _(_) __ _
@@ -125,32 +91,12 @@ def program_hash(p:Program)->Hash:
 #  \____\___/|_| |_|_| |_|\__, |
 #                         |___/
 
-class ConfigAttrs(dict):
-  """ Helper object allowing to access dict fields as attributes """
-  __getattr__ = dict.__getitem__ # type:ignore
-
-
-class Config:
-  """ Config is a JSON-serializable configuration object. It should match the
-  requirements of `assert_valid_config`. Tupically, it's __dict__ should
-  contain only either simple Python types (strings, bool, ints, floats), lists
-  or dicts. No tuples, no `np.float32`, no functions. Fields with names
-  starting from '_' are may be added after construction, but they are not
-  preserved during the serialization."""
-  def __init__(self, d:dict):
-    assert_valid_dict(d,'dict')
-    # uf=[x for x in d if len(x)>0 and x[0]=='_']
-    # assert len(uf)==0, \
-    #     (f"Config shouldn't initially contain fields starting with "
-    #      f"underscopes '_'. Such filed should be added explicitly, "
-    #      f"if needed. Got {uf}.")
-    self.__dict__=deepcopy(d)
-
 def mkconfig(d:dict)->Config:
+  assert_valid_dict(d,'dict')
   return Config(d)
 
 def assert_valid_config(c:Config):
-  assert c is not None, 'Expected `Config` object, but None was passed'
+  assert c is not None, "Expected `Config` object, but None was passed"
   assert_valid_name(config_name(c))
   assert_valid_dict(c.__dict__, 'Config')
 
@@ -222,9 +168,9 @@ def store_config(r:DRef)->Config:
   assert_valid_dref(r)
   return Config(readjson(join(store_dref2path(r),'config.json')))
 
-def store_program(r:DRef)->Program:
-  assert_valid_dref(r)
-  return Program(readjson(join(store_dref2path(r),'program.json')))
+# def store_program(r:DRef)->Program:
+#   assert_valid_dref(r)
+#   return Program(readjson(join(store_dref2path(r),'program.json')))
 
 def store_closure(r:RRef)->Closure:
   assert_valid_rref(r)
@@ -234,21 +180,24 @@ def store_config_ro(r:DRef)->Any:
   return config_ro(store_config(r))
 
 
-def store_deps(r:DRef)->List[DRef]:
-  """ Return a list of reference's dependencies, that is all the other references
-  found in current ref's config and program """
-  return config_deps(store_config(r))
+def store_deps(refs:List[DRef])->List[DRef]:
+  """ Return a list of reference's dependencies, that is all the references
+  found in current ref's `Config` """
+  acc=set()
+  for r in refs:
+    acc.update(config_deps(store_config(r)))
+  return list(acc)
 
 
 def store_deepdeps(roots:List[DRef])->List[DRef]:
   """ Return an exhaustive list of dependencies of the `roots`. `roots`
   themselves are also included. """
-  frontier=set(roots)
+  frontier=set(store_deps(roots))
   processed=set()
   while frontier:
     ref = frontier.pop()
     processed.add(ref)
-    for dep in store_deps(ref):
+    for dep in store_deps([ref]):
       if not dep in processed:
         frontier.add(dep)
   return list(processed)
@@ -288,13 +237,13 @@ def store_gc(refs_in_use:List[DRef])->List[DRef]:
   application. """
   assert_store_initialized()
   to_delete=[]
-  roots_with_deps=store_deepdeps(refs_in_use)
+  roots_with_deps=set(store_deepdeps(refs_in_use)) | set(refs_in_use)
   for dref in store_drefs():
     if not dref in roots_with_deps:
       to_delete.append(dref)
   return to_delete
 
-#
+
 #  ____        _ _     _
 # | __ ) _   _(_) | __| |
 # |  _ \| | | | | |/ _` |
@@ -302,46 +251,12 @@ def store_gc(refs_in_use:List[DRef])->List[DRef]:
 # |____/ \__,_|_|_|\__,_|
 
 
-class Build:
-  """ Build tracks the process of building storage nodes.
-
-  Lifecycle of a model starts from its creation from JSON-serializable
-  `Config`.
-
-  After the model is created, users typically want to perform non-determenistic
-  operations on it. To make the model abstraction aware of it, users have to
-  update the _state_ of the model, which is a combination of `config`,
-  `program` and `protocol` field.  The separation of state into `config` and
-  `program` is not strictly important, but we hope it will help us to build a
-  more user-friendly search system. We encourage users to keep config immutable
-  after it was passed to model, and use `program` to track changes.  During
-  those operations, users are to save various artifacts into temporary folder
-  as returned by `build_outpath(m)` function.
-
-  Note, that the rational behind `protocol` is unclear, maybe it should be
-  moved into userland code completely.
-
-  Finally, users typically call `build_save` which finishes the node creation,
-  'seals' the node with a hash and sets the `storedir` field.  The storage item
-  is believed to be immutable (but nothing special is done to enforce this
-  restriction). `build_storelink` may be used to drop a symlink to this node
-  into user-specified folder """
-
-  def __init__(self, config:Config, closure:Closure, timeprefix:Optional[str]=None):
-    assert_valid_config(config)
-    self.timeprefix:str = timestring() if timeprefix is None else timeprefix
-    self.config:Config = config
-    self.program:Program = Program([])
-    # self.protocol:Protocol = []
-    self.outprefix:str = f'{self.timeprefix}_{config_hash(config)[:8]}_'
-    self.outpath:Path = Path(mkdtemp(prefix=self.outprefix, dir=PYLIGHTNIX_TMP))
-    self.closure:Closure=closure
-
-  def get_whash(self)->Hash:
-    return dirhash(build_outpath(self))
-
 def mkbuild(dref:DRef, closure:Closure)->Build:
-  return Build(store_config(dref), closure)
+  c=store_config(dref)
+  assert_valid_config(c)
+  timeprefix=timestring()
+  outpath=Path(mkdtemp(prefix=f'{timeprefix}_{config_hash(c)[:8]}_', dir=PYLIGHTNIX_TMP))
+  return Build(c, closure, timeprefix, outpath)
 
 def build_config(b:Build)->Config:
   return b.config
@@ -355,36 +270,8 @@ def build_config_ro(m:Build)->Any:
 def build_outpath(m:Build)->Path:
   return m.outpath
 
-# def build_lasthash(m:Build)->Optional[Hash]:
-#   assert m.protocol is not None
-#   if len(m.protocol) == 0:
-#     return None
-#   else:
-#     return m.protocol[-1][1]
-
 def build_name(b:Build)->Name:
   return Name(config_name(build_config(b)))
-
-# def protocol_add(m:Build, name:str, arg:Any=[], result:Any=[], expect_wchange:bool=True)->None:
-#   assert_serializable(name,'name')
-#   assert_serializable(arg,'arg')
-#   assert_serializable(result,'result')
-#   new_whash=m.get_whash()
-#   old_whash=build_lasthash(m)
-#   if expect_wchange:
-#     assert new_whash != old_whash, \
-#         (f"Pylightnix sanity check: Operation was marked as parameter-changing,"
-#          f"but Build parameters didn't change their hashes as expected."
-#          f"Both hashes are {new_whash}.")
-#   else:
-#     assert new_whash == old_whash or (old_whash is None), \
-#         (f"Pylightnix sanity check: Operation was marked as"
-#          f"non-paramerer-changing, but Build parameters were in fact changed by"
-#          f"something. Expected {old_whash}, got {new_whash}.")
-#   c=build_config(m)
-#   m.program.ops.append((name, arg))
-#   m.protocol.append((name, new_whash, result))
-
 
 def build_rref(b:Build, dref:DRef)->RRef:
   rref=b.closure.get(dref)
@@ -394,15 +281,6 @@ def build_rref(b:Build, dref:DRef)->RRef:
 def build_deref(b:Build, refpath:RefPath)->Path:
   assert_valid_refpath(refpath)
   return Path(join(store_rref2path(build_rref(b, refpath[0])), *refpath[1:]))
-
-
-#  ___                       _   _
-# / _ \ _ __   ___ _ __ __ _| |_(_) ___  _ __  ___
-#| | | | '_ \ / _ \ '__/ _` | __| |/ _ \| '_ \/ __|
-#| |_| | |_) |  __/ | | (_| | |_| | (_) | | | \__ \
-# \___/| .__/ \___|_|  \__,_|\__|_|\___/|_| |_|___/
-#      |_|
-
 
 def build_instantiate(c:Config)->DRef:
   assert_store_initialized()
@@ -419,8 +297,6 @@ def build_instantiate(c:Config)->DRef:
   replace(o, store_dref2path(dref))
   return dref
 
-
-
 def build_realize(dref:DRef, b:Build)->RRef:
   o=build_outpath(b)
   c=build_config(b)
@@ -435,9 +311,12 @@ def build_realize(dref:DRef, b:Build)->RRef:
   replace(o,store_rref2path(rref))
   return rref
 
-##################
-## Closure
-##################
+
+#   ____ _
+#  / ___| | ___  ___ _   _ _ __ ___
+# | |   | |/ _ \/ __| | | | '__/ _ \
+# | |___| | (_) \__ \ |_| | | |  __/
+#  \____|_|\___/|___/\__,_|_|  \___|
 
 
 def mkclosure()->Closure:
@@ -469,53 +348,41 @@ def closure_serialize(c:Closure)->str:
   assert_valid_closure(c)
   return json_dumps(c, indent=4)
 
-##################
-## Manager
-##################
+#  _____           _                _
+# |_   _|__  _ __ | | _____   _____| |
+#   | |/ _ \| '_ \| |/ _ \ \ / / _ \ |
+#   | | (_) | |_) | |  __/\ V /  __/ |
+#   |_|\___/| .__/|_|\___| \_/ \___|_|
+#           |_|
 
 
-class Manager:
-  def __init__(self):
-    self.builders:List[Tuple[DRef, Callable[[DRef,Closure],Build], Callable[[DRef, Closure],Optional[RRef]]]]=[]
-
-
-def manage(m:Manager, finstantiate, frealize, fselect)->DRef:
-  dref=build_instantiate(finstantiate())
-  m.builders.append((dref,frealize,fselect))
+def manage(m:Manager, inst:Instantiator, matcher:Matcher, realizer:Realizer)->DRef:
+  dref=build_instantiate(inst())
+  m.builders.append(Derivation(dref,matcher,realizer))
   return dref
 
-# def typecheck(stage:Callable[[Manager],DRef])
-#   print('Going to build')
-#   for (dref,builder,search) in m.builders:
-#     c=store_config(dref)
-#     n=config_name(c)
-#     print(n)
 
-
-def emerge(stage:Callable[[Manager],DRef])->RRef:
+def instantiate(stage:Stage)->List[Derivation]:
   m=Manager()
   stage(m)
+  return m.builders
 
+
+def realize(stage:Stage)->RRef:
   closure:Closure={}
   rref:Optional[RRef]=None
-  for (dref,frealize,fsearch) in m.builders:
+  for (dref,matcher,realizer) in instantiate(stage):
     c=store_config(dref)
     n=config_name(c)
-    print(n)
-    rref=fsearch(dref,closure)
+    rref=matcher(dref,closure)
     if not rref:
-      b=frealize(dref,closure)
-      rreftmp=build_realize(dref,b)
-      rref=fsearch(dref,closure)
+      rreftmp=build_realize(dref,realizer(dref,closure))
+      rref=matcher(dref,closure)
       assert rref is not None
     closure=closure_add(closure,dref,rref)
   assert rref is not None
   return rref
 
-
-##################
-## Searches
-##################
 
 def only(dref:DRef, closure:Closure)->Optional[RRef]:
   matching=[]
@@ -528,7 +395,9 @@ def only(dref:DRef, closure:Closure)->Optional[RRef]:
   elif len(matching)==1:
     return matching[0]
   else:
-    assert False, "Multiple matches"
+    assert False, (
+        f"only() assumes that {dref} has a single realization under"
+        f"closure {closure}, but is has many:\n{matching}" )
 
 
 
