@@ -47,6 +47,9 @@ def mkdref(dhash:HashPart, refname:Name)->DRef:
   assert_valid_name(refname)
   return DRef('dref:'+dhash+'-'+refname)
 
+def mkdrefR(rref:RRef)->DRef:
+  return mkdref(*unrref(rref)[1:])
+
 def undref(r:DRef)->Tuple[HashPart, Name]:
   assert_valid_dref(r)
   return (HashPart(r[5:5+32]), Name(r[5+32+1:]))
@@ -67,6 +70,7 @@ def mkrref(rhash:HashPart, dhash:HashPart, refname:Name)->RRef:
 def unrref(r:RRef)->Tuple[HashPart, HashPart, Name]:
   assert_valid_rref(r)
   return (HashPart(r[5:5+32]), HashPart(r[5+32+1:5+32+1+32]), Name(r[5+32+1+32+1:]))
+
 
 def assert_valid_name(s:Name)->None:
   assert re_match(f"^{PYLIGHTNIX_NAMEPAT}+$", s), \
@@ -166,28 +170,8 @@ def config_name(c:Config)->Name:
   """ Return short human-readable name of a config """
   return mkname(config_dict(c).get('name','unnamed'))
 
-#  ____  _        _
-# / ___|| |_ __ _| |_ ___
-# \___ \| __/ _` | __/ _ \
-#  ___) | || (_| | ||  __/
-# |____/ \__\__,_|\__\___|
-
-
-""" State is a combination of a Config and a Program """
-State = Tuple[Config,Program]
-
-def mkstate(d:dict)->State:
-  """ State constructor """
-  return (Config(d),Program())
-
-def state_add(s:State, op:str, arg:Any=[])->State:
-  return (s[0],program_add(s[1],op,arg))
-
-def state_deps(s:State)->List[DRef]:
-  return list(set(scanref_dict(config_dict(s[0]))[0]+scanref_list(s[1].ops)[0]))
-
-def state_hash(s:State)->Hash:
-  return datahash([config_serialize(s[0]), program_serialize(s[1])])
+def config_deps(c:Config)->List[DRef]:
+  return list(set(scanref_dict(config_dict(c))[0]))
 
 #  ____  _
 # / ___|| |_ ___  _ __ ___
@@ -253,9 +237,7 @@ def store_config_ro(r:DRef)->Any:
 def store_deps(r:DRef)->List[DRef]:
   """ Return a list of reference's dependencies, that is all the other references
   found in current ref's config and program """
-  c=store_config(r)
-  p=store_program(r)
-  return state_deps((c,p))
+  return config_deps(store_config(r))
 
 
 def store_deepdeps(roots:List[DRef])->List[DRef]:
@@ -497,10 +479,10 @@ class Manager:
     self.builders:List[Tuple[DRef, Callable[[DRef,Closure],Build], Callable[[DRef, Closure],Optional[RRef]]]]=[]
 
 
-def manage(m:Manager, finstantiate, frealize, fselect)->Manager:
+def manage(m:Manager, finstantiate, frealize, fselect)->DRef:
   dref=build_instantiate(finstantiate())
   m.builders.append((dref,frealize,fselect))
-  return m
+  return dref
 
 # def typecheck(stage:Callable[[Manager],DRef])
 #   print('Going to build')
@@ -510,8 +492,9 @@ def manage(m:Manager, finstantiate, frealize, fselect)->Manager:
 #     print(n)
 
 
-def emerge(stage:Callable[[Manager],Manager])->RRef:
-  m=stage(Manager())
+def emerge(stage:Callable[[Manager],DRef])->RRef:
+  m=Manager()
+  stage(m)
 
   closure:Closure={}
   rref:Optional[RRef]=None

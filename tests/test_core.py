@@ -8,13 +8,13 @@ from pylightnix import (
     mknode, store_deps, store_deepdeps, store_gc, assert_valid_hash,
     assert_serializable, assert_valid_config, Manager, mkclosure, build_realize,
     store_rrefs, datahash, PYLIGHTNIX_NAMEPAT, mkdref, mkrref, trimhash, unrref,
-    undref )
+    undref, emerge, mkdrefR, store_config )
 
 from tests.imports import (
     given, assume, example, note, settings, text, decimals, integers, rmtree,
     characters, gettempdir, isdir, join, makedirs, from_regex, islink, listdir,
     get_executable, run, dictionaries, one_of, lists, recursive, printable,
-    none, booleans, floats, re_compile, composite )
+    none, booleans, floats, re_compile, composite, event )
 
 
 PYLIGHTNIX_TEST:str='/tmp/pylightnix_tests'
@@ -30,11 +30,11 @@ def setup_storage(tn:str)->str:
   assert 0==len(listdir(storepath))
   return storepath
 
-def setup_testpath(name:str)->str:
+def setup_testpath(name:str)->Path:
   testpath=join(PYLIGHTNIX_TEST, name)
   rmtree(testpath, onerror=lambda a,b,c:())
   makedirs(testpath, exist_ok=False)
-  return testpath
+  return Path(testpath)
 
 
 #   ____                           _
@@ -44,22 +44,30 @@ def setup_testpath(name:str)->str:
 #  \____|\___|_| |_|\___|_|  \__,_|\__\___/|_|  |___/
 
 
-def dicts():
-  return \
+@composite
+def dicts(draw):
+  d=draw(
     dictionaries(
       keys=text(printable),
       values=recursive(none() | booleans() | floats() | text(printable) | integers(),
                 lambda children:
-                  lists(children, min_size=3) |
-                  dictionaries(text(printable), children, min_size=3),
-                  max_leaves=3)
-      )
+                  lists(children) |
+                  dictionaries(text(printable), children),
+                  max_leaves=10)
+      ))
+  event(str(d))
+  return d
 
-def configs():
-  return dicts().map(Config)
+@composite
+def configs(draw):
+  d=draw(dicts())
+  name=draw(one_of(none(), names()))
+  if name is not None:
+    d.update({'name':name})
+  return Config(d)
 
 def names():
-  return from_regex(re_compile(f'^{PYLIGHTNIX_NAMEPAT}+$'), fullmatch=True)
+  return from_regex(re_compile(f'^{PYLIGHTNIX_NAMEPAT}+$'))
 
 def hashes():
   return text().map(lambda x: datahash([x]))
@@ -95,6 +103,8 @@ def test_dref(dref):
 def test_rref(rref):
   rref2=mkrref(*unrref(rref))
   assert rref2==rref
+  dref=mkdrefR(rref)
+  assert_valid_dref(dref)
 
 
 @given(cfg=configs())
@@ -116,7 +126,7 @@ def test_mklogdir2(strtag,timetag)->None:
 
 
 def test_dirhash()->None:
-  path=Path(setup_testpath('dirhash'))
+  path=setup_testpath('dirhash')
   h1=dirhash(path)
   assert_valid_hash(h1)
   with open(join(path,'_a'),'w') as f:
@@ -133,22 +143,23 @@ def test_dirhash()->None:
 
 @given(d=dictionaries(keys=text(), values=text()))
 def test_dirhash2(d)->None:
-  path=Path(setup_testpath('dirhash2'))
+  path=setup_testpath('dirhash2')
   with open(join(path,'a'),'w') as f:
     f.write(str(d))
   p=run([SHA256SUM, join(path,'a')], stdout=-1, check=True, cwd=path)
   h=dirhash(path)
   assert (p.stdout[:len(h)].decode('utf-8'))==h
 
-def test_make_storege()->None:
+def test_setup_storege()->None:
   setup_storage('a')
   setup_storage('a')
 
 
 @given(d=dicts())
 def test_mknode(d)->None:
-  setup_storage('mknode')
-  m=mknode(Manager(), d)
+  setup_storage('test_mknode')
+  m=Manager()
+  mknode(m, d)
   dref=m.builders[-1][0]
   assert_valid_dref(dref)
   assert len(list(store_rrefs(dref))) == 0
@@ -159,6 +170,24 @@ def test_mknode(d)->None:
   assert_valid_rref(rref)
   rref2=m.builders[-1][2](dref, mkclosure())
   assert rref==rref2
+
+
+@given(d=dicts())
+def test_emerge(d)->None:
+  setup_storage('test_emerge')
+
+  def _setup(m):
+    n1=mknode(m, d)
+    n2=mknode(m, {'parent1':n1})
+    n3=mknode(m, {'parent2':n1})
+    toplevel=mknode(m, {'n1':n1,'n2':n2,'n3':n3})
+    return toplevel
+
+  rref=emerge(_setup)
+  assert_valid_rref(rref)
+
+  c=store_config(mkdrefR(rref))
+  assert_valid_config(c)
 
 
 
