@@ -80,40 +80,40 @@
 # `pylightnix.types`
 
 
-<a name="Path"></a>
+<a name="pylightnix.types.Path"></a>
 ## `Path` Objects
 
 
-<a name="Hash"></a>
+<a name="pylightnix.types.Hash"></a>
 ## `Hash` Objects
 
 
-<a name="HashPart"></a>
+<a name="pylightnix.types.HashPart"></a>
 ## `HashPart` Objects
 
 
-<a name="DRef"></a>
+<a name="pylightnix.types.DRef"></a>
 ## `DRef` Objects
 
 Derivation Reference is a string containing a name of Derivation
 
-<a name="RRef"></a>
+<a name="pylightnix.types.RRef"></a>
 ## `RRef` Objects
 
 Realization reference is a string containing a name of Derivation Instance
 
-<a name="Name"></a>
+<a name="pylightnix.types.Name"></a>
 ## `Name` Objects
 
 A stage's name is what you see in the last part of the reference
 
-<a name="RefPath"></a>
+<a name="pylightnix.types.RefPath"></a>
 ## `RefPath` Objects
 
 RefPath is a path referencing some file in some instance. It is
 represented by a list of strings, where the first string is `RRef`
 
-<a name="Config"></a>
+<a name="pylightnix.types.Config"></a>
 ## `Config` Objects
 
 ```python
@@ -127,7 +127,7 @@ or dicts. No tuples, no `np.float32`, no functions. Fields with names
 starting from '_' are may be added after construction, but they are not
 preserved during the serialization.
 
-<a name="\_\_init\_\_"></a>
+<a name="pylightnix.types.Config.__init__"></a>
 ### `Config.__init__()`
 
 ```python
@@ -135,12 +135,12 @@ def __init__(self, d: dict)
 ```
 
 
-<a name="ConfigAttrs"></a>
+<a name="pylightnix.types.ConfigAttrs"></a>
 ## `ConfigAttrs` Objects
 
 Helper object allowing to access dict fields as attributes
 
-<a name="\_\_getattr\_\_"></a>
+<a name="pylightnix.types.ConfigAttrs.__getattr__"></a>
 ### `__getattr__`
 
 ```python
@@ -148,7 +148,7 @@ __getattr__ = dict.__getitem__
 ```
 
 
-<a name="Closure"></a>
+<a name="pylightnix.types.Closure"></a>
 ## `Closure`
 
 ```python
@@ -156,7 +156,7 @@ Closure = Dict[DRef,RRef]
 ```
 
 
-<a name="Build"></a>
+<a name="pylightnix.types.Build"></a>
 ## `Build`
 
 ```python
@@ -164,7 +164,7 @@ Build = NamedTuple('Build', [('config',Config), ('closure',Closure), ('timeprefi
 ```
 
 
-<a name="Instantiator"></a>
+<a name="pylightnix.types.Instantiator"></a>
 ## `Instantiator`
 
 ```python
@@ -172,7 +172,7 @@ Instantiator = Callable[[],Config]
 ```
 
 
-<a name="Matcher"></a>
+<a name="pylightnix.types.Matcher"></a>
 ## `Matcher`
 
 ```python
@@ -180,7 +180,7 @@ Matcher = Callable[[DRef, Closure],Optional[RRef]]
 ```
 
 
-<a name="Realizer"></a>
+<a name="pylightnix.types.Realizer"></a>
 ## `Realizer`
 
 ```python
@@ -188,7 +188,7 @@ Realizer = Callable[[DRef,Closure],Build]
 ```
 
 
-<a name="Derivation"></a>
+<a name="pylightnix.types.Derivation"></a>
 ## `Derivation`
 
 ```python
@@ -196,7 +196,7 @@ Derivation = NamedTuple('Derivation', [('dref',DRef), ('matcher',Matcher), ('rea
 ```
 
 
-<a name="Manager"></a>
+<a name="pylightnix.types.Manager"></a>
 ## `Manager` Objects
 
 ```python
@@ -204,7 +204,7 @@ def __init__(self)
 ```
 
 
-<a name="\_\_init\_\_"></a>
+<a name="pylightnix.types.Manager.__init__"></a>
 ### `Manager.__init__()`
 
 ```python
@@ -212,7 +212,7 @@ def __init__(self)
 ```
 
 
-<a name="Stage"></a>
+<a name="pylightnix.types.Stage"></a>
 ## `Stage`
 
 ```python
@@ -224,7 +224,7 @@ Stage = Callable[[Manager],DRef]
 # `pylightnix.core`
 
 
-<a name="PYLIGHTNIX\_STORE\_VERSION"></a>
+<a name="pylightnix.core.PYLIGHTNIX_STORE_VERSION"></a>
 ## `PYLIGHTNIX_STORE_VERSION`
 
 ```python
@@ -232,7 +232,7 @@ PYLIGHTNIX_STORE_VERSION = 1
 ```
 
 
-<a name="assert\_valid\_hash"></a>
+<a name="pylightnix.core.assert_valid_hash"></a>
 ## `assert_valid_hash()`
 
 ```python
@@ -240,7 +240,7 @@ def assert_valid_hash(h: Hash) -> None
 ```
 
 
-<a name="trimhash"></a>
+<a name="pylightnix.core.trimhash"></a>
 ## `trimhash()`
 
 ```python
@@ -248,7 +248,7 @@ def trimhash(h: Hash) -> HashPart
 ```
 
 
-<a name="assert\_valid\_hashpart"></a>
+<a name="pylightnix.core.assert_valid_hashpart"></a>
 ## `assert_valid_hashpart()`
 
 ```python
@@ -256,7 +256,7 @@ def assert_valid_hashpart(hp: HashPart) -> None
 ```
 
 
-<a name="assert\_valid\_dref"></a>
+<a name="pylightnix.core.assert_valid_dref"></a>
 ## `assert_valid_dref()`
 
 ```python
@@ -264,7 +264,7 @@ def assert_valid_dref(ref: str) -> None
 ```
 
 
-<a name="mkdref"></a>
+<a name="pylightnix.core.mkdref"></a>
 ## `mkdref()`
 
 ```python
@@ -272,7 +272,7 @@ def mkdref(dhash: HashPart, refname: Name) -> DRef
 ```
 
 
-<a name="rref2dref"></a>
+<a name="pylightnix.core.rref2dref"></a>
 ## `rref2dref()`
 
 ```python
@@ -280,7 +280,7 @@ def rref2dref(rref: RRef) -> DRef
 ```
 
 
-<a name="undref"></a>
+<a name="pylightnix.core.undref"></a>
 ## `undref()`
 
 ```python
@@ -288,7 +288,7 @@ def undref(r: DRef) -> Tuple[HashPart, Name]
 ```
 
 
-<a name="assert\_valid\_rref"></a>
+<a name="pylightnix.core.assert_valid_rref"></a>
 ## `assert_valid_rref()`
 
 ```python
@@ -296,7 +296,7 @@ def assert_valid_rref(ref: str) -> None
 ```
 
 
-<a name="mkrref"></a>
+<a name="pylightnix.core.mkrref"></a>
 ## `mkrref()`
 
 ```python
@@ -304,7 +304,7 @@ def mkrref(rhash: HashPart, dhash: HashPart, refname: Name) -> RRef
 ```
 
 
-<a name="unrref"></a>
+<a name="pylightnix.core.unrref"></a>
 ## `unrref()`
 
 ```python
@@ -312,7 +312,7 @@ def unrref(r: RRef) -> Tuple[HashPart, HashPart, Name]
 ```
 
 
-<a name="assert\_valid\_name"></a>
+<a name="pylightnix.core.assert_valid_name"></a>
 ## `assert_valid_name()`
 
 ```python
@@ -320,7 +320,7 @@ def assert_valid_name(s: Name) -> None
 ```
 
 
-<a name="mkname"></a>
+<a name="pylightnix.core.mkname"></a>
 ## `mkname()`
 
 ```python
@@ -328,7 +328,7 @@ def mkname(s: str) -> Name
 ```
 
 
-<a name="mkconfig"></a>
+<a name="pylightnix.core.mkconfig"></a>
 ## `mkconfig()`
 
 ```python
@@ -336,7 +336,7 @@ def mkconfig(d: dict) -> Config
 ```
 
 
-<a name="assert\_valid\_config"></a>
+<a name="pylightnix.core.assert_valid_config"></a>
 ## `assert_valid_config()`
 
 ```python
@@ -344,7 +344,7 @@ def assert_valid_config(c: Config)
 ```
 
 
-<a name="config\_dict"></a>
+<a name="pylightnix.core.config_dict"></a>
 ## `config_dict()`
 
 ```python
@@ -352,7 +352,7 @@ def config_dict(c: Config) -> dict
 ```
 
 
-<a name="config\_ro"></a>
+<a name="pylightnix.core.config_ro"></a>
 ## `config_ro()`
 
 ```python
@@ -360,7 +360,7 @@ def config_ro(c: Config) -> Any
 ```
 
 
-<a name="config\_serialize"></a>
+<a name="pylightnix.core.config_serialize"></a>
 ## `config_serialize()`
 
 ```python
@@ -368,7 +368,7 @@ def config_serialize(c: Config) -> str
 ```
 
 
-<a name="config\_hash"></a>
+<a name="pylightnix.core.config_hash"></a>
 ## `config_hash()`
 
 ```python
@@ -376,7 +376,7 @@ def config_hash(c: Config) -> Hash
 ```
 
 
-<a name="config\_name"></a>
+<a name="pylightnix.core.config_name"></a>
 ## `config_name()`
 
 ```python
@@ -385,7 +385,7 @@ def config_name(c: Config) -> Name
 
 Return short human-readable name of a config
 
-<a name="config\_deps"></a>
+<a name="pylightnix.core.config_deps"></a>
 ## `config_deps()`
 
 ```python
@@ -393,7 +393,7 @@ def config_deps(c: Config) -> List[DRef]
 ```
 
 
-<a name="assert\_valid\_refpath"></a>
+<a name="pylightnix.core.assert_valid_refpath"></a>
 ## `assert_valid_refpath()`
 
 ```python
@@ -401,7 +401,7 @@ def assert_valid_refpath(refpath: RefPath) -> None
 ```
 
 
-<a name="assert\_store\_initialized"></a>
+<a name="pylightnix.core.assert_store_initialized"></a>
 ## `assert_store_initialized()`
 
 ```python
@@ -409,7 +409,7 @@ def assert_store_initialized() -> None
 ```
 
 
-<a name="store\_initialize"></a>
+<a name="pylightnix.core.store_initialize"></a>
 ## `store_initialize()`
 
 ```python
@@ -417,7 +417,7 @@ def store_initialize(exist_ok: bool = True)
 ```
 
 
-<a name="store\_dref2path"></a>
+<a name="pylightnix.core.store_dref2path"></a>
 ## `store_dref2path()`
 
 ```python
@@ -425,7 +425,7 @@ def store_dref2path(r: DRef) -> Path
 ```
 
 
-<a name="store\_rref2path"></a>
+<a name="pylightnix.core.store_rref2path"></a>
 ## `store_rref2path()`
 
 ```python
@@ -433,7 +433,7 @@ def store_rref2path(r: RRef) -> Path
 ```
 
 
-<a name="mkrefpath"></a>
+<a name="pylightnix.core.mkrefpath"></a>
 ## `mkrefpath()`
 
 ```python
@@ -442,7 +442,7 @@ def mkrefpath(r: DRef, items: List[str] = []) -> RefPath
 
 Constructs a RefPath out of a reference `ref` and a path within the node
 
-<a name="store\_config"></a>
+<a name="pylightnix.core.store_config"></a>
 ## `store_config()`
 
 ```python
@@ -450,7 +450,7 @@ def store_config(r: DRef) -> Config
 ```
 
 
-<a name="store\_closure"></a>
+<a name="pylightnix.core.store_closure"></a>
 ## `store_closure()`
 
 ```python
@@ -458,7 +458,7 @@ def store_closure(r: RRef) -> Closure
 ```
 
 
-<a name="store\_config\_ro"></a>
+<a name="pylightnix.core.store_config_ro"></a>
 ## `store_config_ro()`
 
 ```python
@@ -466,7 +466,7 @@ def store_config_ro(r: DRef) -> Any
 ```
 
 
-<a name="store\_deps"></a>
+<a name="pylightnix.core.store_deps"></a>
 ## `store_deps()`
 
 ```python
@@ -476,7 +476,7 @@ def store_deps(refs: List[DRef]) -> List[DRef]
 Return a list of reference's dependencies, that is all the references
 found in current ref's `Config`
 
-<a name="store\_deepdeps"></a>
+<a name="pylightnix.core.store_deepdeps"></a>
 ## `store_deepdeps()`
 
 ```python
@@ -486,7 +486,7 @@ def store_deepdeps(roots: List[DRef]) -> List[DRef]
 Return an exhaustive list of dependencies of the `roots`. `roots`
 themselves are also included.
 
-<a name="store\_link"></a>
+<a name="pylightnix.core.store_link"></a>
 ## `store_link()`
 
 ```python
@@ -495,7 +495,7 @@ def store_link(ref: DRef, tgtpath: Path, name: str, withtime=True) -> None
 
 Creates a link pointing to node `ref` into directory `tgtpath`
 
-<a name="store\_drefs"></a>
+<a name="pylightnix.core.store_drefs"></a>
 ## `store_drefs()`
 
 ```python
@@ -503,7 +503,7 @@ def store_drefs() -> Iterable[DRef]
 ```
 
 
-<a name="store\_rrefs"></a>
+<a name="pylightnix.core.store_rrefs"></a>
 ## `store_rrefs()`
 
 ```python
@@ -511,7 +511,7 @@ def store_rrefs(dref: DRef) -> Iterable[RRef]
 ```
 
 
-<a name="store\_deref"></a>
+<a name="pylightnix.core.store_deref"></a>
 ## `store_deref()`
 
 ```python
@@ -519,7 +519,7 @@ def store_deref(rref: RRef, dref: DRef) -> RRef
 ```
 
 
-<a name="store\_gc"></a>
+<a name="pylightnix.core.store_gc"></a>
 ## `store_gc()`
 
 ```python
@@ -530,7 +530,7 @@ Take roots which are in use and should not be removed. Return roots which
 are not used and may be removed. Actual removing is to be done by user-defined
 application.
 
-<a name="mkbuild"></a>
+<a name="pylightnix.core.mkbuild"></a>
 ## `mkbuild()`
 
 ```python
@@ -538,7 +538,7 @@ def mkbuild(dref: DRef, closure: Closure) -> Build
 ```
 
 
-<a name="build\_config"></a>
+<a name="pylightnix.core.build_config"></a>
 ## `build_config()`
 
 ```python
@@ -546,7 +546,7 @@ def build_config(b: Build) -> Config
 ```
 
 
-<a name="build\_closure"></a>
+<a name="pylightnix.core.build_closure"></a>
 ## `build_closure()`
 
 ```python
@@ -554,7 +554,7 @@ def build_closure(b: Build) -> Closure
 ```
 
 
-<a name="build\_config\_ro"></a>
+<a name="pylightnix.core.build_config_ro"></a>
 ## `build_config_ro()`
 
 ```python
@@ -562,7 +562,7 @@ def build_config_ro(m: Build) -> Any
 ```
 
 
-<a name="build\_outpath"></a>
+<a name="pylightnix.core.build_outpath"></a>
 ## `build_outpath()`
 
 ```python
@@ -570,7 +570,7 @@ def build_outpath(m: Build) -> Path
 ```
 
 
-<a name="build\_name"></a>
+<a name="pylightnix.core.build_name"></a>
 ## `build_name()`
 
 ```python
@@ -578,7 +578,7 @@ def build_name(b: Build) -> Name
 ```
 
 
-<a name="build\_rref"></a>
+<a name="pylightnix.core.build_rref"></a>
 ## `build_rref()`
 
 ```python
@@ -586,7 +586,7 @@ def build_rref(b: Build, dref: DRef) -> RRef
 ```
 
 
-<a name="build\_deref"></a>
+<a name="pylightnix.core.build_deref"></a>
 ## `build_deref()`
 
 ```python
@@ -594,7 +594,7 @@ def build_deref(b: Build, refpath: RefPath) -> Path
 ```
 
 
-<a name="build\_instantiate"></a>
+<a name="pylightnix.core.build_instantiate"></a>
 ## `build_instantiate()`
 
 ```python
@@ -602,7 +602,7 @@ def build_instantiate(c: Config) -> DRef
 ```
 
 
-<a name="build\_realize"></a>
+<a name="pylightnix.core.build_realize"></a>
 ## `build_realize()`
 
 ```python
@@ -610,7 +610,7 @@ def build_realize(dref: DRef, b: Build) -> RRef
 ```
 
 
-<a name="mkclosure"></a>
+<a name="pylightnix.core.mkclosure"></a>
 ## `mkclosure()`
 
 ```python
@@ -618,7 +618,7 @@ def mkclosure() -> Closure
 ```
 
 
-<a name="assert\_valid\_closure"></a>
+<a name="pylightnix.core.assert_valid_closure"></a>
 ## `assert_valid_closure()`
 
 ```python
@@ -626,7 +626,7 @@ def assert_valid_closure(c: Closure) -> None
 ```
 
 
-<a name="closure\_eq"></a>
+<a name="pylightnix.core.closure_eq"></a>
 ## `closure_eq()`
 
 ```python
@@ -634,7 +634,7 @@ def closure_eq(a: Closure, b: Closure) -> bool
 ```
 
 
-<a name="closure\_add"></a>
+<a name="pylightnix.core.closure_add"></a>
 ## `closure_add()`
 
 ```python
@@ -642,7 +642,7 @@ def closure_add(closure: Closure, dref: DRef, rref: RRef) -> Closure
 ```
 
 
-<a name="closure\_serialize"></a>
+<a name="pylightnix.core.closure_serialize"></a>
 ## `closure_serialize()`
 
 ```python
@@ -650,7 +650,7 @@ def closure_serialize(c: Closure) -> str
 ```
 
 
-<a name="manage"></a>
+<a name="pylightnix.core.manage"></a>
 ## `manage()`
 
 ```python
@@ -658,7 +658,7 @@ def manage(m: Manager, inst: Instantiator, matcher: Matcher, realizer: Realizer)
 ```
 
 
-<a name="instantiate"></a>
+<a name="pylightnix.core.instantiate"></a>
 ## `instantiate()`
 
 ```python
@@ -666,7 +666,7 @@ def instantiate(stage: Stage) -> List[Derivation]
 ```
 
 
-<a name="realize"></a>
+<a name="pylightnix.core.realize"></a>
 ## `realize()`
 
 ```python
@@ -674,7 +674,7 @@ def realize(stage: Stage, force_rebuild: List[DRef] = []) -> RRef
 ```
 
 
-<a name="only"></a>
+<a name="pylightnix.core.only"></a>
 ## `only()`
 
 ```python
