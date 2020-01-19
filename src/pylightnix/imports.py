@@ -4,7 +4,7 @@ from json import ( loads as json_loads, dumps as json_dumps, dump as json_dump, 
 from time import strftime
 from errno import EEXIST
 from os import (
-    mkdir, makedirs, replace, listdir, rmdir, symlink, remove, environ, walk)
+    mkdir, makedirs, replace, listdir, rmdir, symlink, rename, remove, environ, walk)
 from os.path import (
     basename, join, isfile, isdir, islink, relpath, abspath, dirname, split )
 from hashlib import sha256
@@ -13,3 +13,7 @@ from tempfile import mkdtemp
 from shutil import rmtree
 from unicodedata import normalize
 from re import sub as re_sub, match as re_match
+from distutils.spawn import find_executable
+from subprocess import Popen
+from urllib.parse import urlparse
+

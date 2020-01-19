@@ -1,7 +1,7 @@
 from pylightnix.imports import ( strftime, join, makedirs,
     symlink, basename, mkdir, isdir, isfile, islink, remove, sha256, EEXIST,
     json_dumps, json_loads, makedirs, replace, dirname, walk, abspath,
-    normalize, re_sub, split, json_load )
+    normalize, re_sub, split, json_load, find_executable )
 
 from pylightnix.types import ( Hash, Path, List, Any, Optional, Iterable, IO,
     DRef, RRef, Tuple)
@@ -166,4 +166,9 @@ def tryread(path:Path)->Optional[str]:
       return f.read()
   except Exception:
     return None
+
+def get_executable(name:str, not_found_message:str)->str:
+  e=find_executable(name)
+  assert e is not None, not_found_message
+  return e
 
