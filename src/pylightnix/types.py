@@ -1,6 +1,6 @@
 from pylightnix.imports import deepcopy
 from typing import ( List, Any, Tuple, Union, Optional, Iterable, IO, Callable,
-    Dict, NamedTuple )
+    Dict, NamedTuple, Set )
 
 class Path(str):
   pass

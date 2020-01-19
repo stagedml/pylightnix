@@ -1,7 +1,7 @@
 from pylightnix.imports import (
     sha256, deepcopy, isdir, makedirs, join, json_dump, json_load, json_dumps,
     json_loads, isfile, relpath, listdir, rmtree, mkdtemp, replace, environ,
-    split, re_match )
+    split, re_match, ENOTEMPTY )
 from pylightnix.utils import (
     dirhash, assert_serializable, assert_valid_dict, dicthash, scanref_dict,
     scanref_list, forcelink, timestring, datahash, slugify, splitpath,
@@ -9,7 +9,8 @@ from pylightnix.utils import (
 from pylightnix.types import (
     Dict, List, Any, Tuple, Union, Optional, Iterable, IO, Path, Hash, DRef,
     RRef, RefPath, HashPart, Callable, Closure, Name, NamedTuple, Build,
-    Config, ConfigAttrs, Derivation, Stage, Manager, Instantiator, Matcher, Realizer )
+    Config, ConfigAttrs, Derivation, Stage, Manager, Instantiator, Matcher,
+    Realizer, Set )
 
 PYLIGHTNIX_STORE_VERSION = 1
 PYLIGHTNIX_ROOT:str = environ.get('PYLIGHTNIX_ROOT', join(environ.get('HOME','/var/run'),'_pylightnix'))
@@ -48,7 +49,7 @@ def mkdref(dhash:HashPart, refname:Name)->DRef:
   assert_valid_name(refname)
   return DRef('dref:'+dhash+'-'+refname)
 
-def mkdrefR(rref:RRef)->DRef:
+def rref2dref(rref:RRef)->DRef:
   return mkdref(*unrref(rref)[1:])
 
 def undref(r:DRef)->Tuple[HashPart, Name]:
@@ -230,6 +231,8 @@ def store_rrefs(dref:DRef)->Iterable[RRef]:
     if isdir(join(drefpath,f)):
       yield mkrref(HashPart(f), dhash, nm)
 
+def store_deref(rref:RRef, dref:DRef)->RRef:
+  return store_closure(rref)[dref]
 
 def store_gc(refs_in_use:List[DRef])->List[DRef]:
   """ Take roots which are in use and should not be removed. Return roots which
@@ -294,7 +297,11 @@ def build_instantiate(c:Config)->DRef:
   with open(join(o,'config.json'), 'w') as f:
     f.write(config_serialize(c))
 
-  replace(o, store_dref2path(dref))
+  try:
+    replace(o, store_dref2path(dref))
+  except OSError as err:
+    if err.errno == ENOTEMPTY:
+      pass # Derivation already exists
   return dref
 
 def build_realize(dref:DRef, b:Build)->RRef:
@@ -365,16 +372,25 @@ def manage(m:Manager, inst:Instantiator, matcher:Matcher, realizer:Realizer)->DR
 def instantiate(stage:Stage)->List[Derivation]:
   m=Manager()
   stage(m)
+  visited:Set[DRef]=set()
+  for (dref,_,_) in m.builders:
+    assert dref not in visited, \
+      f"Multiple realizers for DRef {dref}"
+    visited.add(dref)
   return m.builders
 
 
-def realize(stage:Stage)->RRef:
+def realize(stage:Stage, force_rebuild:List[DRef]=[])->RRef:
   closure:Closure={}
   rref:Optional[RRef]=None
+  force_rebuild_:Set[DRef]=set(force_rebuild)
   for (dref,matcher,realizer) in instantiate(stage):
     c=store_config(dref)
     n=config_name(c)
-    rref=matcher(dref,closure)
+    if dref in force_rebuild_:
+      rref = None
+    else:
+      rref=matcher(dref,closure)
     if not rref:
       rreftmp=build_realize(dref,realizer(dref,closure))
       rref=matcher(dref,closure)
@@ -382,7 +398,6 @@ def realize(stage:Stage)->RRef:
     closure=closure_add(closure,dref,rref)
   assert rref is not None
   return rref
-
 
 def only(dref:DRef, closure:Closure)->Optional[RRef]:
   matching=[]

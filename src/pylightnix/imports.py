@@ -16,4 +16,5 @@ from re import sub as re_sub, match as re_match
 from distutils.spawn import find_executable
 from subprocess import Popen
 from urllib.parse import urlparse
+from errno import ENOTEMPTY
 
