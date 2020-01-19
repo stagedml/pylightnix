@@ -1,8 +1,10 @@
 from pylightnix.imports import ( strftime, join, makedirs,
     symlink, basename, mkdir, isdir, isfile, islink, remove, sha256, EEXIST,
-    json_dumps, json_loads, makedirs, replace, dirname, walk, abspath )
+    json_dumps, json_loads, makedirs, replace, dirname, walk, abspath,
+    normalize, re_sub, split, json_load, find_executable )
 
-from pylightnix.types import ( Hash, Path, List, Any, Optional, Iterable, IO, Ref)
+from pylightnix.types import ( Hash, Path, List, Any, Optional, Iterable, IO,
+    DRef, RRef, Tuple)
 
 
 def timestring()->str:
@@ -36,57 +38,93 @@ def mklogdir(
     mkdir(logpath+'/'+sd)
   return Path(logpath)
 
+def splitpath(p:Path)->List[str]:
+  """ Return folders of path as a list """
+  path=str(p)
+  parts=[]
+  while True:
+    path,fname=split(path)
+    if len(fname)>0:
+      parts.append(fname)
+    if len(path)==0 or path[-1]=='/':
+      break
+  return list(reversed(parts))
+
 def forcelink(src:Path,dst:Path,**kwargs)->None:
   """ Create a `dst` symlink poinitnig to `src`. Overwrites existing files, if any """
   makedirs(dirname(dst),exist_ok=True)
   symlink(src,dst+'__',**kwargs)
   replace(dst+'__',dst)
 
+def slugify(value:str)->str:
+  """ Normalizes string, converts to lowercase, removes non-alpha characters,
+  and converts spaces to hyphens.
 
-def dhash(path:Path)->Hash:
+  Ref. https://stackoverflow.com/a/295466/1133157
+  """
+  value = str(value)
+  value = normalize('NFKC', value)
+  value = re_sub(r'[^\w\s-]', '', value.lower()).strip()
+  value = re_sub(r'[-\s]+', '-', value)
+  return value
+
+def datahash(data:Iterable[str])->Hash:
+  e=sha256()
+  nitems=0
+  for s in data:
+    e.update(bytes(s,'utf-8'))
+    nitems+=1
+  if nitems==0:
+    print('Warning: datahash: called on empty iterator')
+  return Hash(e.hexdigest())
+
+
+def dirhash(path:Path)->Hash:
   """ Calculate recursive SHA256 hash of a directory.
   FIXME: stop ignoring file/directory names
   Don't count files starting from underscope ('_')
   """
-  assert isdir(path), f"dhash(path) expects a directory, but '{path}' is not"
+  assert isdir(path), f"dirhash(path) expects directory path, not '{path}'"
+
   def _iter()->Iterable[str]:
     for root, dirs, filenames in walk(abspath(path), topdown=True):
       for filename in filenames:
         if len(filename)>0 and filename[0] != '_':
-          yield abspath(join(root, filename))
+          with open(abspath(join(root, filename)),'r') as f:
+            yield f.read()
 
-  e=sha256()
-  nfiles=0
-  for fpath in _iter():
-    with open(fpath,'rb') as f: # type: IO[Any]
-      e.update(f.read())
-    nfiles+=1
+  return datahash(_iter())
 
-  if nfiles==0:
-    print('Warning: dhash: empty dir')
-
-  return Hash(e.hexdigest())
-
-
-def scanref_list(l:list)->List[Ref]:
+def scanref_list(l:list)->Tuple[List[DRef],List[RRef]]:
+  """
+  FIXME: Add a better reference detection, in the `assert_valid_ref` style
+  """
   assert isinstance(l,list)
-  res:list=[]
+  drefs:List[DRef]=[]; rrefs:List[RRef]=[]
   for i in l:
     if isinstance(i,tuple):
-      res+=scanref_tuple(i)
+      dref2,rref2=scanref_tuple(i)
     elif isinstance(i,list):
-      res+=scanref_list(i)
+      dref2,rref2=scanref_list(i)
     elif isinstance(i,dict):
-      res+=scanref_dict(i)
-    elif isinstance(i,str) and i[:4]=='ref:':
-      res.append(Ref(i))
-  return res
+      dref2,rref2=scanref_dict(i)
+    elif isinstance(i,str):
+      if i[:5]=='dref:':
+        dref2=[DRef(i)]; rref2=[]
+      elif i[:5]=='rref:':
+        dref2=[]; rref2=[RRef(i)]
+      else:
+        dref2=[]; rref2=[]
+    else:
+      dref2=[]; rref2=[]
+    drefs+=dref2; rrefs+=rref2
+  return (drefs,rrefs)
 
-def scanref_tuple(t:tuple)->List[Ref]:
+def scanref_tuple(t:tuple)->Tuple[List[DRef],List[RRef]]:
   assert isinstance(t,tuple)
   return scanref_list(list(t))
 
-def scanref_dict(obj:dict)->List[Ref]:
+def scanref_dict(obj:dict)->Tuple[List[DRef],List[RRef]]:
   assert isinstance(obj,dict)
   return scanref_list(list(obj.values()))
 
@@ -96,7 +134,7 @@ def dicthash(d:dict)->Hash:
   string="_".join(str(k)+"="+str(v) for k,v in sorted(d.items()) if len(k)>0 and k[0]!='_')
   return Hash(sha256(string.encode('utf-8')).hexdigest())
 
-def assert_serializable(d:Any, argname:str)->Any:
+def assert_serializable(d:Any, argname:str='dict')->Any:
   error_msg=(f"Content of this '{argname}' of type {type(d)} is not JSON-serializable!"
              f"\n\n{d}\n\n"
              f"Make sure that `json.dumps`/`json.loads` work on it and are able "
@@ -112,6 +150,25 @@ def assert_serializable(d:Any, argname:str)->Any:
   return d2
 
 def assert_valid_dict(d:dict, argname:str)->None:
+  assert isinstance(d,dict)
   d2=assert_serializable(d, argname)
-  assert dicthash(d)==dicthash(d2)
+  h1=dicthash(d)
+  h2=dicthash(d2)
+  assert h1==h2
+
+def readjson(json_path:str)->Any:
+  with open((json_path), "r") as f:
+    return json_load(f)
+
+def tryread(path:Path)->Optional[str]:
+  try:
+    with open(path,'r') as f:
+      return f.read()
+  except Exception:
+    return None
+
+def get_executable(name:str, not_found_message:str)->str:
+  e=find_executable(name)
+  assert e is not None, not_found_message
+  return e
 

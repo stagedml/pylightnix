@@ -4,9 +4,23 @@ from os.path import (basename, join, isfile, isdir, islink, relpath, abspath,
 from shutil import rmtree
 from tempfile import gettempdir
 
-from hypothesis import given, assume, example, note, settings
+from hypothesis import given, assume, example, note, settings, event
 from hypothesis.strategies import ( text, decimals, integers, characters,
-                                    from_regex )
+                                    from_regex, dictionaries, one_of, lists,
+                                    recursive, none, booleans, floats, composite )
+from string import printable
+from distutils.spawn import find_executable
+
+from subprocess import Popen, run
+
+from re import compile as re_compile
+
+from typing import Any, List, Optional, Callable
+
+def get_executable(name:str, not_found_message:str)->str:
+  e=find_executable(name)
+  assert e is not None, not_found_message
+  return e
 
 # from pylightnix import (
 #     Config, Model, model_outpath, model_save, store_initialize, mknode,

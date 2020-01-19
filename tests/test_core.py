@@ -1,131 +1,141 @@
-"""
-FIXME: Implement a random storage generator in Hypothesis, and use it in tests
-"""
-
-from tests.imports import (
-    given, assume, example, note, settings, text, decimals, integers, rmtree,
-    characters, gettempdir, isdir, join, makedirs, from_regex, islink, listdir )
-
 from pylightnix import (
-    Model, Config, Path, mklogdir, dhash, store_initialize, model_outpath,
-    model_save, assert_valid_ref, mknode, store_deps, store_deepdeps, store_gc )
+    Config, instantiate, DRef, RRef, Path, mklogdir, dirhash,
+    assert_valid_dref, assert_valid_rref, mknode, store_deps, store_deepdeps,
+    store_gc, assert_valid_hash, assert_valid_config, Manager, mkclosure,
+    build_realize, store_rrefs, mkdref, mkrref, unrref, undref, realize,
+    rref2dref, store_config, mkconfig, mkbuild, Build, Closure, build_outpath,
+    only, manage, store_deref, store_rref2path )
 
-PYLIGHTNIX_TEST:str='/tmp/pylightnix_tests'
+from tests.imports import ( given, Any, Callable, join, Optional )
 
-def set_storage(tn:str)->str:
-  import pylightnix.core
-  storepath=f'/tmp/{tn}'
-  rmtree(storepath, onerror=lambda a,b,c:())
-  pylightnix.core.PYLIGHTNIX_STORE=storepath
-  pylightnix.core.PYLIGHTNIX_TMP='/tmp'
-  store_initialize(exist_ok=False)
-  assert 0==len(listdir(storepath))
-  return storepath
+from tests.generators import (
+    rrefs, drefs, configs, dicts )
 
-def _make_testpath(name:str)->str:
-  testpath=join(PYLIGHTNIX_TEST, name)
-  rmtree(testpath, onerror=lambda a,b,c:())
-  makedirs(testpath, exist_ok=False)
-  return testpath
-
-def test_mklogdir1()->None:
-  path=_make_testpath('mklogdir1')
-  logdir=mklogdir(tag='testtag',logrootdir=Path(path))
-  assert isdir(logdir)
-
-@given(strtag=from_regex(r'[a-zA-Z0-9_:-]+', fullmatch=True),
-       timetag=from_regex(r'[a-zA-Z0-9_:-]+', fullmatch=True))
-def test_mklogdir2(strtag,timetag)->None:
-  path=_make_testpath('mklogdir2')
-  logdir=mklogdir(tag=strtag,logrootdir=Path(path), timetag=timetag)
-  assert isdir(logdir)
-  assert islink(join(path,f'_{strtag}_latest'))
+from tests.setup import (
+    setup_testpath, setup_storage )
 
 
-def test_dhash()->None:
-  path=_make_testpath('dhash')
-  h1=dhash(Path(path))
-  assert len(h1)>0
-  with open(join(path,'_a'),'w') as f:
-    f.write('1')
-  h2=dhash(Path(path))
-  assert len(h2)>0
-  assert h1==h2
-  with open(join(path,'a'),'w') as f:
-    f.write('1')
-  h3=dhash(Path(path))
-  assert len(h3)>0
-  assert h3 != h2
+@given(d=dicts())
+def test_realize(d)->None:
+  setup_storage('test_realize')
+  m=Manager()
+  mknode(m, d)
+  dref=m.builders[-1].dref
+  assert_valid_dref(dref)
+  assert len(list(store_rrefs(dref))) == 0
+  rref=m.builders[-1].matcher(dref, mkclosure())
+  assert rref is None
+  rref=build_realize(dref, m.builders[-1].realizer(dref, mkclosure()))
+  assert len(list(store_rrefs(dref))) == 1
+  assert_valid_rref(rref)
+  rref2=m.builders[-1].matcher(dref, mkclosure())
+  assert rref==rref2
+
+
+@given(d=dicts())
+def test_realize_dependencies(d)->None:
+  setup_storage('test_realize_dependencies')
+  n1=None; n2=None; n3=None; toplevel=None
+
+  def _setup(m):
+    nonlocal n1,n2,n3,toplevel
+    n1=mknode(m, d)
+    n2=mknode(m, {'parent1':n1})
+    n3=mknode(m, {'parent2':n1})
+    toplevel=mknode(m, {'n2':n2,'n3':n3})
+    return toplevel
+
+  rref=realize(_setup)
+  assert_valid_rref(rref)
+  assert n1 is not None
+  assert n2 is not None
+  assert n3 is not None
+  assert toplevel is not None
+
+  c=store_config(rref2dref(rref))
+  assert_valid_config(c)
+
+  assert set(store_deps([n1])) == set([])
+  assert set(store_deps([n2,n3])) == set([n1])
+  assert set(store_deps([toplevel])) == set([n2,n3])
+
+  assert set(store_deepdeps([n1])) == set([])
+  assert set(store_deepdeps([n2,n3])) == set([n1])
+  assert set(store_deepdeps([toplevel])) == set([n1,n2,n3])
 
 
 
-@given(key=text(min_size=1,max_size=10),
-       value=text(min_size=1,max_size=10))
-def test_node_lifecycle(key,value)->None:
-  set_storage('modelcap_store_lifecycle')
+def mknode_nondetermenistic(m:Manager, sources:dict, nondet:Callable[[],int])->DRef:
+  """ Emulate non-determenistic builds. `nondet` is expected to return
+  different values from build to build """
+  def _instantiate()->Config:
+    return mkconfig(sources)
+  def _realize(dref:DRef, closure:Closure)->Build:
+    b=mkbuild(dref, closure)
+    with open(join(build_outpath(b),'nondet'),'w') as f:
+      f.write(str(nondet()))
+    return b
+  def _match(dref:DRef, closure:Closure)->Optional[RRef]:
+    max_i=0
+    max_rref=None
+    for rref in store_rrefs(dref):
+      with open(join(store_rref2path(rref),'nondet'),'r') as f:
+        i=int(f.read())
+        if i>max_i:
+          max_i=i
+          max_rref=rref
+    return max_rref
 
-  c=Config({key:value})
-  m=Model(c)
-  o=model_outpath(m)
-  with open(join(o,'artifact'),'w') as f:
-    f.write('artifact')
-  ref=model_save(m)
-  assert_valid_ref(ref)
-
-def test_make_storege()->None:
-  set_storage('a')
-  set_storage('a')
-
-
-@given(key=text(min_size=1,max_size=10),
-       value=text(min_size=1,max_size=10))
-def test_mknode(key,value)->None:
-  set_storage('modelcap_mknode')
-
-  n1=mknode({key:value})
-  assert_valid_ref(n1)
-  n2=mknode({key:value, 'parent':n1})
-  assert_valid_ref(n1)
-  n3=mknode({key:value, 'parent':n2})
-  assert_valid_ref(n3)
-
-@given(key=text(min_size=1,max_size=10),
-       value=text(min_size=1,max_size=10))
-def test_store_deps(key,value)->None:
-  set_storage('modelcap_store_deps')
-
-  n1=mknode({key:value})
-  n2=mknode({key:value, 'parent':n1})
-  n3=mknode({key:value, 'parent':n2})
-
-  n2_deps=store_deps(n2)
-  assert n2_deps == [n1]
-  n3_deps=store_deps(n3)
-  assert n3_deps == [n2]
-
-@given(key=text(min_size=1,max_size=10),
-       value=text(min_size=1,max_size=10))
-def test_store_deepdeps(key,value)->None:
-  set_storage('modelcap_store_deepdeps')
-
-  n1=mknode({key:value})
-  n2=mknode({key:value, 'parent':n1})
-  n3=mknode({key:value, 'parent':n2})
-
-  n3_deepdeps=store_deepdeps([n3])
-  assert set(n3_deepdeps) == set([n1,n2,n3]), f"{n3_deepdeps} != [{n1},{n2},{n3}]"
+  return manage(m, _instantiate, _match, _realize)
 
 
-@given(key=text(min_size=1,max_size=10),
-       value=text(min_size=1,max_size=10))
-def test_store_gc(key,value)->None:
-  set_storage('modelcap_store_gc')
+@given(d=dicts())
+def test_non_determenistic(d)->None:
+  setup_storage('test_non_determenistic')
 
-  n1=mknode({key:value, 'n':1})
-  n2=mknode({key:value, 'parent':n1})
-  n3=mknode({key:value, 'parent':n2})
-  n4=mknode({key:value, 'n':4})
+  DATA:int; n1:DRef; n2:DRef; n3:DRef
 
-  removed=store_gc([n3])
-  assert set(removed) == set([n4]), f"{removed} != [{n4}]"
+  def _gen()->int:
+    nonlocal DATA
+    return DATA
+
+  def _setup(m):
+    nonlocal n1, n2, n3
+    n1 = mknode(m,d)
+    n2 = mknode_nondetermenistic(m,{'maman':n1},_gen)
+    n3 = mknode(m,{'papa':n2})
+    return n3
+
+  DATA = 1
+  rref1 = realize(_setup)
+  DATA = 2
+  rref2 = realize(_setup, force_rebuild=[n2])
+
+  assert len(list(store_rrefs(n1))) == 1
+  assert len(list(store_rrefs(n2))) == 2
+  assert len(list(store_rrefs(n3))) == 2
+  assert rref1 != rref2
+
+  n2_rref1 = store_deref(rref1, n2)
+  n2_rref2 = store_deref(rref2, n2)
+  assert n2_rref1 != n2_rref2
+
+
+@given(d=dicts())
+def test_no_multi_realizeirs(d)->None:
+  setup_storage('test_no_multi_realizers')
+
+  def _gen()->int:
+    return 42
+
+  def _setup(m):
+    n1 = mknode_nondetermenistic(m,d,_gen)
+    n2 = mknode_nondetermenistic(m,d,_gen)
+    return n2
+
+  try:
+    rref = instantiate(_setup)
+    assert False, f"Should fail, but got {rref}"
+  except AssertionError:
+    pass
 
