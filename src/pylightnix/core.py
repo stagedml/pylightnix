@@ -12,12 +12,30 @@ from pylightnix.types import (
     Config, ConfigAttrs, Derivation, Stage, Manager, Instantiator, Matcher,
     Realizer, Set )
 
+#: *Do not change!*
+#: Tracks the version of pylightnix storage
 PYLIGHTNIX_STORE_VERSION = 1
-PYLIGHTNIX_ROOT:str = environ.get('PYLIGHTNIX_ROOT', join(environ.get('HOME','/var/run'),'_pylightnix'))
-PYLIGHTNIX_LOGDIR:str = environ.get('PYLIGHTNIX_LOGDIR', join(PYLIGHTNIX_ROOT,'log'))
-PYLIGHTNIX_TMP:str = environ.get('PYLIGHTNIX_TMP', join(PYLIGHTNIX_ROOT,'tmp'))
-PYLIGHTNIX_STORE:str = join(PYLIGHTNIX_ROOT, f'store-v{PYLIGHTNIX_STORE_VERSION}')
-PYLIGHTNIX_NAMEPAT:str = "[a-zA-Z0-9_-]"
+
+#: `PYLIGHTNIX_ROOT` configures the root folder of pylightnix shared data folder.
+#:
+#: Default is `~/_pylightnix` / `/var/run/_pylightnix`.
+#: Set `PYLIGHTNIX_ROOT` shell variable to overwrite.
+PYLIGHTNIX_ROOT = environ.get('PYLIGHTNIX_ROOT', join(environ.get('HOME','/var/run'),'_pylightnix'))
+
+# PYLIGHTNIX_LOGDIR = environ.get('PYLIGHTNIX_LOGDIR', join(PYLIGHTNIX_ROOT,'log'))
+
+#: `PYLIGHTNIX_TMP` sets the location for temporary files and folders
+#: Set `PYLIGHTNIX_TMP` shell variable to overwrite the default location.
+PYLIGHTNIX_TMP = environ.get('PYLIGHTNIX_TMP', join(PYLIGHTNIX_ROOT,'tmp'))
+
+#: `PYLIGHTNIX_STORE` sets the location of the main storage.
+#:
+#: By default, the store will be located in `$PYLIGHTNIX_ROOT/store-vXX` folder.
+#: Set `PYLIGHTNIX_STORE` shell variable to overwrite the default location.
+PYLIGHTNIX_STORE = join(PYLIGHTNIX_ROOT, f'store-v{PYLIGHTNIX_STORE_VERSION}')
+
+#: Set the regular expression pattern for valid name characters.
+PYLIGHTNIX_NAMEPAT = "[a-zA-Z0-9_-]"
 
 
 #  ____       __
@@ -27,11 +45,13 @@ PYLIGHTNIX_NAMEPAT:str = "[a-zA-Z0-9_-]"
 # |_| \_\___|_| |___/
 
 def assert_valid_hash(h:Hash)->None:
+  """ Asserts if it's `Hash` argument is ill-formed. """
   assert len(h)==64, f"HashPart should have length of 64, but len({h})=={len(h)}"
   for s in ['-','_','/']:
     assert s not in h, f"Invalid symbol '{s}' found in {h}"
 
 def trimhash(h:Hash)->HashPart:
+  """ Trim a hash to get `HashPart` objects which are used in referencing """
   return HashPart(h[:32])
 
 def assert_valid_hashpart(hp:HashPart)->None:

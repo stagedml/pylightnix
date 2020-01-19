@@ -20,6 +20,10 @@
     * [Stage](#pylightnix.types.Stage)
   * [pylightnix.core](#pylightnix.core)
     * [PYLIGHTNIX\_STORE\_VERSION](#pylightnix.core.PYLIGHTNIX_STORE_VERSION)
+    * [PYLIGHTNIX\_ROOT](#pylightnix.core.PYLIGHTNIX_ROOT)
+    * [PYLIGHTNIX\_TMP](#pylightnix.core.PYLIGHTNIX_TMP)
+    * [PYLIGHTNIX\_STORE](#pylightnix.core.PYLIGHTNIX_STORE)
+    * [PYLIGHTNIX\_NAMEPAT](#pylightnix.core.PYLIGHTNIX_NAMEPAT)
     * [assert\_valid\_hash](#pylightnix.core.assert_valid_hash)
     * [trimhash](#pylightnix.core.trimhash)
     * [assert\_valid\_hashpart](#pylightnix.core.assert_valid_hashpart)
@@ -83,35 +87,70 @@
 <a name="pylightnix.types.Path"></a>
 ## `Path` Objects
 
+`Path` is an alias for string. It is used in pylightnix to
+tell the typechecker that a given string contains a filesystem path.
 
 <a name="pylightnix.types.Hash"></a>
 ## `Hash` Objects
 
+`Hash` is an alias for string. It is used in pylightnix to
+tell the typechecker that a given string contains sha256 hash digest.
 
 <a name="pylightnix.types.HashPart"></a>
 ## `HashPart` Objects
 
+`HashPart` is an alias for string. It is used in pylightnix to
+tell the typechecker that a given string contains first 32 characters of
+sha256 hash digest.
 
 <a name="pylightnix.types.DRef"></a>
 ## `DRef` Objects
 
-Derivation Reference is a string containing a name of Derivation
+`DRef` is an alias for string. It is used in pylightnix to tell the
+typechecker that a given string refers to some derivation.
+
+The format of *derivation reference* is `<HashPart>-<Name>`, where
+- `<HashPart>` contains first 32 characters of derivation `Config`'s sha256
+  hash digest.
+- `<Name>` object contains the name of derivation.
+
+Derivation references 'point to' derivation objects in pylightnix filesystem
+storage. That means, `$PYLIGHTNIX_STORE/<HashPart>-<Name>/` should exist and
+should be a directory containing `config.json` file.
 
 <a name="pylightnix.types.RRef"></a>
 ## `RRef` Objects
 
-Realization reference is a string containing a name of Derivation Instance
+`RRef` is an alias for string. It is used in pylightnix to tell the
+typechecker that a given string refers to a particular realization of a
+derivation.
+
+The format of *realization reference* is `<HashPart0>-<HashPart1>-<Name>`,
+where:
+- `<HashPart0>` is calculated over particular realization of derivation.
+- `<HashPart1>-<Name>` form valid `DRef` which produced this realizaion.
+
+Realization references describe realization objects in pylightnix filesystem
+storage.  That means, `$PYLIGHTNIX_STORE/<HashPart1>-<Name>/<HashPart0>`
+should exist and should be a directory containing `closure.json` file and
+various *build artifacts*
 
 <a name="pylightnix.types.Name"></a>
 ## `Name` Objects
 
-A stage's name is what you see in the last part of the reference
+`Name` is an alias for string. It is used in pylightnix to tell the
+typechecker that a given string contains name of a pylightnix storage object.
+
+Names are restircted to only contain charaters matching `PYLIGHTNIX_NAMEPAT`.
+
+See also `mkname`
 
 <a name="pylightnix.types.RefPath"></a>
 ## `RefPath` Objects
 
-RefPath is a path referencing some file in some instance. It is
-represented by a list of strings, where the first string is `RRef`
+RefPath is an alias for Python list (of strings). The first item of
+`RefPath` should be a valid `DRef`. Other elements should encode a filepath,
+relative to some unspecified realization of this derivation.
 
 <a name="pylightnix.types.Config"></a>
 ## `Config` Objects
@@ -120,12 +159,13 @@ represented by a list of strings, where the first string is `RRef`
 def __init__(self, d: dict)
 ```
 
-Config is a JSON-serializable configuration object. It should match the
-requirements of `assert_valid_config`. Tupically, it's __dict__ should
-contain only either simple Python types (strings, bool, ints, floats), lists
-or dicts. No tuples, no `np.float32`, no functions. Fields with names
-starting from '_' are may be added after construction, but they are not
-preserved during the serialization.
+`Config` is a JSON-serializable dictionary. It takes the place of soucres
+which specifies how should we realize a derivation.
+
+`Config` should match the requirements of `assert_valid_config`. Tupically,
+it's __dict__ should contain either simple Python types (strings, bool, ints,
+floats), lists or dicts. In particular, no tuples, no `np.float32` and no
+functions are allowed.
 
 <a name="pylightnix.types.Config.__init__"></a>
 ### `Config.__init__()`
@@ -138,7 +178,8 @@ def __init__(self, d: dict)
 <a name="pylightnix.types.ConfigAttrs"></a>
 ## `ConfigAttrs` Objects
 
-Helper object allowing to access dict fields as attributes
+`ConfigAttrs` is a helper object for read-only access of dict fields as
+attributes
 
 <a name="pylightnix.types.ConfigAttrs.__getattr__"></a>
 ### `__getattr__`
@@ -163,6 +204,7 @@ Closure = Dict[DRef,RRef]
 Build = NamedTuple('Build', [('config',Config), ('closure',Closure), ('timeprefix',str), ('outpath',Path)])
 ```
 
+`Build` object is used to track the process of realization.
 
 <a name="pylightnix.types.Instantiator"></a>
 ## `Instantiator`
@@ -231,6 +273,51 @@ Stage = Callable[[Manager],DRef]
 PYLIGHTNIX_STORE_VERSION = 1
 ```
 
+*Do not change!*
+Tracks the version of pylightnix storage
+
+<a name="pylightnix.core.PYLIGHTNIX_ROOT"></a>
+## `PYLIGHTNIX_ROOT`
+
+```python
+PYLIGHTNIX_ROOT = environ.get('PYLIGHTNIX_ROOT', join(environ.get('HOME','/var/run'),'_pylightnix'))
+```
+
+`PYLIGHTNIX_ROOT` configures the root folder of pylightnix shared data folder.
+
+Default is `~/_pylightnix` / `/var/run/_pylightnix`.
+Set `PYLIGHTNIX_ROOT` shell variable to overwrite.
+
+<a name="pylightnix.core.PYLIGHTNIX_TMP"></a>
+## `PYLIGHTNIX_TMP`
+
+```python
+PYLIGHTNIX_TMP = environ.get('PYLIGHTNIX_TMP', join(PYLIGHTNIX_ROOT,'tmp'))
+```
+
+`PYLIGHTNIX_TMP` sets the location for temporary files and folders
+Set `PYLIGHTNIX_TMP` shell variable to overwrite the default location.
+
+<a name="pylightnix.core.PYLIGHTNIX_STORE"></a>
+## `PYLIGHTNIX_STORE`
+
+```python
+PYLIGHTNIX_STORE = join(PYLIGHTNIX_ROOT, f'store-v{PYLIGHTNIX_STORE_VERSION}')
+```
+
+`PYLIGHTNIX_STORE` sets the location of the main storage.
+
+By default, the store will be located in `$PYLIGHTNIX_ROOT/store-vXX` folder.
+Set `PYLIGHTNIX_STORE` shell variable to overwrite the default location.
+
+<a name="pylightnix.core.PYLIGHTNIX_NAMEPAT"></a>
+## `PYLIGHTNIX_NAMEPAT`
+
+```python
+PYLIGHTNIX_NAMEPAT = "[a-zA-Z0-9_-]"
+```
+
+Set the regular expression pattern for valid name characters.
 
 <a name="pylightnix.core.assert_valid_hash"></a>
 ## `assert_valid_hash()`
@@ -239,6 +326,7 @@ PYLIGHTNIX_STORE_VERSION = 1
 def assert_valid_hash(h: Hash) -> None
 ```
 
+Asserts if it's `Hash` argument is ill-formed.
 
 <a name="pylightnix.core.trimhash"></a>
 ## `trimhash()`
@@ -247,6 +335,7 @@ def assert_valid_hash(h: Hash) -> None
 def trimhash(h: Hash) -> HashPart
 ```
 
+Trim a hash to get `HashPart` objects which are used in referencing
 
 <a name="pylightnix.core.assert_valid_hashpart"></a>
 ## `assert_valid_hashpart()`
