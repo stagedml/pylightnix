@@ -126,8 +126,8 @@ class Manager:
   def __init__(self):
     self.builders:List[Derivation]=[]
 
-#: Stage is the building blocks of pylightnix. It is described by a stage
-#: function taking [Manager](#pylightnix.typing.Manager) and returning
+#: Stages are the building blocks of pylightnix. They are defined by stage
+#: functions which take [Manager](#pylightnix.typing.Manager) and return
 #: [derivation reference](#pylightnix.types.DRef).
 #:
 #: Stages are subjects to [instantiation](#pylightnix.core.instantiate) and
@@ -138,4 +138,5 @@ class Manager:
 #: * [mkfile](#pylightnix.stages.trivial.mkfile)
 #: * [fetchurl](#pylightnix.stages.fetchurl.fetchurl)
 Stage = Callable[[Manager],DRef]
+
 
