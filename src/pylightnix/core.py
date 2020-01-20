@@ -427,7 +427,7 @@ def recursion_manager(funcname:str):
 
 
 def instantiate(stage:Stage)->List[Derivation]:
-  """ The `instantiate` takes the [Stage](#pylightnix.types.Stage) function and
+  """ `instantiate` takes the [Stage](#pylightnix.types.Stage) function and
   produces corresponding derivation object. Resulting list contains derivation
   of the current stage (in it's last element), preceeded by the derivations of
   all it's dependencies.

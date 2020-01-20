@@ -81,6 +81,16 @@
     * [instantiate](#pylightnix.core.instantiate)
     * [realize](#pylightnix.core.realize)
     * [only](#pylightnix.core.only)
+  * [pylightnix.stages](#pylightnix.stages)
+  * [pylightnix.stages.trivial](#pylightnix.stages.trivial)
+    * [mknode](#pylightnix.stages.trivial.mknode)
+    * [mkfile](#pylightnix.stages.trivial.mkfile)
+  * [pylightnix.stages.fetchurl](#pylightnix.stages.fetchurl)
+    * [WGET](#pylightnix.stages.fetchurl.WGET)
+    * [AUNPACK](#pylightnix.stages.fetchurl.AUNPACK)
+    * [config](#pylightnix.stages.fetchurl.config)
+    * [download](#pylightnix.stages.fetchurl.download)
+    * [fetchurl](#pylightnix.stages.fetchurl.fetchurl)
 
 <a name="pylightnix.types"></a>
 # `pylightnix.types`
@@ -142,15 +152,16 @@ where:
 - `<HashPart1>-<Name>` form valid `DRef` which produced this realizaion.
 
 Realization reference describes realization object in pylightnix filesystem
-storage.  That means, `$PYLIGHTNIX_STORE/<HashPart1>-<Name>/<HashPart0>`
-should exist and should be a directory containing `closure.json` file and
-various *build artifacts*
+storage.  For valid references, `$PYLIGHTNIX_STORE/<HashPart1>-<Name>/<HashPart0>`
+folder does exist and contains `closure.json` file together with
+stage-specific *build artifacts*
 
-Realization references are results of successful *realization*. See
-[realize](#pylightnix.core.realize).
+Realization reference is obtained from the process called
+[realization](#pylightnix.core.realize).
 
-Realization references may be dereferenced to system paths to *build
-artifacts* by calling [store_rref2path](#pylightnix.core.store_rref2path).
+Valid realization references may be dereferenced down to system paths of
+*build artifacts* by calling
+[store_rref2path](#pylightnix.core.store_rref2path).
 
 <a name="pylightnix.types.Name"></a>
 ## `Name` Objects
@@ -812,7 +823,7 @@ def recursion_manager(funcname: str)
 def instantiate(stage: Stage) -> List[Derivation]
 ```
 
-The `instantiate` takes the [Stage](#pylightnix.types.Stage) function and
+`instantiate` takes the [Stage](#pylightnix.types.Stage) function and
 produces corresponding derivation object. Resulting list contains derivation
 of the current stage (in it's last element), preceeded by the derivations of
 all it's dependencies.
@@ -842,6 +853,74 @@ be used for read-only access of build artifacts.
 
 ```python
 def only(dref: DRef, closure: Closure) -> Optional[RRef]
+```
+
+
+<a name="pylightnix.stages"></a>
+# `pylightnix.stages`
+
+
+<a name="pylightnix.stages.trivial"></a>
+# `pylightnix.stages.trivial`
+
+
+<a name="pylightnix.stages.trivial.mknode"></a>
+## `mknode()`
+
+```python
+def mknode(m: Manager, sources: dict, artifacts: Dict[Name,Any] = {}) -> DRef
+```
+
+
+<a name="pylightnix.stages.trivial.mkfile"></a>
+## `mkfile()`
+
+```python
+def mkfile(m: Manager, name: Name, contents: Any, filename: Optional[Name] = None) -> DRef
+```
+
+
+<a name="pylightnix.stages.fetchurl"></a>
+# `pylightnix.stages.fetchurl`
+
+
+<a name="pylightnix.stages.fetchurl.WGET"></a>
+## `WGET`
+
+```python
+WGET = get_executable('wget', 'Please install `wget` pacakge')
+```
+
+
+<a name="pylightnix.stages.fetchurl.AUNPACK"></a>
+## `AUNPACK`
+
+```python
+AUNPACK = get_executable('aunpack', 'Please install `apack` tool from `atool` package')
+```
+
+
+<a name="pylightnix.stages.fetchurl.config"></a>
+## `config()`
+
+```python
+def config(url: str, sha256: str, mode: str = 'unpack,remove', name: Name = None) -> Config
+```
+
+
+<a name="pylightnix.stages.fetchurl.download"></a>
+## `download()`
+
+```python
+def download(b: Build) -> Build
+```
+
+
+<a name="pylightnix.stages.fetchurl.fetchurl"></a>
+## `fetchurl()`
+
+```python
+def fetchurl(m: Manager, args, *,, ,, kwargs) -> DRef
 ```
 
 

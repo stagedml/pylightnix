@@ -1,2 +1,2 @@
 #!/bin/sh
-pydoc-markdown --modules pylightnix.types pylightnix.core --search-path  src /usr/lib/python3.6/
+pydoc-markdown --modules pylightnix.types pylightnix.core pylightnix.stages --search-path  src /usr/lib/python3.6/

@@ -53,15 +53,16 @@ class RRef(str):
   - `<HashPart1>-<Name>` form valid `DRef` which produced this realizaion.
 
   Realization reference describes realization object in pylightnix filesystem
-  storage.  That means, `$PYLIGHTNIX_STORE/<HashPart1>-<Name>/<HashPart0>`
-  should exist and should be a directory containing `closure.json` file and
-  various *build artifacts*
+  storage.  For valid references, `$PYLIGHTNIX_STORE/<HashPart1>-<Name>/<HashPart0>`
+  folder does exist and contains `closure.json` file together with
+  stage-specific *build artifacts*
 
-  Realization references are results of successful *realization*. See
-  [realize](#pylightnix.core.realize).
+  Realization reference is obtained from the process called
+  [realization](#pylightnix.core.realize).
 
-  Realization references may be dereferenced to system paths to *build
-  artifacts* by calling [store_rref2path](#pylightnix.core.store_rref2path). """
+  Valid realization references may be dereferenced down to system paths of
+  *build artifacts* by calling
+  [store_rref2path](#pylightnix.core.store_rref2path). """
   pass
 
 class Name(str):
@@ -125,5 +126,16 @@ class Manager:
   def __init__(self):
     self.builders:List[Derivation]=[]
 
+#: Stage is the building blocks of pylightnix. It is described by a stage
+#: function taking [Manager](#pylightnix.typing.Manager) and returning
+#: [derivation reference](#pylightnix.types.DRef).
+#:
+#: Stages are subjects to [instantiation](#pylightnix.core.instantiate) and
+#: [realization](#pylightnix.core.realize).
+#:
+#: Examples of built-in stages:
+#: * [mknode](#pylightnix.stages.trivial.mknode)
+#: * [mkfile](#pylightnix.stages.trivial.mkfile)
+#: * [fetchurl](#pylightnix.stages.fetchurl.fetchurl)
 Stage = Callable[[Manager],DRef]
 
