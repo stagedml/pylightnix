@@ -701,7 +701,7 @@ def mkbuild(dref: DRef, closure: Closure) -> Build
 def build_config(b: Build) -> Config
 ```
 
-Return the [Config](#pylightnix.types.Config) object of the derivation
+Return the [Config](#pylightnix.types.Config) object of the realization
 being built.
 
 <a name="pylightnix.core.build_closure"></a>
@@ -711,7 +711,7 @@ being built.
 def build_closure(b: Build) -> Closure
 ```
 
-Return the [Closure](#pylightnix.types.Closure) object of the derivation
+Return the [Closure](#pylightnix.types.Closure) object of the realization
 being built.
 
 <a name="pylightnix.core.build_config_ro"></a>
@@ -729,7 +729,7 @@ def build_config_ro(m: Build) -> Any
 def build_outpath(m: Build) -> Path
 ```
 
-Return the output path of the derivation being built. Output path is a
+Return the output path of the realization being built. Output path is a
 path to valid temporary folder where user may put various build artifacts.
 Later this folder becomes a realization.
 
@@ -751,7 +751,7 @@ def build_deref(b: Build, dref: DRef) -> RRef
 
 `build_deref` converts one of node's dependency `dref` into a valid
 [RRef](#pylightnix.types.RRef). The function is designed to be called during
-[realization](#pylightnix.core.realize) process of a node to access build
+[realization](#pylightnix.core.realize) of a node to access build
 artifacts of it's dependencies.
 
 <a name="pylightnix.core.build_deref_path"></a>
