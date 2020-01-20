@@ -102,12 +102,11 @@ class ConfigAttrs(dict):
 
 Closure=Dict[DRef,RRef]
 
-#: `Build` objects track the process of [realization](#pylightnix.core.realize).
-#: As seen from signature, they store the timeprefix, the Closure, and the output
-#: path. Output path contains the path to existing temporary folder into which
-#: user should put various *build artifacts*.
+#: `Build` objects tracks the process of [realization](#pylightnix.core.realize).
+#: As may be seen from it's signature, it stores timeprefix, the Closure, and the output
+#: path. Output path contains the path to existing temporary folder for placing *build artifacts*.
 #:
-#: User may access build-time objects by calling:
+#: Users may access fields of a `Build` object by calling:
 #: - [build_config](#pylightnix.core.build_config)
 #: - [build_deref](#pylightnix.core.build_deref)
 #: - [build_outpath](#pylightnix.core.build_outpath)
