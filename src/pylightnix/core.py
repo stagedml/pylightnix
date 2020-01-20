@@ -279,12 +279,12 @@ def mkbuild(dref:DRef, closure:Closure)->Build:
   assert_valid_config(c)
   timeprefix=timestring()
   outpath=Path(mkdtemp(prefix=f'{timeprefix}_{config_hash(c)[:8]}_', dir=PYLIGHTNIX_TMP))
-  return Build(c, closure, timeprefix, outpath)
+  return Build(dref, closure, timeprefix, outpath)
 
 def build_config(b:Build)->Config:
   """ Return the [Config](#pylightnix.types.Config) object of the derivation
   being built. """
-  return b.config
+  return store_config(b.dref)
 
 def build_closure(b:Build)->Closure:
   """ Return the [Closure](#pylightnix.types.Closure) object of the derivation
@@ -305,9 +305,15 @@ def build_name(b:Build)->Name:
   return Name(config_name(build_config(b)))
 
 def build_deref(b:Build, dref:DRef)->RRef:
-  """ Converts """
+  """`build_deref` converts one of node's dependency `dref` into a valid
+  [RRef](#pylightnix.types.RRef). The function is designed to be called during
+  [realization](#pylightnix.core.realize) process of a node to access build
+  artifacts of it's dependencies."""
   rref=b.closure.get(dref)
-  assert rref is not None, f"Unable to deref {dref} while building {build_name(b)}"
+  assert rref is not None, (
+      f"Unable to deref {dref} while realizing {b.dref}. Make sure that first link "
+      f"is listed in the configurations of the second link or one of it's "
+      f"dependencies" )
   return rref
 
 def build_deref_path(b:Build, refpath:RefPath)->Path:

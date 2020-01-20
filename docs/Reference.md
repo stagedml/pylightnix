@@ -121,17 +121,17 @@ sha256 hash digest.
 `DRef` is an alias for string. It is used in pylightnix to tell the
 typechecker that a given string refers to some derivation.
 
-The format of *derivation reference* is `<HashPart>-<Name>`, where
+The format of *derivation reference* is `<HashPart>-<Name>`, where:
 - `<HashPart>` contains first 32 characters of derivation `Config`'s sha256
   hash digest.
 - `<Name>` object contains the name of derivation.
 
 Derivation reference 'points to' derivation object in pylightnix filesystem
-storage. That means, `$PYLIGHTNIX_STORE/<HashPart>-<Name>/` should exist and
-should be a directory containing `config.json` file.
+storage. For any valid DRef, `$PYLIGHTNIX_STORE/<HashPart>-<Name>/` does
+exist and is a directory which contains `config.json` file.
 
-Derivation reference is normally a result of successful *instantiation*. See
-[instantiate](#pylightnix.core.instantiate).
+Derivation reference is normally a result of successful
+[instantiation](#pylightnix.core.instantiate).
 
 Derivation reference may be converted to a realization reference, by call
 either of:
@@ -148,8 +148,10 @@ derivation.
 
 The format of *realization reference* is `<HashPart0>-<HashPart1>-<Name>`,
 where:
-- `<HashPart0>` is calculated over particular realization of derivation.
-- `<HashPart1>-<Name>` form valid `DRef` which produced this realizaion.
+- `<HashPart0>` is calculated over realization's
+  [Closure](#pylightnix.type.closure) and build artifacts.
+- `<HashPart1>-<Name>` forms valid [DRef](#pylightnix.types.DRef) which
+  this realizaion was [realized](#pylightnix.core.realize) from.
 
 Realization reference describes realization object in pylightnix filesystem
 storage.  For valid references, `$PYLIGHTNIX_STORE/<HashPart1>-<Name>/<HashPart0>`
@@ -177,8 +179,11 @@ See also `mkname`
 ## `RefPath` Objects
 
 RefPath is an alias for Python list (of strings). The first item of
-`RefPath` should be a valid `DRef`. Other elements should encode a filepath,
-relative to some unspecified realization of this derivation.
+`RefPath` is a [DRef](#pylightnix.types.DRef). Other elements encode a
+filepath, relative to some unspecified realization of this derivation.
+
+RefPath may be dereferenced into system path with
+[build_deref_path](#pylightnix.core.build_deref_path)
 
 <a name="pylightnix.types.Config"></a>
 ## `Config` Objects
@@ -230,12 +235,21 @@ __getattr__ = dict.__getitem__
 Closure = Dict[DRef,RRef]
 ```
 
+Closure type is an alias for Python dict which maps
+[DRefs](#pylightnix.types.DRef) into [RRefs](#pylightnix.types.RRef).
+
+For any node grouped with it's dependencies, pylightnix forces a property of
+unique realization, which means that no two nodes of a group which depend on
+same derivation may resolve it to different realizations.
+
+So for any realization, the dictionary of this type represents the complete
+mapping of it's dependencies.
 
 <a name="pylightnix.types.Build"></a>
 ## `Build`
 
 ```python
-Build = NamedTuple('Build', [('config',Config), ('closure',Closure), ('timeprefix',str), ('outpath',Path)])
+Build = NamedTuple('Build', [('dref',DRef), ('closure',Closure), ('timeprefix',str), ('outpath',Path)])
 ```
 
 `Build` objects tracks the process of [realization](#pylightnix.core.realize).
@@ -735,7 +749,10 @@ Return the name of a derivation being built.
 def build_deref(b: Build, dref: DRef) -> RRef
 ```
 
-Converts
+`build_deref` converts one of node's dependency `dref` into a valid
+[RRef](#pylightnix.types.RRef). The function is designed to be called during
+[realization](#pylightnix.core.realize) process of a node to access build
+artifacts of it's dependencies.
 
 <a name="pylightnix.core.build_deref_path"></a>
 ## `build_deref_path()`
