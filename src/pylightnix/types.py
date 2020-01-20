@@ -81,14 +81,17 @@ class RefPath(list):
   pass
 
 class Config:
-  """ `Config` is a JSON-serializable dictionary. It takes the place of soucres
-  which specifies how should we realize a derivation.
+  """ `Config` is a JSON-serializable dictionary. Configs are required by
+  definintion of Stages and should determine the realization process.
 
   `Config` should match the requirements of `assert_valid_config`. Typically,
   it's `__dict__` should contain either simple Python types (strings, string
   aliases including [DRefs](#pylightnix.types.DRef), bools, ints, floats), lists
   or dicts. In particular, no tuples, no `np.float32` and no functions are
   allowed.
+
+  Config is the equivalent of program source in the typical compiler's
+  pipeline.
 
   Use [mkconfig](#pylightnix.core.mkconfig) to create new Config objects. """
   def __init__(self, d:dict):
@@ -133,9 +136,9 @@ class Manager:
 #: [realization](#pylightnix.core.realize).
 #:
 #: Examples of built-in stages:
-#: * [mknode](#pylightnix.stages.trivial.mknode)
-#: * [mkfile](#pylightnix.stages.trivial.mkfile)
-#: * [fetchurl](#pylightnix.stages.fetchurl.fetchurl)
+#: - [mknode](#pylightnix.stages.trivial.mknode)
+#: - [mkfile](#pylightnix.stages.trivial.mkfile)
+#: - [fetchurl](#pylightnix.stages.fetchurl.fetchurl)
 Stage = Callable[[Manager],DRef]
 
 
