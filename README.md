@@ -10,11 +10,13 @@ Compared to Nix:
 * Like Nix, it offers purely-functional solution for data deployment problem.
 * Like Nix, it allows to describe and run two-phased build processes in a
   controllable and reproducible manner.
-* Unlike Nix, pylightnix doesn't have containerization and separate build
-  expression language. In pylightnix, both configuration and build phases are
-  defined in pure Python.
+* Unlike Nix, pylightnix doesn't aim at building operating systems. It
+  is more suitable for application-scaled data storage.
+* Unlike Nix, pylightnix doesn't provide things like interpreter for build
+  expression language and build isolation. Here, both configuration and build
+  phases are defined in Python.
 * Unlike Nix, pylightnix is aware of non-deterministic builds, allowing
-  it to cover a larger set of use cases.
+  it to cover a potentially-larger set of use cases.
 
 Implementation:
 
