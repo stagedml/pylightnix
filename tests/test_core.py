@@ -166,3 +166,31 @@ def test_no_multi_realizeirs()->None:
   except AssertionError:
     pass
 
+def test_no_recursive_realize()->None:
+  setup_storage('test_no_recursive_realize')
+
+  def _setup(m):
+    rref1 = realize(_setup)
+    n2 = mktestnode(m,{'bogus':rref1})
+    return n2
+
+  try:
+    rref = realize(_setup)
+    assert False, f"Should fail, but got {rref}"
+  except AssertionError:
+    pass
+
+def test_no_recursive_instantiate()->None:
+  setup_storage('test_no_recursive_instantiate')
+
+  def _setup(m):
+    derivs = instantiate(_setup)
+    n2 = mktestnode(m,{'bogus':derivs[-1].dref})
+    return n2
+
+  try:
+    rref = instantiate(_setup)
+    assert False, f"Should fail, but got {rref}"
+  except AssertionError:
+    pass
+
