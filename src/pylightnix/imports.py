@@ -17,4 +17,6 @@ from distutils.spawn import find_executable
 from subprocess import Popen
 from urllib.parse import urlparse
 from errno import ENOTEMPTY
+from threading import get_ident
+from contextlib import contextmanager
 

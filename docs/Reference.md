@@ -57,6 +57,7 @@
     * [store\_deepdeps](#pylightnix.core.store_deepdeps)
     * [store\_link](#pylightnix.core.store_link)
     * [store\_drefs](#pylightnix.core.store_drefs)
+    * [store\_rrefs\_](#pylightnix.core.store_rrefs_)
     * [store\_rrefs](#pylightnix.core.store_rrefs)
     * [store\_deref](#pylightnix.core.store_deref)
     * [store\_gc](#pylightnix.core.store_gc)
@@ -66,8 +67,8 @@
     * [build\_config\_ro](#pylightnix.core.build_config_ro)
     * [build\_outpath](#pylightnix.core.build_outpath)
     * [build\_name](#pylightnix.core.build_name)
-    * [build\_rref](#pylightnix.core.build_rref)
     * [build\_deref](#pylightnix.core.build_deref)
+    * [build\_deref\_path](#pylightnix.core.build_deref_path)
     * [build\_instantiate](#pylightnix.core.build_instantiate)
     * [build\_realize](#pylightnix.core.build_realize)
     * [mkclosure](#pylightnix.core.mkclosure)
@@ -76,6 +77,7 @@
     * [closure\_add](#pylightnix.core.closure_add)
     * [closure\_serialize](#pylightnix.core.closure_serialize)
     * [manage](#pylightnix.core.manage)
+    * [recursion\_manager](#pylightnix.core.recursion_manager)
     * [instantiate](#pylightnix.core.instantiate)
     * [realize](#pylightnix.core.realize)
     * [only](#pylightnix.core.only)
@@ -114,9 +116,18 @@ The format of *derivation reference* is `<HashPart>-<Name>`, where
   hash digest.
 - `<Name>` object contains the name of derivation.
 
-Derivation references 'point to' derivation objects in pylightnix filesystem
+Derivation reference 'points to' derivation object in pylightnix filesystem
 storage. That means, `$PYLIGHTNIX_STORE/<HashPart>-<Name>/` should exist and
 should be a directory containing `config.json` file.
+
+Derivation reference is normally a result of successful *instantiation*. See
+[instantiate](#pylightnix.core.instantiate).
+
+Derivation reference may be converted to a realization reference, by call
+either of:
+- [build_deref](#pylightnix.core.build_deref) at build time.
+- [store_deref](#pylightnix.core.store_deref) to get the existing realization.
+- [realize](#pylightnix.core.realize) to get new realization
 
 <a name="pylightnix.types.RRef"></a>
 ## `RRef` Objects
@@ -130,10 +141,16 @@ where:
 - `<HashPart0>` is calculated over particular realization of derivation.
 - `<HashPart1>-<Name>` form valid `DRef` which produced this realizaion.
 
-Realization references describe realization objects in pylightnix filesystem
+Realization reference describes realization object in pylightnix filesystem
 storage.  That means, `$PYLIGHTNIX_STORE/<HashPart1>-<Name>/<HashPart0>`
 should exist and should be a directory containing `closure.json` file and
 various *build artifacts*
+
+Realization references are results of successful *realization*. See
+[realize](#pylightnix.core.realize).
+
+Realization references may be dereferenced to system paths to *build
+artifacts* by calling [store_rref2path](#pylightnix.core.store_rref2path).
 
 <a name="pylightnix.types.Name"></a>
 ## `Name` Objects
@@ -162,10 +179,13 @@ def __init__(self, d: dict)
 `Config` is a JSON-serializable dictionary. It takes the place of soucres
 which specifies how should we realize a derivation.
 
-`Config` should match the requirements of `assert_valid_config`. Tupically,
-it's __dict__ should contain either simple Python types (strings, bool, ints,
-floats), lists or dicts. In particular, no tuples, no `np.float32` and no
-functions are allowed.
+`Config` should match the requirements of `assert_valid_config`. Typically,
+it's `__dict__` should contain either simple Python types (strings, string
+aliases including [DRefs](#pylightnix.types.DRef), bools, ints, floats), lists
+or dicts. In particular, no tuples, no `np.float32` and no functions are
+allowed.
+
+Use [mkconfig](#pylightnix.core.mkconfig) to create new Config objects.
 
 <a name="pylightnix.types.Config.__init__"></a>
 ### `Config.__init__()`
@@ -178,8 +198,8 @@ def __init__(self, d: dict)
 <a name="pylightnix.types.ConfigAttrs"></a>
 ## `ConfigAttrs` Objects
 
-`ConfigAttrs` is a helper object for read-only access of dict fields as
-attributes
+`ConfigAttrs` is a helper object for providing a read-only access to
+[Config](#pylightnix.types.Config) fields as to Python object attributes
 
 <a name="pylightnix.types.ConfigAttrs.__getattr__"></a>
 ### `__getattr__`
@@ -204,7 +224,15 @@ Closure = Dict[DRef,RRef]
 Build = NamedTuple('Build', [('config',Config), ('closure',Closure), ('timeprefix',str), ('outpath',Path)])
 ```
 
-`Build` object is used to track the process of realization.
+`Build` objects track the process of [realization](#pylightnix.core.realize).
+As seen from signature, they store the timeprefix, the Closure, and the output
+path. Output path contains the path to existing temporary folder into which
+user should put various *build artifacts*.
+
+User may access build-time objects by calling:
+- [build_config](#pylightnix.core.build_config)
+- [build_deref](#pylightnix.core.build_deref)
+- [build_outpath](#pylightnix.core.build_outpath)
 
 <a name="pylightnix.types.Instantiator"></a>
 ## `Instantiator`
@@ -283,10 +311,10 @@ Tracks the version of pylightnix storage
 PYLIGHTNIX_ROOT = environ.get('PYLIGHTNIX_ROOT', join(environ.get('HOME','/var/run'),'_pylightnix'))
 ```
 
-`PYLIGHTNIX_ROOT` configures the root folder of pylightnix shared data folder.
+`PYLIGHTNIX_ROOT` contains the path to the root of pylightnix shared data folder.
 
-Default is `~/_pylightnix` / `/var/run/_pylightnix`.
-Set `PYLIGHTNIX_ROOT` shell variable to overwrite.
+Default is `~/_pylightnix` or `/var/run/_pylightnix` if no `$HOME` is available.
+Setting `PYLIGHTNIX_ROOT` environment variable overwrites the defaults.
 
 <a name="pylightnix.core.PYLIGHTNIX_TMP"></a>
 ## `PYLIGHTNIX_TMP`
@@ -295,8 +323,9 @@ Set `PYLIGHTNIX_ROOT` shell variable to overwrite.
 PYLIGHTNIX_TMP = environ.get('PYLIGHTNIX_TMP', join(PYLIGHTNIX_ROOT,'tmp'))
 ```
 
-`PYLIGHTNIX_TMP` sets the location for temporary files and folders
-Set `PYLIGHTNIX_TMP` shell variable to overwrite the default location.
+`PYLIGHTNIX_TMP` contains the path to the root of temporary folders.
+Setting `PYLIGHTNIX_TMP` environment variable overwrites the default value of
+`$PYLIGHTNIX_ROOT/tmp`.
 
 <a name="pylightnix.core.PYLIGHTNIX_STORE"></a>
 ## `PYLIGHTNIX_STORE`
@@ -305,10 +334,10 @@ Set `PYLIGHTNIX_TMP` shell variable to overwrite the default location.
 PYLIGHTNIX_STORE = join(PYLIGHTNIX_ROOT, f'store-v{PYLIGHTNIX_STORE_VERSION}')
 ```
 
-`PYLIGHTNIX_STORE` sets the location of the main storage.
+`PYLIGHTNIX_STORE` contains the path to the main pylightnix store folder.
 
-By default, the store will be located in `$PYLIGHTNIX_ROOT/store-vXX` folder.
-Set `PYLIGHTNIX_STORE` shell variable to overwrite the default location.
+By default, the store is located in `$PYLIGHTNIX_ROOT/store-vXX` folder.
+Setting `PYLIGHTNIX_STORE` environment variable overwrites the defaults.
 
 <a name="pylightnix.core.PYLIGHTNIX_NAMEPAT"></a>
 ## `PYLIGHTNIX_NAMEPAT`
@@ -562,8 +591,8 @@ def store_config_ro(r: DRef) -> Any
 def store_deps(refs: List[DRef]) -> List[DRef]
 ```
 
-Return a list of reference's dependencies, that is all the references
-found in current ref's `Config`
+Return a list of reference's immediate dependencies, not including `refs`
+themselves.
 
 <a name="pylightnix.core.store_deepdeps"></a>
 ## `store_deepdeps()`
@@ -572,8 +601,8 @@ found in current ref's `Config`
 def store_deepdeps(roots: List[DRef]) -> List[DRef]
 ```
 
-Return an exhaustive list of dependencies of the `roots`. `roots`
-themselves are also included.
+Return an exhaustive list of `roots`'s dependencies, not including `roots`
+themselves.
 
 <a name="pylightnix.core.store_link"></a>
 ## `store_link()`
@@ -582,7 +611,7 @@ themselves are also included.
 def store_link(ref: DRef, tgtpath: Path, name: str, withtime=True) -> None
 ```
 
-Creates a link pointing to node `ref` into directory `tgtpath`
+Creates a symlink pointing to node `ref` into directory `tgtpath`
 
 <a name="pylightnix.core.store_drefs"></a>
 ## `store_drefs()`
@@ -591,14 +620,25 @@ Creates a link pointing to node `ref` into directory `tgtpath`
 def store_drefs() -> Iterable[DRef]
 ```
 
+Iterates over all derivations of the storage
+
+<a name="pylightnix.core.store_rrefs_"></a>
+## `store_rrefs_()`
+
+```python
+def store_rrefs_(dref: DRef) -> Iterable[RRef]
+```
+
 
 <a name="pylightnix.core.store_rrefs"></a>
 ## `store_rrefs()`
 
 ```python
-def store_rrefs(dref: DRef) -> Iterable[RRef]
+def store_rrefs(dref: DRef, closure: Closure) -> Iterable[RRef]
 ```
 
+Iterates over ralization references of a derivation which fits into
+particular [closure]($pylightnix.types.closure).
 
 <a name="pylightnix.core.store_deref"></a>
 ## `store_deref()`
@@ -634,6 +674,8 @@ def mkbuild(dref: DRef, closure: Closure) -> Build
 def build_config(b: Build) -> Config
 ```
 
+Return the [Config](#pylightnix.types.Config) object of the derivation
+being built.
 
 <a name="pylightnix.core.build_closure"></a>
 ## `build_closure()`
@@ -642,6 +684,8 @@ def build_config(b: Build) -> Config
 def build_closure(b: Build) -> Closure
 ```
 
+Return the [Closure](#pylightnix.types.Closure) object of the derivation
+being built.
 
 <a name="pylightnix.core.build_config_ro"></a>
 ## `build_config_ro()`
@@ -658,6 +702,9 @@ def build_config_ro(m: Build) -> Any
 def build_outpath(m: Build) -> Path
 ```
 
+Return the output path of the derivation being built. Output path is a
+path to valid temporary folder where user may put various build artifacts.
+Later this folder becomes a realization.
 
 <a name="pylightnix.core.build_name"></a>
 ## `build_name()`
@@ -666,20 +713,22 @@ def build_outpath(m: Build) -> Path
 def build_name(b: Build) -> Name
 ```
 
-
-<a name="pylightnix.core.build_rref"></a>
-## `build_rref()`
-
-```python
-def build_rref(b: Build, dref: DRef) -> RRef
-```
-
+Return the name of a derivation being built.
 
 <a name="pylightnix.core.build_deref"></a>
 ## `build_deref()`
 
 ```python
-def build_deref(b: Build, refpath: RefPath) -> Path
+def build_deref(b: Build, dref: DRef) -> RRef
+```
+
+Converts
+
+<a name="pylightnix.core.build_deref_path"></a>
+## `build_deref_path()`
+
+```python
+def build_deref_path(b: Build, refpath: RefPath) -> Path
 ```
 
 
@@ -747,6 +796,15 @@ def manage(m: Manager, inst: Instantiator, matcher: Matcher, realizer: Realizer)
 ```
 
 
+<a name="pylightnix.core.recursion_manager"></a>
+## `recursion_manager()`
+
+```python
+@contextmanager
+def recursion_manager(funcname: str)
+```
+
+
 <a name="pylightnix.core.instantiate"></a>
 ## `instantiate()`
 
@@ -754,6 +812,19 @@ def manage(m: Manager, inst: Instantiator, matcher: Matcher, realizer: Realizer)
 def instantiate(stage: Stage) -> List[Derivation]
 ```
 
+The `instantiate` takes the [Stage](#pylightnix.types.Stage) function and
+produces corresponding derivation object. Resulting list contains derivation
+of the current stage (in it's last element), preceeded by the derivations of
+all it's dependencies.
+
+Instantiation is the equivalent of type-checking in the typical compiler's
+pipeline.
+
+User-defined [Instantiators](pylightnix.types.Instantiator) calculate stage
+configs during the instantiation. This calculations fall under certain
+restrictions. In particular, it shouldn't start new instantiations or
+realizations recursively, and it shouldn't access realization objects in the
+storage.
 
 <a name="pylightnix.core.realize"></a>
 ## `realize()`
@@ -762,6 +833,9 @@ def instantiate(stage: Stage) -> List[Derivation]
 def realize(stage: Stage, force_rebuild: List[DRef] = []) -> RRef
 ```
 
+`realize` builds the realization of the stage's derivation. Return value
+is a [reference to particular realization](#pylightnix.types.RRef) which could
+be used for read-only access of build artifacts.
 
 <a name="pylightnix.core.only"></a>
 ## `only()`

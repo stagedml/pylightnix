@@ -27,9 +27,19 @@ class DRef(str):
     hash digest.
   - `<Name>` object contains the name of derivation.
 
-  Derivation references 'point to' derivation objects in pylightnix filesystem
+  Derivation reference 'points to' derivation object in pylightnix filesystem
   storage. That means, `$PYLIGHTNIX_STORE/<HashPart>-<Name>/` should exist and
-  should be a directory containing `config.json` file. """
+  should be a directory containing `config.json` file.
+
+  Derivation reference is normally a result of successful *instantiation*. See
+  [instantiate](#pylightnix.core.instantiate).
+
+  Derivation reference may be converted to a realization reference, by call
+  either of:
+  - [build_deref](#pylightnix.core.build_deref) at build time.
+  - [store_deref](#pylightnix.core.store_deref) to get the existing realization.
+  - [realize](#pylightnix.core.realize) to get new realization
+  """
   pass
 
 class RRef(str):
@@ -42,10 +52,16 @@ class RRef(str):
   - `<HashPart0>` is calculated over particular realization of derivation.
   - `<HashPart1>-<Name>` form valid `DRef` which produced this realizaion.
 
-  Realization references describe realization objects in pylightnix filesystem
+  Realization reference describes realization object in pylightnix filesystem
   storage.  That means, `$PYLIGHTNIX_STORE/<HashPart1>-<Name>/<HashPart0>`
   should exist and should be a directory containing `closure.json` file and
-  various *build artifacts* """
+  various *build artifacts*
+
+  Realization references are results of successful *realization*. See
+  [realize](#pylightnix.core.realize).
+
+  Realization references may be dereferenced to system paths to *build
+  artifacts* by calling [store_rref2path](#pylightnix.core.store_rref2path). """
   pass
 
 class Name(str):
@@ -67,22 +83,33 @@ class Config:
   """ `Config` is a JSON-serializable dictionary. It takes the place of soucres
   which specifies how should we realize a derivation.
 
-  `Config` should match the requirements of `assert_valid_config`. Tupically,
-  it's __dict__ should contain either simple Python types (strings, bool, ints,
-  floats), lists or dicts. In particular, no tuples, no `np.float32` and no
-  functions are allowed. """
+  `Config` should match the requirements of `assert_valid_config`. Typically,
+  it's `__dict__` should contain either simple Python types (strings, string
+  aliases including [DRefs](#pylightnix.types.DRef), bools, ints, floats), lists
+  or dicts. In particular, no tuples, no `np.float32` and no functions are
+  allowed.
+
+  Use [mkconfig](#pylightnix.core.mkconfig) to create new Config objects. """
   def __init__(self, d:dict):
     self.__dict__=deepcopy(d)
 
 class ConfigAttrs(dict):
-  """ `ConfigAttrs` is a helper object for read-only access of dict fields as
-  attributes """
+  """ `ConfigAttrs` is a helper object for providing a read-only access to
+  [Config](#pylightnix.types.Config) fields as to Python object attributes """
   __getattr__ = dict.__getitem__ # type:ignore
 
 
 Closure=Dict[DRef,RRef]
 
-#: `Build` object is used to track the process of realization.
+#: `Build` objects track the process of [realization](#pylightnix.core.realize).
+#: As seen from signature, they store the timeprefix, the Closure, and the output
+#: path. Output path contains the path to existing temporary folder into which
+#: user should put various *build artifacts*.
+#:
+#: User may access build-time objects by calling:
+#: - [build_config](#pylightnix.core.build_config)
+#: - [build_deref](#pylightnix.core.build_deref)
+#: - [build_outpath](#pylightnix.core.build_outpath)
 Build = NamedTuple('Build', [('config',Config), ('closure',Closure), ('timeprefix',str), ('outpath',Path)])
 
 Instantiator = Callable[[],Config]

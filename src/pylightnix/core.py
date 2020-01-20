@@ -1,7 +1,7 @@
 from pylightnix.imports import (
     sha256, deepcopy, isdir, makedirs, join, json_dump, json_load, json_dumps,
     json_loads, isfile, relpath, listdir, rmtree, mkdtemp, replace, environ,
-    split, re_match, ENOTEMPTY )
+    split, re_match, ENOTEMPTY, get_ident, contextmanager )
 from pylightnix.utils import (
     dirhash, assert_serializable, assert_valid_dict, dicthash, scanref_dict,
     scanref_list, forcelink, timestring, datahash, slugify, splitpath,
@@ -16,22 +16,22 @@ from pylightnix.types import (
 #: Tracks the version of pylightnix storage
 PYLIGHTNIX_STORE_VERSION = 1
 
-#: `PYLIGHTNIX_ROOT` configures the root folder of pylightnix shared data folder.
+#: `PYLIGHTNIX_ROOT` contains the path to the root of pylightnix shared data folder.
 #:
-#: Default is `~/_pylightnix` / `/var/run/_pylightnix`.
-#: Set `PYLIGHTNIX_ROOT` shell variable to overwrite.
+#: Default is `~/_pylightnix` or `/var/run/_pylightnix` if no `$HOME` is available.
+#: Setting `PYLIGHTNIX_ROOT` environment variable overwrites the defaults.
 PYLIGHTNIX_ROOT = environ.get('PYLIGHTNIX_ROOT', join(environ.get('HOME','/var/run'),'_pylightnix'))
 
-# PYLIGHTNIX_LOGDIR = environ.get('PYLIGHTNIX_LOGDIR', join(PYLIGHTNIX_ROOT,'log'))
 
-#: `PYLIGHTNIX_TMP` sets the location for temporary files and folders
-#: Set `PYLIGHTNIX_TMP` shell variable to overwrite the default location.
+#: `PYLIGHTNIX_TMP` contains the path to the root of temporary folders.
+#: Setting `PYLIGHTNIX_TMP` environment variable overwrites the default value of
+#: `$PYLIGHTNIX_ROOT/tmp`.
 PYLIGHTNIX_TMP = environ.get('PYLIGHTNIX_TMP', join(PYLIGHTNIX_ROOT,'tmp'))
 
-#: `PYLIGHTNIX_STORE` sets the location of the main storage.
+#: `PYLIGHTNIX_STORE` contains the path to the main pylightnix store folder.
 #:
-#: By default, the store will be located in `$PYLIGHTNIX_ROOT/store-vXX` folder.
-#: Set `PYLIGHTNIX_STORE` shell variable to overwrite the default location.
+#: By default, the store is located in `$PYLIGHTNIX_ROOT/store-vXX` folder.
+#: Setting `PYLIGHTNIX_STORE` environment variable overwrites the defaults.
 PYLIGHTNIX_STORE = join(PYLIGHTNIX_ROOT, f'store-v{PYLIGHTNIX_STORE_VERSION}')
 
 #: Set the regular expression pattern for valid name characters.
@@ -176,10 +176,6 @@ def store_rref2path(r:RRef)->Path:
   (rhash,dhash,nm)=unrref(r)
   return Path(join(PYLIGHTNIX_STORE,dhash+'-'+nm,rhash))
 
-# def store_refpath2path(r:RefPath)->Path:
-#   assert_valid_refpath(r)
-#   return Path(join(store_dref2path(r[0]),*r[1:]))
-
 def mkrefpath(r:DRef, items:List[str]=[])->RefPath:
   """ Constructs a RefPath out of a reference `ref` and a path within the node """
   assert_valid_dref(r)
@@ -188,10 +184,6 @@ def mkrefpath(r:DRef, items:List[str]=[])->RefPath:
 def store_config(r:DRef)->Config:
   assert_valid_dref(r)
   return Config(readjson(join(store_dref2path(r),'config.json')))
-
-# def store_program(r:DRef)->Program:
-#   assert_valid_dref(r)
-#   return Program(readjson(join(store_dref2path(r),'program.json')))
 
 def store_closure(r:RRef)->Closure:
   assert_valid_rref(r)
@@ -202,8 +194,8 @@ def store_config_ro(r:DRef)->Any:
 
 
 def store_deps(refs:List[DRef])->List[DRef]:
-  """ Return a list of reference's dependencies, that is all the references
-  found in current ref's `Config` """
+  """ Return a list of reference's immediate dependencies, not including `refs`
+  themselves. """
   acc=set()
   for r in refs:
     acc.update(config_deps(store_config(r)))
@@ -211,8 +203,8 @@ def store_deps(refs:List[DRef])->List[DRef]:
 
 
 def store_deepdeps(roots:List[DRef])->List[DRef]:
-  """ Return an exhaustive list of dependencies of the `roots`. `roots`
-  themselves are also included. """
+  """ Return an exhaustive list of `roots`'s dependencies, not including `roots`
+  themselves. """
   frontier=set(store_deps(roots))
   processed=set()
   while frontier:
@@ -225,7 +217,7 @@ def store_deepdeps(roots:List[DRef])->List[DRef]:
 
 
 def store_link(ref:DRef, tgtpath:Path, name:str, withtime=True)->None:
-  """ Creates a link pointing to node `ref` into directory `tgtpath` """
+  """ Creates a symlink pointing to node `ref` into directory `tgtpath` """
   assert_valid_dref(ref)
   assert isdir(tgtpath), f"store_link(): `tgt` dir '{tgtpath}' doesn't exist"
   ts:Optional[str]
@@ -240,16 +232,24 @@ def store_link(ref:DRef, tgtpath:Path, name:str, withtime=True)->None:
             Path(join(tgtpath,f'{timeprefix}{name}')))
 
 def store_drefs()->Iterable[DRef]:
+  """ Iterates over all derivations of the storage """
   for dirname in listdir(PYLIGHTNIX_STORE):
     yield mkdref(HashPart(dirname[:32]), Name(dirname[32+1:]))
 
-
-def store_rrefs(dref:DRef)->Iterable[RRef]:
+def store_rrefs_(dref:DRef)->Iterable[RRef]:
   (dhash,nm)=undref(dref)
   drefpath=store_dref2path(dref)
   for f in listdir(drefpath):
     if isdir(join(drefpath,f)):
       yield mkrref(HashPart(f), dhash, nm)
+
+def store_rrefs(dref:DRef, closure:Closure)->Iterable[RRef]:
+  """ Iterates over ralization references of a derivation which fits into
+  particular [closure]($pylightnix.types.closure). """
+  for rref in store_rrefs_(dref):
+    closure2=store_closure(rref)
+    if closure_eq(closure,closure2):
+      yield rref
 
 def store_deref(rref:RRef, dref:DRef)->RRef:
   return store_closure(rref)[dref]
@@ -282,28 +282,37 @@ def mkbuild(dref:DRef, closure:Closure)->Build:
   return Build(c, closure, timeprefix, outpath)
 
 def build_config(b:Build)->Config:
+  """ Return the [Config](#pylightnix.types.Config) object of the derivation
+  being built. """
   return b.config
 
 def build_closure(b:Build)->Closure:
+  """ Return the [Closure](#pylightnix.types.Closure) object of the derivation
+  being built. """
   return b.closure
 
 def build_config_ro(m:Build)->Any:
   return config_ro(build_config(m))
 
 def build_outpath(m:Build)->Path:
+  """ Return the output path of the derivation being built. Output path is a
+  path to valid temporary folder where user may put various build artifacts.
+  Later this folder becomes a realization. """
   return m.outpath
 
 def build_name(b:Build)->Name:
+  """ Return the name of a derivation being built. """
   return Name(config_name(build_config(b)))
 
-def build_rref(b:Build, dref:DRef)->RRef:
+def build_deref(b:Build, dref:DRef)->RRef:
+  """ Converts """
   rref=b.closure.get(dref)
   assert rref is not None, f"Unable to deref {dref} while building {build_name(b)}"
   return rref
 
-def build_deref(b:Build, refpath:RefPath)->Path:
+def build_deref_path(b:Build, refpath:RefPath)->Path:
   assert_valid_refpath(refpath)
-  return Path(join(store_rref2path(build_rref(b, refpath[0])), *refpath[1:]))
+  return Path(join(store_rref2path(build_deref(b, refpath[0])), *refpath[1:]))
 
 def build_instantiate(c:Config)->DRef:
   assert_store_initialized()
@@ -321,7 +330,7 @@ def build_instantiate(c:Config)->DRef:
     replace(o, store_dref2path(dref))
   except OSError as err:
     if err.errno == ENOTEMPTY:
-      pass # Derivation already exists
+      pass # Exactly matching derivation already exists
   return dref
 
 def build_realize(dref:DRef, b:Build)->RRef:
@@ -335,7 +344,12 @@ def build_realize(dref:DRef, b:Build)->RRef:
 
   rhash=dirhash(o)
   rref=mkrref(trimhash(rhash),dhash,nm)
-  replace(o,store_rref2path(rref))
+
+  try:
+    replace(o,store_rref2path(rref))
+  except OSError as err:
+    if err.errno == ENOTEMPTY:
+      pass # Exactly matching realization already exists
   return rref
 
 
@@ -388,43 +402,83 @@ def manage(m:Manager, inst:Instantiator, matcher:Matcher, realizer:Realizer)->DR
   m.builders.append(Derivation(dref,matcher,realizer))
   return dref
 
+#! `PYLIGHTNIX_RECURSION` encodes the state of recursion manager, do not modify!
+PYLIGHTNIX_RECURSION:Dict[Any,List[str]]={}
+
+@contextmanager
+def recursion_manager(funcname:str):
+  global PYLIGHTNIX_RECURSION
+  if get_ident() not in PYLIGHTNIX_RECURSION:
+    PYLIGHTNIX_RECURSION[get_ident()]=[]
+  error_msg = (f"Recusrion manager alerted while in {funcname}. "
+               f"Contents of the recursion stack: {PYLIGHTNIX_RECURSION[get_ident()]}")
+  if funcname=='instantiate':
+    assert 'instantiate' not in PYLIGHTNIX_RECURSION[get_ident()], error_msg
+  elif funcname=='realize':
+    assert 'instantiate' not in PYLIGHTNIX_RECURSION[get_ident()], error_msg
+    assert 'realize' not in PYLIGHTNIX_RECURSION[get_ident()], error_msg
+  else:
+    assert False, f"recursion_manager doesn't contain '{funcname}' rules"
+  PYLIGHTNIX_RECURSION[get_ident()].append(funcname)
+  try:
+    yield ()
+  finally:
+    del PYLIGHTNIX_RECURSION[get_ident()][-1]
+
 
 def instantiate(stage:Stage)->List[Derivation]:
-  m=Manager()
-  stage(m)
-  visited:Set[DRef]=set()
-  for (dref,_,_) in m.builders:
-    assert dref not in visited, \
-      f"Multiple realizers for DRef {dref}"
-    visited.add(dref)
-  return m.builders
+  """ The `instantiate` takes the [Stage](#pylightnix.types.Stage) function and
+  produces corresponding derivation object. Resulting list contains derivation
+  of the current stage (in it's last element), preceeded by the derivations of
+  all it's dependencies.
+
+  Instantiation is the equivalent of type-checking in the typical compiler's
+  pipeline.
+
+  User-defined [Instantiators](pylightnix.types.Instantiator) calculate stage
+  configs during the instantiation. This calculations fall under certain
+  restrictions. In particular, it shouldn't start new instantiations or
+  realizations recursively, and it shouldn't access realization objects in the
+  storage.
+  """
+  with recursion_manager('instantiate'):
+    m=Manager()
+    stage(m)
+    visited:Set[DRef]=set()
+    for (dref,_,_) in m.builders:
+      assert dref not in visited, \
+        f"Multiple realizers for DRef {dref}"
+      visited.add(dref)
+    return m.builders
 
 
 def realize(stage:Stage, force_rebuild:List[DRef]=[])->RRef:
-  closure:Closure={}
-  rref:Optional[RRef]=None
-  force_rebuild_:Set[DRef]=set(force_rebuild)
-  for (dref,matcher,realizer) in instantiate(stage):
-    c=store_config(dref)
-    n=config_name(c)
-    if dref in force_rebuild_:
-      rref = None
-    else:
-      rref=matcher(dref,closure)
-    if not rref:
-      rreftmp=build_realize(dref,realizer(dref,closure))
-      rref=matcher(dref,closure)
-      assert rref is not None
-    closure=closure_add(closure,dref,rref)
-  assert rref is not None
-  return rref
+  """ `realize` builds the realization of the stage's derivation. Return value
+  is a [reference to particular realization](#pylightnix.types.RRef) which could
+  be used for read-only access of build artifacts. """
+  with recursion_manager('realize'):
+    closure:Closure={}
+    rref:Optional[RRef]=None
+    force_rebuild_:Set[DRef]=set(force_rebuild)
+    for (dref,matcher,realizer) in instantiate(stage):
+      c=store_config(dref)
+      n=config_name(c)
+      if dref in force_rebuild_:
+        rref = None
+      else:
+        rref=matcher(dref,closure)
+      if not rref:
+        rreftmp=build_realize(dref,realizer(dref,closure))
+        rref=matcher(dref,closure)
+        assert rref is not None
+      closure=closure_add(closure,dref,rref)
+    assert rref is not None
+    return rref
 
 def only(dref:DRef, closure:Closure)->Optional[RRef]:
   matching=[]
-  for rref in store_rrefs(dref):
-    closure2=store_closure(rref)
-    if closure_eq(closure,closure2):
-      matching.append(rref)
+  for rref in store_rrefs(dref, closure):
+    matching.append(rref)
   if len(matching)==0:
     return None
   elif len(matching)==1:
