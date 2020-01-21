@@ -7,3 +7,4 @@ _*
 *\.pyc
 tags
 result
+coverage.xml
