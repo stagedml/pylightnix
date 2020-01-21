@@ -1,6 +1,6 @@
 #!/bin/sh
 
-if ! which pydoc-markdown ; then
+if ! which pydoc-markdown >/dev/null 2>&1 ; then
   echo "pydoc-markdown not found. Please install it with"
   echo "> sudo -H pip3 install git+https://github.com/stagedml/pydoc-markdown.git@develop"
   exit 1

@@ -244,15 +244,23 @@ def store_rrefs_(dref:DRef)->Iterable[RRef]:
       yield mkrref(HashPart(f), dhash, nm)
 
 def store_rrefs(dref:DRef, closure:Closure)->Iterable[RRef]:
-  """ Iterates over ralization references of a derivation which fits into
-  particular [closure]($pylightnix.types.closure). """
+  """ `store_rrefs` iterates over those ralizations of a derivation `dref`,
+  that fit into particular [closure]($pylightnix.types.Closure). """
   for rref in store_rrefs_(dref):
     closure2=store_closure(rref)
     if closure_eq(closure,closure2):
       yield rref
 
 def store_deref(rref:RRef, dref:DRef)->RRef:
-  return store_closure(rref)[dref]
+  """ For any realization `rref` and it's dependency `dref`, `store_deref`
+  queryies the realization reference of this dependency.
+
+  See also [build_deref](#pylightnix.core.build_deref)"""
+  c = store_closure(rref)
+  assert dref in c, (
+      f"Realization {rref} doesn't declare {dref} among it's depencencies so we "
+      f"can't dereference it." )
+  return c[dref]
 
 def store_gc(refs_in_use:List[DRef])->List[DRef]:
   """ Take roots which are in use and should not be removed. Return roots which
@@ -305,10 +313,15 @@ def build_name(b:Build)->Name:
   return Name(config_name(build_config(b)))
 
 def build_deref(b:Build, dref:DRef)->RRef:
-  """`build_deref` converts one of node's dependency `dref` into a valid
-  [RRef](#pylightnix.types.RRef). The function is designed to be called during
-  [realization](#pylightnix.core.realize) of a node to access build
-  artifacts of it's dependencies."""
+  """ For any `[realization](#pylightnix.core.realize)` process described with
+  it's [b:Build](#pylightnix.types.Build) handler, `build_deref` queries a
+  realization of a dependency `dref`.
+
+  `build_deref` is designed to be called by
+  [Realizers](#pylightnix.types.Realizer), where the final `rref` is not yet
+  known.  In other cases, [store_deref](#pylightnix.types.store_deref) should be
+  used.
+  """
   rref=b.closure.get(dref)
   assert rref is not None, (
       f"Unable to deref {dref} while realizing {b.dref}. Make sure that first link "

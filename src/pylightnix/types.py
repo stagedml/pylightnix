@@ -71,18 +71,28 @@ class Name(str):
   """ `Name` is an alias for string. It is used in pylightnix to tell the
   typechecker that a given string contains name of a pylightnix storage object.
 
-  Names are restircted to only contain charaters matching `PYLIGHTNIX_NAMEPAT`.
+  Names are restircted to contain charaters matching `PYLIGHTNIX_NAMEPAT`.
 
   See also `mkname` """
   pass
 
 class RefPath(list):
   """ RefPath is an alias for Python list (of strings). The first item of
-  `RefPath` is a [DRef](#pylightnix.types.DRef). Other elements encode a
-  filepath, relative to some unspecified realization of this derivation.
+  `RefPath` is a [derivation reference](#pylightnix.types.DRef). Other elements
+  represent path (names of folders and optionally a filename). The path is
+  relative to unspecified realization of this derivation.
 
-  RefPath may be dereferenced into system path with
-  [build_deref_path](#pylightnix.core.build_deref_path)
+  To convert `RefPath` into [system path](#pylightnix.types.Path), one generally
+  have to perform the following elementary actions:
+  1. Get the reference to realization of current derivation, see
+     [store_deref](#pylightnix.core.store_deref) or
+     [build_deref](#pylightnix.core.build_deref).
+  2. Convert the realization reference into system path with
+     [store_rref2path](#pylightnix.core.store_rref2path)
+  3. Join the system path with 'relative' part of RRefPath
+
+  The above algorithm is implemented as
+  [build_deref_path](#pylightnix.core.build_deref_path) helper function
   """
   pass
 

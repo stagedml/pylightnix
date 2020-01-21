@@ -171,7 +171,7 @@ Valid realization references may be dereferenced down to system paths of
 `Name` is an alias for string. It is used in pylightnix to tell the
 typechecker that a given string contains name of a pylightnix storage object.
 
-Names are restircted to only contain charaters matching `PYLIGHTNIX_NAMEPAT`.
+Names are restircted to contain charaters matching `PYLIGHTNIX_NAMEPAT`.
 
 See also `mkname`
 
@@ -179,11 +179,21 @@ See also `mkname`
 ## `RefPath` Objects
 
 RefPath is an alias for Python list (of strings). The first item of
-`RefPath` is a [DRef](#pylightnix.types.DRef). Other elements encode a
-filepath, relative to some unspecified realization of this derivation.
+`RefPath` is a [derivation reference](#pylightnix.types.DRef). Other elements
+represent path (names of folders and optionally a filename). The path is
+relative to unspecified realization of this derivation.
 
-RefPath may be dereferenced into system path with
-[build_deref_path](#pylightnix.core.build_deref_path)
+To convert `RefPath` into [system path](#pylightnix.types.Path), one generally
+have to perform the following elementary actions:
+1. Get the reference to realization of current derivation, see
+   [store_deref](#pylightnix.core.store_deref) or
+   [build_deref](#pylightnix.core.build_deref).
+2. Convert the realization reference into system path with
+   [store_rref2path](#pylightnix.core.store_rref2path)
+3. Join the system path with 'relative' part of RRefPath
+
+The above algorithm is implemented as
+[build_deref_path](#pylightnix.core.build_deref_path) helper function
 
 <a name="pylightnix.types.Config"></a>
 ## `Config` Objects
@@ -661,8 +671,8 @@ def store_rrefs_(dref: DRef) -> Iterable[RRef]
 def store_rrefs(dref: DRef, closure: Closure) -> Iterable[RRef]
 ```
 
-Iterates over ralization references of a derivation which fits into
-particular [closure]($pylightnix.types.closure).
+`store_rrefs` iterates over those ralizations of a derivation `dref`,
+that fit into particular [closure]($pylightnix.types.Closure).
 
 <a name="pylightnix.core.store_deref"></a>
 ## `store_deref()`
@@ -671,6 +681,10 @@ particular [closure]($pylightnix.types.closure).
 def store_deref(rref: RRef, dref: DRef) -> RRef
 ```
 
+For any realization `rref` and it's dependency `dref`, `store_deref`
+queryies the realization reference of this dependency.
+
+See also [build_deref](#pylightnix.core.build_deref)
 
 <a name="pylightnix.core.store_gc"></a>
 ## `store_gc()`
@@ -746,10 +760,14 @@ Return the name of a derivation being built.
 def build_deref(b: Build, dref: DRef) -> RRef
 ```
 
-`build_deref` converts one of node's dependency `dref` into a valid
-[RRef](#pylightnix.types.RRef). The function is designed to be called during
-[realization](#pylightnix.core.realize) of a node to access build
-artifacts of it's dependencies.
+For any `[realization](#pylightnix.core.realize)` process described with
+it's [b:Build](#pylightnix.types.Build) handler, `build_deref` queries a
+realization of a dependency `dref`.
+
+`build_deref` is designed to be called by
+[Realizers](#pylightnix.types.Realizer), where the final `rref` is not yet
+known.  In other cases, [store_deref](#pylightnix.types.store_deref) should be
+used.
 
 <a name="pylightnix.core.build_deref_path"></a>
 ## `build_deref_path()`
