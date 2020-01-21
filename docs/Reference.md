@@ -760,7 +760,7 @@ Return the name of a derivation being built.
 def build_deref(b: Build, dref: DRef) -> RRef
 ```
 
-For any `[realization](#pylightnix.core.realize)` process described with
+For any [realization](#pylightnix.core.realize) process described with
 it's [b:Build](#pylightnix.types.Build) handler, `build_deref` queries a
 realization of a dependency `dref`.
 

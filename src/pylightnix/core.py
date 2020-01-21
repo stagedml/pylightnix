@@ -313,7 +313,7 @@ def build_name(b:Build)->Name:
   return Name(config_name(build_config(b)))
 
 def build_deref(b:Build, dref:DRef)->RRef:
-  """ For any `[realization](#pylightnix.core.realize)` process described with
+  """ For any [realization](#pylightnix.core.realize) process described with
   it's [b:Build](#pylightnix.types.Build) handler, `build_deref` queries a
   realization of a dependency `dref`.
 
