@@ -29,6 +29,29 @@ Implementation:
   synchronization are supported. Also, we didn't check it on any operating systems
   besides Linux.
 
+## Build from source
+
+1. Clone the repo
+   ```
+   $ git clone https://github.com/stagedml/pylightnix
+   $ cd pylightnix
+   ```
+2. Either
+   - (a) Setup `PYTHONPATH` to point to the sources.
+     `export PYTHONPATH="\`pwd\`/src:$PYTHONPATH"`
+     Now you could import pylightnix from your application.
+
+   - (b) Build and install pylightnix wheel.
+     ```
+     $ rm -rf build dist || true
+     $ python3 setup.py sdist bdist_wheel
+     $ sudo -H pip3 install --force dist/*whl
+     ```
+3. Optionally, run the tests
+   ```
+   $ pytest
+   ```
+
 ## API Reference
 
 [Link](./docs/Reference.md)
