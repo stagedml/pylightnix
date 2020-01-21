@@ -4,9 +4,10 @@ from pylightnix import (
     store_gc, assert_valid_hash, assert_valid_config, Manager, mkclosure,
     build_realize, store_rrefs, mkdref, mkrref, unrref, undref, realize,
     rref2dref, store_config, mkconfig, mkbuild, Build, Closure, build_outpath,
-    only, manage, store_deref, store_rref2path, store_rrefs_ )
+    only, manage, store_deref, store_rref2path, store_rrefs_, config_ro,
+    mksymlink, store_config_ro, build_deref, build_deref_path, mkrefpath)
 
-from tests.imports import ( given, Any, Callable, join, Optional )
+from tests.imports import ( given, Any, Callable, join, Optional, islink )
 
 from tests.generators import (
     rrefs, drefs, configs, dicts )
@@ -21,11 +22,11 @@ def mktestnode_nondetermenistic(m:Manager, sources:dict, nondet:Callable[[],int]
   different values from build to build """
   def _instantiate()->Config:
     return mkconfig(sources)
-  def _realize(dref:DRef, closure:Closure)->Build:
+  def _realize(dref:DRef, closure:Closure)->Path:
     b=mkbuild(dref, closure)
     with open(join(build_outpath(b),'nondet'),'w') as f:
       f.write(str(nondet()))
-    return b
+    return build_outpath(b)
   def _match(dref:DRef, closure:Closure)->Optional[RRef]:
     max_i=-1
     max_rref=None
@@ -55,7 +56,7 @@ def test_realize(d)->None:
   assert len(list(store_rrefs(dref, mkclosure()))) == 0
   rref=m.builders[-1].matcher(dref, mkclosure())
   assert rref is None
-  rref=build_realize(dref, m.builders[-1].realizer(dref, mkclosure()))
+  rref=build_realize(dref, mkclosure(), m.builders[-1].realizer(dref, mkclosure()))
   assert len(list(store_rrefs(dref, mkclosure()))) == 1
   assert_valid_rref(rref)
   rref2=m.builders[-1].matcher(dref, mkclosure())
@@ -148,7 +149,7 @@ def test_non_determenistic()->None:
   assert n2_rref1 != n2_rref2
 
 
-def test_no_multi_realizeirs()->None:
+def test_no_multi_realizers()->None:
   d={'a':1}
   setup_storage('test_no_multi_realizers')
 
@@ -193,4 +194,51 @@ def test_no_recursive_instantiate()->None:
     assert False, f"Should fail, but got {rref}"
   except AssertionError:
     pass
+
+def test_config_ro():
+  d={'a':1,'b':33}
+  c=mkconfig(d)
+  cro=config_ro(c)
+  for k in d.keys():
+    assert getattr(cro,k) == d[k]
+
+
+def test_mksymlink():
+  setup_storage('test_mksymlink')
+  tp=setup_testpath('test_mksymlink')
+
+  def _setting(m:Manager)->DRef:
+    return mktestnode(m, {'a':'1'})
+
+  rref=realize(_setting)
+  s=mksymlink(rref, tgtpath=tp, name='thelink')
+  assert islink(s)
+  assert tp in s
+
+def test_build_deref():
+  setup_storage('test_build_deref')
+
+  def _depuser(m:Manager, sources:dict)->DRef:
+    def _instantiate()->Config:
+      return mkconfig(sources)
+    def _realize(dref:DRef, closure:Closure)->Path:
+      b = mkbuild(dref, closure)
+      o = build_outpath(b)
+      c = store_config_ro(dref)
+      with open(join(o,'proof_papa'),'w') as f:
+        f.write(str(build_deref(b, c.papa)))
+      with open(join(o,'proof_maman'),'w') as d:
+        with open(build_deref_path(b, c.maman),'r') as s:
+          d.write(s.read())
+      return o
+    return manage(m, _instantiate, only, _realize)
+
+  def _setting(m:Manager)->DRef:
+    n1 = mktestnode_nondetermenistic(m, {'a':'1'}, lambda : 42)
+    n2 = mktestnode(m, {'b':'2'})
+    n3 = _depuser(m, {'maman':mkrefpath(n1,['nondet']), 'papa':n2})
+    return n3
+
+  rref = realize(_setting)
+  assert_valid_rref(rref)
 

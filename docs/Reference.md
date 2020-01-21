@@ -55,7 +55,6 @@
     * [store\_config\_ro](#pylightnix.core.store_config_ro)
     * [store\_deps](#pylightnix.core.store_deps)
     * [store\_deepdeps](#pylightnix.core.store_deepdeps)
-    * [store\_link](#pylightnix.core.store_link)
     * [store\_drefs](#pylightnix.core.store_drefs)
     * [store\_rrefs\_](#pylightnix.core.store_rrefs_)
     * [store\_rrefs](#pylightnix.core.store_rrefs)
@@ -81,6 +80,7 @@
     * [instantiate](#pylightnix.core.instantiate)
     * [realize](#pylightnix.core.realize)
     * [only](#pylightnix.core.only)
+    * [mksymlink](#pylightnix.core.mksymlink)
   * [pylightnix.stages](#pylightnix.stages)
   * [pylightnix.stages.trivial](#pylightnix.stages.trivial)
     * [mknode](#pylightnix.stages.trivial.mknode)
@@ -149,7 +149,7 @@ derivation.
 The format of *realization reference* is `<HashPart0>-<HashPart1>-<Name>`,
 where:
 - `<HashPart0>` is calculated over realization's
-  [Closure](#pylightnix.type.closure) and build artifacts.
+  [Closure](#pylightnix.types.Closure) and build artifacts.
 - `<HashPart1>-<Name>` forms valid [DRef](#pylightnix.types.DRef) which
   this realizaion was [realized](#pylightnix.core.realize) from.
 
@@ -288,7 +288,7 @@ Matcher = Callable[[DRef, Closure],Optional[RRef]]
 ## `Realizer`
 
 ```python
-Realizer = Callable[[DRef,Closure],Build]
+Realizer = Callable[[DRef,Closure],Path]
 ```
 
 
@@ -638,15 +638,6 @@ def store_deepdeps(roots: List[DRef]) -> List[DRef]
 Return an exhaustive list of `roots`'s dependencies, not including `roots`
 themselves.
 
-<a name="pylightnix.core.store_link"></a>
-## `store_link()`
-
-```python
-def store_link(ref: DRef, tgtpath: Path, name: str, withtime=True) -> None
-```
-
-Creates a symlink pointing to node `ref` into directory `tgtpath`
-
 <a name="pylightnix.core.store_drefs"></a>
 ## `store_drefs()`
 
@@ -766,7 +757,7 @@ realization of a dependency `dref`.
 
 `build_deref` is designed to be called by
 [Realizers](#pylightnix.types.Realizer), where the final `rref` is not yet
-known.  In other cases, [store_deref](#pylightnix.types.store_deref) should be
+known.  In other cases, [store_deref](#pylightnix.core.store_deref) should be
 used.
 
 <a name="pylightnix.core.build_deref_path"></a>
@@ -789,7 +780,7 @@ def build_instantiate(c: Config) -> DRef
 ## `build_realize()`
 
 ```python
-def build_realize(dref: DRef, b: Build) -> RRef
+def build_realize(dref: DRef, l: Closure, o: Path) -> RRef
 ```
 
 
@@ -890,6 +881,17 @@ artifacts.
 def only(dref: DRef, closure: Closure) -> Optional[RRef]
 ```
 
+
+<a name="pylightnix.core.mksymlink"></a>
+## `mksymlink()`
+
+```python
+def mksymlink(rref: RRef, tgtpath: Path, name: str, withtime=True) -> Path
+```
+
+Create a symlink pointing to realization `rref`. Other arguments define
+symlink name and location. Informally,
+`{tgtpath}/{timeprefix}{name} --> $PYLIGHTNIX_STORE/{rref2dref(rref)}/{rref}`
 
 <a name="pylightnix.stages"></a>
 # `pylightnix.stages`

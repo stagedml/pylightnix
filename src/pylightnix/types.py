@@ -50,7 +50,7 @@ class RRef(str):
   The format of *realization reference* is `<HashPart0>-<HashPart1>-<Name>`,
   where:
   - `<HashPart0>` is calculated over realization's
-    [Closure](#pylightnix.type.closure) and build artifacts.
+    [Closure](#pylightnix.types.Closure) and build artifacts.
   - `<HashPart1>-<Name>` forms valid [DRef](#pylightnix.types.DRef) which
     this realizaion was [realized](#pylightnix.core.realize) from.
 
@@ -141,7 +141,7 @@ Instantiator = Callable[[],Config]
 
 Matcher = Callable[[DRef, Closure],Optional[RRef]]
 
-Realizer = Callable[[DRef,Closure],Build]
+Realizer = Callable[[DRef,Closure],Path]
 
 Derivation = NamedTuple('Derivation', [('dref',DRef), ('matcher',Matcher), ('realizer',Realizer) ])
 

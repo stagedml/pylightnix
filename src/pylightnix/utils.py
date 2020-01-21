@@ -38,18 +38,6 @@ def mklogdir(
     mkdir(logpath+'/'+sd)
   return Path(logpath)
 
-def splitpath(p:Path)->List[str]:
-  """ Return folders of path as a list """
-  path=str(p)
-  parts=[]
-  while True:
-    path,fname=split(path)
-    if len(fname)>0:
-      parts.append(fname)
-    if len(path)==0 or path[-1]=='/':
-      break
-  return list(reversed(parts))
-
 def forcelink(src:Path,dst:Path,**kwargs)->None:
   """ Create a `dst` symlink poinitnig to `src`. Overwrites existing files, if any """
   makedirs(dirname(dst),exist_ok=True)

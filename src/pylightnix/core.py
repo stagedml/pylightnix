@@ -4,7 +4,7 @@ from pylightnix.imports import (
     split, re_match, ENOTEMPTY, get_ident, contextmanager )
 from pylightnix.utils import (
     dirhash, assert_serializable, assert_valid_dict, dicthash, scanref_dict,
-    scanref_list, forcelink, timestring, datahash, slugify, splitpath,
+    scanref_list, forcelink, timestring, datahash, slugify,
     readjson, tryread, encode )
 from pylightnix.types import (
     Dict, List, Any, Tuple, Union, Optional, Iterable, IO, Path, Hash, DRef,
@@ -201,7 +201,6 @@ def store_deps(refs:List[DRef])->List[DRef]:
     acc.update(config_deps(store_config(r)))
   return list(acc)
 
-
 def store_deepdeps(roots:List[DRef])->List[DRef]:
   """ Return an exhaustive list of `roots`'s dependencies, not including `roots`
   themselves. """
@@ -214,22 +213,6 @@ def store_deepdeps(roots:List[DRef])->List[DRef]:
       if not dep in processed:
         frontier.add(dep)
   return list(processed)
-
-
-def store_link(ref:DRef, tgtpath:Path, name:str, withtime=True)->None:
-  """ Creates a symlink pointing to node `ref` into directory `tgtpath` """
-  assert_valid_dref(ref)
-  assert isdir(tgtpath), f"store_link(): `tgt` dir '{tgtpath}' doesn't exist"
-  ts:Optional[str]
-  if withtime:
-    ts=tryread(Path(join(store_dref2path(ref),'_timestamp_.txt')))
-    if ts is None:
-      print(f"Warning: no timestamp for {ref}, probably because of old version of Pylightnix")
-  else:
-    ts=None
-  timeprefix=f'{ts}_' if ts is not None else ''
-  forcelink(Path(relpath(store_dref2path(ref), tgtpath)),
-            Path(join(tgtpath,f'{timeprefix}{name}')))
 
 def store_drefs()->Iterable[DRef]:
   """ Iterates over all derivations of the storage """
@@ -319,7 +302,7 @@ def build_deref(b:Build, dref:DRef)->RRef:
 
   `build_deref` is designed to be called by
   [Realizers](#pylightnix.types.Realizer), where the final `rref` is not yet
-  known.  In other cases, [store_deref](#pylightnix.types.store_deref) should be
+  known.  In other cases, [store_deref](#pylightnix.core.store_deref) should be
   used.
   """
   rref=b.closure.get(dref)
@@ -352,10 +335,8 @@ def build_instantiate(c:Config)->DRef:
       pass # Exactly matching derivation already exists
   return dref
 
-def build_realize(dref:DRef, b:Build)->RRef:
-  o=build_outpath(b)
-  c=build_config(b)
-  l=build_closure(b)
+def build_realize(dref:DRef, l:Closure, o:Path)->RRef:
+  c=store_config(dref)
   (dhash,nm)=undref(dref)
 
   assert not isfile(join(o,'closure.json')), (
@@ -468,8 +449,9 @@ def instantiate(stage:Stage)->List[Derivation]:
     stage(m)
     visited:Set[DRef]=set()
     for (dref,_,_) in m.builders:
-      assert dref not in visited, \
-        f"Multiple realizers for DRef {dref}"
+      assert dref not in visited, (
+          f"Multiple realizers for DRef are not allowed. Attempted to register "
+          f"second realizer for {dref} with config:\n{config_dict(store_config(dref))}" )
       visited.add(dref)
     return m.builders
 
@@ -490,7 +472,7 @@ def realize(stage:Stage, force_rebuild:List[DRef]=[])->RRef:
       else:
         rref=matcher(dref,closure)
       if not rref:
-        rreftmp=build_realize(dref,realizer(dref,closure))
+        rreftmp=build_realize(dref,closure,realizer(dref,closure))
         rref=matcher(dref,closure)
         assert rref is not None
       closure=closure_add(closure,dref,rref)
@@ -510,5 +492,21 @@ def only(dref:DRef, closure:Closure)->Optional[RRef]:
         f"only() assumes that {dref} has 0 or 1 realizations under"
         f"closure {closure}, but in fact it has many:\n{matching}" )
 
+
+def mksymlink(rref:RRef, tgtpath:Path, name:str, withtime=True)->Path:
+  """ Create a symlink pointing to realization `rref`. Other arguments define
+  symlink name and location. Informally,
+  `{tgtpath}/{timeprefix}{name} --> $PYLIGHTNIX_STORE/{rref2dref(rref)}/{rref}` """
+  assert_valid_rref(rref)
+  assert isdir(tgtpath), f"store_link(): `tgt` dir '{tgtpath}' doesn't exist"
+  ts:Optional[str]
+  if withtime:
+    ts=tryread(Path(join(store_rref2path(rref),'_timestamp_.txt')))
+  else:
+    ts=None
+  timeprefix=f'{ts}_' if ts is not None else ''
+  symlink=Path(join(tgtpath,f'{timeprefix}{name}'))
+  forcelink(Path(relpath(store_rref2path(rref), tgtpath)), symlink)
+  return symlink
 
 
