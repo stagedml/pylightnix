@@ -1,3 +1,6 @@
+![coverage](https://codecov.io/gh/stagedml/pylightnix/branch/master/graph/badge.svg)
+
+
 # Pylightnix
 
 Pylightnix is a Python-based DSL library for manipulating
@@ -39,7 +42,7 @@ Implementation:
 2. Either
    - (a) Setup `PYTHONPATH` to point to the sources.
      ```
-     export PYTHONPATH="\`pwd\`/src:$PYTHONPATH"
+     export PYTHONPATH="`pwd`/src:$PYTHONPATH"
      ```
      Now you could import pylightnix from your application.
 
