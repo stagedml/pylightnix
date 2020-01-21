@@ -1,3 +1,9 @@
 #!/bin/sh
 
-codecov -t 92a68aa7-1e57-4031-b0d1-18cd6262cf15
+if ! test -f '.codecovrc' ; then
+  echo "Need .codecovrc file containing a token."
+  echo "Go and get it at https://codecov.io/gh/stagedml/pylightnix/settings" >&2
+  exit 1
+fi
+
+codecov -t `cat .codecovrc`
