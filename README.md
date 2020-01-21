@@ -32,3 +32,8 @@ Implementation:
 ## API Reference
 
 [Link](./docs/Reference.md)
+
+
+## Examples
+
+Sorry, no examples to show, besides [tests](./tests).
