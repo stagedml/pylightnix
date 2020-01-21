@@ -1,16 +1,16 @@
 from pylightnix.imports import (
     sha256, deepcopy, isdir, makedirs, join, json_dump, json_load, json_dumps,
     json_loads, isfile, relpath, listdir, rmtree, mkdtemp, replace, environ,
-    split, re_match, ENOTEMPTY, get_ident, contextmanager )
+    split, re_match, ENOTEMPTY, get_ident, contextmanager, OrderedDict )
 from pylightnix.utils import (
     dirhash, assert_serializable, assert_valid_dict, dicthash, scanref_dict,
     scanref_list, forcelink, timestring, datahash, slugify,
     readjson, tryread, encode )
 from pylightnix.types import (
     Dict, List, Any, Tuple, Union, Optional, Iterable, IO, Path, Hash, DRef,
-    RRef, RefPath, HashPart, Callable, Closure, Name, NamedTuple, Build,
+    RRef, RefPath, HashPart, Callable, Context, Name, NamedTuple, Build,
     Config, ConfigAttrs, Derivation, Stage, Manager, Instantiator, Matcher,
-    Realizer, Set )
+    Realizer, Set, Closure )
 
 #: *Do not change!*
 #: Tracks the version of pylightnix storage
@@ -185,9 +185,9 @@ def store_config(r:DRef)->Config:
   assert_valid_dref(r)
   return Config(readjson(join(store_dref2path(r),'config.json')))
 
-def store_closure(r:RRef)->Closure:
+def store_context(r:RRef)->Context:
   assert_valid_rref(r)
-  return readjson(join(store_rref2path(r),'closure.json'))
+  return readjson(join(store_rref2path(r),'context.json'))
 
 def store_config_ro(r:DRef)->Any:
   return config_ro(store_config(r))
@@ -201,7 +201,7 @@ def store_deps(refs:List[DRef])->List[DRef]:
     acc.update(config_deps(store_config(r)))
   return list(acc)
 
-def store_deepdeps(roots:List[DRef])->List[DRef]:
+def store_deepdeps(roots:List[DRef])->Set[DRef]:
   """ Return an exhaustive list of `roots`'s dependencies, not including `roots`
   themselves. """
   frontier=set(store_deps(roots))
@@ -212,7 +212,7 @@ def store_deepdeps(roots:List[DRef])->List[DRef]:
     for dep in store_deps([ref]):
       if not dep in processed:
         frontier.add(dep)
-  return list(processed)
+  return processed
 
 def store_drefs()->Iterable[DRef]:
   """ Iterates over all derivations of the storage """
@@ -226,12 +226,12 @@ def store_rrefs_(dref:DRef)->Iterable[RRef]:
     if isdir(join(drefpath,f)):
       yield mkrref(HashPart(f), dhash, nm)
 
-def store_rrefs(dref:DRef, closure:Closure)->Iterable[RRef]:
+def store_rrefs(dref:DRef, context:Context)->Iterable[RRef]:
   """ `store_rrefs` iterates over those ralizations of a derivation `dref`,
-  that fit into particular [closure]($pylightnix.types.Closure). """
+  that fit into particular [context]($pylightnix.types.Context). """
   for rref in store_rrefs_(dref):
-    closure2=store_closure(rref)
-    if closure_eq(closure,closure2):
+    context2=store_context(rref)
+    if context_eq(context,context2):
       yield rref
 
 def store_deref(rref:RRef, dref:DRef)->RRef:
@@ -239,7 +239,7 @@ def store_deref(rref:RRef, dref:DRef)->RRef:
   queryies the realization reference of this dependency.
 
   See also [build_deref](#pylightnix.core.build_deref)"""
-  c = store_closure(rref)
+  c = store_context(rref)
   assert dref in c, (
       f"Realization {rref} doesn't declare {dref} among it's depencencies so we "
       f"can't dereference it." )
@@ -265,22 +265,22 @@ def store_gc(refs_in_use:List[DRef])->List[DRef]:
 # |____/ \__,_|_|_|\__,_|
 
 
-def mkbuild(dref:DRef, closure:Closure)->Build:
+def mkbuild(dref:DRef, context:Context)->Build:
   c=store_config(dref)
   assert_valid_config(c)
   timeprefix=timestring()
   outpath=Path(mkdtemp(prefix=f'{timeprefix}_{config_hash(c)[:8]}_', dir=PYLIGHTNIX_TMP))
-  return Build(dref, closure, timeprefix, outpath)
+  return Build(dref, context, timeprefix, outpath)
 
 def build_config(b:Build)->Config:
   """ Return the [Config](#pylightnix.types.Config) object of the realization
   being built. """
   return store_config(b.dref)
 
-def build_closure(b:Build)->Closure:
-  """ Return the [Closure](#pylightnix.types.Closure) object of the realization
+def build_context(b:Build)->Context:
+  """ Return the [Context](#pylightnix.types.Context) object of the realization
   being built. """
-  return b.closure
+  return b.context
 
 def build_config_ro(m:Build)->Any:
   return config_ro(build_config(m))
@@ -305,7 +305,7 @@ def build_deref(b:Build, dref:DRef)->RRef:
   known.  In other cases, [store_deref](#pylightnix.core.store_deref) should be
   used.
   """
-  rref=b.closure.get(dref)
+  rref=b.context.get(dref)
   assert rref is not None, (
       f"Unable to deref {dref} while realizing {b.dref}. Make sure that first link "
       f"is listed in the configurations of the second link or one of it's "
@@ -333,17 +333,19 @@ def build_instantiate(c:Config)->DRef:
   except OSError as err:
     if err.errno == ENOTEMPTY:
       pass # Exactly matching derivation already exists
+    else:
+      raise
   return dref
 
-def build_realize(dref:DRef, l:Closure, o:Path)->RRef:
+def build_realize(dref:DRef, l:Context, o:Path)->RRef:
   c=store_config(dref)
   (dhash,nm)=undref(dref)
 
-  assert not isfile(join(o,'closure.json')), (
-     f"While realizing {dref}: one of build artifacts has name 'closure.json'. "
+  assert not isfile(join(o,'context.json')), (
+     f"While realizing {dref}: one of build artifacts has name 'context.json'. "
      f"This name is reserved, please rename the artifact.")
-  with open(join(o,'closure.json'), 'w') as f:
-    f.write(closure_serialize(l))
+  with open(join(o,'context.json'), 'w') as f:
+    f.write(context_serialize(l))
 
   rhash=dirhash(o)
   rref=mkrref(trimhash(rhash),dhash,nm)
@@ -353,6 +355,8 @@ def build_realize(dref:DRef, l:Closure, o:Path)->RRef:
   except OSError as err:
     if err.errno == ENOTEMPTY:
       pass # Exactly matching realization already exists
+    else:
+      raise
   return rref
 
 
@@ -363,33 +367,33 @@ def build_realize(dref:DRef, l:Closure, o:Path)->RRef:
 #  \____|_|\___/|___/\__,_|_|  \___|
 
 
-def mkclosure()->Closure:
+def mkcontext()->Context:
   return {}
 
-def assert_valid_closure(c:Closure)->None:
+def assert_valid_context(c:Context)->None:
   assert_serializable(c)
   for dref,rref in c.items():
     assert_valid_dref(dref)
     assert_valid_rref(rref)
 
 
-def closure_eq(a:Closure,b:Closure)->bool:
+def context_eq(a:Context,b:Context)->bool:
   return json_dumps(a)==json_dumps(b)
 
-def closure_add(closure:Closure, dref:DRef, rref:RRef)->Closure:
-  rref2=closure.get(dref)
+def context_add(context:Context, dref:DRef, rref:RRef)->Context:
+  rref2=context.get(dref)
   if rref2:
-    assert rref==rref2, \
-      ( f"Attempting to re-introduce DRef {dref} to closure with "
+    assert rref==rref2, (
+        f"Attempting to re-introduce DRef {dref} to context with "
         f"different realization.\n"
         f" * Old realization: {rref2}\n"
         f" * New realization: {rref}\n" )
   else:
-    closure[dref]=rref
-  return closure
+    context[dref]=rref
+  return context
 
-def closure_serialize(c:Closure)->str:
-  assert_valid_closure(c)
+def context_serialize(c:Context)->str:
+  assert_valid_context(c)
   return json_dumps(c, indent=4)
 
 #  _____           _                _
@@ -399,8 +403,7 @@ def closure_serialize(c:Closure)->str:
 #   |_|\___/| .__/|_|\___| \_/ \___|_|
 #           |_|
 
-
-def manage(m:Manager, inst:Instantiator, matcher:Matcher, realizer:Realizer)->DRef:
+def mkdrv(m:Manager, inst:Instantiator, matcher:Matcher, realizer:Realizer)->DRef:
   dref=build_instantiate(inst())
   m.builders.append(Derivation(dref,matcher,realizer))
   return dref
@@ -428,8 +431,17 @@ def recursion_manager(funcname:str):
   finally:
     del PYLIGHTNIX_RECURSION[get_ident()][-1]
 
+def instantiate_(stage:Stage, m:Manager)->Closure:
+  with recursion_manager('instantiate'):
+    target_dref=stage(m)
+    visited:Dict[DRef,Derivation]=OrderedDict()
+    for d in m.builders:
+      if d.dref in visited:
+        print(f"Overwriting realizer for {d.dref} with config:\n{config_dict(store_config(d.dref))}" )
+      visited[d.dref]=d
+    return Closure(target_dref,list(visited.values()))
 
-def instantiate(stage:Stage)->List[Derivation]:
+def instantiate(stage:Stage)->Closure:
   """ `instantiate` takes the [Stage](#pylightnix.types.Stage) function and
   produces corresponding derivation object. Resulting list contains derivation
   of the current stage (in it's last element), preceeded by the derivations of
@@ -444,44 +456,39 @@ def instantiate(stage:Stage)->List[Derivation]:
   realizations recursively, and it shouldn't access realization objects in the
   storage.
   """
-  with recursion_manager('instantiate'):
-    m=Manager()
-    stage(m)
-    visited:Set[DRef]=set()
-    for (dref,_,_) in m.builders:
-      assert dref not in visited, (
-          f"Multiple realizers for DRef are not allowed. Attempted to register "
-          f"second realizer for {dref} with config:\n{config_dict(store_config(dref))}" )
-      visited.add(dref)
-    return m.builders
+  return instantiate_(stage, Manager())
 
-
-def realize(stage:Stage, force_rebuild:List[DRef]=[])->RRef:
-  """ `realize` builds a realization of the stage's derivation. Return value is
-  a [reference to particular realization](#pylightnix.types.RRef) which could be
-  [converted to system path](#pylightnix.core.store_rref2path) to read build
-  artifacts. """
+def realize(closure:Closure, force_rebuild:List[DRef]=[])->RRef:
+  """ `realize` builds a realization of a derivation and it's dependencies.
+  Return value is a [reference to particular
+  realization](#pylightnix.types.RRef) which could be [converted to system
+  path](#pylightnix.core.store_rref2path) to read build artifacts. """
+  assert_valid_closure(closure)
   with recursion_manager('realize'):
-    closure:Closure={}
+    context:Context={}
     rref:Optional[RRef]=None
     force_rebuild_:Set[DRef]=set(force_rebuild)
-    for (dref,matcher,realizer) in instantiate(stage):
-      c=store_config(dref)
-      if dref in force_rebuild_:
-        rref = None
-      else:
-        rref=matcher(dref,closure)
-      if not rref:
-        rreftmp=build_realize(dref,closure,realizer(dref,closure))
-        rref=matcher(dref,closure)
-        assert rref is not None
-      closure=closure_add(closure,dref,rref)
+    target_dref=closure.dref
+    target_deps=store_deepdeps([target_dref])
+    for (dref,matcher,realizer) in closure.derivations:
+      if dref in target_deps or dref==target_dref:
+        c=store_config(dref)
+        if dref in force_rebuild_:
+          rref=None
+        else:
+          rref=matcher(dref,context)
+        if not rref:
+          rreftmp=build_realize(dref,context,realizer(dref,context))
+          print(context)
+          rref=matcher(dref,context)
+          assert rref is not None
+        context=context_add(context,dref,rref)
     assert rref is not None
     return rref
 
-def only(dref:DRef, closure:Closure)->Optional[RRef]:
+def only(dref:DRef, context:Context)->Optional[RRef]:
   matching=[]
-  for rref in store_rrefs(dref, closure):
+  for rref in store_rrefs(dref, context):
     matching.append(rref)
   if len(matching)==0:
     return None
@@ -490,8 +497,7 @@ def only(dref:DRef, closure:Closure)->Optional[RRef]:
   else:
     assert False, (
         f"only() assumes that {dref} has 0 or 1 realizations under"
-        f"closure {closure}, but in fact it has many:\n{matching}" )
-
+        f"context {context}, but in fact it has many:\n{matching}" )
 
 def mksymlink(rref:RRef, tgtpath:Path, name:str, withtime=True)->Path:
   """ Create a symlink pointing to realization `rref`. Other arguments define
@@ -509,4 +515,9 @@ def mksymlink(rref:RRef, tgtpath:Path, name:str, withtime=True)->Path:
   forcelink(Path(relpath(store_rref2path(rref), tgtpath)), symlink)
   return symlink
 
+def assert_valid_closure(closure:Closure)->None:
+  assert len(closure.derivations)>0, \
+      "Closure can not be empty"
+  assert closure.dref in [d.dref for d in closure.derivations], \
+      "Closure should contain target derivation"
 

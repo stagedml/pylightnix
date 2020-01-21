@@ -1,7 +1,7 @@
 from pylightnix.imports import (sha256, urlparse, Popen, remove, basename, join, rename, isfile )
-from pylightnix.types import ( DRef, Manager, Config, Build, Closure, Name, Path )
+from pylightnix.types import ( DRef, Manager, Config, Build, Context, Name, Path )
 from pylightnix.core import ( mkconfig, mkbuild, build_config_ro, build_outpath,
-    manage, only )
+    mkdrv, only )
 from pylightnix.utils import ( get_executable )
 
 
@@ -55,9 +55,9 @@ def download(b:Build)->Build:
 def fetchurl(m:Manager, *args, **kwargs)->DRef:
   def _instantiate()->Config:
     return config(*args, **kwargs)
-  def _realize(dref:DRef, closure:Closure)->Path:
-    return build_outpath(download(mkbuild(dref,closure)))
-  return manage(m, _instantiate, only, _realize)
+  def _realize(dref:DRef, context:Context)->Path:
+    return build_outpath(download(mkbuild(dref,context)))
+  return mkdrv(m, _instantiate, only, _realize)
 
 
 

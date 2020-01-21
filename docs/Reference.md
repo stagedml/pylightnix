@@ -10,12 +10,13 @@
     * [RefPath](#pylightnix.types.RefPath)
     * [Config](#pylightnix.types.Config)
     * [ConfigAttrs](#pylightnix.types.ConfigAttrs)
-    * [Closure](#pylightnix.types.Closure)
+    * [Context](#pylightnix.types.Context)
     * [Build](#pylightnix.types.Build)
     * [Instantiator](#pylightnix.types.Instantiator)
     * [Matcher](#pylightnix.types.Matcher)
     * [Realizer](#pylightnix.types.Realizer)
     * [Derivation](#pylightnix.types.Derivation)
+    * [Closure](#pylightnix.types.Closure)
     * [Manager](#pylightnix.types.Manager)
     * [Stage](#pylightnix.types.Stage)
   * [pylightnix.core](#pylightnix.core)
@@ -51,7 +52,7 @@
     * [store\_rref2path](#pylightnix.core.store_rref2path)
     * [mkrefpath](#pylightnix.core.mkrefpath)
     * [store\_config](#pylightnix.core.store_config)
-    * [store\_closure](#pylightnix.core.store_closure)
+    * [store\_context](#pylightnix.core.store_context)
     * [store\_config\_ro](#pylightnix.core.store_config_ro)
     * [store\_deps](#pylightnix.core.store_deps)
     * [store\_deepdeps](#pylightnix.core.store_deepdeps)
@@ -62,7 +63,7 @@
     * [store\_gc](#pylightnix.core.store_gc)
     * [mkbuild](#pylightnix.core.mkbuild)
     * [build\_config](#pylightnix.core.build_config)
-    * [build\_closure](#pylightnix.core.build_closure)
+    * [build\_context](#pylightnix.core.build_context)
     * [build\_config\_ro](#pylightnix.core.build_config_ro)
     * [build\_outpath](#pylightnix.core.build_outpath)
     * [build\_name](#pylightnix.core.build_name)
@@ -70,17 +71,19 @@
     * [build\_deref\_path](#pylightnix.core.build_deref_path)
     * [build\_instantiate](#pylightnix.core.build_instantiate)
     * [build\_realize](#pylightnix.core.build_realize)
-    * [mkclosure](#pylightnix.core.mkclosure)
-    * [assert\_valid\_closure](#pylightnix.core.assert_valid_closure)
-    * [closure\_eq](#pylightnix.core.closure_eq)
-    * [closure\_add](#pylightnix.core.closure_add)
-    * [closure\_serialize](#pylightnix.core.closure_serialize)
-    * [manage](#pylightnix.core.manage)
+    * [mkcontext](#pylightnix.core.mkcontext)
+    * [assert\_valid\_context](#pylightnix.core.assert_valid_context)
+    * [context\_eq](#pylightnix.core.context_eq)
+    * [context\_add](#pylightnix.core.context_add)
+    * [context\_serialize](#pylightnix.core.context_serialize)
+    * [mkdrv](#pylightnix.core.mkdrv)
     * [recursion\_manager](#pylightnix.core.recursion_manager)
+    * [instantiate\_](#pylightnix.core.instantiate_)
     * [instantiate](#pylightnix.core.instantiate)
     * [realize](#pylightnix.core.realize)
     * [only](#pylightnix.core.only)
     * [mksymlink](#pylightnix.core.mksymlink)
+    * [assert\_valid\_closure](#pylightnix.core.assert_valid_closure)
   * [pylightnix.stages](#pylightnix.stages)
   * [pylightnix.stages.trivial](#pylightnix.stages.trivial)
     * [mknode](#pylightnix.stages.trivial.mknode)
@@ -149,13 +152,13 @@ derivation.
 The format of *realization reference* is `<HashPart0>-<HashPart1>-<Name>`,
 where:
 - `<HashPart0>` is calculated over realization's
-  [Closure](#pylightnix.types.Closure) and build artifacts.
+  [Context](#pylightnix.types.Context) and build artifacts.
 - `<HashPart1>-<Name>` forms valid [DRef](#pylightnix.types.DRef) which
   this realizaion was [realized](#pylightnix.core.realize) from.
 
 Realization reference describes realization object in pylightnix filesystem
 storage.  For valid references, `$PYLIGHTNIX_STORE/<HashPart1>-<Name>/<HashPart0>`
-folder does exist and contains `closure.json` file together with
+folder does exist and contains `context.json` file together with
 stage-specific *build artifacts*
 
 Realization reference is obtained from the process called
@@ -235,32 +238,29 @@ __getattr__ = dict.__getitem__
 ```
 
 
-<a name="pylightnix.types.Closure"></a>
-## `Closure`
+<a name="pylightnix.types.Context"></a>
+## `Context`
 
 ```python
-Closure = Dict[DRef,RRef]
+Context = Dict[DRef,RRef]
 ```
 
-Closure type is an alias for Python dict which maps
+Context type is an alias for Python dict which maps
 [DRefs](#pylightnix.types.DRef) into [RRefs](#pylightnix.types.RRef).
 
 For any node grouped with it's dependencies, pylightnix forces a property of
 unique realization, which means that no two nodes of a group which depend on
 same derivation may resolve it to different realizations.
 
-So for any realization, the dictionary of this type represents the complete
-mapping of it's dependencies.
-
 <a name="pylightnix.types.Build"></a>
 ## `Build`
 
 ```python
-Build = NamedTuple('Build', [('dref',DRef), ('closure',Closure), ('timeprefix',str), ('outpath',Path)])
+Build = NamedTuple('Build', [('dref',DRef), ('context',Context), ('timeprefix',str), ('outpath',Path)])
 ```
 
 `Build` objects tracks the process of [realization](#pylightnix.core.realize).
-As may be seen from it's signature, it stores timeprefix, the Closure, and the output
+As may be seen from it's signature, it stores timeprefix, the Context, and the output
 path. Output path contains the path to existing temporary folder for placing *build artifacts*.
 
 Users may access fields of a `Build` object by calling:
@@ -280,7 +280,7 @@ Instantiator = Callable[[],Config]
 ## `Matcher`
 
 ```python
-Matcher = Callable[[DRef, Closure],Optional[RRef]]
+Matcher = Callable[[DRef, Context],Optional[RRef]]
 ```
 
 
@@ -288,7 +288,7 @@ Matcher = Callable[[DRef, Closure],Optional[RRef]]
 ## `Realizer`
 
 ```python
-Realizer = Callable[[DRef,Closure],Path]
+Realizer = Callable[[DRef,Context],Path]
 ```
 
 
@@ -297,6 +297,14 @@ Realizer = Callable[[DRef,Closure],Path]
 
 ```python
 Derivation = NamedTuple('Derivation', [('dref',DRef), ('matcher',Matcher), ('realizer',Realizer) ])
+```
+
+
+<a name="pylightnix.types.Closure"></a>
+## `Closure`
+
+```python
+Closure = NamedTuple('Closure', [('dref',DRef),('derivations',List[Derivation])])
 ```
 
 
@@ -602,11 +610,11 @@ def store_config(r: DRef) -> Config
 ```
 
 
-<a name="pylightnix.core.store_closure"></a>
-## `store_closure()`
+<a name="pylightnix.core.store_context"></a>
+## `store_context()`
 
 ```python
-def store_closure(r: RRef) -> Closure
+def store_context(r: RRef) -> Context
 ```
 
 
@@ -632,7 +640,7 @@ themselves.
 ## `store_deepdeps()`
 
 ```python
-def store_deepdeps(roots: List[DRef]) -> List[DRef]
+def store_deepdeps(roots: List[DRef]) -> Set[DRef]
 ```
 
 Return an exhaustive list of `roots`'s dependencies, not including `roots`
@@ -659,11 +667,11 @@ def store_rrefs_(dref: DRef) -> Iterable[RRef]
 ## `store_rrefs()`
 
 ```python
-def store_rrefs(dref: DRef, closure: Closure) -> Iterable[RRef]
+def store_rrefs(dref: DRef, context: Context) -> Iterable[RRef]
 ```
 
 `store_rrefs` iterates over those ralizations of a derivation `dref`,
-that fit into particular [closure]($pylightnix.types.Closure).
+that fit into particular [context]($pylightnix.types.Context).
 
 <a name="pylightnix.core.store_deref"></a>
 ## `store_deref()`
@@ -692,7 +700,7 @@ application.
 ## `mkbuild()`
 
 ```python
-def mkbuild(dref: DRef, closure: Closure) -> Build
+def mkbuild(dref: DRef, context: Context) -> Build
 ```
 
 
@@ -706,14 +714,14 @@ def build_config(b: Build) -> Config
 Return the [Config](#pylightnix.types.Config) object of the realization
 being built.
 
-<a name="pylightnix.core.build_closure"></a>
-## `build_closure()`
+<a name="pylightnix.core.build_context"></a>
+## `build_context()`
 
 ```python
-def build_closure(b: Build) -> Closure
+def build_context(b: Build) -> Context
 ```
 
-Return the [Closure](#pylightnix.types.Closure) object of the realization
+Return the [Context](#pylightnix.types.Context) object of the realization
 being built.
 
 <a name="pylightnix.core.build_config_ro"></a>
@@ -780,55 +788,55 @@ def build_instantiate(c: Config) -> DRef
 ## `build_realize()`
 
 ```python
-def build_realize(dref: DRef, l: Closure, o: Path) -> RRef
+def build_realize(dref: DRef, l: Context, o: Path) -> RRef
 ```
 
 
-<a name="pylightnix.core.mkclosure"></a>
-## `mkclosure()`
+<a name="pylightnix.core.mkcontext"></a>
+## `mkcontext()`
 
 ```python
-def mkclosure() -> Closure
+def mkcontext() -> Context
 ```
 
 
-<a name="pylightnix.core.assert_valid_closure"></a>
-## `assert_valid_closure()`
+<a name="pylightnix.core.assert_valid_context"></a>
+## `assert_valid_context()`
 
 ```python
-def assert_valid_closure(c: Closure) -> None
+def assert_valid_context(c: Context) -> None
 ```
 
 
-<a name="pylightnix.core.closure_eq"></a>
-## `closure_eq()`
+<a name="pylightnix.core.context_eq"></a>
+## `context_eq()`
 
 ```python
-def closure_eq(a: Closure, b: Closure) -> bool
+def context_eq(a: Context, b: Context) -> bool
 ```
 
 
-<a name="pylightnix.core.closure_add"></a>
-## `closure_add()`
+<a name="pylightnix.core.context_add"></a>
+## `context_add()`
 
 ```python
-def closure_add(closure: Closure, dref: DRef, rref: RRef) -> Closure
+def context_add(context: Context, dref: DRef, rref: RRef) -> Context
 ```
 
 
-<a name="pylightnix.core.closure_serialize"></a>
-## `closure_serialize()`
+<a name="pylightnix.core.context_serialize"></a>
+## `context_serialize()`
 
 ```python
-def closure_serialize(c: Closure) -> str
+def context_serialize(c: Context) -> str
 ```
 
 
-<a name="pylightnix.core.manage"></a>
-## `manage()`
+<a name="pylightnix.core.mkdrv"></a>
+## `mkdrv()`
 
 ```python
-def manage(m: Manager, inst: Instantiator, matcher: Matcher, realizer: Realizer) -> DRef
+def mkdrv(m: Manager, inst: Instantiator, matcher: Matcher, realizer: Realizer) -> DRef
 ```
 
 
@@ -841,11 +849,19 @@ def recursion_manager(funcname: str)
 ```
 
 
+<a name="pylightnix.core.instantiate_"></a>
+## `instantiate_()`
+
+```python
+def instantiate_(stage: Stage, m: Manager) -> Closure
+```
+
+
 <a name="pylightnix.core.instantiate"></a>
 ## `instantiate()`
 
 ```python
-def instantiate(stage: Stage) -> List[Derivation]
+def instantiate(stage: Stage) -> Closure
 ```
 
 `instantiate` takes the [Stage](#pylightnix.types.Stage) function and
@@ -866,19 +882,19 @@ storage.
 ## `realize()`
 
 ```python
-def realize(stage: Stage, force_rebuild: List[DRef] = []) -> RRef
+def realize(closure: Closure, force_rebuild: List[DRef] = []) -> RRef
 ```
 
-`realize` builds a realization of the stage's derivation. Return value is
-a [reference to particular realization](#pylightnix.types.RRef) which could be
-[converted to system path](#pylightnix.core.store_rref2path) to read build
-artifacts.
+`realize` builds a realization of a derivation and it's dependencies.
+Return value is a [reference to particular
+realization](#pylightnix.types.RRef) which could be [converted to system
+path](#pylightnix.core.store_rref2path) to read build artifacts.
 
 <a name="pylightnix.core.only"></a>
 ## `only()`
 
 ```python
-def only(dref: DRef, closure: Closure) -> Optional[RRef]
+def only(dref: DRef, context: Context) -> Optional[RRef]
 ```
 
 
@@ -892,6 +908,14 @@ def mksymlink(rref: RRef, tgtpath: Path, name: str, withtime=True) -> Path
 Create a symlink pointing to realization `rref`. Other arguments define
 symlink name and location. Informally,
 `{tgtpath}/{timeprefix}{name} --> $PYLIGHTNIX_STORE/{rref2dref(rref)}/{rref}`
+
+<a name="pylightnix.core.assert_valid_closure"></a>
+## `assert_valid_closure()`
+
+```python
+def assert_valid_closure(closure: Closure) -> None
+```
+
 
 <a name="pylightnix.stages"></a>
 # `pylightnix.stages`

@@ -50,13 +50,13 @@ class RRef(str):
   The format of *realization reference* is `<HashPart0>-<HashPart1>-<Name>`,
   where:
   - `<HashPart0>` is calculated over realization's
-    [Closure](#pylightnix.types.Closure) and build artifacts.
+    [Context](#pylightnix.types.Context) and build artifacts.
   - `<HashPart1>-<Name>` forms valid [DRef](#pylightnix.types.DRef) which
     this realizaion was [realized](#pylightnix.core.realize) from.
 
   Realization reference describes realization object in pylightnix filesystem
   storage.  For valid references, `$PYLIGHTNIX_STORE/<HashPart1>-<Name>/<HashPart0>`
-  folder does exist and contains `closure.json` file together with
+  folder does exist and contains `context.json` file together with
   stage-specific *build artifacts*
 
   Realization reference is obtained from the process called
@@ -116,35 +116,33 @@ class ConfigAttrs(dict):
   __getattr__ = dict.__getitem__ # type:ignore
 
 
-#: Closure type is an alias for Python dict which maps
+#: Context type is an alias for Python dict which maps
 #: [DRefs](#pylightnix.types.DRef) into [RRefs](#pylightnix.types.RRef).
 #:
 #: For any node grouped with it's dependencies, pylightnix forces a property of
 #: unique realization, which means that no two nodes of a group which depend on
 #: same derivation may resolve it to different realizations.
-#:
-#: So for any realization, the dictionary of this type represents the complete
-#: mapping of it's dependencies.
-Closure=Dict[DRef,RRef]
+Context=Dict[DRef,RRef]
 
 #: `Build` objects tracks the process of [realization](#pylightnix.core.realize).
-#: As may be seen from it's signature, it stores timeprefix, the Closure, and the output
+#: As may be seen from it's signature, it stores timeprefix, the Context, and the output
 #: path. Output path contains the path to existing temporary folder for placing *build artifacts*.
 #:
 #: Users may access fields of a `Build` object by calling:
 #: - [build_config](#pylightnix.core.build_config)
 #: - [build_deref](#pylightnix.core.build_deref)
 #: - [build_outpath](#pylightnix.core.build_outpath)
-Build = NamedTuple('Build', [('dref',DRef), ('closure',Closure), ('timeprefix',str), ('outpath',Path)])
+Build = NamedTuple('Build', [('dref',DRef), ('context',Context), ('timeprefix',str), ('outpath',Path)])
 
 Instantiator = Callable[[],Config]
 
-Matcher = Callable[[DRef, Closure],Optional[RRef]]
+Matcher = Callable[[DRef, Context],Optional[RRef]]
 
-Realizer = Callable[[DRef,Closure],Path]
+Realizer = Callable[[DRef,Context],Path]
 
 Derivation = NamedTuple('Derivation', [('dref',DRef), ('matcher',Matcher), ('realizer',Realizer) ])
 
+Closure = NamedTuple('Closure', [('dref',DRef),('derivations',List[Derivation])])
 
 class Manager:
   def __init__(self):
