@@ -5,7 +5,7 @@ from pylightnix.imports import (
 from pylightnix.utils import (
     dirhash, assert_serializable, assert_valid_dict, dicthash, scanref_dict,
     scanref_list, forcelink, timestring, datahash, slugify, splitpath,
-    readjson, tryread )
+    readjson, tryread, encode )
 from pylightnix.types import (
     Dict, List, Any, Tuple, Union, Optional, Iterable, IO, Path, Hash, DRef,
     RRef, RefPath, HashPart, Callable, Closure, Name, NamedTuple, Build,
@@ -131,7 +131,7 @@ def config_serialize(c:Config)->str:
   return json_dumps(config_dict(c), indent=4)
 
 def config_hash(c:Config)->Hash:
-  return datahash([config_serialize(c)])
+  return datahash([encode(config_serialize(c))])
 
 def config_name(c:Config)->Name:
   """ Return short human-readable name of a config """
@@ -345,6 +345,9 @@ def build_realize(dref:DRef, b:Build)->RRef:
   l=build_closure(b)
   (dhash,nm)=undref(dref)
 
+  assert not isfile(join(o,'closure.json')), (
+     f"While realizing {dref}: one of build artifacts has name 'closure.json'. "
+     f"This name is reserved, please rename the artifact.")
   with open(join(o,'closure.json'), 'w') as f:
     f.write(closure_serialize(l))
 
@@ -459,16 +462,16 @@ def instantiate(stage:Stage)->List[Derivation]:
 
 
 def realize(stage:Stage, force_rebuild:List[DRef]=[])->RRef:
-  """ `realize` builds the realization of the stage's derivation. Return value
-  is a [reference to particular realization](#pylightnix.types.RRef) which could
-  be used for read-only access of build artifacts. """
+  """ `realize` builds a realization of the stage's derivation. Return value is
+  a [reference to particular realization](#pylightnix.types.RRef) which could be
+  [converted to system path](#pylightnix.core.store_rref2path) to read build
+  artifacts. """
   with recursion_manager('realize'):
     closure:Closure={}
     rref:Optional[RRef]=None
     force_rebuild_:Set[DRef]=set(force_rebuild)
     for (dref,matcher,realizer) in instantiate(stage):
       c=store_config(dref)
-      n=config_name(c)
       if dref in force_rebuild_:
         rref = None
       else:
@@ -491,8 +494,8 @@ def only(dref:DRef, closure:Closure)->Optional[RRef]:
     return matching[0]
   else:
     assert False, (
-        f"only() assumes that {dref} has a single realization under"
-        f"closure {closure}, but is has many:\n{matching}" )
+        f"only() assumes that {dref} has 0 or 1 realizations under"
+        f"closure {closure}, but in fact it has many:\n{matching}" )
 
 
 

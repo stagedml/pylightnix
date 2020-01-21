@@ -68,16 +68,18 @@ def slugify(value:str)->str:
   value = re_sub(r'[-\s]+', '-', value)
   return value
 
-def datahash(data:Iterable[str])->Hash:
+def encode(s:str, encoding:str='utf-8')->bytes:
+  return bytes(s, encoding)
+
+def datahash(data:Iterable[bytes])->Hash:
   e=sha256()
   nitems=0
   for s in data:
-    e.update(bytes(s,'utf-8'))
+    e.update(s)
     nitems+=1
   if nitems==0:
     print('Warning: datahash: called on empty iterator')
   return Hash(e.hexdigest())
-
 
 def dirhash(path:Path)->Hash:
   """ Calculate recursive SHA256 hash of a directory.
@@ -86,11 +88,11 @@ def dirhash(path:Path)->Hash:
   """
   assert isdir(path), f"dirhash(path) expects directory path, not '{path}'"
 
-  def _iter()->Iterable[str]:
+  def _iter()->Iterable[bytes]:
     for root, dirs, filenames in walk(abspath(path), topdown=True):
       for filename in filenames:
         if len(filename)>0 and filename[0] != '_':
-          with open(abspath(join(root, filename)),'r') as f:
+          with open(abspath(join(root, filename)),'rb') as f:
             yield f.read()
 
   return datahash(_iter())

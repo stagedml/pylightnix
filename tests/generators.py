@@ -1,10 +1,11 @@
-from pylightnix import ( Config, datahash, PYLIGHTNIX_NAMEPAT, mkdref, mkrref, trimhash )
+from pylightnix import ( Config, datahash, PYLIGHTNIX_NAMEPAT, mkdref, mkrref,
+    trimhash, encode )
 
 from tests.imports import (
     given, assume, example, note, settings, text, decimals, integers, rmtree,
     characters, gettempdir, isdir, join, makedirs, from_regex, islink, listdir,
     get_executable, run, dictionaries, one_of, lists, recursive, printable,
-    none, booleans, floats, re_compile, composite, event )
+    none, booleans, floats, re_compile, composite, event, binary )
 
 #   ____                           _
 #  / ___| ___ _ __   ___ _ __ __ _| |_ ___  _ __ ___
@@ -39,7 +40,7 @@ def names():
   return from_regex(re_compile(f'^{PYLIGHTNIX_NAMEPAT}+$'))
 
 def hashes():
-  return text().map(lambda x: datahash([x]))
+  return text().map(lambda x: datahash([encode(x)]))
 
 @composite
 def drefs(draw):
@@ -49,8 +50,17 @@ def drefs(draw):
 def rrefs(draw):
   return mkrref(trimhash(draw(hashes())), trimhash(draw(hashes())), draw(names()))
 
+def prims():
+  return one_of(none(), booleans(), floats(), text(printable), integers(), binary())
+
+def bindata():
+  return one_of(one_of(booleans(), floats(), integers()).map(lambda x: str(x)).map(lambda x: bytes(x,'utf-8')),
+                text(printable).map(lambda x: bytes(x,'utf-8')),
+                binary())
+
 @composite
 def artifacts(draw):
   ns=draw(lists(names(),min_size=1))
-  vals=draw(lists(integers(),min_size=len(ns),max_size=len(ns)))
+  vals=draw(lists(bindata(),min_size=len(ns),max_size=len(ns)))
   return {n:v for n,v in zip(ns,vals)}
+

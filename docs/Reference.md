@@ -196,15 +196,12 @@ def __init__(self, d: dict)
 definintion of Stages and should determine the realization process.
 
 `Config` should match the requirements of `assert_valid_config`. Typically,
-it's `__dict__` should contain either simple Python types (strings, string
-aliases including [DRefs](#pylightnix.types.DRef), bools, ints, floats), lists
-or dicts. In particular, no tuples, no `np.float32` and no functions are
-allowed.
+it's `__dict__` should contain JSON-serializable types only: strings, string
+aliases such as [DRefs](#pylightnix.types.DRef), bools, ints, floats, lists or
+other dicts. No bytes, `numpy.float32` or lambdas are allowed. Tuples are also
+forbidden because they are not preserved (decoded into lists).
 
-Config is the equivalent of program source in the typical compiler's
-pipeline.
-
-Use [mkconfig](#pylightnix.core.mkconfig) to create new Config objects.
+Use [mkconfig](#pylightnix.core.mkconfig) to create Configs from dicts.
 
 <a name="pylightnix.types.Config.__init__"></a>
 ### `Config.__init__()`
@@ -863,9 +860,10 @@ storage.
 def realize(stage: Stage, force_rebuild: List[DRef] = []) -> RRef
 ```
 
-`realize` builds the realization of the stage's derivation. Return value
-is a [reference to particular realization](#pylightnix.types.RRef) which could
-be used for read-only access of build artifacts.
+`realize` builds a realization of the stage's derivation. Return value is
+a [reference to particular realization](#pylightnix.types.RRef) which could be
+[converted to system path](#pylightnix.core.store_rref2path) to read build
+artifacts.
 
 <a name="pylightnix.core.only"></a>
 ## `only()`
@@ -887,7 +885,7 @@ def only(dref: DRef, closure: Closure) -> Optional[RRef]
 ## `mknode()`
 
 ```python
-def mknode(m: Manager, sources: dict, artifacts: Dict[Name,Any] = {}) -> DRef
+def mknode(m: Manager, sources: dict, artifacts: Dict[Name,bytes] = {}) -> DRef
 ```
 
 
@@ -895,7 +893,7 @@ def mknode(m: Manager, sources: dict, artifacts: Dict[Name,Any] = {}) -> DRef
 ## `mkfile()`
 
 ```python
-def mkfile(m: Manager, name: Name, contents: Any, filename: Optional[Name] = None) -> DRef
+def mkfile(m: Manager, name: Name, contents: bytes, filename: Optional[Name] = None) -> DRef
 ```
 
 

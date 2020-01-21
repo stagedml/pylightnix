@@ -6,10 +6,10 @@ from pylightnix import (
 
 from tests.imports import (
     given, text, isdir, join, from_regex, islink, get_executable, run,
-    dictionaries )
+    dictionaries, binary, one_of, integers )
 
 from tests.generators import (
-    rrefs, drefs, configs, dicts )
+    rrefs, drefs, configs, dicts, prims )
 
 from tests.setup import (
     setup_testpath, setup_storage )
@@ -35,6 +35,10 @@ def test_rref(rref):
 def test_config(cfg):
   assert_valid_config(cfg)
 
+def test_setup_storage()->None:
+  setup_storage('a')
+  setup_storage('a')
+
 def test_mklogdir1()->None:
   path=setup_testpath('mklogdir1')
   logdir=mklogdir(tag='testtag',logrootdir=Path(path))
@@ -47,7 +51,6 @@ def test_mklogdir2(strtag,timetag)->None:
   logdir=mklogdir(tag=strtag,logrootdir=Path(path), timetag=timetag)
   assert isdir(logdir)
   assert islink(join(path,f'_{strtag}_latest'))
-
 
 def test_dirhash()->None:
   path=setup_testpath('dirhash')
@@ -64,17 +67,21 @@ def test_dirhash()->None:
   assert_valid_hash(h3)
   assert h3 != h2
 
-
-@given(d=dictionaries(keys=text(), values=text()))
-def test_dirhash2(d)->None:
+@given(b=binary())
+def test_dirhash2(b)->None:
   path=setup_testpath('dirhash2')
+  with open(join(path,'a'),'wb') as f:
+    f.write(b)
+  p=run([SHA256SUM, join(path,'a')], stdout=-1, check=True, cwd=path)
+  h=dirhash(path)
+  assert (p.stdout[:len(h)].decode('utf-8'))==h
+
+@given(d=dicts())
+def test_dirhash3(d)->None:
+  path=setup_testpath('dirhash3')
   with open(join(path,'a'),'w') as f:
     f.write(str(d))
   p=run([SHA256SUM, join(path,'a')], stdout=-1, check=True, cwd=path)
   h=dirhash(path)
   assert (p.stdout[:len(h)].decode('utf-8'))==h
-
-def test_setup_storage()->None:
-  setup_storage('a')
-  setup_storage('a')
 

@@ -91,15 +91,12 @@ class Config:
   definintion of Stages and should determine the realization process.
 
   `Config` should match the requirements of `assert_valid_config`. Typically,
-  it's `__dict__` should contain either simple Python types (strings, string
-  aliases including [DRefs](#pylightnix.types.DRef), bools, ints, floats), lists
-  or dicts. In particular, no tuples, no `np.float32` and no functions are
-  allowed.
+  it's `__dict__` should contain JSON-serializable types only: strings, string
+  aliases such as [DRefs](#pylightnix.types.DRef), bools, ints, floats, lists or
+  other dicts. No bytes, `numpy.float32` or lambdas are allowed. Tuples are also
+  forbidden because they are not preserved (decoded into lists).
 
-  Config is the equivalent of program source in the typical compiler's
-  pipeline.
-
-  Use [mkconfig](#pylightnix.core.mkconfig) to create new Config objects. """
+  Use [mkconfig](#pylightnix.core.mkconfig) to create Configs from dicts. """
   def __init__(self, d:dict):
     self.__dict__=deepcopy(d)
 

@@ -7,7 +7,8 @@ from tempfile import gettempdir
 from hypothesis import given, assume, example, note, settings, event
 from hypothesis.strategies import ( text, decimals, integers, characters,
                                     from_regex, dictionaries, one_of, lists,
-                                    recursive, none, booleans, floats, composite )
+                                    recursive, none, booleans, floats,
+                                    composite, binary )
 from string import printable
 from distutils.spawn import find_executable
 
