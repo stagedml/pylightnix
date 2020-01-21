@@ -17,6 +17,7 @@ if ! which codecov >/dev/null ; then
 fi
 
 set -e -x
+rm coverage.xml || true
 coverage run -m pytest
 coverage report -m
 codecov -t `cat .codecovrc`
