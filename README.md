@@ -38,7 +38,9 @@ Implementation:
    ```
 2. Either
    - (a) Setup `PYTHONPATH` to point to the sources.
-     `export PYTHONPATH="\`pwd\`/src:$PYTHONPATH"`
+     ```
+     export PYTHONPATH="\`pwd\`/src:$PYTHONPATH"
+     ```
      Now you could import pylightnix from your application.
 
    - (b) Build and install pylightnix wheel.
