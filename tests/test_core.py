@@ -5,7 +5,8 @@ from pylightnix import (
     build_realize, store_rrefs, mkdref, mkrref, unrref, undref, realize,
     rref2dref, store_config, mkconfig, mkbuild, Build, Closure, build_outpath,
     only, manage, store_deref, store_rref2path, store_rrefs_, config_ro,
-    mksymlink, store_config_ro, build_deref, build_deref_path, mkrefpath)
+    mksymlink, store_config_ro, build_deref, build_deref_path, mkrefpath,
+    build_config)
 
 from tests.imports import ( given, Any, Callable, join, Optional, islink )
 
@@ -84,6 +85,9 @@ def test_realize_dependencies()->None:
 
   c=store_config(rref2dref(rref))
   assert_valid_config(c)
+  cro=store_config_ro(rref2dref(rref))
+  assert_valid_dref(getattr(cro,'n2'))
+  assert_valid_dref(getattr(cro,'n3'))
 
   assert set(store_deps([n1])) == set([])
   assert set(store_deps([n2,n3])) == set([n1])
@@ -224,7 +228,7 @@ def test_build_deref():
     def _realize(dref:DRef, closure:Closure)->Path:
       b = mkbuild(dref, closure)
       o = build_outpath(b)
-      c = store_config_ro(dref)
+      c = config_ro(build_config(b))
       with open(join(o,'proof_papa'),'w') as f:
         f.write(str(build_deref(b, c.papa)))
       with open(join(o,'proof_maman'),'w') as d:
