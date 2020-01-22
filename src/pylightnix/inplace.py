@@ -12,7 +12,8 @@ def instantiate_inplace(stage:Any, *args, **kwargs)->DRef:
   return closure.dref
 
 
-def realize_inplace(dref:DRef) -> RRef:
+def realize_inplace(dref:DRef, force_rebuild:List[DRef]=[]) -> RRef:
   global PYLIGHTNIX_MANAGER
-  return realize(Closure(dref,list(PYLIGHTNIX_MANAGER.builders.values())))
+  return realize(Closure(dref,list(PYLIGHTNIX_MANAGER.builders.values())),
+                 force_rebuild=force_rebuild)
 

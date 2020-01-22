@@ -207,16 +207,12 @@ def store_rrefs(dref:DRef, context:Context)->Iterable[RRef]:
     if context_eq(context,context2):
       yield rref
 
-def store_deref(rref:RRef, dref:DRef)->RRef:
-  """ For any realization `rref` and it's dependency `dref`, `store_deref`
-  queryies the realization reference of this dependency.
+def store_deref(context_holder:RRef, dref:DRef)->RRef:
+  """ For any realization `context_holder` and it's dependency `dref`, `store_deref`
+  queries the realization reference of this dependency.
 
   See also [build_deref](#pylightnix.core.build_deref)"""
-  c = store_context(rref)
-  assert dref in c, (
-      f"Realization {rref} doesn't declare {dref} among it's dependencies so we "
-      f"can't dereference it." )
-  return c[dref]
+  return context_deref(store_context(context_holder), dref)
 
 def store_gc(refs_in_use:List[DRef])->List[DRef]:
   """ Take roots which are in use and should not be removed. Return roots which
@@ -244,6 +240,11 @@ def mkbuild(dref:DRef, context:Context)->Build:
   timeprefix=timestring()
   outpath=Path(mkdtemp(prefix=f'{timeprefix}_{config_hash(c)[:8]}_', dir=PYLIGHTNIX_TMP))
   return Build(dref, context, timeprefix, outpath)
+
+def build_wrapper(f:Callable[[Build],None])->Realizer:
+  def _wrapper(dref,context):
+    b=mkbuild(dref,context); f(b); return build_outpath(b)
+  return _wrapper
 
 def build_config(b:Build)->Config:
   """ Return the [Config](#pylightnix.types.Config) object of the realization
@@ -278,12 +279,7 @@ def build_deref(b:Build, dref:DRef)->RRef:
   known.  In other cases, [store_deref](#pylightnix.core.store_deref) should be
   used.
   """
-  rref=b.context.get(dref)
-  assert rref is not None, (
-      f"Unable to deref {dref} while realizing {b.dref}. Make sure that first link "
-      f"is listed in the configurations of the second link or one of it's "
-      f"dependencies" )
-  return rref
+  return context_deref(build_context(b), dref)
 
 def build_deref_path(b:Build, refpath:RefPath)->Path:
   assert_valid_refpath(refpath)
@@ -358,6 +354,12 @@ def context_add(context:Context, dref:DRef, rref:RRef)->Context:
   else:
     context[dref]=rref
   return context
+
+def context_deref(context:Context, dref:DRef)->RRef:
+  assert dref in context, (
+      f"Context {context} doesn't declare {dref} among it's dependencies so we "
+      f"can't dereference it." )
+  return context[dref]
 
 def context_serialize(c:Context)->str:
   assert_valid_context(c)

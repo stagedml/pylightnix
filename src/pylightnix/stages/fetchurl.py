@@ -1,7 +1,7 @@
 from pylightnix.imports import (sha256, urlparse, Popen, remove, basename, join, rename, isfile )
 from pylightnix.types import ( DRef, Manager, Config, Build, Context, Name, Path )
 from pylightnix.core import ( mkconfig, mkbuild, build_config_ro, build_outpath,
-    mkdrv, only )
+    mkdrv, only, build_wrapper )
 from pylightnix.utils import ( get_executable )
 
 
@@ -15,7 +15,7 @@ def config(url:str, sha256:str, mode:str='unpack,remove', name:Name=None)->Confi
 # def downloaded(s:State)->State:
 #   return state_add(s, 'download')
 
-def download(b:Build)->Build:
+def download(b:Build)->None:
   c=build_config_ro(b)
   o=build_outpath(b)
 
@@ -49,15 +49,12 @@ def download(b:Build)->Build:
     print(f"Download failed:",e)
     print(f"Temp folder {o}")
     raise
-  return b
 
 
 def fetchurl(m:Manager, *args, **kwargs)->DRef:
   def _instantiate()->Config:
     return config(*args, **kwargs)
-  def _realize(dref:DRef, context:Context)->Path:
-    return build_outpath(download(mkbuild(dref,context)))
-  return mkdrv(m, _instantiate, only, _realize)
+  return mkdrv(m, _instantiate, only, build_wrapper(download))
 
 
 
