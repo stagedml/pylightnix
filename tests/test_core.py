@@ -5,7 +5,7 @@ from pylightnix import (
     store_realize, store_rrefs, mkdref, mkrref, unrref, undref, realize,
     rref2dref, store_config, mkconfig, mkbuild, Build, Context, build_outpath,
     only, mkdrv, store_deref, store_rref2path, store_rrefs_, config_ro,
-    mksymlink, store_config_ro, build_deref, build_deref_path, mkrefpath,
+    mksymlink, store_config_ro, build_deref, build_path, mkrefpath,
     build_config, store_drefs, store_rrefs, store_rrefs_)
 
 from tests.imports import ( given, Any, Callable, join, Optional, islink, List )
@@ -198,7 +198,7 @@ def test_build_deref():
         with open(join(o,'proof_papa'),'w') as f:
           f.write(str(build_deref(b, c.papa)))
         with open(join(o,'proof_maman'),'w') as d:
-          with open(build_deref_path(b, c.maman),'r') as s:
+          with open(build_path(b, c.maman),'r') as s:
             d.write(s.read())
         return o
       return mkdrv(m, _instantiate, only, _realize)

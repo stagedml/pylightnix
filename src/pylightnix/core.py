@@ -324,10 +324,9 @@ def build_deref(b:Build, dref:DRef)->RRef:
   """
   return context_deref(build_context(b), dref)
 
-def build_deref_path(b:Build, refpath:RefPath)->Path:
+def build_path(b:Build, refpath:RefPath)->Path:
   assert_valid_refpath(refpath)
   return Path(join(store_rref2path(build_deref(b, refpath[0])), *refpath[1:]))
-
 
 #   ____ _
 #  / ___| | ___  ___ _   _ _ __ ___
