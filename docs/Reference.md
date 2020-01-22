@@ -25,27 +25,20 @@
     * [PYLIGHTNIX\_TMP](#pylightnix.core.PYLIGHTNIX_TMP)
     * [PYLIGHTNIX\_STORE](#pylightnix.core.PYLIGHTNIX_STORE)
     * [PYLIGHTNIX\_NAMEPAT](#pylightnix.core.PYLIGHTNIX_NAMEPAT)
-    * [assert\_valid\_hash](#pylightnix.core.assert_valid_hash)
     * [trimhash](#pylightnix.core.trimhash)
-    * [assert\_valid\_hashpart](#pylightnix.core.assert_valid_hashpart)
-    * [assert\_valid\_dref](#pylightnix.core.assert_valid_dref)
     * [mkdref](#pylightnix.core.mkdref)
     * [rref2dref](#pylightnix.core.rref2dref)
     * [undref](#pylightnix.core.undref)
-    * [assert\_valid\_rref](#pylightnix.core.assert_valid_rref)
     * [mkrref](#pylightnix.core.mkrref)
     * [unrref](#pylightnix.core.unrref)
-    * [assert\_valid\_name](#pylightnix.core.assert_valid_name)
     * [mkname](#pylightnix.core.mkname)
     * [mkconfig](#pylightnix.core.mkconfig)
-    * [assert\_valid\_config](#pylightnix.core.assert_valid_config)
     * [config\_dict](#pylightnix.core.config_dict)
     * [config\_ro](#pylightnix.core.config_ro)
     * [config\_serialize](#pylightnix.core.config_serialize)
     * [config\_hash](#pylightnix.core.config_hash)
     * [config\_name](#pylightnix.core.config_name)
     * [config\_deps](#pylightnix.core.config_deps)
-    * [assert\_valid\_refpath](#pylightnix.core.assert_valid_refpath)
     * [assert\_store\_initialized](#pylightnix.core.assert_store_initialized)
     * [store\_initialize](#pylightnix.core.store_initialize)
     * [store\_dref2path](#pylightnix.core.store_dref2path)
@@ -72,7 +65,6 @@
     * [build\_instantiate](#pylightnix.core.build_instantiate)
     * [build\_realize](#pylightnix.core.build_realize)
     * [mkcontext](#pylightnix.core.mkcontext)
-    * [assert\_valid\_context](#pylightnix.core.assert_valid_context)
     * [context\_eq](#pylightnix.core.context_eq)
     * [context\_add](#pylightnix.core.context_add)
     * [context\_serialize](#pylightnix.core.context_serialize)
@@ -83,6 +75,14 @@
     * [realize](#pylightnix.core.realize)
     * [only](#pylightnix.core.only)
     * [mksymlink](#pylightnix.core.mksymlink)
+    * [assert\_valid\_refpath](#pylightnix.core.assert_valid_refpath)
+    * [assert\_valid\_config](#pylightnix.core.assert_valid_config)
+    * [assert\_valid\_name](#pylightnix.core.assert_valid_name)
+    * [assert\_valid\_rref](#pylightnix.core.assert_valid_rref)
+    * [assert\_valid\_hashpart](#pylightnix.core.assert_valid_hashpart)
+    * [assert\_valid\_dref](#pylightnix.core.assert_valid_dref)
+    * [assert\_valid\_hash](#pylightnix.core.assert_valid_hash)
+    * [assert\_valid\_context](#pylightnix.core.assert_valid_context)
     * [assert\_valid\_closure](#pylightnix.core.assert_valid_closure)
   * [pylightnix.stages](#pylightnix.stages)
   * [pylightnix.stages.trivial](#pylightnix.stages.trivial)
@@ -390,15 +390,6 @@ PYLIGHTNIX_NAMEPAT = "[a-zA-Z0-9_-]"
 
 Set the regular expression pattern for valid name characters.
 
-<a name="pylightnix.core.assert_valid_hash"></a>
-## `assert_valid_hash()`
-
-```python
-def assert_valid_hash(h: Hash) -> None
-```
-
-Asserts if it's `Hash` argument is ill-formed.
-
 <a name="pylightnix.core.trimhash"></a>
 ## `trimhash()`
 
@@ -407,22 +398,6 @@ def trimhash(h: Hash) -> HashPart
 ```
 
 Trim a hash to get `HashPart` objects which are used in referencing
-
-<a name="pylightnix.core.assert_valid_hashpart"></a>
-## `assert_valid_hashpart()`
-
-```python
-def assert_valid_hashpart(hp: HashPart) -> None
-```
-
-
-<a name="pylightnix.core.assert_valid_dref"></a>
-## `assert_valid_dref()`
-
-```python
-def assert_valid_dref(ref: str) -> None
-```
-
 
 <a name="pylightnix.core.mkdref"></a>
 ## `mkdref()`
@@ -448,14 +423,6 @@ def undref(r: DRef) -> Tuple[HashPart, Name]
 ```
 
 
-<a name="pylightnix.core.assert_valid_rref"></a>
-## `assert_valid_rref()`
-
-```python
-def assert_valid_rref(ref: str) -> None
-```
-
-
 <a name="pylightnix.core.mkrref"></a>
 ## `mkrref()`
 
@@ -472,14 +439,6 @@ def unrref(r: RRef) -> Tuple[HashPart, HashPart, Name]
 ```
 
 
-<a name="pylightnix.core.assert_valid_name"></a>
-## `assert_valid_name()`
-
-```python
-def assert_valid_name(s: Name) -> None
-```
-
-
 <a name="pylightnix.core.mkname"></a>
 ## `mkname()`
 
@@ -493,14 +452,6 @@ def mkname(s: str) -> Name
 
 ```python
 def mkconfig(d: dict) -> Config
-```
-
-
-<a name="pylightnix.core.assert_valid_config"></a>
-## `assert_valid_config()`
-
-```python
-def assert_valid_config(c: Config)
 ```
 
 
@@ -553,14 +504,6 @@ def config_deps(c: Config) -> List[DRef]
 ```
 
 
-<a name="pylightnix.core.assert_valid_refpath"></a>
-## `assert_valid_refpath()`
-
-```python
-def assert_valid_refpath(refpath: RefPath) -> None
-```
-
-
 <a name="pylightnix.core.assert_store_initialized"></a>
 ## `assert_store_initialized()`
 
@@ -606,7 +549,7 @@ Constructs a RefPath out of a reference `ref` and a path within the node
 ## `store_config()`
 
 ```python
-def store_config(r: DRef) -> Config
+def store_config(r: Union[DRef,RRef]) -> Config
 ```
 
 
@@ -622,7 +565,7 @@ def store_context(r: RRef) -> Context
 ## `store_config_ro()`
 
 ```python
-def store_config_ro(r: DRef) -> Any
+def store_config_ro(r: Union[DRef,RRef]) -> Any
 ```
 
 
@@ -800,14 +743,6 @@ def mkcontext() -> Context
 ```
 
 
-<a name="pylightnix.core.assert_valid_context"></a>
-## `assert_valid_context()`
-
-```python
-def assert_valid_context(c: Context) -> None
-```
-
-
 <a name="pylightnix.core.context_eq"></a>
 ## `context_eq()`
 
@@ -908,6 +843,71 @@ def mksymlink(rref: RRef, tgtpath: Path, name: str, withtime=True) -> Path
 Create a symlink pointing to realization `rref`. Other arguments define
 symlink name and location. Informally,
 `{tgtpath}/{timeprefix}{name} --> $PYLIGHTNIX_STORE/{rref2dref(rref)}/{rref}`
+
+<a name="pylightnix.core.assert_valid_refpath"></a>
+## `assert_valid_refpath()`
+
+```python
+def assert_valid_refpath(refpath: RefPath) -> None
+```
+
+
+<a name="pylightnix.core.assert_valid_config"></a>
+## `assert_valid_config()`
+
+```python
+def assert_valid_config(c: Config)
+```
+
+
+<a name="pylightnix.core.assert_valid_name"></a>
+## `assert_valid_name()`
+
+```python
+def assert_valid_name(s: Name) -> None
+```
+
+
+<a name="pylightnix.core.assert_valid_rref"></a>
+## `assert_valid_rref()`
+
+```python
+def assert_valid_rref(ref: str) -> None
+```
+
+
+<a name="pylightnix.core.assert_valid_hashpart"></a>
+## `assert_valid_hashpart()`
+
+```python
+def assert_valid_hashpart(hp: HashPart) -> None
+```
+
+
+<a name="pylightnix.core.assert_valid_dref"></a>
+## `assert_valid_dref()`
+
+```python
+def assert_valid_dref(ref: str) -> None
+```
+
+
+<a name="pylightnix.core.assert_valid_hash"></a>
+## `assert_valid_hash()`
+
+```python
+def assert_valid_hash(h: Hash) -> None
+```
+
+Asserts if it's `Hash` argument is ill-formed.
+
+<a name="pylightnix.core.assert_valid_context"></a>
+## `assert_valid_context()`
+
+```python
+def assert_valid_context(c: Context) -> None
+```
+
 
 <a name="pylightnix.core.assert_valid_closure"></a>
 ## `assert_valid_closure()`

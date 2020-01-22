@@ -44,25 +44,9 @@ PYLIGHTNIX_NAMEPAT = "[a-zA-Z0-9_-]"
 # |  _ <  __/  _\__ \
 # |_| \_\___|_| |___/
 
-def assert_valid_hash(h:Hash)->None:
-  """ Asserts if it's `Hash` argument is ill-formed. """
-  assert len(h)==64, f"HashPart should have length of 64, but len({h})=={len(h)}"
-  for s in ['-','_','/']:
-    assert s not in h, f"Invalid symbol '{s}' found in {h}"
-
 def trimhash(h:Hash)->HashPart:
   """ Trim a hash to get `HashPart` objects which are used in referencing """
   return HashPart(h[:32])
-
-def assert_valid_hashpart(hp:HashPart)->None:
-  assert len(hp)==32, f"HashPart should have length of 32, but len({hp})=={len(hp)}"
-  for s in ['-','_','/']:
-    assert s not in hp, f"Invalid symbol '{s}' found in {hp}"
-
-def assert_valid_dref(ref:str)->None:
-  error_msg=(f'Value of {ref} is not a valid derivation reference! Expected '
-             f'a string of form \'dref:HASH_HASH-name\'')
-  assert ref[:5] == 'dref:', error_msg
 
 def mkdref(dhash:HashPart, refname:Name)->DRef:
   assert_valid_hashpart(dhash)
@@ -78,11 +62,6 @@ def undref(r:DRef)->Tuple[HashPart, Name]:
 
 
 
-def assert_valid_rref(ref:str)->None:
-  error_msg=(f'Value of {ref} is not a valid instance reference! Expected '
-             f'a string of form \'dref:HASH-HASH-name\'')
-  assert ref[:5] == 'rref:', error_msg
-
 def mkrref(rhash:HashPart, dhash:HashPart, refname:Name)->RRef:
   assert_valid_name(refname)
   assert_valid_hashpart(rhash)
@@ -92,11 +71,6 @@ def mkrref(rhash:HashPart, dhash:HashPart, refname:Name)->RRef:
 def unrref(r:RRef)->Tuple[HashPart, HashPart, Name]:
   assert_valid_rref(r)
   return (HashPart(r[5:5+32]), HashPart(r[5+32+1:5+32+1+32]), Name(r[5+32+1+32+1:]))
-
-
-def assert_valid_name(s:Name)->None:
-  assert re_match(f"^{PYLIGHTNIX_NAMEPAT}+$", s), \
-      f"Name {s} contains characters besides {PYLIGHTNIX_NAMEPAT}"
 
 
 def mkname(s:str)->Name:
@@ -115,11 +89,6 @@ def mkname(s:str)->Name:
 def mkconfig(d:dict)->Config:
   assert_valid_dict(d,'dict')
   return Config(d)
-
-def assert_valid_config(c:Config):
-  assert c is not None, "Expected `Config` object, but None was passed"
-  assert_valid_name(config_name(c))
-  assert_valid_dict(c.__dict__, 'Config')
 
 def config_dict(c:Config)->dict:
   return deepcopy(c.__dict__)
@@ -145,13 +114,6 @@ def config_deps(c:Config)->List[DRef]:
 # \___ \| __/ _ \| '__/ _ \
 #  ___) | || (_) | | |  __/
 # |____/ \__\___/|_|  \___|
-
-def assert_valid_refpath(refpath:RefPath)->None:
-  error_msg=(f'Value of type {type(refpath)} is not a valid refpath! Expected '
-             f'list of strings starting from a d-reference, but actual value '
-             f'is "{refpath}"')
-  assert len(refpath)>0, error_msg
-  assert_valid_dref(refpath[0])
 
 def assert_store_initialized()->None:
   assert isdir(PYLIGHTNIX_STORE), \
@@ -373,12 +335,6 @@ def build_realize(dref:DRef, l:Context, o:Path)->RRef:
 def mkcontext()->Context:
   return {}
 
-def assert_valid_context(c:Context)->None:
-  assert_serializable(c)
-  for dref,rref in c.items():
-    assert_valid_dref(dref)
-    assert_valid_rref(rref)
-
 
 def context_eq(a:Context,b:Context)->bool:
   return json_dumps(a)==json_dumps(b)
@@ -514,6 +470,51 @@ def mksymlink(rref:RRef, tgtpath:Path, name:str, withtime=True)->Path:
   symlink=Path(join(tgtpath,f'{timeprefix}{name}'))
   forcelink(Path(relpath(store_rref2path(rref), tgtpath)), symlink)
   return symlink
+
+
+def assert_valid_refpath(refpath:RefPath)->None:
+  error_msg=(f'Value of type {type(refpath)} is not a valid refpath! Expected '
+             f'list of strings starting from a d-reference, but actual value '
+             f'is "{refpath}"')
+  assert len(refpath)>0, error_msg
+  assert_valid_dref(refpath[0])
+
+def assert_valid_config(c:Config):
+  assert c is not None, "Expected `Config` object, but None was passed"
+  assert_valid_name(config_name(c))
+  assert_valid_dict(c.__dict__, 'Config')
+
+def assert_valid_name(s:Name)->None:
+  assert re_match(f"^{PYLIGHTNIX_NAMEPAT}+$", s), \
+      f"Name {s} contains characters besides {PYLIGHTNIX_NAMEPAT}"
+
+def assert_valid_rref(ref:str)->None:
+  error_msg=(f'Value of {ref} is not a valid instance reference! Expected '
+             f'a string of form \'dref:HASH-HASH-name\'')
+  assert ref[:5] == 'rref:', error_msg
+
+def assert_valid_hashpart(hp:HashPart)->None:
+  assert len(hp)==32, f"HashPart should have length of 32, but len({hp})=={len(hp)}"
+  for s in ['-','_','/']:
+    assert s not in hp, f"Invalid symbol '{s}' found in {hp}"
+
+def assert_valid_dref(ref:str)->None:
+  error_msg=(f'Value of {ref} is not a valid derivation reference! Expected '
+             f'a string of form \'dref:HASH_HASH-name\'')
+  assert ref[:5] == 'dref:', error_msg
+
+
+def assert_valid_hash(h:Hash)->None:
+  """ Asserts if it's `Hash` argument is ill-formed. """
+  assert len(h)==64, f"HashPart should have length of 64, but len({h})=={len(h)}"
+  for s in ['-','_','/']:
+    assert s not in h, f"Invalid symbol '{s}' found in {h}"
+
+def assert_valid_context(c:Context)->None:
+  assert_serializable(c)
+  for dref,rref in c.items():
+    assert_valid_dref(dref)
+    assert_valid_rref(rref)
 
 def assert_valid_closure(closure:Closure)->None:
   assert len(closure.derivations)>0, \
