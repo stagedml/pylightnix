@@ -227,6 +227,49 @@ def store_gc(refs_in_use:List[DRef])->List[DRef]:
   return to_delete
 
 
+def store_instantiate(c:Config)->DRef:
+  assert_store_initialized()
+
+  refname=config_name(c)
+  dhash=config_hash(c)
+
+  dref=mkdref(trimhash(dhash),refname)
+
+  o=Path(mkdtemp(prefix=refname, dir=PYLIGHTNIX_TMP))
+  with open(join(o,'config.json'), 'w') as f:
+    f.write(config_serialize(c))
+
+  try:
+    replace(o, store_dref2path(dref))
+  except OSError as err:
+    if err.errno == ENOTEMPTY:
+      pass # Exactly matching derivation already exists
+    else:
+      raise
+  return dref
+
+def store_realize(dref:DRef, l:Context, o:Path)->RRef:
+  c=store_config(dref)
+  (dhash,nm)=undref(dref)
+
+  assert not isfile(join(o,'context.json')), (
+     f"While realizing {dref}: one of build artifacts has name 'context.json'. "
+     f"This name is reserved, please rename the artifact.")
+  with open(join(o,'context.json'), 'w') as f:
+    f.write(context_serialize(l))
+
+  rhash=dirhash(o)
+  rref=mkrref(trimhash(rhash),dhash,nm)
+
+  try:
+    replace(o,store_rref2path(rref))
+  except OSError as err:
+    if err.errno == ENOTEMPTY:
+      pass # Exactly matching realization already exists
+    else:
+      raise
+  return rref
+
 #  ____        _ _     _
 # | __ ) _   _(_) | __| |
 # |  _ \| | | | | |/ _` |
@@ -285,49 +328,6 @@ def build_deref_path(b:Build, refpath:RefPath)->Path:
   assert_valid_refpath(refpath)
   return Path(join(store_rref2path(build_deref(b, refpath[0])), *refpath[1:]))
 
-def build_instantiate(c:Config)->DRef:
-  assert_store_initialized()
-
-  refname=config_name(c)
-  dhash=config_hash(c)
-
-  dref=mkdref(trimhash(dhash),refname)
-
-  o=Path(mkdtemp(prefix=refname, dir=PYLIGHTNIX_TMP))
-  with open(join(o,'config.json'), 'w') as f:
-    f.write(config_serialize(c))
-
-  try:
-    replace(o, store_dref2path(dref))
-  except OSError as err:
-    if err.errno == ENOTEMPTY:
-      pass # Exactly matching derivation already exists
-    else:
-      raise
-  return dref
-
-def build_realize(dref:DRef, l:Context, o:Path)->RRef:
-  c=store_config(dref)
-  (dhash,nm)=undref(dref)
-
-  assert not isfile(join(o,'context.json')), (
-     f"While realizing {dref}: one of build artifacts has name 'context.json'. "
-     f"This name is reserved, please rename the artifact.")
-  with open(join(o,'context.json'), 'w') as f:
-    f.write(context_serialize(l))
-
-  rhash=dirhash(o)
-  rref=mkrref(trimhash(rhash),dhash,nm)
-
-  try:
-    replace(o,store_rref2path(rref))
-  except OSError as err:
-    if err.errno == ENOTEMPTY:
-      pass # Exactly matching realization already exists
-    else:
-      raise
-  return rref
-
 
 #   ____ _
 #  / ___| | ___  ___ _   _ _ __ ___
@@ -373,7 +373,7 @@ def context_serialize(c:Context)->str:
 #           |_|
 
 def mkdrv(m:Manager, inst:Instantiator, matcher:Matcher, realizer:Realizer)->DRef:
-  dref=build_instantiate(inst())
+  dref=store_instantiate(inst())
   if dref in m.builders:
     print(f"Overwriting realizer for {dref} with config:\n{config_dict(store_config(dref))}" )
   m.builders[dref]=Derivation(dref,matcher,realizer)
@@ -454,7 +454,7 @@ def realize(closure:Closure, force_rebuild:List[DRef]=[])->RRef:
         else:
           rref=matcher(dref,context)
         if not rref:
-          rreftmp=build_realize(dref,context,realizer(dref,context))
+          rreftmp=store_realize(dref,context,realizer(dref,context))
           rref=matcher(dref,context)
           assert rref is not None
         context=context_add(context,dref,rref)

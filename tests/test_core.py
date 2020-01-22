@@ -2,7 +2,7 @@ from pylightnix import (
     Config, instantiate, DRef, RRef, Path, mklogdir, dirhash,
     assert_valid_dref, assert_valid_rref, store_deps, store_deepdeps,
     store_gc, assert_valid_hash, assert_valid_config, Manager, mkcontext,
-    build_realize, store_rrefs, mkdref, mkrref, unrref, undref, realize,
+    store_realize, store_rrefs, mkdref, mkrref, unrref, undref, realize,
     rref2dref, store_config, mkconfig, mkbuild, Build, Context, build_outpath,
     only, mkdrv, store_deref, store_rref2path, store_rrefs_, config_ro,
     mksymlink, store_config_ro, build_deref, build_deref_path, mkrefpath,
@@ -27,7 +27,7 @@ def test_realize(d)->None:
     assert len(list(store_rrefs(dref, mkcontext()))) == 0
     rref=list(m.builders.values())[-1].matcher(dref, mkcontext())
     assert rref is None
-    rref=build_realize(dref, mkcontext(), list(m.builders.values())[-1].realizer(dref, mkcontext()))
+    rref=store_realize(dref, mkcontext(), list(m.builders.values())[-1].realizer(dref, mkcontext()))
     assert len(list(store_rrefs(dref, mkcontext()))) == 1
     assert_valid_rref(rref)
     rref2=list(m.builders.values())[-1].matcher(dref, mkcontext())
