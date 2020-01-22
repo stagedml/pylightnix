@@ -248,9 +248,12 @@ Context = Dict[DRef,RRef]
 Context type is an alias for Python dict which maps
 [DRefs](#pylightnix.types.DRef) into [RRefs](#pylightnix.types.RRef).
 
-For any node grouped with it's dependencies, pylightnix forces a property of
-unique realization, which means that no two nodes of a group which depend on
-same derivation may resolve it to different realizations.
+For any [Closure](#pylightnix.types.Closure), pylightnix maintains unique
+mapping from closure derivations to realizations. This makes sure that
+derivations within a closure are self-consistent.
+
+Nevertheless, derivation may be a member of different closures at once, and
+thus be mapped to different realizations within each closure.
 
 <a name="pylightnix.types.Build"></a>
 ## `Build`
@@ -307,6 +310,9 @@ Derivation = NamedTuple('Derivation', [('dref',DRef), ('matcher',Matcher), ('rea
 Closure = NamedTuple('Closure', [('dref',DRef),('derivations',List[Derivation])])
 ```
 
+Closure is a named tuple, encoding a reference to derivation and a whole list
+of it's dependencies, plus maybe some additional derivations. So the closure
+is not necessarily minimal.
 
 <a name="pylightnix.types.Manager"></a>
 ## `Manager` Objects
