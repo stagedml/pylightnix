@@ -348,7 +348,7 @@ Stage = Callable[[Manager],DRef]
 ## `PYLIGHTNIX_STORE_VERSION`
 
 ```python
-PYLIGHTNIX_STORE_VERSION = 1
+PYLIGHTNIX_STORE_VERSION = 0
 ```
 
 *Do not change!*
@@ -524,7 +524,7 @@ def assert_store_initialized() -> None
 ## `store_initialize()`
 
 ```python
-def store_initialize(exist_ok: bool = True)
+def store_initialize(custom_store: Optional[str] = None, custom_tmp: Optional[str] = None) -> None
 ```
 
 
