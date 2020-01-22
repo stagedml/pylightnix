@@ -130,17 +130,19 @@ The format of *derivation reference* is `<HashPart>-<Name>`, where:
 - `<Name>` object contains the name of derivation.
 
 Derivation reference 'points to' derivation object in pylightnix filesystem
-storage. For any valid DRef, `$PYLIGHTNIX_STORE/<HashPart>-<Name>/` does
+storage. For a valid DRef, `$PYLIGHTNIX_STORE/<HashPart>-<Name>/` does
 exist and is a directory which contains `config.json` file.
 
-Derivation reference is normally a result of successful
+Derivation references are results of
 [instantiation](#pylightnix.core.instantiate).
 
-Derivation reference may be converted to a realization reference, by call
-either of:
-- [build_deref](#pylightnix.core.build_deref) at build time.
-- [store_deref](#pylightnix.core.store_deref) to get the existing realization.
-- [realize](#pylightnix.core.realize) to get new realization
+Derivation reference may be converted into a [realization
+reference](#pylightnix.types.RRef) by either dereferencing (that is querying
+for existing realizations) or [realizing](#pylightnix.core.realize) it from
+scratch.
+
+For derefencing, one can use [build_deref](#pylightnix.core.build_deref) at
+build time or [store_deref](#pylightnix.core.store_deref) otherwise.
 
 <a name="pylightnix.types.RRef"></a>
 ## `RRef` Objects
@@ -826,10 +828,20 @@ storage.
 def realize(closure: Closure, force_rebuild: List[DRef] = []) -> RRef
 ```
 
-`realize` builds a realization of a derivation and it's dependencies.
-Return value is a [reference to particular
-realization](#pylightnix.types.RRef) which could be [converted to system
-path](#pylightnix.core.store_rref2path) to read build artifacts.
+`realize` builds a realization of a derivation by executing
+[Realizer](#pylightnix.types.Realizer) that is a user-defined Python code for
+producing build artifacts.
+
+During this process, Realizer may access:
+- The configuration of derivation being built and configurations of all it's
+  dependencies.
+- The realizations of all it's dependencies (and thus, their build
+  artifacts).
+
+Return value of realization is a [reference to new
+realization](#pylightnix.types.RRef) which could be
+later [converted to system path](#pylightnix.core.store_rref2path)
+to access build artifacts.
 
 <a name="pylightnix.core.only"></a>
 ## `only()`

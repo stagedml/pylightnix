@@ -28,17 +28,19 @@ class DRef(str):
   - `<Name>` object contains the name of derivation.
 
   Derivation reference 'points to' derivation object in pylightnix filesystem
-  storage. For any valid DRef, `$PYLIGHTNIX_STORE/<HashPart>-<Name>/` does
+  storage. For a valid DRef, `$PYLIGHTNIX_STORE/<HashPart>-<Name>/` does
   exist and is a directory which contains `config.json` file.
 
-  Derivation reference is normally a result of successful
+  Derivation references are results of
   [instantiation](#pylightnix.core.instantiate).
 
-  Derivation reference may be converted to a realization reference, by call
-  either of:
-  - [build_deref](#pylightnix.core.build_deref) at build time.
-  - [store_deref](#pylightnix.core.store_deref) to get the existing realization.
-  - [realize](#pylightnix.core.realize) to get new realization
+  Derivation reference may be converted into a [realization
+  reference](#pylightnix.types.RRef) by either dereferencing (that is querying
+  for existing realizations) or [realizing](#pylightnix.core.realize) it from
+  scratch.
+
+  For derefencing, one can use [build_deref](#pylightnix.core.build_deref) at
+  build time or [store_deref](#pylightnix.core.store_deref) otherwise.
   """
   pass
 

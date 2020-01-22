@@ -206,7 +206,7 @@ def store_deref(rref:RRef, dref:DRef)->RRef:
   See also [build_deref](#pylightnix.core.build_deref)"""
   c = store_context(rref)
   assert dref in c, (
-      f"Realization {rref} doesn't declare {dref} among it's depencencies so we "
+      f"Realization {rref} doesn't declare {dref} among it's dependencies so we "
       f"can't dereference it." )
   return c[dref]
 
@@ -377,7 +377,7 @@ def recursion_manager(funcname:str):
   global PYLIGHTNIX_RECURSION
   if get_ident() not in PYLIGHTNIX_RECURSION:
     PYLIGHTNIX_RECURSION[get_ident()]=[]
-  error_msg = (f"Recusrion manager alerted while in {funcname}. "
+  error_msg = (f"Recursion manager alerted while in {funcname}. "
                f"Contents of the recursion stack: {PYLIGHTNIX_RECURSION[get_ident()]}")
   if funcname=='instantiate':
     assert 'instantiate' not in PYLIGHTNIX_RECURSION[get_ident()], error_msg
@@ -415,10 +415,20 @@ def instantiate(stage:Stage)->Closure:
   return instantiate_(stage, Manager())
 
 def realize(closure:Closure, force_rebuild:List[DRef]=[])->RRef:
-  """ `realize` builds a realization of a derivation and it's dependencies.
-  Return value is a [reference to particular
-  realization](#pylightnix.types.RRef) which could be [converted to system
-  path](#pylightnix.core.store_rref2path) to read build artifacts. """
+  """ `realize` builds a realization of a derivation by executing
+  [Realizer](#pylightnix.types.Realizer) that is a user-defined Python code for
+  producing build artifacts.
+
+  During this process, Realizer may access:
+  - The configuration of derivation being built and configurations of all it's
+    dependencies.
+  - The realizations of all it's dependencies (and thus, their build
+    artifacts).
+
+  Return value of realization is a [reference to new
+  realization](#pylightnix.types.RRef) which could be
+  later [converted to system path](#pylightnix.core.store_rref2path)
+  to access build artifacts. """
   assert_valid_closure(closure)
   with recursion_manager('realize'):
     context:Context={}
