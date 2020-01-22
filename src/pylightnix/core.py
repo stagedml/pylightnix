@@ -14,7 +14,7 @@ from pylightnix.types import (
 
 #: *Do not change!*
 #: Tracks the version of pylightnix storage
-PYLIGHTNIX_STORE_VERSION = 1
+PYLIGHTNIX_STORE_VERSION = 0
 
 #: `PYLIGHTNIX_ROOT` contains the path to the root of pylightnix shared data folder.
 #:
