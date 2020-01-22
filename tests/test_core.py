@@ -22,15 +22,15 @@ def test_realize(d)->None:
   setup_storage('test_realize')
   m=Manager()
   mktestnode(m, d)
-  dref=m.builders[-1].dref
+  dref=list(m.builders.values())[-1].dref
   assert_valid_dref(dref)
   assert len(list(store_rrefs(dref, mkcontext()))) == 0
-  rref=m.builders[-1].matcher(dref, mkcontext())
+  rref=list(m.builders.values())[-1].matcher(dref, mkcontext())
   assert rref is None
-  rref=build_realize(dref, mkcontext(), m.builders[-1].realizer(dref, mkcontext()))
+  rref=build_realize(dref, mkcontext(), list(m.builders.values())[-1].realizer(dref, mkcontext()))
   assert len(list(store_rrefs(dref, mkcontext()))) == 1
   assert_valid_rref(rref)
-  rref2=m.builders[-1].matcher(dref, mkcontext())
+  rref2=list(m.builders.values())[-1].matcher(dref, mkcontext())
   assert rref==rref2
 
 

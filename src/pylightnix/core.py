@@ -405,7 +405,9 @@ def context_serialize(c:Context)->str:
 
 def mkdrv(m:Manager, inst:Instantiator, matcher:Matcher, realizer:Realizer)->DRef:
   dref=build_instantiate(inst())
-  m.builders.append(Derivation(dref,matcher,realizer))
+  if dref in m.builders:
+    print(f"Overwriting realizer for {dref} with config:\n{config_dict(store_config(dref))}" )
+  m.builders[dref]=Derivation(dref,matcher,realizer)
   return dref
 
 #! `PYLIGHTNIX_RECURSION` encodes the state of recursion manager, do not modify!
@@ -434,12 +436,7 @@ def recursion_manager(funcname:str):
 def instantiate_(stage:Stage, m:Manager)->Closure:
   with recursion_manager('instantiate'):
     target_dref=stage(m)
-    visited:Dict[DRef,Derivation]=OrderedDict()
-    for d in m.builders:
-      if d.dref in visited:
-        print(f"Overwriting realizer for {d.dref} with config:\n{config_dict(store_config(d.dref))}" )
-      visited[d.dref]=d
-    return Closure(target_dref,list(visited.values()))
+    return Closure(target_dref,list(m.builders.values()))
 
 def instantiate(stage:Stage)->Closure:
   """ `instantiate` takes the [Stage](#pylightnix.types.Stage) function and

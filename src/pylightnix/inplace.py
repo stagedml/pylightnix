@@ -14,5 +14,5 @@ def instantiate_inplace(stage:Any, *args, **kwargs)->DRef:
 
 def realize_inplace(dref:DRef) -> RRef:
   global PYLIGHTNIX_MANAGER
-  return realize(Closure(dref,PYLIGHTNIX_MANAGER.builders))
+  return realize(Closure(dref,list(PYLIGHTNIX_MANAGER.builders.values())))
 

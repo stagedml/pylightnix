@@ -1,4 +1,4 @@
-from pylightnix.imports import deepcopy
+from pylightnix.imports import ( deepcopy, OrderedDict )
 from typing import ( List, Any, Tuple, Union, Optional, Iterable, IO, Callable,
     Dict, NamedTuple, Set )
 
@@ -146,7 +146,7 @@ Closure = NamedTuple('Closure', [('dref',DRef),('derivations',List[Derivation])]
 
 class Manager:
   def __init__(self):
-    self.builders:List[Derivation]=[]
+    self.builders:Dict[DRef,Derivation]=OrderedDict()
 
 #: Stages are the building blocks of pylightnix. They are defined by stage
 #: functions which take [Manager](#pylightnix.typing.Manager) and return
