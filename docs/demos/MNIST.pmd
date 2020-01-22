@@ -35,7 +35,6 @@ ready. Also it is often a good idea to save pre-defined *Parameters* somewhere
 to be able to re-produce the training if needed. Let's see how does Pylightnix
 help with that.
 
-
 ```python
 from shutil import rmtree
 from pylightnix import store_initialize
@@ -43,13 +42,10 @@ rmtree('/tmp/pylightnix_mnist_demo', ignore_errors=True)
 store_initialize(custom_store='/tmp/pylightnix_mnist_demo', custom_tmp='/tmp')
 ```
 
-
-
 ### Stage 1: the dataset
 
 The MNIST dataset is well-known and is available in many places on the Internet.
 We
-
 
 
 
@@ -61,10 +57,8 @@ mnist_dataset = instantiate_inplace(
     name='mnist',
     url='https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz',
     sha256='731c5ac602752760c8e48fbffcf8c3b850d9dc2a2aedcf2cc48468fc17b673d1')
+
 ```
-
-
-
 
 ```python
 from pylightnix import Config, mkconfig
@@ -75,9 +69,6 @@ def mnist_config()->Config:
   return mkconfig(locals())
 ```
 
-
-
-
 ```python
 from pylightnix import DRef, Context, Path, mkdtemp, join
 
@@ -87,10 +78,8 @@ def mnist_build(dref:DRef, context:Context)->Path:
     f.write('0.99')
   # TODO: implement MNIST classifier here
   return o
+
 ```
-
-
-
 
 ```python
 from pylightnix import mkdrv, only, realize_inplace
@@ -106,18 +95,9 @@ mnist_model = instantiate_inplace(model)
 
 
 
-
-
-
 ```python
 
 mnist = realize_inplace(mnist_model)
-```
 
 ```
-Unpacking /tmp/0122-16:52:31_f10bc7fa_ql8grhv_/mnist.npz..
-Removing /tmp/0122-16:52:31_f10bc7fa_ql8grhv_/mnist.npz..
-```
-
-
 
