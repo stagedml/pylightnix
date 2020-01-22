@@ -57,11 +57,8 @@ Implementation:
    $ pytest
    ```
 
-## API Reference
+## Documentation
 
-[Link](./docs/Reference.md)
-
-
-## Examples
-
-Sorry, no examples to show, besides [tests](./tests).
+* [MNIST demo](./docs/demos/MNIST.md)
+* [API Reference](./docs/Reference.md)
+* [A bunch of tests](./tests).
