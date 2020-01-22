@@ -17,6 +17,7 @@ from subprocess import Popen, run
 from re import compile as re_compile
 
 from typing import Any, List, Optional, Callable
+from contextlib import contextmanager
 
 def get_executable(name:str, not_found_message:str)->str:
   e=find_executable(name)

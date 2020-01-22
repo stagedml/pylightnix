@@ -20,22 +20,22 @@ from tests.setup import (
 
 
 def test_inplace():
-  setup_storage('test_inplace')
-  setup_inplace_reset()
+  with setup_storage('test_inplace'):
+    setup_inplace_reset()
 
-  n1 = instantiate_inplace(mktestnode, {'a':'1'})
-  n2 = instantiate_inplace(mktestnode, {'b':'2'})
-  n3 = instantiate_inplace(mktestnode, {'c':'3', 'maman':n1})
-  n4 = instantiate_inplace(mktestnode, {'c':'4', 'papa':n3})
-  assert_valid_dref(n3)
-  assert_valid_dref(n4)
+    n1 = instantiate_inplace(mktestnode, {'a':'1'})
+    n2 = instantiate_inplace(mktestnode, {'b':'2'})
+    n3 = instantiate_inplace(mktestnode, {'c':'3', 'maman':n1})
+    n4 = instantiate_inplace(mktestnode, {'c':'4', 'papa':n3})
+    assert_valid_dref(n3)
+    assert_valid_dref(n4)
 
-  rref_n3 = realize_inplace(n3)
-  assert_valid_rref(rref_n3)
+    rref_n3 = realize_inplace(n3)
+    assert_valid_rref(rref_n3)
 
-  all_drefs = list(store_drefs())
-  assert len(all_drefs)==4
-  assert len(list(store_rrefs_(n1)))==1
-  assert len(list(store_rrefs_(n2)))==0
-  assert len(list(store_rrefs_(n3)))==1
-  assert len(list(store_rrefs_(n4)))==0
+    all_drefs = list(store_drefs())
+    assert len(all_drefs)==4
+    assert len(list(store_rrefs_(n1)))==1
+    assert len(list(store_rrefs_(n2)))==0
+    assert len(list(store_rrefs_(n3)))==1
+    assert len(list(store_rrefs_(n4)))==0

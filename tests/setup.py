@@ -1,19 +1,29 @@
 from pylightnix import ( Manager, Path, store_initialize, DRef, Context,
     Optional, mkbuild, build_outpath, store_rrefs, RRef, mkconfig, Config,
     Name, mkdrv, store_rref2path )
-from tests.imports import ( rmtree, join, makedirs, listdir, Callable)
+from tests.imports import ( rmtree, join, makedirs, listdir, Callable, contextmanager)
 
 PYLIGHTNIX_TEST:str='/tmp/pylightnix_tests'
 
-def setup_storage(tn:str)->str:
-  import pylightnix.core
+import pylightnix.core
+
+# We reset STORE variables to prevent interaction with production store
+pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
+pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
+
+@contextmanager
+def setup_storage(tn:str):
+  assert pylightnix.core.PYLIGHTNIX_STORE is None
+  assert pylightnix.core.PYLIGHTNIX_TMP is None
   storepath=f'/tmp/{tn}'
   rmtree(storepath, onerror=lambda a,b,c:())
-  pylightnix.core.PYLIGHTNIX_STORE=storepath
-  pylightnix.core.PYLIGHTNIX_TMP='/tmp'
-  store_initialize(exist_ok=False)
+  store_initialize(custom_store=storepath, custom_tmp='/tmp')
   assert 0==len(listdir(storepath))
-  return storepath
+  try:
+    yield storepath
+  finally:
+    pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
+    pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
 
 def setup_testpath(name:str)->Path:
   testpath=join(PYLIGHTNIX_TEST, name)

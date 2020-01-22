@@ -18,33 +18,33 @@ from tests.setup import (
 
 @given(d=dicts())
 def test_mknode(d)->None:
-  setup_storage('test_mknode')
+  with setup_storage('test_mknode'):
 
-  def _setting(m:Manager)->DRef:
-    return mknode(m, d)
+    def _setting(m:Manager)->DRef:
+      return mknode(m, d)
 
-  cl1 = instantiate(_setting)
-  cl2 = instantiate(_setting)
-  assert len(cl1.derivations)==1
-  assert len(cl2.derivations)==1
-  assert cl1.derivations[0].dref == cl2.derivations[0].dref
-  assert cl1.dref == cl2.dref
+    cl1 = instantiate(_setting)
+    cl2 = instantiate(_setting)
+    assert len(cl1.derivations)==1
+    assert len(cl2.derivations)==1
+    assert cl1.derivations[0].dref == cl2.derivations[0].dref
+    assert cl1.dref == cl2.dref
 
 
 @given(d=dicts(), a=artifacts())
 def test_mknode_with_artifacts(d,a)->None:
-  setup_storage('test_mknode_with_artifacts')
+  with setup_storage('test_mknode_with_artifacts'):
 
-  def _setting(m:Manager)->DRef:
-    return mknode(m, sources=d, artifacts=a)
+    def _setting(m:Manager)->DRef:
+      return mknode(m, sources=d, artifacts=a)
 
-  cl = instantiate(_setting)
-  assert len(cl.derivations)==1
+    cl = instantiate(_setting)
+    assert len(cl.derivations)==1
 
-  rref = realize(instantiate(_setting))
-  for nm,val in a.items():
-    assert isfile(join(store_rref2path(rref),nm)), \
-        f"RRef {rref} doesn't contain artifact {nm}"
+    rref = realize(instantiate(_setting))
+    for nm,val in a.items():
+      assert isfile(join(store_rref2path(rref),nm)), \
+          f"RRef {rref} doesn't contain artifact {nm}"
 
 
 

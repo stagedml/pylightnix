@@ -123,12 +123,20 @@ def assert_store_initialized()->None:
     (f"Looks like the Pylightnix tmp ('{PYLIGHTNIX_TMP}') is not initialized. Did "
      f"you call `store_initialize`?")
 
-def store_initialize(exist_ok:bool=True):
-  print(f"Initializing {PYLIGHTNIX_STORE}")
-  makedirs(PYLIGHTNIX_STORE, exist_ok=exist_ok)
-  makedirs(PYLIGHTNIX_TMP, exist_ok=True)
+def store_initialize(custom_store:Optional[str]=None, custom_tmp:Optional[str]=None)->None:
+  global PYLIGHTNIX_STORE, PYLIGHTNIX_TMP
+  if custom_store is None:
+    print(f"Initializing {'' if isdir(PYLIGHTNIX_STORE) else 'non-'}existing {PYLIGHTNIX_STORE}")
+    makedirs(PYLIGHTNIX_STORE, exist_ok=True)
+  else:
+    PYLIGHTNIX_STORE=custom_store
+    makedirs(PYLIGHTNIX_STORE, exist_ok=False)
+  if custom_tmp is None:
+    makedirs(PYLIGHTNIX_TMP, exist_ok=True)
+  else:
+    PYLIGHTNIX_TMP=custom_tmp
+    makedirs(PYLIGHTNIX_TMP, exist_ok=True)
   assert_store_initialized()
-
 
 def store_dref2path(r:DRef)->Path:
   (dhash,nm)=undref(r)
