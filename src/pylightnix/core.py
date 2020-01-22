@@ -181,17 +181,20 @@ def mkrefpath(r:DRef, items:List[str]=[])->RefPath:
   assert_valid_dref(r)
   return RefPath([str(r)]+items)
 
-def store_config(r:DRef)->Config:
-  assert_valid_dref(r)
-  return Config(readjson(join(store_dref2path(r),'config.json')))
+def store_config(r:Union[DRef,RRef])->Config:
+  if r[:4]=='rref':
+    return Config(readjson(join(store_dref2path(rref2dref(RRef(r))),'config.json')))
+  elif r[:4]=='dref':
+    return Config(readjson(join(store_dref2path(DRef(r)),'config.json')))
+  else:
+    assert False, r"Invalid reference type {r}. Expected either RRef or DRef."
 
 def store_context(r:RRef)->Context:
   assert_valid_rref(r)
   return readjson(join(store_rref2path(r),'context.json'))
 
-def store_config_ro(r:DRef)->Any:
+def store_config_ro(r:Union[DRef,RRef])->Any:
   return config_ro(store_config(r))
-
 
 def store_deps(refs:List[DRef])->List[DRef]:
   """ Return a list of reference's immediate dependencies, not including `refs`

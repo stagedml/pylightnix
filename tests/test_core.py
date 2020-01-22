@@ -53,9 +53,9 @@ def test_realize_dependencies()->None:
   assert n3 is not None
   assert toplevel is not None
 
-  c=store_config(rref2dref(rref))
+  c=store_config(rref)
   assert_valid_config(c)
-  cro=store_config_ro(rref2dref(rref))
+  cro=store_config_ro(rref)
   assert_valid_dref(getattr(cro,'n2'))
   assert_valid_dref(getattr(cro,'n3'))
 
@@ -211,7 +211,7 @@ def test_build_deref():
   def _setting(m:Manager)->DRef:
     n1 = mktestnode_nondetermenistic(m, {'a':'1'}, lambda : 42)
     n2 = mktestnode(m, {'b':'2'})
-    n3 = _depuser(m, {'maman':mkrefpath(n1,['nondet']), 'papa':n2})
+    n3 = _depuser(m, {'maman':mkrefpath(n1,['artifact']), 'papa':n2})
     return n3
 
   rref = realize(instantiate(_setting))
@@ -239,5 +239,23 @@ def test_ignored_stage():
   assert len(list(store_rrefs_(n3)))==1
   assert len(list(store_rrefs_(n4)))==0
 
+
+def test_overwrite_realizer():
+  setup_storage('test_overwrite_realizer')
+  n1:DRef; n2:DRef; n3:DRef; n4:DRef
+  def _setting(m:Manager)->DRef:
+    nonlocal n1, n2, n3, n4
+    n1 = mktestnode_nondetermenistic(m, {'a':'1'}, lambda:33)
+    n2 = mktestnode(m, {'maman':n1})
+    n3 = mktestnode_nondetermenistic(m, {'a':'1'}, lambda:42)
+    assert n1 == n3
+    return n2
+
+  rref_n2=realize(instantiate(_setting))
+  all_drefs = list(store_drefs())
+  assert len(all_drefs)==2
+
+  rref_n3=store_deref(rref_n2, store_config_ro(rref_n2).maman)
+  assert open(join(store_rref2path(rref_n3),'artifact'),'r').read() == '42'
 
 

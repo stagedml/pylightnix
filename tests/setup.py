@@ -32,14 +32,14 @@ def mktestnode_nondetermenistic(m:Manager, sources:dict, nondet:Callable[[],int]
     return mkconfig(sources)
   def _realize(dref:DRef, context:Context)->Path:
     b=mkbuild(dref, context)
-    with open(join(build_outpath(b),'nondet'),'w') as f:
+    with open(join(build_outpath(b),'artifact'),'w') as f:
       f.write(str(nondet()))
     return build_outpath(b)
   def _match(dref:DRef, context:Context)->Optional[RRef]:
     max_i=-1
     max_rref=None
     for rref in store_rrefs(dref, context):
-      with open(join(store_rref2path(rref),'nondet'),'r') as f:
+      with open(join(store_rref2path(rref),'artifact'),'r') as f:
         i=int(f.read())
         if i>max_i:
           max_i=i
