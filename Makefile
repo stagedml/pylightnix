@@ -1,4 +1,4 @@
-
+.DEFAULT_GOAL = all
 VERSION = $(shell cat setup.py | sed -n 's/.*version="\(.*\)".*/\1/p')
 WHEEL = dist/pylightnix-$(VERSION)-py3-none-any.whl
 SRC = $(shell find src -name '*\.py')
