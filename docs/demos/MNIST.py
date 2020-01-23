@@ -1,8 +1,8 @@
 
 from shutil import rmtree
 from pylightnix import store_initialize
-# rmtree('/tmp/pylightnix_mnist_demo', ignore_errors=True)
-# store_initialize(custom_store='/tmp/pylightnix_mnist_demo', custom_tmp='/tmp')
+rmtree('/tmp/pylightnix_mnist_demo', ignore_errors=True)
+store_initialize(custom_store='/tmp/pylightnix_mnist_demo', custom_tmp='/tmp')
 
 from pylightnix import DRef, instantiate_inplace, fetchurl
 
@@ -22,9 +22,7 @@ def mnist_config()->Config:
   num_epoches = 1
   return mkconfig(locals())
 
-
-
-from pylightnix import ( Build, build_outpath, build_config_ro, build_path )
+from pylightnix import ( Build, build_outpath, build_cattrs, build_path )
 from os.path import join
 from numpy import load
 from tensorflow.keras.models import ( Sequential )
@@ -32,11 +30,10 @@ from tensorflow.keras.layers import ( Conv2D, MaxPool2D, Dropout, Flatten, Dense
 from tensorflow.keras.utils import ( to_categorical )
 from tensorflow.keras.backend import image_data_format
 
-print('==================', image_data_format())
 
 def mnist_build(b:Build)->None:
-  o=build_outpath(b)
-  c=build_config_ro(b)
+  o = build_outpath(b)
+  c = build_cattrs(b)
 
   with load(build_path(b, c.dataset), allow_pickle=True) as f:
     x_train, y_train = f['x_train'], f['y_train']
@@ -63,13 +60,12 @@ def mnist_build(b:Build)->None:
   model.add(Dropout(0.5))
   model.add(Dense(10, activation = 'softmax'))
 
-  model.compile(loss = 'categorical_crossentropy', optimizer = 'adam', metrics = ['accuracy'])
-  model.fit(x_train, y_train, batch_size = 32, epochs = c.num_epoches, verbose = 1)
+  model.compile(loss='categorical_crossentropy', optimizer='adam', metrics = ['accuracy'])
+  model.fit(x_train, y_train, batch_size = 32, epochs = c.num_epoches, verbose = 0)
   accuracy = model.evaluate(x_test, y_test, verbose = 0)
   model.save_weights(join(o, 'weights.h5'), save_format='h5')
-  with open(join(o,'accuracy.txt')) as f:
+  with open(join(o,'accuracy.txt'),'w') as f:
     f.write(str(accuracy))
-  return
 
 from pylightnix import mkdrv, only, realize_inplace, build_wrapper
 
@@ -80,6 +76,7 @@ def model(m)->DRef:
   return mkdrv(m, mnist_config, mnist_match, build_wrapper(mnist_build))
 
 mnist_model = instantiate_inplace(model)
+
 
 mnist = realize_inplace(mnist_model, force_rebuild=[mnist_model])
 print(mnist)

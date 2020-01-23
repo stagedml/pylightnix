@@ -54,70 +54,125 @@ We
 
 
 ```python
-from pylightnix import fetchurl, instantiate_inplace
+from pylightnix import DRef, instantiate_inplace, fetchurl
 
-mnist_dataset = instantiate_inplace(
+mnist_dataset:DRef = \
+  instantiate_inplace(
     fetchurl,
     name='mnist',
+    mode='as-is',
     url='https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz',
     sha256='731c5ac602752760c8e48fbffcf8c3b850d9dc2a2aedcf2cc48468fc17b673d1')
 ```
 
 
 
+### Stage 2: the recognizer
+
+#### Stage configuration
+
 
 ```python
 from pylightnix import Config, mkconfig
 
 def mnist_config()->Config:
-  dataset = mnist_dataset
-  learning_rate = 1e-5
+  dataset = [mnist_dataset, 'mnist.npz']
+  learning_rate = 1e-3
+  num_epoches = 1
   return mkconfig(locals())
 ```
 
 
 
+#### Stage realization
+
 
 ```python
-from pylightnix import DRef, Context, Path, mkdtemp, join
+from pylightnix import ( Build, build_outpath, build_cattrs, build_path )
+from os.path import join
+from numpy import load
+from tensorflow.keras.models import ( Sequential )
+from tensorflow.keras.layers import ( Conv2D, MaxPool2D, Dropout, Flatten, Dense )
+from tensorflow.keras.utils import ( to_categorical )
+from tensorflow.keras.backend import image_data_format
 
-def mnist_build(dref:DRef, context:Context)->Path:
-  o=Path(mkdtemp(dir='/tmp'))
-  with open(join(o,'accuracy'),'w') as f:
-    f.write('0.99')
-  # TODO: implement MNIST classifier here
-  return o
+
+def mnist_build(b:Build)->None:
+  o = build_outpath(b)
+  c = build_cattrs(b)
+
+  with load(build_path(b, c.dataset), allow_pickle=True) as f:
+    x_train, y_train = f['x_train'], f['y_train']
+    x_test, y_test = f['x_test'], f['y_test']
+
+  x_train = x_train.reshape(x_train.shape[0], 28, 28, 1).astype('float32') / 255
+  y_train = to_categorical(y_train, 10)
+
+  x_test = x_test.reshape(x_test.shape[0], 28, 28, 1).astype('float32') / 255
+  y_test = to_categorical(y_test, 10)
+
+
+  print('x_train shape:', x_train.shape)
+  print(x_train.shape[0], 'train samples')
+  print(x_test.shape[0], 'test samples')
+
+  model = Sequential()
+  model.add(Conv2D(32, kernel_size=(3, 3), activation = 'relu', input_shape = (28,28,1)))
+  model.add(Conv2D(64, (3, 3), activation = 'relu'))
+  model.add(MaxPool2D(pool_size = (2,2)))
+  model.add(Dropout(0.25))
+  model.add(Flatten())
+  model.add(Dense(128, activation = 'relu'))
+  model.add(Dropout(0.5))
+  model.add(Dense(10, activation = 'softmax'))
+
+  model.compile(loss='categorical_crossentropy', optimizer='adam', metrics = ['accuracy'])
+  model.fit(x_train, y_train, batch_size = 32, epochs = c.num_epoches, verbose = 0)
+  accuracy = model.evaluate(x_test, y_test, verbose = 0)
+  model.save_weights(join(o, 'weights.h5'), save_format='h5')
+  with open(join(o,'accuracy.txt'),'w') as f:
+    f.write(str(accuracy))
 ```
 
 
 
+#### Stage matching
+
 
 ```python
-from pylightnix import mkdrv, only, realize_inplace
+from pylightnix import mkdrv, only, realize_inplace, build_wrapper
 
 def mnist_match(dref, context):
   return only(dref, context)
 
 def model(m)->DRef:
-  return mkdrv(m, mnist_config, mnist_match, mnist_build)
+  return mkdrv(m, mnist_config, mnist_match, build_wrapper(mnist_build))
 
 mnist_model = instantiate_inplace(model)
 ```
 
 
 
-
+#### Putting it all together
 
 
 ```python
 
-mnist = realize_inplace(mnist_model)
+mnist = realize_inplace(mnist_model, force_rebuild=[mnist_model])
+print(mnist)
 ```
 
 ```
-Unpacking /tmp/0122-16:52:31_f10bc7fa_ql8grhv_/mnist.npz..
-Removing /tmp/0122-16:52:31_f10bc7fa_ql8grhv_/mnist.npz..
+x_train shape: (60000, 28, 28, 1)
+60000 train samples
+10000 test samples
+rref:92f2e92f70f16a5eec5ecb86f25a9f76-ccbfe731c63564f99661e240c043aab0-unnamed
 ```
 
 
+
+### Stage 3: the application
+
+
+(TODO)
 
