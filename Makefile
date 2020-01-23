@@ -45,11 +45,17 @@ docs: ./docs/Reference.md
 	rm coverage.xml || true
 	coverage run -m pytest
 	coverage report -m
-	codecov -t `cat .codecovrc`
 	touch $@
 
 .PHONY: coverage
 coverage: .stamp_coverage
+
+.stamp_codecov: .stamp_coverage .stamp_check .codecovrc
+	codecov -t `cat .codecovrc`
+	touch $@
+
+.PHONY: codecov
+codecov: .stamp_codecov
 
 docs/demos/MNIST.md: docs/demos/MNIST.pmd .stamp_check
 	pweave -f markdown $<
@@ -60,8 +66,8 @@ docs/demos/MNIST.py: docs/demos/MNIST.pmd .stamp_check
 .PHONY: demos
 demos: docs/demos/MNIST.md docs/demos/MNIST.py
 
-all:
-	echo 'all'
+.PHONY: all
+all: coverage demos docs
 
 
 
