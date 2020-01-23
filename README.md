@@ -1,10 +1,16 @@
 ![coverage](https://codecov.io/gh/stagedml/pylightnix/branch/master/graph/badge.svg)
 
-
 # Pylightnix
 
 Pylightnix is a Python-based DSL library for manipulating
 [Nix](https://nixos.org/nix)-style data storage.
+
+Contents:
+
+1. [Features](#Features)
+2. [Build](#Build)
+3. [Quick start](#Quick_start)
+4. [Documentation](#Documentation)
 
 ## Features:
 
@@ -32,7 +38,7 @@ Implementation:
   synchronization are supported. Also, we didn't check it on any operating systems
   besides Linux.
 
-## Build from source
+## Build
 
 1. Clone the repo
    ```
@@ -54,11 +60,182 @@ Implementation:
      ```
 3. Optionally, run the tests
    ```
-   $ pytest
+   $ make coverage
    ```
+
+## Quick start
+
+Pylightnix provides API for data deployment system right in your Python
+application. Here we illustrate the concepts using [GNU
+hello](https://www.gnu.org/software/hello) building problem as an example.
+
+_Note: we'll omit non-pylighnix imports here. Check [the complete 
+sources of Hello demo](./docs/demos/HELLO.py) for details_
+
+First things first, we should know that Pylightnix uses filesystem storage for
+tracking immutable data object called nodes which could depend on each other.
+This storage is the central part of library, all the magic happens there. So
+let's initialize it:
+
+```python
+from pylightnix import store_initialize
+store_initialize()
+```
+
+Location of the storage is kept in an internal global variable. It may be
+changed either by passing arguments to this function or by other methods. Check
+the [Reference](./docs/Reference.md#pylightnix.core.store_initialize) for
+details.
+
+### Basic terms and builtins
+
+In Pylightnix, we define, check and execute the data processing operations
+called **stages**. We will define our stage later, for now we will use a
+builtin stage `fetchurl` (hello, Nix).
+
+```python
+from pylightnix import DRef, instantiate_inplace, fetchurl
+
+hello_version = '2.10'
+
+hello_src:DRef = \
+  instantiate_inplace(
+    fetchurl,
+    name='hello-src',
+    url=f'http://ftp.gnu.org/gnu/hello/hello-{hello_version}.tar.gz',
+    sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b')
+```
+
+What did we do? We created `hello_src` variable of type
+[DRef](./docs/Reference.md#pylightnix.types.DRef) which takes a reference to a
+**Derivation** of fetchurl stage. It means several things: a) the configuration
+of our stage does already exist in the storage and it doesn't contain critical
+errors like invalid links. b) Pylighnix knows how to **Realize** this
+derivation, i.e. build it by calling a Python function and collecting it's
+output in form of contents of temporary directory.
+
+So what will we have when Realization of `hello_src` is complete? As [fetchurl's
+documentation](./docs/Reference.md#pylightnix.stages.fetchurl.fetchurl)
+suggests, we will see a downloaded and unpacked URL, in our case it is the
+contents of `hello-2.10.tar.gz` archive. Let's check it:
+
+```python
+from pylightnix import RRef, realize_inplace
+
+hello_rref:RRef = realize_inplace(hello_src)
+print(hello_rref)
+```
+
+OK, now we should see signs of actual work being done. Something was just
+downloaded and we also should see a string starting with 'rref:...' in our
+_stdout_. This string is a **Realization reference** of type
+[RRef](./docs/Reference.md#pylightnix.types.RRef) which uniquely identifies
+some data node in the Pylightnix storage.
+
+### Custom stages
+
+We want to build the GNU hello, so we need some code to build it. Pylighnix aims
+at providing only a generic minimalistic API, so it doesn't have a builtin stage for
+compiling applications. Luckily, it is not hard to define it, as we should see.
+
+In Pylighnix, stages consist of three important components:
+* The configuration, which is a JSON-Object of parameters and references
+* The realizer, which is a Python function for building the Realization
+* The matcher, which is another Python function for dealing with
+    non-determenistic builds.
+
+The matcher business is beyound the scope of this quick start, so let's deal
+with other two components. Firs, the configuration:
+
+```python
+from pylightnix import Config, mkconfig
+
+def hello_config()->Config:
+  name = 'hello-bin'
+  src = [hello_src, f'hello-{hello_version}']
+  return mkconfig(locals())
+```
+
+Here, we define a name and a
+[RefPath](#docs/Reference.md#pylightnix.types.RefPath) which links our new stage
+with a specific folder of the previous stage. `locals()` is a standard Python
+function which returns a `dict` of local variables, so as a result we will have
+a config with two fields.
+
+_Note, we should only use **Derivation references** in configurations.
+Realization references are generally accessible either from global scope or from
+realizers_
+
+Next, the realization:
+
+```python
+from pylightnix import Path, Build, build_cattrs, build_outpath, build_path
+
+def hello_build(b:Build)->None:
+  c:Any = build_cattrs(b)
+  o:Path = build_outpath(b)
+  with TemporaryDirectory() as tmp:
+    copytree(build_path(b,c.src),join(tmp,'src'))
+    chdir(join(tmp,'src'))
+    system(f'./configure --prefix=/usr')
+    system(f'make')
+    system(f'make install DESTDIR={o}')
+```
+
+As we see here, the `hello_build` function receives a
+[Build](#docs/Reference.md#pylightnix.types.Build) helper, which brings us two
+important variables:
+* `c:ConfigAttrs` is de-facto a config we defined earlier,
+  with `name` and `src` attributes (there is also a `build_config` function
+  which returns current stage's config as-is, i.e. as a Python dict).
+* `o:Path` is the name of **output folder** where we should put results of the
+  build process.
+
+The last interesting thing here is the `build_path` function. It is the point
+where we **Dereference refpaths** by converting them to system paths. Pylightnix
+guarantees that referenced stages are already realized at the time of
+dereferencing.
+
+The rest should be simple. We copy sources to the temp folder and perform the
+usual configure-make-install on it.
+
+Finally, we introduce our new stage to Pylightnix:
+
+```python
+from pylightnix import mkdrv, build_wrapper, only
+
+hello:DRef = \
+  instantiate_inplace(mkdrv, hello_config, only, build_wrapper(hello_build))
+```
+
+Here, [mkdrv](#Reference.md#pylightnix.core.mkdrv) (which stands for 'make
+derivation') takes the place of `fetchurl`. As before, we get a `DRev` and that
+means we could:
+
+```python
+rref:RRef=realize_inplace(hello)
+```
+
+Once the realization is ready, we could convert it to system path directly
+
+```python
+from pylightnix import rref2path
+
+path=rref2path(rref)
+system(join(path,'usr/bin/hello'))
+```
+
+which says
+
+```
+Hello World!
+```
 
 ## Documentation
 
+* [HELLO demo](./docs/demos/HELLO.md)
 * [MNIST demo](./docs/demos/MNIST.md)
 * [API Reference](./docs/Reference.md)
-* [A bunch of tests](./tests).
+* [A bunch of tests](./tests)
+
+
