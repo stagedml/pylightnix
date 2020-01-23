@@ -34,16 +34,17 @@ check: .stamp_check
 .PHONY: docs
 docs: ./docs/Reference.md
 
-.stamp_coverage: $(SRC) $(TESTS) .stamp_check
+.coverage.xml: $(SRC) $(TESTS) .stamp_check
 	rm coverage.xml || true
 	coverage run -m pytest
+	coverage xml -o $@
 	touch $@
 
 .PHONY: coverage
-coverage: .stamp_coverage
+coverage: .coverage.xml
 	coverage report -m
 
-.stamp_codecov: .stamp_coverage .stamp_check .codecovrc
+.stamp_codecov: .coverage.xml .stamp_check .codecovrc
 	@if ! which codecov >/dev/null ; then \
 		echo "codecov not found. Install it with 'sudo -H pip3 install codecov'" ;\
 		exit 1 ;\
@@ -53,7 +54,7 @@ coverage: .stamp_coverage
 		echo "Go and get it at https://codecov.io/gh/stagedml/pylightnix/settings" >&2 ;\
 		exit 1 ;\
 	fi
-	codecov -t `cat .codecovrc`
+	codecov -t `cat .codecovrc` -f $<
 	touch $@
 
 .PHONY: codecov
