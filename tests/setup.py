@@ -1,6 +1,6 @@
 from pylightnix import ( Manager, Path, store_initialize, DRef, Context,
     Optional, mkbuild, build_outpath, store_rrefs, RRef, mkconfig, Config,
-    Name, mkdrv, store_rref2path )
+    Name, mkdrv, rref2path )
 from tests.imports import ( rmtree, join, makedirs, listdir, Callable, contextmanager)
 
 PYLIGHTNIX_TEST:str='/tmp/pylightnix_tests'
@@ -55,7 +55,7 @@ def mktestnode_nondetermenistic(m:Manager, sources:dict,
     max_i=-1
     max_rref=None
     for rref in store_rrefs(dref, context):
-      with open(join(store_rref2path(rref),'artifact'),'r') as f:
+      with open(join(rref2path(rref),'artifact'),'r') as f:
         i=int(f.read())
         if i>max_i:
           max_i=i

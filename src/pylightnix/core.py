@@ -125,6 +125,21 @@ def assert_store_initialized()->None:
      f"you call `store_initialize`?")
 
 def store_initialize(custom_store:Optional[str]=None, custom_tmp:Optional[str]=None)->None:
+  """ Create the storage and temp direcories. Default locations are determined
+  by `PYLIGHTNIX_STORE` and `PYLIGHTNIX_TMP` variables. Note, that they could be
+  overwritten either by setting environment variables of the same name before
+  starting the Python or by assigning to them right after importing pylighnix.
+
+  See also [assert_store_initialized](#pylightnix.core.assert_store_initialized).
+
+  Example:
+  ```python
+  import pylightnix.core
+  pylightnix.core.PYLIGHTNIX_STORE='/tmp/custom_pylightnix_storage'
+  pylightnix.core.PYLIGHTNIX_TMP='/tmp/custom_pylightnix_tmp'
+  pylightnix.core.store_initialize()
+  ```
+  """
   global PYLIGHTNIX_STORE, PYLIGHTNIX_TMP
   if custom_store is None:
     print(f"Initializing {'' if isdir(PYLIGHTNIX_STORE) else 'non-'}existing {PYLIGHTNIX_STORE}")
@@ -143,7 +158,7 @@ def store_dref2path(r:DRef)->Path:
   (dhash,nm)=undref(r)
   return Path(join(PYLIGHTNIX_STORE,dhash+'-'+nm))
 
-def store_rref2path(r:RRef)->Path:
+def rref2path(r:RRef)->Path:
   (rhash,dhash,nm)=unrref(r)
   return Path(join(PYLIGHTNIX_STORE,dhash+'-'+nm,rhash))
 
@@ -162,7 +177,7 @@ def store_config(r:Union[DRef,RRef])->Config:
 
 def store_context(r:RRef)->Context:
   assert_valid_rref(r)
-  return readjson(join(store_rref2path(r),'context.json'))
+  return readjson(join(rref2path(r),'context.json'))
 
 def store_cattrs(r:Union[DRef,RRef])->Any:
   return config_ro(store_config(r))
@@ -263,11 +278,11 @@ def store_realize(dref:DRef, l:Context, o:Path)->RRef:
   rref=mkrref(trimhash(rhash),dhash,nm)
 
   try:
-    replace(o,store_rref2path(rref))
+    replace(o,rref2path(rref))
   except OSError as err:
     if err.errno == ENOTEMPTY:
       try:
-        replace(join(o,'__buildtime__.txt'),join(store_rref2path(rref),'__buildtime__.txt'))
+        replace(join(o,'__buildtime__.txt'),join(rref2path(rref),'__buildtime__.txt'))
       except OSError as err:
         if err.errno == ENOTEMPTY:
           pass # Exactly matching realization already exists
@@ -335,7 +350,7 @@ def build_deref(b:Build, dref:DRef)->RRef:
 
 def build_path(b:Build, refpath:RefPath)->Path:
   assert_valid_refpath(refpath)
-  return Path(join(store_rref2path(build_deref(b, refpath[0])), *refpath[1:]))
+  return Path(join(rref2path(build_deref(b, refpath[0])), *refpath[1:]))
 
 #   ____ _
 #  / ___| | ___  ___ _   _ _ __ ___
@@ -444,7 +459,7 @@ def realize(closure:Closure, force_rebuild:List[DRef]=[])->RRef:
 
   Return value of realization is a [reference to new
   realization](#pylightnix.types.RRef) which could be
-  later [converted to system path](#pylightnix.core.store_rref2path)
+  later [converted to system path](#pylightnix.core.rref2path)
   to access build artifacts. """
   assert_valid_closure(closure)
   with recursion_manager('realize'):
@@ -489,12 +504,12 @@ def mksymlink(rref:RRef, tgtpath:Path, name:str, withtime=True)->Path:
   assert isdir(tgtpath), f"store_link(): `tgt` dir '{tgtpath}' doesn't exist"
   ts:Optional[str]
   if withtime:
-    ts=tryread(Path(join(store_rref2path(rref),'__buildtime__.txt')))
+    ts=tryread(Path(join(rref2path(rref),'__buildtime__.txt')))
   else:
     ts=None
   timeprefix=f'{ts}_' if ts is not None else ''
   symlink=Path(join(tgtpath,f'{timeprefix}{name}'))
-  forcelink(Path(relpath(store_rref2path(rref), tgtpath)), symlink)
+  forcelink(Path(relpath(rref2path(rref), tgtpath)), symlink)
   return symlink
 
 

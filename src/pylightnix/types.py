@@ -66,7 +66,7 @@ class RRef(str):
 
   Valid realization references may be dereferenced down to system paths of
   *build artifacts* by calling
-  [store_rref2path](#pylightnix.core.store_rref2path). """
+  [rref2path](#pylightnix.core.rref2path). """
   pass
 
 class Name(str):
@@ -90,7 +90,7 @@ class RefPath(list):
      [store_deref](#pylightnix.core.store_deref) or
      [build_deref](#pylightnix.core.build_deref).
   2. Convert the realization reference into system path with
-     [store_rref2path](#pylightnix.core.store_rref2path)
+     [rref2path](#pylightnix.core.rref2path)
   3. Join the system path with 'relative' part of RRefPath
 
   The above algorithm is implemented as

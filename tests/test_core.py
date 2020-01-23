@@ -4,7 +4,7 @@ from pylightnix import (
     assert_valid_hash, assert_valid_config, Manager, mkcontext, store_realize,
     store_rrefs, mkdref, mkrref, unrref, undref, realize, rref2dref,
     store_config, mkconfig, Build, Context, build_outpath, only, mkdrv,
-    store_deref, store_rref2path, store_rrefs_, config_ro, mksymlink,
+    store_deref, rref2path, store_rrefs_, config_ro, mksymlink,
     store_cattrs, build_deref, build_path, mkrefpath, build_config,
     store_drefs, store_rrefs, store_rrefs_, build_wrapper, recursion_manager,
     build_cattrs, build_name)
@@ -278,7 +278,7 @@ def test_overwrite_realizer()->None:
     assert len(all_drefs)==2
 
     rref_n3=store_deref(rref_n2, store_cattrs(rref_n2).maman)
-    assert open(join(store_rref2path(rref_n3),'artifact'),'r').read() == '42'
+    assert open(join(rref2path(rref_n3),'artifact'),'r').read() == '42'
 
 def test_only()->None:
   with setup_storage('test_only'):
