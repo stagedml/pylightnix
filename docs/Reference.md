@@ -46,7 +46,7 @@
     * [mkrefpath](#pylightnix.core.mkrefpath)
     * [store\_config](#pylightnix.core.store_config)
     * [store\_context](#pylightnix.core.store_context)
-    * [store\_config\_ro](#pylightnix.core.store_config_ro)
+    * [store\_cattrs](#pylightnix.core.store_cattrs)
     * [store\_deps](#pylightnix.core.store_deps)
     * [store\_deepdeps](#pylightnix.core.store_deepdeps)
     * [store\_drefs](#pylightnix.core.store_drefs)
@@ -54,19 +54,21 @@
     * [store\_rrefs](#pylightnix.core.store_rrefs)
     * [store\_deref](#pylightnix.core.store_deref)
     * [store\_gc](#pylightnix.core.store_gc)
+    * [store\_instantiate](#pylightnix.core.store_instantiate)
+    * [store\_realize](#pylightnix.core.store_realize)
     * [mkbuild](#pylightnix.core.mkbuild)
+    * [build\_wrapper](#pylightnix.core.build_wrapper)
     * [build\_config](#pylightnix.core.build_config)
     * [build\_context](#pylightnix.core.build_context)
-    * [build\_config\_ro](#pylightnix.core.build_config_ro)
+    * [build\_cattrs](#pylightnix.core.build_cattrs)
     * [build\_outpath](#pylightnix.core.build_outpath)
     * [build\_name](#pylightnix.core.build_name)
     * [build\_deref](#pylightnix.core.build_deref)
-    * [build\_deref\_path](#pylightnix.core.build_deref_path)
-    * [build\_instantiate](#pylightnix.core.build_instantiate)
-    * [build\_realize](#pylightnix.core.build_realize)
+    * [build\_path](#pylightnix.core.build_path)
     * [mkcontext](#pylightnix.core.mkcontext)
     * [context\_eq](#pylightnix.core.context_eq)
     * [context\_add](#pylightnix.core.context_add)
+    * [context\_deref](#pylightnix.core.context_deref)
     * [context\_serialize](#pylightnix.core.context_serialize)
     * [mkdrv](#pylightnix.core.mkdrv)
     * [recursion\_manager](#pylightnix.core.recursion_manager)
@@ -84,6 +86,8 @@
     * [assert\_valid\_hash](#pylightnix.core.assert_valid_hash)
     * [assert\_valid\_context](#pylightnix.core.assert_valid_context)
     * [assert\_valid\_closure](#pylightnix.core.assert_valid_closure)
+    * [assert\_no\_rref\_deps](#pylightnix.core.assert_no_rref_deps)
+    * [assert\_have\_realizers](#pylightnix.core.assert_have_realizers)
   * [pylightnix.stages](#pylightnix.stages)
   * [pylightnix.stages.trivial](#pylightnix.stages.trivial)
     * [mknode](#pylightnix.stages.trivial.mknode)
@@ -569,11 +573,11 @@ def store_context(r: RRef) -> Context
 ```
 
 
-<a name="pylightnix.core.store_config_ro"></a>
-## `store_config_ro()`
+<a name="pylightnix.core.store_cattrs"></a>
+## `store_cattrs()`
 
 ```python
-def store_config_ro(r: Union[DRef,RRef]) -> Any
+def store_cattrs(r: Union[DRef,RRef]) -> Any
 ```
 
 
@@ -628,11 +632,11 @@ that fit into particular [context]($pylightnix.types.Context).
 ## `store_deref()`
 
 ```python
-def store_deref(rref: RRef, dref: DRef) -> RRef
+def store_deref(context_holder: RRef, dref: DRef) -> RRef
 ```
 
-For any realization `rref` and it's dependency `dref`, `store_deref`
-queryies the realization reference of this dependency.
+For any realization `context_holder` and it's dependency `dref`, `store_deref`
+queries the realization reference of this dependency.
 
 See also [build_deref](#pylightnix.core.build_deref)
 
@@ -647,11 +651,35 @@ Take roots which are in use and should not be removed. Return roots which
 are not used and may be removed. Actual removing is to be done by user-defined
 application.
 
+<a name="pylightnix.core.store_instantiate"></a>
+## `store_instantiate()`
+
+```python
+def store_instantiate(c: Config) -> DRef
+```
+
+
+<a name="pylightnix.core.store_realize"></a>
+## `store_realize()`
+
+```python
+def store_realize(dref: DRef, l: Context, o: Path) -> RRef
+```
+
+
 <a name="pylightnix.core.mkbuild"></a>
 ## `mkbuild()`
 
 ```python
-def mkbuild(dref: DRef, context: Context) -> Build
+def mkbuild(dref: DRef, context: Context, buildtime: bool = True) -> Build
+```
+
+
+<a name="pylightnix.core.build_wrapper"></a>
+## `build_wrapper()`
+
+```python
+def build_wrapper(f: Callable[[Build],None], buildtime: bool = True) -> Realizer
 ```
 
 
@@ -675,11 +703,11 @@ def build_context(b: Build) -> Context
 Return the [Context](#pylightnix.types.Context) object of the realization
 being built.
 
-<a name="pylightnix.core.build_config_ro"></a>
-## `build_config_ro()`
+<a name="pylightnix.core.build_cattrs"></a>
+## `build_cattrs()`
 
 ```python
-def build_config_ro(m: Build) -> Any
+def build_cattrs(m: Build) -> Any
 ```
 
 
@@ -719,27 +747,11 @@ realization of a dependency `dref`.
 known.  In other cases, [store_deref](#pylightnix.core.store_deref) should be
 used.
 
-<a name="pylightnix.core.build_deref_path"></a>
-## `build_deref_path()`
+<a name="pylightnix.core.build_path"></a>
+## `build_path()`
 
 ```python
-def build_deref_path(b: Build, refpath: RefPath) -> Path
-```
-
-
-<a name="pylightnix.core.build_instantiate"></a>
-## `build_instantiate()`
-
-```python
-def build_instantiate(c: Config) -> DRef
-```
-
-
-<a name="pylightnix.core.build_realize"></a>
-## `build_realize()`
-
-```python
-def build_realize(dref: DRef, l: Context, o: Path) -> RRef
+def build_path(b: Build, refpath: RefPath) -> Path
 ```
 
 
@@ -764,6 +776,14 @@ def context_eq(a: Context, b: Context) -> bool
 
 ```python
 def context_add(context: Context, dref: DRef, rref: RRef) -> Context
+```
+
+
+<a name="pylightnix.core.context_deref"></a>
+## `context_deref()`
+
+```python
+def context_deref(context: Context, dref: DRef) -> RRef
 ```
 
 
@@ -796,7 +816,7 @@ def recursion_manager(funcname: str)
 ## `instantiate_()`
 
 ```python
-def instantiate_(stage: Stage, m: Manager) -> Closure
+def instantiate_(m: Manager, stage: Any, args, *,, ,, kwargs) -> Closure
 ```
 
 
@@ -804,7 +824,7 @@ def instantiate_(stage: Stage, m: Manager) -> Closure
 ## `instantiate()`
 
 ```python
-def instantiate(stage: Stage) -> Closure
+def instantiate(stage: Any, args, *,, ,, kwargs) -> Closure
 ```
 
 `instantiate` takes the [Stage](#pylightnix.types.Stage) function and
@@ -935,6 +955,22 @@ def assert_valid_closure(closure: Closure) -> None
 ```
 
 
+<a name="pylightnix.core.assert_no_rref_deps"></a>
+## `assert_no_rref_deps()`
+
+```python
+def assert_no_rref_deps(c: Config) -> None
+```
+
+
+<a name="pylightnix.core.assert_have_realizers"></a>
+## `assert_have_realizers()`
+
+```python
+def assert_have_realizers(m: Manager, drefs: List[DRef]) -> None
+```
+
+
 <a name="pylightnix.stages"></a>
 # `pylightnix.stages`
 
@@ -991,7 +1027,7 @@ def config(url: str, sha256: str, mode: str = 'unpack,remove', name: Name = None
 ## `download()`
 
 ```python
-def download(b: Build) -> Build
+def download(b: Build) -> None
 ```
 
 
