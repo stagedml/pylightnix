@@ -7,8 +7,9 @@ PYLIGHTNIX_MANAGER = Manager()
 
 def instantiate_inplace(stage:Any, *args, **kwargs)->DRef:
   global PYLIGHTNIX_MANAGER
-  closure = instantiate_(lambda m: stage(m, *args, **kwargs),
-                          PYLIGHTNIX_MANAGER)
+  closure = instantiate_(PYLIGHTNIX_MANAGER,
+                         lambda m: stage(m, *args, **kwargs)
+                         )
   return closure.dref
 
 

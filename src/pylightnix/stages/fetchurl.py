@@ -1,6 +1,6 @@
 from pylightnix.imports import (sha256, urlparse, Popen, remove, basename, join, rename, isfile )
 from pylightnix.types import ( DRef, Manager, Config, Build, Context, Name, Path )
-from pylightnix.core import ( mkconfig, mkbuild, build_config_ro, build_outpath,
+from pylightnix.core import ( mkconfig, mkbuild, build_cattrs, build_outpath,
     mkdrv, only, build_wrapper )
 from pylightnix.utils import ( get_executable )
 
@@ -16,7 +16,7 @@ def config(url:str, sha256:str, mode:str='unpack,remove', name:Name=None)->Confi
 #   return state_add(s, 'download')
 
 def download(b:Build)->None:
-  c=build_config_ro(b)
+  c=build_cattrs(b)
   o=build_outpath(b)
 
   try:

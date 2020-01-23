@@ -11,6 +11,10 @@ import pylightnix.core
 pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
 pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
 
+
+class ShouldHaveFailed(Exception):
+  pass
+
 @contextmanager
 def setup_storage(tn:str):
   assert pylightnix.core.PYLIGHTNIX_STORE is None
@@ -35,13 +39,15 @@ def setup_inplace_reset()->None:
   import pylightnix.inplace
   pylightnix.inplace.PYLIGHTNIX_MANAGER=Manager()
 
-def mktestnode_nondetermenistic(m:Manager, sources:dict, nondet:Callable[[],int])->DRef:
+def mktestnode_nondetermenistic(m:Manager, sources:dict,
+                                nondet:Callable[[],int],
+                                buildtime:bool=True)->DRef:
   """ Emulate non-determenistic builds. `nondet` is expected to return
   different values from build to build """
   def _instantiate()->Config:
     return mkconfig(sources)
   def _realize(dref:DRef, context:Context)->Path:
-    b=mkbuild(dref, context)
+    b=mkbuild(dref, context, buildtime=buildtime)
     with open(join(build_outpath(b),'artifact'),'w') as f:
       f.write(str(nondet()))
     return build_outpath(b)
@@ -58,8 +64,8 @@ def mktestnode_nondetermenistic(m:Manager, sources:dict, nondet:Callable[[],int]
   return mkdrv(m, _instantiate, _match, _realize)
 
 
-def mktestnode(m:Manager, sources:dict)->DRef:
+def mktestnode(m:Manager, sources:dict, buildtime=True)->DRef:
   """ Build a test node with a given config and fixed build artifact """
-  return mktestnode_nondetermenistic(m, sources, lambda : 0)
+  return mktestnode_nondetermenistic(m, sources, lambda:0, buildtime)
 
 

@@ -1,20 +1,22 @@
 from pylightnix import (
     Config, instantiate, DRef, RRef, Path, mklogdir, dirhash,
-    assert_valid_dref, assert_valid_rref, store_deps, store_deepdeps,
-    store_gc, assert_valid_hash, assert_valid_config, Manager, mkcontext,
-    store_realize, store_rrefs, mkdref, mkrref, unrref, undref, realize,
-    rref2dref, store_config, mkconfig, mkbuild, Build, Context, build_outpath,
-    only, mkdrv, store_deref, store_rref2path, store_rrefs_, config_ro,
-    mksymlink, store_config_ro, build_deref, build_path, mkrefpath,
-    build_config, store_drefs, store_rrefs, store_rrefs_)
+    assert_valid_dref, assert_valid_rref, store_deps, store_deepdeps, store_gc,
+    assert_valid_hash, assert_valid_config, Manager, mkcontext, store_realize,
+    store_rrefs, mkdref, mkrref, unrref, undref, realize, rref2dref,
+    store_config, mkconfig, Build, Context, build_outpath, only, mkdrv,
+    store_deref, store_rref2path, store_rrefs_, config_ro, mksymlink,
+    store_cattrs, build_deref, build_path, mkrefpath, build_config,
+    store_drefs, store_rrefs, store_rrefs_, build_wrapper, recursion_manager,
+    build_cattrs, build_name)
 
-from tests.imports import ( given, Any, Callable, join, Optional, islink, List )
+from tests.imports import ( given, Any, Callable, join, Optional, islink,
+    isfile, List )
 
 from tests.generators import (
     rrefs, drefs, configs, dicts )
 
 from tests.setup import (
-    setup_testpath, setup_storage, mktestnode_nondetermenistic, mktestnode )
+    ShouldHaveFailed, setup_testpath, setup_storage, mktestnode_nondetermenistic, mktestnode )
 
 
 @given(d=dicts())
@@ -55,7 +57,7 @@ def test_realize_dependencies()->None:
 
     c=store_config(rref)
     assert_valid_config(c)
-    cro=store_config_ro(rref)
+    cro=store_cattrs(rref)
     assert_valid_dref(getattr(cro,'n2'))
     assert_valid_dref(getattr(cro,'n3'))
 
@@ -66,6 +68,24 @@ def test_realize_dependencies()->None:
     assert store_deepdeps([n1]) == set([])
     assert store_deepdeps([n2,n3]) == set([n1])
     assert store_deepdeps([toplevel]) == set([n1,n2,n3])
+
+def test_no_rref_deps()->None:
+  with setup_storage('test_no_rref_deps'):
+    try:
+      rref=realize(instantiate(mktestnode,{'a':1}))
+      clo=instantiate(mktestnode,{'a':1,'maman':rref})
+      raise ShouldHaveFailed('rref deps are forbidden')
+    except AssertionError:
+      pass
+
+def test_no_dref_deps_without_realizers()->None:
+  with setup_storage('test_no_dref_deps_without_realizers'):
+    try:
+      clo=instantiate(mktestnode,{'a':1})
+      rref=realize(instantiate(mktestnode,{'maman':clo.dref}))
+      raise ShouldHaveFailed("We shouldn't share DRefs across managers")
+    except AssertionError:
+      pass
 
 def test_repeated_instantiate()->None:
   with setup_storage('test_repeated_instantiate'):
@@ -119,24 +139,6 @@ def test_non_determenistic()->None:
     n2_rref2 = store_deref(rref2, n2)
     assert n2_rref1 != n2_rref2
 
-
-def test_no_multi_realizers()->None:
-  d={'a':1}
-  with setup_storage('test_no_multi_realizers'):
-    def _gen()->int:
-      return 42
-
-    def _setup(m):
-      n1 = mktestnode_nondetermenistic(m,d,_gen)
-      n2 = mktestnode_nondetermenistic(m,d,_gen)
-      return n2
-
-    try:
-      rref = instantiate(_setup)
-      assert False, f"Should fail, but got {rref}"
-    except AssertionError:
-      pass
-
 def test_no_recursive_realize()->None:
   with setup_storage('test_no_recursive_realize'):
 
@@ -147,7 +149,7 @@ def test_no_recursive_realize()->None:
 
     try:
       rref = realize(instantiate(_setup))
-      assert False, f"Should fail, but got {rref}"
+      raise ShouldHaveFailed(f"Should fail, but got {rref}")
     except AssertionError:
       pass
 
@@ -161,9 +163,16 @@ def test_no_recursive_instantiate()->None:
 
     try:
       rref = instantiate(_setup)
-      assert False, f"Should fail, but got {rref}"
+      raise ShouldHaveFailed(f"Should fail, but got {rref}")
     except AssertionError:
       pass
+
+def test_recursion_manager()->None:
+  try:
+    with recursion_manager('foo'): pass
+    raise ShouldHaveFailed(f"Should have failed")
+  except AssertionError:
+    pass
 
 def test_config_ro():
   d={'a':1,'b':33}
@@ -173,35 +182,53 @@ def test_config_ro():
     assert getattr(cro,k) == d[k]
 
 
-def test_mksymlink():
+def test_mksymlink()->None:
   with setup_storage('test_mksymlink'):
     tp=setup_testpath('test_mksymlink')
 
-    def _setting(m:Manager)->DRef:
-      return mktestnode(m, {'a':'1'})
+    def _setting1(m:Manager)->DRef:
+      return mktestnode(m, {'a':'1'}, buildtime=False)
+    def _setting2(m:Manager)->DRef:
+      return mktestnode(m, {'a':'1'}, buildtime=True)
 
-    rref=realize(instantiate(_setting))
+    clo=instantiate(_setting1)
+    clo2=instantiate(_setting2)
+    assert clo.dref==clo2.dref
+
+    rref=realize(clo)
     s=mksymlink(rref, tgtpath=tp, name='thelink')
     assert islink(s)
+    assert not isfile(join(s,'__buildtime__.txt'))
     assert tp in s
 
-def test_build_deref():
+    rref2=realize(clo2, force_rebuild=[clo2.dref])
+    s2=mksymlink(rref2, tgtpath=tp, name='thelink')
+    assert islink(s2)
+    assert isfile(join(s2,'__buildtime__.txt'))
+    assert tp in s
+
+    assert rref2==rref, "Should be (==), because configs are the same"
+    assert s2!=s, "s2 should have timestamp"
+
+    s3=mksymlink(rref2, tgtpath=tp, name='thelink', withtime=False)
+    assert s3==s
+
+def test_build_deref()->None:
   with setup_storage('test_build_deref'):
 
     def _depuser(m:Manager, sources:dict)->DRef:
       def _instantiate()->Config:
         return mkconfig(sources)
-      def _realize(dref:DRef, context:Context)->Path:
-        b = mkbuild(dref, context)
+      def _realize(b)->None:
         o = build_outpath(b)
-        c = config_ro(build_config(b))
+        c = build_cattrs(b)
         with open(join(o,'proof_papa'),'w') as f:
           f.write(str(build_deref(b, c.papa)))
         with open(join(o,'proof_maman'),'w') as d:
           with open(build_path(b, c.maman),'r') as s:
             d.write(s.read())
-        return o
-      return mkdrv(m, _instantiate, only, _realize)
+        return
+      return mkdrv(m, _instantiate, only, build_wrapper(_realize))
 
     def _setting(m:Manager)->DRef:
       n1 = mktestnode_nondetermenistic(m, {'a':'1'}, lambda : 42)
@@ -213,7 +240,7 @@ def test_build_deref():
     assert_valid_rref(rref)
 
 
-def test_ignored_stage():
+def test_ignored_stage()->None:
   with setup_storage('test_ignored_stage'):
     n1:DRef; n2:DRef; n3:DRef; n4:DRef
     def _setting(m:Manager)->DRef:
@@ -235,7 +262,7 @@ def test_ignored_stage():
     assert len(list(store_rrefs_(n4)))==0
 
 
-def test_overwrite_realizer():
+def test_overwrite_realizer()->None:
   with setup_storage('test_overwrite_realizer'):
     n1:DRef; n2:DRef; n3:DRef; n4:DRef
     def _setting(m:Manager)->DRef:
@@ -250,7 +277,46 @@ def test_overwrite_realizer():
     all_drefs = list(store_drefs())
     assert len(all_drefs)==2
 
-    rref_n3=store_deref(rref_n2, store_config_ro(rref_n2).maman)
+    rref_n3=store_deref(rref_n2, store_cattrs(rref_n2).maman)
     assert open(join(store_rref2path(rref_n3),'artifact'),'r').read() == '42'
 
+def test_only()->None:
+  with setup_storage('test_only'):
 
+    build:int = 0
+    def _setting(m:Manager)->DRef:
+      def _instantiate()->Config:
+        return mkconfig({'a':1})
+      def _realize(b:Build)->None:
+        nonlocal build
+        with open(join(build_outpath(b),'artifact'),'w') as f: f.write(str(build))
+        build+=1
+      return mkdrv(m, _instantiate, only, build_wrapper(_realize))
+
+    closure = instantiate(_setting)
+    assert len(list(store_rrefs_(closure.dref))) == 0
+    rref = realize(closure)
+    assert len(list(store_rrefs_(closure.dref))) == 1
+    rref = realize(closure)
+    assert len(list(store_rrefs_(closure.dref))) == 1
+    try:
+      rref = realize(closure, force_rebuild=[closure.dref])
+      raise ShouldHaveFailed('Should have failed in only assertion')
+    except AssertionError as e:
+      pass
+    assert len(list(store_rrefs_(closure.dref))) == 2
+
+def test_build_name()->None:
+  with setup_storage('test_build_name'):
+
+    n:str = ""
+    def _setting(m:Manager)->DRef:
+      def _instantiate()->Config:
+        return mkconfig({'name':'foobar'})
+      def _realize(b)->None:
+        nonlocal n
+        n = build_name(b)
+      return mkdrv(m, _instantiate, only, build_wrapper(_realize))
+
+    rref=realize(instantiate(_setting))
+    assert n=='foobar'

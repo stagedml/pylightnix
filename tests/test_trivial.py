@@ -1,6 +1,7 @@
 from pylightnix import (
     Manager, DRef, RRef, Path, mklogdir, dirhash, mknode, store_deps,
-    store_deepdeps, store_rref2path, Manager, mkcontext, instantiate, realize )
+    store_deepdeps, store_rref2path, Manager, mkcontext, instantiate, realize,
+    mkfile, Name )
 
 from tests.imports import (
     given, assume, example, note, settings, text, decimals, integers, rmtree,
@@ -47,4 +48,21 @@ def test_mknode_with_artifacts(d,a)->None:
           f"RRef {rref} doesn't contain artifact {nm}"
 
 
+
+def test_mkfile()->None:
+  with setup_storage('test_mkfile'):
+
+    def _setting(m:Manager, nm)->DRef:
+      return mkfile(m, Name('foo'), bytes((nm or 'bar').encode('utf-8')), nm)
+
+    rref1=realize(instantiate(_setting, None))
+    with open(join(store_rref2path(rref1),'foo'),'r') as f:
+      bar=f.read()
+    assert bar=='bar'
+
+    rref2=realize(instantiate(_setting, 'baz'))
+    with open(join(store_rref2path(rref2),'baz'),'r') as f:
+      baz=f.read()
+    assert baz=='baz'
+    assert rref1!=rref2
 

@@ -8,7 +8,7 @@ from pylightnix.types import ( Hash, Path, List, Any, Optional, Iterable, IO,
 
 
 def timestring()->str:
-  return strftime("%m%d-%H:%M:%S")
+  return strftime("%m%d-%H:%M:%S%z")
 
 def logdir(tag:str, logrootdir:Path, timetag:Optional[str]=None):
   timetag=timestring() if timetag is None else timetag
@@ -20,8 +20,8 @@ def mklogdir(
     subdirs:list=[],
     symlinks:bool=True,
     timetag:Optional[str]=None)->Path:
-  """ Creates `<logrootdir>/<tag>_<time>` folder and  `<logrootdir>/_<tag>_latest` symlink to
-  it. """
+  """ Create `<logrootdir>/<tag>_<time>` folder and set
+  `<logrootdir>/_<tag>_latest` symlink to point to it. """
   logpath=logdir(tag, logrootdir=logrootdir, timetag=timetag)
   makedirs(logpath, exist_ok=True)
   if symlinks:
@@ -35,7 +35,7 @@ def mklogdir(
       else:
         raise e
   for sd in subdirs:
-    mkdir(logpath+'/'+sd)
+    makedirs(join(logpath,sd), exist_ok=True)
   return Path(logpath)
 
 def forcelink(src:Path,dst:Path,**kwargs)->None:
@@ -43,18 +43,6 @@ def forcelink(src:Path,dst:Path,**kwargs)->None:
   makedirs(dirname(dst),exist_ok=True)
   symlink(src,dst+'__',**kwargs)
   replace(dst+'__',dst)
-
-def slugify(value:str)->str:
-  """ Normalizes string, converts to lowercase, removes non-alpha characters,
-  and converts spaces to hyphens.
-
-  Ref. https://stackoverflow.com/a/295466/1133157
-  """
-  value = str(value)
-  value = normalize('NFKC', value)
-  value = re_sub(r'[^\w\s-]', '', value.lower()).strip()
-  value = re_sub(r'[-\s]+', '-', value)
-  return value
 
 def encode(s:str, encoding:str='utf-8')->bytes:
   return bytes(s, encoding)
@@ -92,9 +80,7 @@ def scanref_list(l:list)->Tuple[List[DRef],List[RRef]]:
   assert isinstance(l,list)
   drefs:List[DRef]=[]; rrefs:List[RRef]=[]
   for i in l:
-    if isinstance(i,tuple):
-      dref2,rref2=scanref_tuple(i)
-    elif isinstance(i,list):
+    if isinstance(i,list):
       dref2,rref2=scanref_list(i)
     elif isinstance(i,dict):
       dref2,rref2=scanref_dict(i)
@@ -110,9 +96,9 @@ def scanref_list(l:list)->Tuple[List[DRef],List[RRef]]:
     drefs+=dref2; rrefs+=rref2
   return (drefs,rrefs)
 
-def scanref_tuple(t:tuple)->Tuple[List[DRef],List[RRef]]:
-  assert isinstance(t,tuple)
-  return scanref_list(list(t))
+# def scanref_tuple(t:tuple)->Tuple[List[DRef],List[RRef]]:
+#   assert isinstance(t,tuple)
+#   return scanref_list(list(t))
 
 def scanref_dict(obj:dict)->Tuple[List[DRef],List[RRef]]:
   assert isinstance(obj,dict)
