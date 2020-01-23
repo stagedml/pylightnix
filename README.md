@@ -111,8 +111,8 @@ What did we do? We created `hello_src` variable of type
 **Derivation** of fetchurl stage. It means several things: a) the configuration
 of our stage does already exist in the storage and it doesn't contain critical
 errors like invalid links. b) Pylighnix knows how to **Realize** this
-derivation, i.e. build it by calling a Python function and collecting it's
-output in form of contents of temporary directory.
+derivation, i.e. what Python function to call on it and which directory to
+collect the output from.
 
 So what will we have when Realization of `hello_src` is complete? As [fetchurl's
 documentation](./docs/Reference.md#pylightnix.stages.fetchurl.fetchurl)
@@ -140,12 +140,13 @@ compiling applications. Luckily, it is not hard to define it, as we should see.
 
 In Pylighnix, stages consist of three important components:
 * The configuration, which is a JSON-Object of parameters and references
-* The realizer, which is a Python function for building the Realization
+* The realizer, which is a Python function encoding the actual build process
 * The matcher, which is another Python function for dealing with
     non-determenistic builds.
 
-The matcher business is beyound the scope of this quick start, so let's deal
-with other two components. Firs, the configuration:
+The matcher business is beyound the scope of this quick start. For now, we just
+require only one realization, so let's deal with other two components. Firs, the
+configuration:
 
 ```python
 from pylightnix import Config, mkconfig
@@ -158,20 +159,23 @@ def hello_config()->Config:
 
 Here, we define a name and a
 [RefPath](#docs/Reference.md#pylightnix.types.RefPath) which links our new stage
-with a specific folder of the previous stage. `locals()` is a standard Python
-function which returns a `dict` of local variables, so as a result we will have
-a config with two fields.
+with a specific folder of the previous stage. We will access configurations of
+our dependencies by dereferencing this RefPath, as we will see soon.
+
+As a side note, `locals()` is a Python builtin which returns a `dict` of current
+function's local variables, so as a result we will have a config with two
+fields.
 
 _Note, we should only use **Derivation references** in configurations.
-Realization references are generally accessible either from global scope or from
-realizers_
+Realization references become accessible either from global scope or from
+realize functions_
 
-Next, the realization:
+So let's move to the realization of our Hello builder:
 
 ```python
 from pylightnix import Path, Build, build_cattrs, build_outpath, build_path
 
-def hello_build(b:Build)->None:
+def hello_realize(b:Build)->None:
   c:Any = build_cattrs(b)
   o:Path = build_outpath(b)
   with TemporaryDirectory() as tmp:
@@ -182,22 +186,22 @@ def hello_build(b:Build)->None:
     system(f'make install DESTDIR={o}')
 ```
 
-As we see here, the `hello_build` function receives a
+As we may see here, `hello_realize` function takes a
 [Build](#docs/Reference.md#pylightnix.types.Build) helper, which brings us two
 important variables:
 * `c:ConfigAttrs` is de-facto a config we defined earlier,
   with `name` and `src` attributes (there is also a `build_config` function
   which returns current stage's config as-is, i.e. as a Python dict).
-* `o:Path` is the name of **output folder** where we should put results of the
-  build process.
+* `o:Path` is the name of **output folder** where we should save the results of
+  our build process.
 
-The last interesting thing here is the `build_path` function. It is the point
+Another interesting thing is the `build_path` function. It is the point
 where we **Dereference refpaths** by converting them to system paths. Pylightnix
 guarantees that referenced stages are already realized at the time of
 dereferencing.
 
-The rest should be simple. We copy sources to the temp folder and perform the
-usual configure-make-install on it.
+The rest is simple. We copy sources to the temp folder and perform the usual
+configure-make-install on it.
 
 Finally, we introduce our new stage to Pylightnix:
 
@@ -208,15 +212,16 @@ hello:DRef = \
   instantiate_inplace(mkdrv, hello_config, only, build_wrapper(hello_build))
 ```
 
-Here, [mkdrv](#Reference.md#pylightnix.core.mkdrv) (which stands for 'make
-derivation') takes the place of `fetchurl`. As before, we get a `DRev` and that
-means we could:
+In this instantiation, [mkdrv](#Reference.md#pylightnix.core.mkdrv) (which
+stands for 'make derivation') takes the place of `fetchurl`. As before, we get a
+`DRev` and that means we could:
 
 ```python
 rref:RRef=realize_inplace(hello)
 ```
 
-Once the realization is ready, we could convert it to system path directly
+Once the realization is ready, we could [convert it to
+system path](#Reference.md#pylightnix.core.rref2path) directly:
 
 ```python
 from pylightnix import rref2path
@@ -225,7 +230,7 @@ path=rref2path(rref)
 system(join(path,'usr/bin/hello'))
 ```
 
-which says
+The last call should greet us with
 
 ```
 Hello World!
