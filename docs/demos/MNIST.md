@@ -8,9 +8,10 @@ API](https://github.com/stagedml/pylightnix/blob/master/docs/Reference.md) which
 is a bit simpler than it's default functional API, at the cost of relying on an
 internal global state.
 
-In this example, we will use Pylightnix in well-known MNIST classifier
-application. [TensorFlow 2.0](https://www.tensorflow.org) framework is required
-to run this demo.
+We will use Pylightnix in well-known MNIST classifier application. [TensorFlow
+2.0](https://www.tensorflow.org) framework is required to run this demo.
+
+[Complete source](./MNIST.py).
 
 ## The problem
 
@@ -80,7 +81,7 @@ dref:90531e2f6d210ae159c0100d59f50b2c-mnist
 
 
 What did we do? We created `mnist_dataset` variable of type
-[DRef](./Reference.md#pylightnix.types.DRef) which takes a reference to a
+[DRef](./../Reference.md#pylightnix.types.DRef) which takes a reference to a
 **Derivation** of `fetchurl` builtin stage. The existance of DRef means that: a)
 the configuration of it's stage does exist in the storage and it doesn't
 contain critical errors like invalid links. b) Pylighnix knows how to
@@ -179,7 +180,7 @@ Training of machine learning model is generally a non-determenistic process,
 were results may change from run to run.
 
 Pylightnix is aware of this fact. We may deal with it by specifying a
-[matcher](./Reference.md#pylightnix.types.Matcher) function, that will choose
+[matcher](./../Reference.md#pylightnix.types.Matcher) function, that will choose
 the best realization among available.
 
 In the machine learning domain, we often want to pick the realizations of mode
@@ -249,8 +250,8 @@ x_train shape: (60000, 28, 28, 1)
 x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
-rref:cd4ba6f89efc59ff31c91ce874007853-5cd9248aabb529c207a20b8b9fc576ce-unnamed
-rref:10f4d7c4ca9ee8229ed0202e8f77faa1-5cd9248aabb529c207a20b8b9fc576ce-unnamed
+rref:0773e11aec79c2fd5b1ae6e95cb4af32-5cd9248aabb529c207a20b8b9fc576ce-unnamed
+rref:5e45ee993bd2db07153b0b9594d29dcd-5cd9248aabb529c207a20b8b9fc576ce-unnamed
 ```
 
 
@@ -266,9 +267,9 @@ lsref(mnist_model)
 ```
 
 ```
-['cd4ba6f89efc59ff31c91ce874007853',
- 'config.json',
- '10f4d7c4ca9ee8229ed0202e8f77faa1']
+['0773e11aec79c2fd5b1ae6e95cb4af32',
+ '5e45ee993bd2db07153b0b9594d29dcd',
+ 'config.json']
 ```
 
 
@@ -277,7 +278,7 @@ catref(mnist1,['accuracy.txt'])
 ```
 
 ```
-['0.9843']
+['0.9839']
 ```
 
 
@@ -286,13 +287,13 @@ catref(mnist2,['accuracy.txt'])
 ```
 
 ```
-['0.9842']
+['0.9844']
 ```
 
 
 
 Clearly,
-'mnist1'
+'mnist2'
 shows slightly better results. Our matcher thinks the same, so if we don't force
 Pylightnix to produce more realizations, it will return it as a better match:
 
@@ -303,7 +304,7 @@ print(mnistX)
 ```
 
 ```
-rref:cd4ba6f89efc59ff31c91ce874007853-5cd9248aabb529c207a20b8b9fc576ce-unnamed
+rref:5e45ee993bd2db07153b0b9594d29dcd-5cd9248aabb529c207a20b8b9fc576ce-unnamed
 ```
 
 

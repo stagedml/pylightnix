@@ -8,9 +8,10 @@ API](https://github.com/stagedml/pylightnix/blob/master/docs/Reference.md) which
 is a bit simpler than it's default functional API, at the cost of relying on an
 internal global state.
 
-In this example, we will use Pylightnix in well-known MNIST classifier
-application. [TensorFlow 2.0](https://www.tensorflow.org) framework is required
-to run this demo.
+We will use Pylightnix in well-known MNIST classifier application. [TensorFlow
+2.0](https://www.tensorflow.org) framework is required to run this demo.
+
+[Complete source](./MNIST.py).
 
 ## The problem
 
@@ -71,7 +72,7 @@ print(mnist_dataset)
 ```
 
 What did we do? We created `mnist_dataset` variable of type
-[DRef](./Reference.md#pylightnix.types.DRef) which takes a reference to a
+[DRef](./../Reference.md#pylightnix.types.DRef) which takes a reference to a
 **Derivation** of `fetchurl` builtin stage. The existance of DRef means that: a)
 the configuration of it's stage does exist in the storage and it doesn't
 contain critical errors like invalid links. b) Pylighnix knows how to
@@ -164,7 +165,7 @@ Training of machine learning model is generally a non-determenistic process,
 were results may change from run to run.
 
 Pylightnix is aware of this fact. We may deal with it by specifying a
-[matcher](./Reference.md#pylightnix.types.Matcher) function, that will choose
+[matcher](./../Reference.md#pylightnix.types.Matcher) function, that will choose
 the best realization among available.
 
 In the machine learning domain, we often want to pick the realizations of mode
