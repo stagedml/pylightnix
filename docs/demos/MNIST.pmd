@@ -1,6 +1,8 @@
 MNIST Demo
 ==========
 
+[Complete source of the demo](./MNIST.py)
+
 In this document we show how
 [Pylightnix](https://github.com/stagedml/pylightnix) can be used in machine
 learning applications. We focus on `inplace` subset of [Pylightnix
@@ -10,8 +12,6 @@ internal global state.
 
 We will use Pylightnix in well-known MNIST classifier application. [TensorFlow
 2.0](https://www.tensorflow.org) framework is required to run this demo.
-
-[Complete source](./MNIST.py).
 
 ## The problem
 

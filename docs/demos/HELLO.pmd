@@ -3,7 +3,6 @@ GNU Hello demo
 
 [Complete source of the demo](./HELLO.py)
 
-
 ```python
 from os.path import join
 from os import system, chdir, getcwd
@@ -12,8 +11,6 @@ from tempfile import TemporaryDirectory
 from typing import Any
 from subprocess import Popen, PIPE
 ```
-
-
 
 Pylightnix provides API for data deployment system right in your Python
 application. Here we illustrate the concepts using [GNU
@@ -24,15 +21,12 @@ tracking immutable data object called nodes which could depend on each other.
 This storage is the central part of library, all the magic happens there. So
 let's initialize it:
 
-
 ```python
 from shutil import rmtree
 from pylightnix import store_initialize
 rmtree('/tmp/pylightnix_hello_demo', ignore_errors=True)
 store_initialize(custom_store='/tmp/pylightnix_hello_demo', custom_tmp='/tmp')
 ```
-
-
 
 Location of the storage is kept in an internal global variable. It may be
 changed either by passing arguments to this function or by other methods. Check
@@ -49,7 +43,6 @@ In Pylightnix, we define, check and execute the data processing operations
 called **stages**. We will define our stage later, for now we will use a
 builtin stage `fetchurl` (hello, Nix).
 
-
 ```python
 from pylightnix import DRef, instantiate_inplace, fetchurl
 
@@ -62,8 +55,6 @@ hello_src:DRef = \
     url=f'http://ftp.gnu.org/gnu/hello/hello-{hello_version}.tar.gz',
     sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b')
 ```
-
-
 
 What did we do? We created `hello_src` variable of type
 [DRef](./docs/Reference.md#pylightnix.types.DRef) which takes a reference to a
@@ -78,21 +69,12 @@ comment](./docs/Reference.md#pylightnix.stages.fetchurl.fetchurl)
 suggests, we will see a downloaded and unpacked URL, in our case it is the
 contents of `hello-2.10.tar.gz` archive. Let's check it:
 
-
-```python
+```python, complete=True, wrap=False
 from pylightnix import RRef, realize_inplace
 
 hello_rref:RRef = realize_inplace(hello_src)
 print(hello_rref)
 ```
-
-```
-Unpacking /tmp/0125-00:43:58+0300_2f56e6f9_rimkl1c9/hello-2.10.tar.gz..
-Removing /tmp/0125-00:43:58+0300_2f56e6f9_rimkl1c9/hello-2.10.tar.gz..
-rref:3fce7614ca738e68d6ad5b8a2057c488-2f56e6f987a1da0271915894ca19e28f-hello-src
-```
-
-
 
 OK, now we should see the signs of actual work being done. Something was just
 downloaded and we also see a string starting with 'rref:...' in _stdout_.  This
@@ -117,8 +99,7 @@ The matcher business is beyond the scope of this quick start. For now, we just
 require only one realization, so let's deal with other two components. Firs, the
 configuration:
 
-
-```python
+```python, complete=True, wrap=False
 from pylightnix import Config, mkconfig
 
 def hello_config()->Config:
@@ -126,8 +107,6 @@ def hello_config()->Config:
   src = [hello_src, f'hello-{hello_version}']
   return mkconfig(locals())
 ```
-
-
 
 Here, we define a name and a
 [RefPath](#docs/Reference.md#pylightnix.types.RefPath) which links our new stage
@@ -144,8 +123,7 @@ realize functions_
 
 So let's move to the realization of our Hello builder:
 
-
-```python
+```python, complete=True, wrap=False
 from pylightnix import Path, Build, build_cattrs, build_outpath, build_path
 
 def hello_realize(b:Build)->None:
@@ -161,9 +139,8 @@ def hello_realize(b:Build)->None:
       system(f'make install DESTDIR={o}')
     finally:
       chdir(cwd)
+
 ```
-
-
 
 As we may see here, `hello_realize` function takes a
 [Build](#../Reference.md#pylightnix.types.Build) helper, which brings us two
@@ -184,8 +161,7 @@ configure-make-install on it.
 
 Finally, we introduce our new stage to Pylightnix:
 
-
-```python
+```python, complete=True, wrap=False
 from pylightnix import mkdrv, build_wrapper, only
 
 hello:DRef = \
@@ -194,41 +170,21 @@ hello:DRef = \
 print(hello)
 ```
 
-```
-dref:53ccb94819ad4c9f55acb61460ec97ed-hello-bin
-```
-
-
-
 In this instantiation, [mkdrv](#../Reference.md#pylightnix.core.mkdrv) (which
 stands for 'make derivation') takes the place of `fetchurl`. As before, we get a
 `DRef` and that means we now could do:
 
-
-```python
+```python, complete=True, wrap=False
 rref:RRef=realize_inplace(hello)
 print(rref)
 ```
 
-```
-rref:de502079fc4e963dc298dc2a26af7ec1-53ccb94819ad4c9f55acb61460ec97ed-hello-bin
-```
-
-
-
 Once the realization is ready, we are free to [convert it to system
 path](#../Reference.md#pylightnix.core.rref2path) and do whatever we want:
 
-
-```python
+```python, complete=True, wrap=False
 from pylightnix import rref2path
 
 hello_bin=join(rref2path(rref),'usr/bin/hello')
 print(Popen([hello_bin], stdout=PIPE, shell=True).stdout.read())
 ```
-
-```
-b'Hello, world!\n'
-```
-
-

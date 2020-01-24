@@ -66,8 +66,20 @@ docs/demos/MNIST.md: docs/demos/MNIST.pmd $(SRC) .stamp_check
 docs/demos/MNIST.py: docs/demos/MNIST.pmd $(SRC) .stamp_check
 	ptangle $<
 
+.PHONY: demo_mnist
+demo_mnist: docs/demos/MNIST.md docs/demos/MNIST.py
+
+docs/demos/HELLO.md: docs/demos/HELLO.pmd $(SRC) .stamp_check
+	pweave -f markdown $<
+
+docs/demos/HELLO.py: docs/demos/HELLO.pmd $(SRC) .stamp_check
+	ptangle $<
+
+.PHONY: demo_hello
+demo_hello: docs/demos/HELLO.md docs/demos/HELLO.py
+
 .PHONY: demos
-demos: docs/demos/MNIST.md docs/demos/MNIST.py
+demos: demo_mnist demo_hello
 
 $(WHEEL): $(SRC) $(TESTS)
 	rm -rf build dist || true

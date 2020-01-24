@@ -50,17 +50,21 @@ Implementation:
      ```
      export PYTHONPATH="`pwd`/src:$PYTHONPATH"
      ```
-     Now you could import pylightnix from your application.
+     Now you could import pylightnix from your applications.
 
    - (b) Build and install pylightnix wheel.
      ```
-     $ rm -rf build dist || true
-     $ python3 setup.py sdist bdist_wheel
+     $ make wheels
      $ sudo -H pip3 install --force dist/*whl
      ```
-3. Optionally, run the tests
+3. (Optional) Run the tests and make docs
    ```
    $ make coverage
+   $ make docs
+   ```
+4. (Optional) Demos require additional packages, once you install it, do
+   ```
+   $ make demos
    ```
 
 ## Quick start
@@ -133,8 +137,8 @@ Implementation:
 
 ## Documentation
 
-* [HELLO demo](./docs/demos/HELLO.md) (TODO..30%)
-* [MNIST demo](./docs/demos/MNIST.md) (TODO..90%)
+* [HELLO demo](./docs/demos/HELLO.md)
+* [MNIST demo](./docs/demos/MNIST.md)
 * [API Reference](./docs/Reference.md)
 * [A bunch of tests](./tests)
 
