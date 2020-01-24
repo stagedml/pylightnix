@@ -31,7 +31,7 @@ store_initialize(custom_store='/tmp/pylightnix_hello_demo', custom_tmp='/tmp')
 Location of the storage is kept in an internal global variable. It may be
 changed either by passing arguments to this function or by other methods. Check
 the [store_initialize docstring
-reference](./docs/Reference.md#pylightnix.core.store_initialize) for details.
+reference](../Reference.md#pylightnix.core.store_initialize) for details.
 
 Note that in real application we don't really need to initialize a separate
 store, but could safely use the default one. To check that it does exist, just
@@ -57,7 +57,7 @@ hello_src:DRef = \
 ```
 
 What did we do? We created `hello_src` variable of type
-[DRef](./docs/Reference.md#pylightnix.types.DRef) which takes a reference to a
+[DRef](../Reference.md#pylightnix.types.DRef) which takes a reference to a
 **Derivation** of fetchurl stage. It means several things: a) the configuration
 of hello-stc stage does already exist in the storage and it doesn't contain
 critical errors like invalid links. b) Pylighnix knows how to **Realize** this
@@ -65,7 +65,7 @@ stage, i.e. what Python function to call on it and which directory to
 collect the output files from.
 
 So what will we have when Realization of `hello_src` is complete? As [fetchurl's
-comment](./docs/Reference.md#pylightnix.stages.fetchurl.fetchurl)
+comment](../Reference.md#pylightnix.stages.fetchurl.fetchurl)
 suggests, we will see a downloaded and unpacked URL, in our case it is the
 contents of `hello-2.10.tar.gz` archive. Let's check it:
 
@@ -79,7 +79,7 @@ print(hello_rref)
 OK, now we should see the signs of actual work being done. Something was just
 downloaded and we also see a string starting with 'rref:...' in _stdout_.  This
 string is a **Realization reference** of type
-[RRef](./docs/Reference.md#pylightnix.types.RRef), it uniquely identifies some
+[RRef](../Reference.md#pylightnix.types.RRef), it uniquely identifies some
 data node in the Pylightnix storage.
 
 ### Custom stages
@@ -109,7 +109,7 @@ def hello_config()->Config:
 ```
 
 Here, we define a name and a
-[RefPath](#docs/Reference.md#pylightnix.types.RefPath) which links our new stage
+[RefPath](../Reference.md#pylightnix.types.RefPath) which links our new stage
 with a specific folder of the previous stage. We will access configurations of
 our dependencies by dereferencing this RefPath, as we will see soon.
 
@@ -143,7 +143,7 @@ def hello_realize(b:Build)->None:
 ```
 
 As we may see here, `hello_realize` function takes a
-[Build](#../Reference.md#pylightnix.types.Build) helper, which brings us two
+[Build](../Reference.md#pylightnix.types.Build) helper, which brings us two
 important variables:
 * `c:ConfigAttrs` is de-facto a config we defined earlier,
   with `name` and `src` attributes (there is also a `build_config` function
@@ -170,7 +170,7 @@ hello:DRef = \
 print(hello)
 ```
 
-In this instantiation, [mkdrv](#../Reference.md#pylightnix.core.mkdrv) (which
+In this instantiation, [mkdrv](../Reference.md#pylightnix.core.mkdrv) (which
 stands for 'make derivation') takes the place of `fetchurl`. As before, we get a
 `DRef` and that means we now could do:
 
@@ -180,7 +180,7 @@ print(rref)
 ```
 
 Once the realization is ready, we are free to [convert it to system
-path](#../Reference.md#pylightnix.core.rref2path) and do whatever we want:
+path](../Reference.md#pylightnix.core.rref2path) and do whatever we want:
 
 ```python, complete=True, wrap=False
 from pylightnix import rref2path
