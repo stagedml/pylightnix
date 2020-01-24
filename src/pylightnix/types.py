@@ -144,6 +144,11 @@ Matcher = Callable[[DRef, Context],Optional[RRef]]
 
 Realizer = Callable[[DRef,Context],Path]
 
+#: Derivation is a core type of Pylightnix. It keeps all the information about
+#: a stage: it's [configuration](#pylightnix.types.Config), how to
+#: [realize](#pylightnix.core.realize) it and how to make a selection among
+#: multiple realizations. Information is stored partly on disk (in the
+#: storage), partly in memory in form of a Python code.
 Derivation = NamedTuple('Derivation', [('dref',DRef), ('matcher',Matcher), ('realizer',Realizer) ])
 
 #: Closure is a named tuple, encoding a reference to derivation and a whole list
@@ -155,17 +160,16 @@ class Manager:
   def __init__(self):
     self.builders:Dict[DRef,Derivation]=OrderedDict()
 
-#: Stages are the building blocks of pylightnix. They are defined by stage
-#: functions which take [Manager](#pylightnix.typing.Manager) and return
-#: [derivation reference](#pylightnix.types.DRef).
+#: From the user's point of view, Stage is a basic building block of
+#: Pylightnix.  It is a function that 'introduces'
+#: [derivations](#pylightnix.typing.Derivation) to
+#: [Manager](#pylightnix.typing.Manager).  Return value is a [derivation
+#: reference](#pylightnix.types.DRef) which is a proof that the derivation was
+#: introduced sucessfully.
 #:
-#: Stages are subjects to [instantiation](#pylightnix.core.instantiate) and
-#: [realization](#pylightnix.core.realize).
-#:
-#: Examples of built-in stages:
-#: - [mknode](#pylightnix.stages.trivial.mknode)
-#: - [mkfile](#pylightnix.stages.trivial.mkfile)
-#: - [fetchurl](#pylightnix.stages.fetchurl.fetchurl)
+#: Some built-in stages are: - [mknode](#pylightnix.stages.trivial.mknode) -
+#: [mkfile](#pylightnix.stages.trivial.mkfile) -
+#: [fetchurl](#pylightnix.stages.fetchurl.fetchurl)
 Stage = Callable[[Manager],DRef]
 
 

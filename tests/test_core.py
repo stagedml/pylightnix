@@ -346,7 +346,7 @@ def test_largest()->None:
     rref1b=realize(clo1, force_rebuild=[clo1.dref])
     assert isfile(join(rref2path(rref1b),'score'))
     assert len(list(store_rrefs_(clo1.dref))) == 2
-    assert tryread(Path(join(rref2path(rref1b),'score')))=='0'
+    assert tryread(Path(join(rref2path(rref1b),'score')))=='non-integer'
     score='1'
     rref1c=realize(clo1, force_rebuild=[clo1.dref])
     assert isfile(join(rref2path(rref1c),'score'))
@@ -354,9 +354,11 @@ def test_largest()->None:
     assert tryread(Path(join(rref2path(rref1c),'score')))=='1'
     score='100500'
     fname='baz'
-    rref1c=realize(clo1, force_rebuild=[clo1.dref])
-    assert isfile(join(rref2path(rref1c),'score'))
+    rref1d=realize(clo1, force_rebuild=[clo1.dref])
+    assert not isfile(join(rref2path(rref1d),'score'))
     assert len(list(store_rrefs_(clo1.dref))) == 4
-    assert tryread(Path(join(rref2path(rref1c),'score')))=='1'
 
+    rref1=realize(clo1)
+    assert isfile(join(rref2path(rref1),'score'))
+    assert tryread(Path(join(rref2path(rref1),'score')))=='1'
 

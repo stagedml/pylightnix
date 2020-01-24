@@ -478,9 +478,8 @@ def realize(closure:Closure, force_rebuild:List[DRef]=[])->RRef:
         else:
           rref=matcher(dref,context)
         if not rref:
-          rreftmp=store_realize(dref,context,realizer(dref,context))
-          rref=matcher(dref,context)
-          assert rref is not None
+          rref=store_realize(dref,context,realizer(dref,context))
+          rreftmp=matcher(dref,context)
         context=context_add(context,dref,rref)
     assert rref is not None
     return rref

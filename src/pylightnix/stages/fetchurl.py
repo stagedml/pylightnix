@@ -22,11 +22,10 @@ def fetchurl(m:Manager, url:str, sha256:str, mode:str='unpack,remove', name:Opti
   package, 'remove' instructs it to remove the archive after unpacking.  """
 
   def _instantiate()->Config:
-    name:str=name or 'fetchurl'
-    url:str=url
-    sha256:str=sha256
-    mode:str=mode
-    return mkconfig(locals())
+    return mkconfig({'name':name or 'fetchurl',
+                     'url':url,
+                     'sha256':sha256,
+                     'mode':mode})
 
   def _realize(b:Build)->None:
     c=build_cattrs(b)
