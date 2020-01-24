@@ -121,12 +121,12 @@ class ConfigAttrs(dict):
 #: Context type is an alias for Python dict which maps
 #: [DRefs](#pylightnix.types.DRef) into [RRefs](#pylightnix.types.RRef).
 #:
-#: For any [Closure](#pylightnix.types.Closure), pylightnix maintains unique
-#: mapping from closure derivations to realizations. This makes sure that
+#: For any [Closure](#pylightnix.types.Closure), pylightnix maintains a mapping
+#: from member derivations to their realizations. This makes us sure that
 #: derivations within a closure are self-consistent.
 #:
-#: Nevertheless, derivation may be a member of different closures at once, and
-#: thus be mapped to different realizations within each closure.
+#: Note that derivations may be included into different closures at the same
+#: time, and those closures may have different mappings.
 Context=Dict[DRef,RRef]
 
 #: Build is a helper object which tracks the process of [realization](#pylightnix.core.realize).
@@ -142,6 +142,16 @@ Instantiator = Callable[[],Config]
 
 Matcher = Callable[[DRef, Context],Optional[RRef]]
 
+#: Realizer is a user-defined function which defines how to
+#: [build](#pylightnix.core.realize) a given derivation in a given
+#: [context](#pylightnix.types.Context).
+#:
+#: For given derivation being built, it's Realizer may access the following
+#: objects via [Build helpers](#pylightnix.types.Build):
+#: - Configuration of the derivation and configurations of all it's
+#:   dependencies. See [build_config](#pylightnix.core.build_config).
+#: - Realizations of all the dependencies (and thus, their build artifacts).
+#:   See [build_path](#pylightnix.core.build_path).
 Realizer = Callable[[DRef,Context],Path]
 
 #: Derivation is a core type of Pylightnix. It keeps all the information about

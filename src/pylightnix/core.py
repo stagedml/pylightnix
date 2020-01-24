@@ -340,14 +340,12 @@ def build_name(b:Build)->Name:
 
 def build_deref(b:Build, dref:DRef)->RRef:
   """ For any [realization](#pylightnix.core.realize) process described with
-  it's [b:Build](#pylightnix.types.Build) handler, `build_deref` queries a
-  realization of a dependency `dref`.
+  it's [Build](#pylightnix.types.Build) handler, `build_deref` queries a
+  realization of dependency `dref`.
 
-  `build_deref` is designed to be called by
-  [Realizers](#pylightnix.types.Realizer), where the final `rref` is not yet
-  known.  In other cases, [store_deref](#pylightnix.core.store_deref) should be
-  used.
-  """
+  `build_deref` is designed to be called from
+  [Realizer](#pylightnix.types.Realizer) functions. In other cases,
+  [store_deref](#pylightnix.core.store_deref) should be used.  """
   return context_deref(build_context(b), dref)
 
 def build_path(b:Build, refpath:RefPath)->Path:
@@ -449,15 +447,9 @@ def instantiate(stage:Any, *args, **kwargs)->Closure:
   return instantiate_(Manager(), stage, *args, **kwargs)
 
 def realize(closure:Closure, force_rebuild:List[DRef]=[])->RRef:
-  """ `realize` builds a realization of a derivation by executing
+  """ Builds a realization of a derivation by executing a
   [Realizer](#pylightnix.types.Realizer) that is a user-defined Python code for
   producing build artifacts.
-
-  During this process, Realizer may access:
-  - The configuration of derivation being built and configurations of all it's
-    dependencies.
-  - The realizations of all it's dependencies (and thus, their build
-    artifacts).
 
   Return value of realization is a [reference to new
   realization](#pylightnix.types.RRef) which could be

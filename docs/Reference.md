@@ -81,8 +81,10 @@
     * [assert\_valid\_refpath](#pylightnix.core.assert_valid_refpath)
     * [assert\_valid\_config](#pylightnix.core.assert_valid_config)
     * [assert\_valid\_name](#pylightnix.core.assert_valid_name)
+    * [isrref](#pylightnix.core.isrref)
     * [assert\_valid\_rref](#pylightnix.core.assert_valid_rref)
     * [assert\_valid\_hashpart](#pylightnix.core.assert_valid_hashpart)
+    * [isdref](#pylightnix.core.isdref)
     * [assert\_valid\_dref](#pylightnix.core.assert_valid_dref)
     * [assert\_valid\_hash](#pylightnix.core.assert_valid_hash)
     * [assert\_valid\_context](#pylightnix.core.assert_valid_context)
@@ -253,12 +255,12 @@ Context = Dict[DRef,RRef]
 Context type is an alias for Python dict which maps
 [DRefs](#pylightnix.types.DRef) into [RRefs](#pylightnix.types.RRef).
 
-For any [Closure](#pylightnix.types.Closure), pylightnix maintains unique
-mapping from closure derivations to realizations. This makes sure that
+For any [Closure](#pylightnix.types.Closure), pylightnix maintains a mapping
+from member derivations to their realizations. This makes us sure that
 derivations within a closure are self-consistent.
 
-Nevertheless, derivation may be a member of different closures at once, and
-thus be mapped to different realizations within each closure.
+Note that derivations may be included into different closures at the same
+time, and those closures may have different mappings.
 
 <a name="pylightnix.types.Build"></a>
 ## `Build`
@@ -298,6 +300,16 @@ Matcher = Callable[[DRef, Context],Optional[RRef]]
 Realizer = Callable[[DRef,Context],Path]
 ```
 
+Realizer is a user-defined function which defines how to
+[build](#pylightnix.core.realize) a given derivation in a given
+[context](#pylightnix.types.Context).
+
+For given derivation being built, it's Realizer may access the following
+objects via [Build helpers](#pylightnix.types.Build):
+- Configuration of the derivation and configurations of all it's
+dependencies. See [build_config](#pylightnix.core.build_config).
+- Realizations of all the dependencies (and thus, their build artifacts).
+See [build_path](#pylightnix.core.build_path).
 
 <a name="pylightnix.types.Derivation"></a>
 ## `Derivation`
@@ -306,6 +318,11 @@ Realizer = Callable[[DRef,Context],Path]
 Derivation = NamedTuple('Derivation', [('dref',DRef), ('matcher',Matcher), ('realizer',Realizer) ])
 ```
 
+Derivation is a core type of Pylightnix. It keeps all the information about
+a stage: it's [configuration](#pylightnix.types.Config), how to
+[realize](#pylightnix.core.realize) it and how to make a selection among
+multiple realizations. Information is stored partly on disk (in the
+storage), partly in memory in form of a Python code.
 
 <a name="pylightnix.types.Closure"></a>
 ## `Closure`
@@ -753,13 +770,12 @@ def build_deref(b: Build, dref: DRef) -> RRef
 ```
 
 For any [realization](#pylightnix.core.realize) process described with
-it's [b:Build](#pylightnix.types.Build) handler, `build_deref` queries a
-realization of a dependency `dref`.
+it's [Build](#pylightnix.types.Build) handler, `build_deref` queries a
+realization of dependency `dref`.
 
-`build_deref` is designed to be called by
-[Realizers](#pylightnix.types.Realizer), where the final `rref` is not yet
-known.  In other cases, [store_deref](#pylightnix.core.store_deref) should be
-used.
+`build_deref` is designed to be called from
+[Realizer](#pylightnix.types.Realizer) functions. In other cases,
+[store_deref](#pylightnix.core.store_deref) should be used.
 
 <a name="pylightnix.core.build_path"></a>
 ## `build_path()`
@@ -862,15 +878,9 @@ storage.
 def realize(closure: Closure, force_rebuild: List[DRef] = []) -> RRef
 ```
 
-`realize` builds a realization of a derivation by executing
+Builds a realization of a derivation by executing a
 [Realizer](#pylightnix.types.Realizer) that is a user-defined Python code for
 producing build artifacts.
-
-During this process, Realizer may access:
-- The configuration of derivation being built and configurations of all it's
-  dependencies.
-- The realizations of all it's dependencies (and thus, their build
-  artifacts).
 
 Return value of realization is a [reference to new
 realization](#pylightnix.types.RRef) which could be
@@ -935,6 +945,14 @@ def assert_valid_name(s: Name) -> None
 ```
 
 
+<a name="pylightnix.core.isrref"></a>
+## `isrref()`
+
+```python
+def isrref(ref: str) -> bool
+```
+
+
 <a name="pylightnix.core.assert_valid_rref"></a>
 ## `assert_valid_rref()`
 
@@ -948,6 +966,14 @@ def assert_valid_rref(ref: str) -> None
 
 ```python
 def assert_valid_hashpart(hp: HashPart) -> None
+```
+
+
+<a name="pylightnix.core.isdref"></a>
+## `isdref()`
+
+```python
+def isdref(ref: str) -> bool
 ```
 
 
