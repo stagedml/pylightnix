@@ -9,7 +9,7 @@ Contents:
 
 1. [Features](#Features)
 2. [Build](#Build)
-3. [Quick start](#Quick_start)
+3. [Quick start](#Quick-start)
 4. [Documentation](#Documentation)
 
 ## Features:
@@ -109,13 +109,13 @@ hello_src:DRef = \
 What did we do? We created `hello_src` variable of type
 [DRef](./docs/Reference.md#pylightnix.types.DRef) which takes a reference to a
 **Derivation** of fetchurl stage. It means several things: a) the configuration
-of our stage does already exist in the storage and it doesn't contain critical
-errors like invalid links. b) Pylighnix knows how to **Realize** this
-derivation, i.e. what Python function to call on it and which directory to
-collect the output from.
+of hello-stc stage does already exist in the storage and it doesn't contain
+critical errors like invalid links. b) Pylighnix knows how to **Realize** this
+stage, i.e. what Python function to call on it and which directory to
+collect the output files from.
 
 So what will we have when Realization of `hello_src` is complete? As [fetchurl's
-documentation](./docs/Reference.md#pylightnix.stages.fetchurl.fetchurl)
+comment](./docs/Reference.md#pylightnix.stages.fetchurl.fetchurl)
 suggests, we will see a downloaded and unpacked URL, in our case it is the
 contents of `hello-2.10.tar.gz` archive. Let's check it:
 
@@ -126,17 +126,18 @@ hello_rref:RRef = realize_inplace(hello_src)
 print(hello_rref)
 ```
 
-OK, now we should see signs of actual work being done. Something was just
-downloaded and we also should see a string starting with 'rref:...' in our
-_stdout_. This string is a **Realization reference** of type
-[RRef](./docs/Reference.md#pylightnix.types.RRef) which uniquely identifies
-some data node in the Pylightnix storage.
+OK, now we should see the signs of actual work being done. Something was just
+downloaded and we also see a string starting with 'rref:...' in _stdout_.  This
+string is a **Realization reference** of type
+[RRef](./docs/Reference.md#pylightnix.types.RRef), it uniquely identifies some
+data node in the Pylightnix storage.
 
 ### Custom stages
 
-We want to build the GNU hello, so we need some code to build it. Pylighnix aims
-at providing only a generic minimalistic API, so it doesn't have a builtin stage for
-compiling applications. Luckily, it is not hard to define it, as we should see.
+We want to build the GNU hello, so we need some code to do the job. Pylighnix
+aims at providing only a generic minimalistic API, so it doesn't have a builtin
+stage for compiling applications. Luckily, it is not hard to define it, as we
+should see.
 
 In Pylighnix, stages consist of three important components:
 * The configuration, which is a JSON-Object of parameters and references
@@ -209,7 +210,7 @@ Finally, we introduce our new stage to Pylightnix:
 from pylightnix import mkdrv, build_wrapper, only
 
 hello:DRef = \
-  instantiate_inplace(mkdrv, hello_config, only, build_wrapper(hello_build))
+  instantiate_inplace(mkdrv, hello_config, only(), build_wrapper(hello_build))
 ```
 
 In this instantiation, [mkdrv](#Reference.md#pylightnix.core.mkdrv) (which

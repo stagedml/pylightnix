@@ -42,7 +42,7 @@
     * [assert\_store\_initialized](#pylightnix.core.assert_store_initialized)
     * [store\_initialize](#pylightnix.core.store_initialize)
     * [store\_dref2path](#pylightnix.core.store_dref2path)
-    * [store\_rref2path](#pylightnix.core.store_rref2path)
+    * [rref2path](#pylightnix.core.rref2path)
     * [mkrefpath](#pylightnix.core.mkrefpath)
     * [store\_config](#pylightnix.core.store_config)
     * [store\_context](#pylightnix.core.store_context)
@@ -75,8 +75,9 @@
     * [instantiate\_](#pylightnix.core.instantiate_)
     * [instantiate](#pylightnix.core.instantiate)
     * [realize](#pylightnix.core.realize)
-    * [only](#pylightnix.core.only)
     * [mksymlink](#pylightnix.core.mksymlink)
+    * [only](#pylightnix.core.only)
+    * [largest](#pylightnix.core.largest)
     * [assert\_valid\_refpath](#pylightnix.core.assert_valid_refpath)
     * [assert\_valid\_config](#pylightnix.core.assert_valid_config)
     * [assert\_valid\_name](#pylightnix.core.assert_valid_name)
@@ -95,8 +96,6 @@
   * [pylightnix.stages.fetchurl](#pylightnix.stages.fetchurl)
     * [WGET](#pylightnix.stages.fetchurl.WGET)
     * [AUNPACK](#pylightnix.stages.fetchurl.AUNPACK)
-    * [config](#pylightnix.stages.fetchurl.config)
-    * [download](#pylightnix.stages.fetchurl.download)
     * [fetchurl](#pylightnix.stages.fetchurl.fetchurl)
 
 <a name="pylightnix.types"></a>
@@ -172,7 +171,7 @@ Realization reference is obtained from the process called
 
 Valid realization references may be dereferenced down to system paths of
 *build artifacts* by calling
-[store_rref2path](#pylightnix.core.store_rref2path).
+[rref2path](#pylightnix.core.rref2path).
 
 <a name="pylightnix.types.Name"></a>
 ## `Name` Objects
@@ -198,7 +197,7 @@ have to perform the following elementary actions:
    [store_deref](#pylightnix.core.store_deref) or
    [build_deref](#pylightnix.core.build_deref).
 2. Convert the realization reference into system path with
-   [store_rref2path](#pylightnix.core.store_rref2path)
+   [rref2path](#pylightnix.core.rref2path)
 3. Join the system path with 'relative' part of RRefPath
 
 The above algorithm is implemented as
@@ -268,11 +267,10 @@ thus be mapped to different realizations within each closure.
 Build = NamedTuple('Build', [('dref',DRef), ('context',Context), ('timeprefix',str), ('outpath',Path)])
 ```
 
-`Build` objects tracks the process of [realization](#pylightnix.core.realize).
-As may be seen from it's signature, it stores timeprefix, the Context, and the output
-path. Output path contains the path to existing temporary folder for placing *build artifacts*.
+Build is a helper object which tracks the process of [realization](#pylightnix.core.realize).
 
-Users may access fields of a `Build` object by calling:
+Useful associated functions are:
+- [build_wrapper](#pylightnix.core.build_wrapper)
 - [build_config](#pylightnix.core.build_config)
 - [build_deref](#pylightnix.core.build_deref)
 - [build_outpath](#pylightnix.core.build_outpath)
@@ -318,7 +316,7 @@ Closure = NamedTuple('Closure', [('dref',DRef),('derivations',List[Derivation])]
 
 Closure is a named tuple, encoding a reference to derivation and a whole list
 of it's dependencies, plus maybe some additional derivations. So the closure
-is not necessarily minimal.
+is complete but not necessary minimal.
 
 <a name="pylightnix.types.Manager"></a>
 ## `Manager` Objects
@@ -531,6 +529,20 @@ def assert_store_initialized() -> None
 def store_initialize(custom_store: Optional[str] = None, custom_tmp: Optional[str] = None) -> None
 ```
 
+Create the storage and temp direcories. Default locations are determined
+by `PYLIGHTNIX_STORE` and `PYLIGHTNIX_TMP` variables. Note, that they could be
+overwritten either by setting environment variables of the same name before
+starting the Python or by assigning to them right after importing pylighnix.
+
+See also [assert_store_initialized](#pylightnix.core.assert_store_initialized).
+
+Example:
+```python
+import pylightnix.core
+pylightnix.core.PYLIGHTNIX_STORE='/tmp/custom_pylightnix_storage'
+pylightnix.core.PYLIGHTNIX_TMP='/tmp/custom_pylightnix_tmp'
+pylightnix.core.store_initialize()
+```
 
 <a name="pylightnix.core.store_dref2path"></a>
 ## `store_dref2path()`
@@ -540,11 +552,11 @@ def store_dref2path(r: DRef) -> Path
 ```
 
 
-<a name="pylightnix.core.store_rref2path"></a>
-## `store_rref2path()`
+<a name="pylightnix.core.rref2path"></a>
+## `rref2path()`
 
 ```python
-def store_rref2path(r: RRef) -> Path
+def rref2path(r: RRef) -> Path
 ```
 
 
@@ -555,7 +567,7 @@ def store_rref2path(r: RRef) -> Path
 def mkrefpath(r: DRef, items: List[str] = []) -> RefPath
 ```
 
-Constructs a RefPath out of a reference `ref` and a path within the node
+Construct a RefPath out of a reference `ref` and a path within the node
 
 <a name="pylightnix.core.store_config"></a>
 ## `store_config()`
@@ -617,6 +629,8 @@ Iterates over all derivations of the storage
 def store_rrefs_(dref: DRef) -> Iterable[RRef]
 ```
 
+Iterate over all realizations of a derivation `dref`. The sort order is
+unspecified.
 
 <a name="pylightnix.core.store_rrefs"></a>
 ## `store_rrefs()`
@@ -625,8 +639,8 @@ def store_rrefs_(dref: DRef) -> Iterable[RRef]
 def store_rrefs(dref: DRef, context: Context) -> Iterable[RRef]
 ```
 
-`store_rrefs` iterates over those ralizations of a derivation `dref`,
-that fit into particular [context]($pylightnix.types.Context).
+Iterate over those realizations of a derivation `dref`, which match a
+[context]($pylightnix.types.Context). The sort order is unspecified.
 
 <a name="pylightnix.core.store_deref"></a>
 ## `store_deref()`
@@ -860,16 +874,8 @@ During this process, Realizer may access:
 
 Return value of realization is a [reference to new
 realization](#pylightnix.types.RRef) which could be
-later [converted to system path](#pylightnix.core.store_rref2path)
+later [converted to system path](#pylightnix.core.rref2path)
 to access build artifacts.
-
-<a name="pylightnix.core.only"></a>
-## `only()`
-
-```python
-def only(dref: DRef, context: Context) -> Optional[RRef]
-```
-
 
 <a name="pylightnix.core.mksymlink"></a>
 ## `mksymlink()`
@@ -881,6 +887,29 @@ def mksymlink(rref: RRef, tgtpath: Path, name: str, withtime=True) -> Path
 Create a symlink pointing to realization `rref`. Other arguments define
 symlink name and location. Informally,
 `{tgtpath}/{timeprefix}{name} --> $PYLIGHTNIX_STORE/{rref2dref(rref)}/{rref}`
+
+<a name="pylightnix.core.only"></a>
+## `only()`
+
+```python
+def only() -> Matcher
+```
+
+Return a [Matcher](#pylightnix.types.Matcher) which expects no more than
+one realization for every [derivation](#pylightnix.types.DRef), given the
+[context](#pylightnix.types.Context).
+
+<a name="pylightnix.core.largest"></a>
+## `largest()`
+
+```python
+def largest(filename: str) -> Matcher
+```
+
+Return a [Matcher](#pylightnix.types.Matcher) which checks contexts of
+realizations and then compares them based on stage-specific scores. For each
+realization, score is read from artifact file named `filename` that should
+contain a single float number. Realization with largest score wins.
 
 <a name="pylightnix.core.assert_valid_refpath"></a>
 ## `assert_valid_refpath()`
@@ -1015,27 +1044,18 @@ AUNPACK = get_executable('aunpack', 'Please install `apack` tool from `atool` pa
 ```
 
 
-<a name="pylightnix.stages.fetchurl.config"></a>
-## `config()`
-
-```python
-def config(url: str, sha256: str, mode: str = 'unpack,remove', name: Name = None) -> Config
-```
-
-
-<a name="pylightnix.stages.fetchurl.download"></a>
-## `download()`
-
-```python
-def download(b: Build) -> None
-```
-
-
 <a name="pylightnix.stages.fetchurl.fetchurl"></a>
 ## `fetchurl()`
 
 ```python
-def fetchurl(m: Manager, args, *,, ,, kwargs) -> DRef
+def fetchurl(m: Manager, url: str, sha256: str, mode: str = 'unpack,remove', name: Optional[Name] = None) -> DRef
 ```
 
+Download and unpack an URL addess.
+
+Downloading is done by calling `wget` application. Optional unpacking is
+performed with `aunpack` script from `atool` package. `sha256` defines a
+SHA-256 hashsum of the stored data that should match. `mode` allows to tweak
+the stage's behavior: adding word 'unpack' instructs fetchurl to unpack the
+package, 'remove' instructs it to remove the archive after unpacking.
 
