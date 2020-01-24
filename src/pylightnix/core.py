@@ -163,7 +163,7 @@ def rref2path(r:RRef)->Path:
   return Path(join(PYLIGHTNIX_STORE,dhash+'-'+nm,rhash))
 
 def mkrefpath(r:DRef, items:List[str]=[])->RefPath:
-  """ Constructs a RefPath out of a reference `ref` and a path within the node """
+  """ Construct a RefPath out of a reference `ref` and a path within the node """
   assert_valid_dref(r)
   return RefPath([str(r)]+items)
 
@@ -209,6 +209,8 @@ def store_drefs()->Iterable[DRef]:
     yield mkdref(HashPart(dirname[:32]), Name(dirname[32+1:]))
 
 def store_rrefs_(dref:DRef)->Iterable[RRef]:
+  """ Iterate over all realizations of a derivation `dref`. The sort order is
+  unspecified. """
   (dhash,nm)=undref(dref)
   drefpath=store_dref2path(dref)
   for f in listdir(drefpath):
@@ -216,8 +218,8 @@ def store_rrefs_(dref:DRef)->Iterable[RRef]:
       yield mkrref(HashPart(f), dhash, nm)
 
 def store_rrefs(dref:DRef, context:Context)->Iterable[RRef]:
-  """ `store_rrefs` iterates over those ralizations of a derivation `dref`,
-  that fit into particular [context]($pylightnix.types.Context). """
+  """ Iterate over those realizations of a derivation `dref`, which match a
+  [context]($pylightnix.types.Context). The sort order is unspecified. """
   for rref in store_rrefs_(dref):
     context2=store_context(rref)
     if context_eq(context,context2):
@@ -352,11 +354,11 @@ def build_path(b:Build, refpath:RefPath)->Path:
   assert_valid_refpath(refpath)
   return Path(join(rref2path(build_deref(b, refpath[0])), *refpath[1:]))
 
-#   ____ _
-#  / ___| | ___  ___ _   _ _ __ ___
-# | |   | |/ _ \/ __| | | | '__/ _ \
-# | |___| | (_) \__ \ |_| | | |  __/
-#  \____|_|\___/|___/\__,_|_|  \___|
+#   ____            _            _
+#  / ___|___  _ __ | |_ _____  _| |_
+# | |   / _ \| '_ \| __/ _ \ \/ / __|
+# | |__| (_) | | | | ||  __/>  <| |_
+#  \____\___/|_| |_|\__\___/_/\_\\__|
 
 
 def mkcontext()->Context:
@@ -483,19 +485,6 @@ def realize(closure:Closure, force_rebuild:List[DRef]=[])->RRef:
     assert rref is not None
     return rref
 
-def only(dref:DRef, context:Context)->Optional[RRef]:
-  matching=[]
-  for rref in store_rrefs(dref, context):
-    matching.append(rref)
-  if len(matching)==0:
-    return None
-  elif len(matching)==1:
-    return matching[0]
-  else:
-    assert False, (
-        f"only() assumes that {dref} has 0 or 1 realizations under"
-        f"context {context}, but in fact it has many:\n{matching}" )
-
 def mksymlink(rref:RRef, tgtpath:Path, name:str, withtime=True)->Path:
   """ Create a symlink pointing to realization `rref`. Other arguments define
   symlink name and location. Informally,
@@ -511,6 +500,51 @@ def mksymlink(rref:RRef, tgtpath:Path, name:str, withtime=True)->Path:
   symlink=Path(join(tgtpath,f'{timeprefix}{name}'))
   forcelink(Path(relpath(rref2path(rref), tgtpath)), symlink)
   return symlink
+
+def only()->Matcher:
+  """ Return a [Matcher](#pylightnix.types.Matcher) which expects no more than
+  one realization for every [derivation](#pylightnix.types.DRef), given the
+  [context](#pylightnix.types.Context). """
+  def _matcher(dref:DRef, context:Context)->Optional[RRef]:
+    matching=[]
+    for rref in store_rrefs(dref, context):
+      matching.append(rref)
+    if len(matching)==0:
+      return None
+    elif len(matching)==1:
+      return matching[0]
+    else:
+      assert False, (
+          f"only() assumes that {dref} has 0 or 1 realizations under"
+          f"context {context}, but in fact it has many:\n{matching}" )
+  return _matcher
+
+def largest(filename:str)->Matcher:
+  """ Return a [Matcher](#pylightnix.types.Matcher) which checks contexts of
+  realizations and then compares them based on stage-specific scores. For each
+  realization, score is read from artifact file named `filename` that should
+  contain a single float number. Realization with largest score wins.  """
+  def _matcher(dref:DRef, context:Context)->Optional[RRef]:
+    scores:List[Tuple[float,RRef]]=[]
+    for rref in store_rrefs(dref, context):
+      try:
+        with open(join(rref2path(rref),filename),'r') as f:
+          scores.append((float(f.readline()),rref))
+      except OSError as e:
+        scores.append((float('-inf'),rref))
+      except ValueError as e:
+        scores.append((float('-inf'),rref))
+    if len(scores)>0:
+      return sorted(scores, reverse=True)[0][1]
+    else:
+      return None
+  return _matcher
+
+#     _                      _
+#    / \   ___ ___  ___ _ __| |_ ___
+#   / _ \ / __/ __|/ _ \ '__| __/ __|
+#  / ___ \\__ \__ \  __/ |  | |_\__ \
+# /_/   \_\___/___/\___|_|   \__|___/
 
 
 def assert_valid_refpath(refpath:RefPath)->None:

@@ -7,7 +7,7 @@ from pylightnix import (
     store_deref, rref2path, store_rrefs_, config_ro, mksymlink,
     store_cattrs, build_deref, build_path, mkrefpath, build_config,
     store_drefs, store_rrefs, store_rrefs_, build_wrapper, recursion_manager,
-    build_cattrs, build_name)
+    build_cattrs, build_name, largest, tryread)
 
 from tests.imports import ( given, Any, Callable, join, Optional, islink,
     isfile, List )
@@ -228,7 +228,7 @@ def test_build_deref()->None:
           with open(build_path(b, c.maman),'r') as s:
             d.write(s.read())
         return
-      return mkdrv(m, _instantiate, only, build_wrapper(_realize))
+      return mkdrv(m, _instantiate, only(), build_wrapper(_realize))
 
     def _setting(m:Manager)->DRef:
       n1 = mktestnode_nondetermenistic(m, {'a':'1'}, lambda : 42)
@@ -291,7 +291,7 @@ def test_only()->None:
         nonlocal build
         with open(join(build_outpath(b),'artifact'),'w') as f: f.write(str(build))
         build+=1
-      return mkdrv(m, _instantiate, only, build_wrapper(_realize))
+      return mkdrv(m, _instantiate, only(), build_wrapper(_realize))
 
     closure = instantiate(_setting)
     assert len(list(store_rrefs_(closure.dref))) == 0
@@ -308,7 +308,6 @@ def test_only()->None:
 
 def test_build_name()->None:
   with setup_storage('test_build_name'):
-
     n:str = ""
     def _setting(m:Manager)->DRef:
       def _instantiate()->Config:
@@ -316,7 +315,43 @@ def test_build_name()->None:
       def _realize(b)->None:
         nonlocal n
         n = build_name(b)
-      return mkdrv(m, _instantiate, only, build_wrapper(_realize))
+      return mkdrv(m, _instantiate, only(), build_wrapper(_realize))
 
     rref=realize(instantiate(_setting))
     assert n=='foobar'
+
+
+def test_largest()->None:
+  with setup_storage('test_largest'):
+
+    def _mklrg(m, cfg, fscore):
+      def _instantiate()->Config:
+        return mkconfig(cfg)
+      def _realize(b:Build)->None:
+        with open(join(build_outpath(b),'score'),'w') as f:
+          f.write(fscore())
+      return mkdrv(m, _instantiate, largest('score'), build_wrapper(_realize))
+
+    score:str
+    def _builder()->str:
+      nonlocal score
+      return score
+    clo1=instantiate(_mklrg, {'a':1}, _builder)
+
+    score='0'
+    rref1a=realize(clo1)
+    assert isfile(join(rref2path(rref1a),'score'))
+    assert len(list(store_rrefs_(clo1.dref))) == 1
+    assert tryread(Path(join(rref2path(rref1a),'score')))=='0'
+    score='non-integer'
+    rref1b=realize(clo1, force_rebuild=[clo1.dref])
+    assert isfile(join(rref2path(rref1b),'score'))
+    assert len(list(store_rrefs_(clo1.dref))) == 2
+    assert tryread(Path(join(rref2path(rref1b),'score')))=='0'
+    score='1'
+    rref1c=realize(clo1, force_rebuild=[clo1.dref])
+    assert isfile(join(rref2path(rref1c),'score'))
+    assert len(list(store_rrefs_(clo1.dref))) == 3
+    assert tryread(Path(join(rref2path(rref1c),'score')))=='1'
+
+

@@ -17,7 +17,7 @@ def mknode(m:Manager, sources:dict, artifacts:Dict[Name,bytes]={})->DRef:
       with open(join(build_outpath(b),an),'wb') as f:
         f.write(av)
     return build_outpath(b)
-  return mkdrv(m, _instantiate, only, _realize)
+  return mkdrv(m, _instantiate, only(), _realize)
 
 
 def mkfile(m:Manager, name:Name, contents:bytes, filename:Optional[Name]=None)->DRef:

@@ -62,7 +62,7 @@ def fetchurl(m:Manager, url:str, sha256:str, mode:str='unpack,remove', name:Opti
       print(f"Temp folder {o}")
       raise
 
-  return mkdrv(m, _instantiate, only, build_wrapper(_realize))
+  return mkdrv(m, _instantiate, only(), build_wrapper(_realize))
 
 
 
