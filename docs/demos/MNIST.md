@@ -8,24 +8,27 @@ API](https://github.com/stagedml/pylightnix/blob/master/docs/Reference.md) which
 is a bit simpler than it's default functional API, at the cost of relying on an
 internal global state.
 
-In this example, we apply Pylightnix in well-known MNIST classifier application.
-We will use TensorFlow for machine learning specifics.
+In this example, we will use Pylightnix in well-known MNIST classifier
+application. [TensorFlow 2.0](https://www.tensorflow.org) framework is required
+to run this demo.
 
 ## The problem
 
-In MNIST classifier problem, we generally have to get a MNIST dataset which is a
-set of labeled images of handwritten digits, and write some code to process
-those and other similar images. The result of image processing should be a label
-saying what digit do we see on given image.
+In MNIST problem, we generally have to write an application performing image
+classification. The format of input images is defined by the [MNIST
+dataset](http://yann.lecun.com/exdb/mnist/). It is a set of 28x28-sized images
+of handwritten digits, part of them are labaled, labels say what digit do we see
+on given image. Our classifier needs to label the unlabeled part of the dataset.
 
 To solve this problem with a Deep Learning approach, we typically write an
 application which relies on certain parameters. Some of them are pre-defined (we
 call them just 'parameters'), others are initially unknown to us (we call them
-*Weights*). We then adjust the weights in a process known as 'training', which
-makes the classification work better and better. As a result, we get a snapshot
-of weights which works best for our dataset and which we hope works well for
-other similar images. Such a snapshot is often called a *Checkpoint*. We have to
-save this checkpoint and use it in the 'production' of our application.
+*Weights*). We then adjust the weights with an algorithm known as 'training',
+using existing labels as an input data. This process makes the classification
+work better and better. Eventually, we get a snapshot of weights which work best
+for our dataset and which we hope will work well for other similar images. This
+snapshot is called a *Checkpoint*. We have to save the checkpoint to use it in
+the imaginary 'production' of our application.
 
 ## Implementation
 
@@ -34,6 +37,8 @@ Lets plan the usage of data. As one may see, we need a place to keep the
 ready. Also it is often a good idea to save pre-defined *Parameters* somewhere
 to be able to re-produce the training if needed. Let's see how does Pylightnix
 help with that.
+
+First, let's prepare a separate storage for this demo.
 
 
 ```python
@@ -45,11 +50,12 @@ store_initialize(custom_store='/tmp/pylightnix_mnist_demo', custom_tmp='/tmp')
 
 
 
+Now we are ready to code.
+
 ### Stage 1: the dataset
 
-The MNIST dataset is well-known and is available in many places on the Internet.
-We
-
+MNIST is a well-known dataset, it is available in many places on the Internet.
+We may pick the closest one and download a single file `mnist.npz`.
 
 
 
@@ -63,13 +69,31 @@ mnist_dataset:DRef = \
     mode='as-is',
     url='https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz',
     sha256='731c5ac602752760c8e48fbffcf8c3b850d9dc2a2aedcf2cc48468fc17b673d1')
+
+print(mnist_dataset)
 ```
 
+```
+dref:90531e2f6d210ae159c0100d59f50b2c-mnist
+```
+
+
+
+What did we do? We created `mnist_dataset` variable of type
+[DRef](./Reference.md#pylightnix.types.DRef) which takes a reference to a
+**Derivation** of `fetchurl` builtin stage. The existance of DRef means that: a)
+the configuration of it's stage does exist in the storage and it doesn't
+contain critical errors like invalid links. b) Pylighnix knows how to
+**Realize** this stage, i.e. what Python function to call on it and which
+directory to collect the output files from.
 
 
 ### Stage 2: the recognizer
 
 #### Stage configuration
+
+We need some parameters to run the training. A natural place for them is the
+configuration of our new stage.
 
 
 ```python
@@ -85,6 +109,13 @@ def mnist_config()->Config:
 
 
 #### Stage realization
+
+Here comes the training itself. We access the configuration by calling
+`build_cattrs` function which returns an object with configuratin attributes.
+
+Attributes like strings or floats may be used directly, but refpaths have to be
+**dereferenced** first. So we access our dataset by calling `build_path(b,
+c.dataset)` function.
 
 
 ```python
@@ -128,7 +159,7 @@ def mnist_build(b:Build)->None:
 
   model.compile(loss='categorical_crossentropy', optimizer='adam', metrics = ['accuracy'])
   model.fit(x_train, y_train, batch_size = 32, epochs = c.num_epoches, verbose = 0)
-  accuracy = model.evaluate(x_test, y_test, verbose = 0)
+  accuracy = model.evaluate(x_test, y_test, verbose = 0)[-1]
   model.save_weights(join(o, 'weights.h5'), save_format='h5')
   with open(join(o,'accuracy.txt'),'w') as f:
     f.write(str(accuracy))
@@ -136,37 +167,88 @@ def mnist_build(b:Build)->None:
 
 
 
+At the end of the training, we are going to save important artifacts into
+the **output folder** `o`:
+- Checkpoint of a model, see `model.save_weights(join(o, 'weights.h5')...)`
+- Evaluation accuracy, see `open(join(o,'accuracy.txt'),'w')`
+
 #### Stage matching
+
+In this section we will prepare to deal with multiple realizations of our stage.
+Training of machine learning model is generally a non-determenistic process,
+were results may change from run to run.
+
+Pylightnix is aware of this fact. We may deal with it by specifying a
+[matcher](./Reference.md#pylightnix.types.Matcher) function, that will choose
+the best realization among available.
+
+In the machine learning domain, we often want to pick the realizations of mode
+weights and we surely want a model with the best accuracy.
 
 
 ```python
-from pylightnix import mkdrv, only, realize_inplace, build_wrapper
+from pylightnix import largest
 
-def mnist_match(dref, context):
-  return only(dref, context)
-
-def model(m)->DRef:
-  return mkdrv(m, mnist_config, mnist_match, build_wrapper(mnist_build))
-
-mnist_model = instantiate_inplace(model)
+def mnist_match():
+  return largest('accuracy.txt')
 ```
 
 
 
+Matchers should met the following important requirement:
+
+- They should be pure, i.e. results should depend only on the information
+  contained in the input realizations (so, inside no global variables and no
+  randoms are allowed)
+
+
 #### Putting it all together
+
+Finally, we register new stage by calling `mkdrv` function. It's instantiation
+gives us derivation reference which means that dependencies are checked and we
+are ready for actual training.
 
 
 ```python
 
-mnist = realize_inplace(mnist_model, force_rebuild=[mnist_model])
-print(mnist)
+from pylightnix import mkdrv, build_wrapper
+
+def model(m)->DRef:
+  return mkdrv(m, mnist_config, mnist_match(), build_wrapper(mnist_build))
+
+mnist_model = instantiate_inplace(model)
+print(mnist_model)
+```
+
+```
+dref:5cd9248aabb529c207a20b8b9fc576ce-unnamed
+```
+
+
+
+Lets get a ciuple of realizations of our stage. We call `realize_inplace`
+function with `force_rebuild` argument. Without it, the second call to realize
+would have returned existing realization obtained after the first call.
+
+
+```python
+from pylightnix import realize_inplace
+
+mnist1 = realize_inplace(mnist_model, force_rebuild=[mnist_model])
+mnist2 = realize_inplace(mnist_model, force_rebuild=[mnist_model])
+print(mnist1)
+print(mnist2)
 ```
 
 ```
 x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
-rref:92f2e92f70f16a5eec5ecb86f25a9f76-ccbfe731c63564f99661e240c043aab0-unnamed
+x_train shape: (60000, 28, 28, 1)
+60000 train samples
+10000 test samples
+rref:72ac6667ed39d7df22a40111e3b9a005-5cd9248aabb529c207a20b8b9fc576ce-unnamed
+rref:4f7edae27d08a7a9938e55867339639f-5cd9248aabb529c207a20b8b9fc576ce-unnamed
 ```
 
 

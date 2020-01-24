@@ -56,7 +56,7 @@ def hello_realize(b:Build)->None:
 from pylightnix import mkdrv, build_wrapper, only
 
 hello:DRef = \
-  instantiate_inplace(mkdrv, hello_config, only, build_wrapper(hello_realize))
+  instantiate_inplace(mkdrv, hello_config, only(), build_wrapper(hello_realize))
 
 
 from pylightnix import realize_inplace

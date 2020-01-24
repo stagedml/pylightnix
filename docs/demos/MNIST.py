@@ -14,6 +14,8 @@ mnist_dataset:DRef = \
     url='https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz',
     sha256='731c5ac602752760c8e48fbffcf8c3b850d9dc2a2aedcf2cc48468fc17b673d1')
 
+print(mnist_dataset)
+
 from pylightnix import Config, mkconfig
 
 def mnist_config()->Config:
@@ -67,16 +69,23 @@ def mnist_build(b:Build)->None:
   with open(join(o,'accuracy.txt'),'w') as f:
     f.write(str(accuracy))
 
-from pylightnix import mkdrv, only, realize_inplace, build_wrapper
+from pylightnix import largest
 
-def mnist_match(dref, context):
-  return only(dref, context)
+def mnist_match():
+  return largest('accuracy.txt')
+
+
+from pylightnix import mkdrv, build_wrapper
 
 def model(m)->DRef:
-  return mkdrv(m, mnist_config, mnist_match, build_wrapper(mnist_build))
+  return mkdrv(m, mnist_config, mnist_match(), build_wrapper(mnist_build))
 
 mnist_model = instantiate_inplace(model)
+print(mnist_model)
 
+from pylightnix import realize_inplace
 
-mnist = realize_inplace(mnist_model, force_rebuild=[mnist_model])
-print(mnist)
+mnist1 = realize_inplace(mnist_model, force_rebuild=[mnist_model])
+mnist2 = realize_inplace(mnist_model, force_rebuild=[mnist_model])
+print(mnist1)
+print(mnist2)
