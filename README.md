@@ -122,7 +122,7 @@ Implementation:
 
    from pylightnix import rref2path
 
-   path=rref2path(rref)
+   path=rref2path(hello_rref)
    system(join(path,'usr/bin/hello'))
    ```
 
