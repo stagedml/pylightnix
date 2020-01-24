@@ -249,9 +249,63 @@ x_train shape: (60000, 28, 28, 1)
 x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
-rref:a6d01db725d1be2edb53b26de6d42aec-5cd9248aabb529c207a20b8b9fc576ce-unnamed
-rref:5766ef62b5e980d75a07d01530265ef4-5cd9248aabb529c207a20b8b9fc576ce-unnamed
+rref:cd4ba6f89efc59ff31c91ce874007853-5cd9248aabb529c207a20b8b9fc576ce-unnamed
+rref:10f4d7c4ca9ee8229ed0202e8f77faa1-5cd9248aabb529c207a20b8b9fc576ce-unnamed
 ```
+
+
+
+Lets see which model is better. Pylightnix comes with a set of simple bash-like oneliners
+designe to be used for quick manual checks.
+
+
+```python
+from pylightnix import lsref, catref
+
+lsref(mnist_model)
+```
+
+```
+['cd4ba6f89efc59ff31c91ce874007853',
+ 'config.json',
+ '10f4d7c4ca9ee8229ed0202e8f77faa1']
+```
+
+
+```python
+catref(mnist1,['accuracy.txt'])
+```
+
+```
+['0.9843']
+```
+
+
+```python
+catref(mnist2,['accuracy.txt'])
+```
+
+```
+['0.9842']
+```
+
+
+
+Clearly,
+'mnist1'
+shows slightly better results. Our matcher thinks the same, so if we don't force
+Pylightnix to produce more realizations, it will return it as a better match:
+
+
+```python
+mnistX = realize_inplace(mnist_model)
+print(mnistX)
+```
+
+```
+rref:cd4ba6f89efc59ff31c91ce874007853-5cd9248aabb529c207a20b8b9fc576ce-unnamed
+```
+
 
 
 

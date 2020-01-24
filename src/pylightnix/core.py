@@ -562,21 +562,26 @@ def assert_valid_name(s:Name)->None:
   assert re_match(f"^{PYLIGHTNIX_NAMEPAT}+$", s), \
       f"Name {s} contains characters besides {PYLIGHTNIX_NAMEPAT}"
 
+def isrref(ref:str)->bool:
+  return len(ref)>5 and ref[:5]=='rref:'
+
 def assert_valid_rref(ref:str)->None:
   error_msg=(f'Value of {ref} is not a valid instance reference! Expected '
              f'a string of form \'dref:HASH-HASH-name\'')
-  assert ref[:5]=='rref:', error_msg
+  assert isrref(ref), error_msg
 
 def assert_valid_hashpart(hp:HashPart)->None:
   assert len(hp)==32, f"HashPart should have length of 32, but len({hp})=={len(hp)}"
   for s in ['-','_','/']:
     assert s not in hp, f"Invalid symbol '{s}' found in {hp}"
 
+def isdref(ref:str)->bool:
+  return len(ref)>0 and ref[:5]=='dref:'
+
 def assert_valid_dref(ref:str)->None:
   error_msg=(f'Value of {ref} is not a valid derivation reference! Expected '
              f'a string of form \'dref:HASH_HASH-name\'')
-  assert ref[:5]=='dref:', error_msg
-
+  assert isdref(ref), error_msg
 
 def assert_valid_hash(h:Hash)->None:
   """ Asserts if it's `Hash` argument is ill-formed. """

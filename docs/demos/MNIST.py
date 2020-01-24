@@ -89,3 +89,12 @@ mnist1 = realize_inplace(mnist_model, force_rebuild=[mnist_model])
 mnist2 = realize_inplace(mnist_model, force_rebuild=[mnist_model])
 print(mnist1)
 print(mnist2)
+
+from pylightnix import lsref, catref
+
+lsref(mnist_model)
+catref(mnist1,['accuracy.txt'])
+catref(mnist2,['accuracy.txt'])
+
+mnistX = realize_inplace(mnist_model)
+print(mnistX)

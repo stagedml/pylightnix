@@ -217,6 +217,28 @@ print(mnist2)
 
 ```
 
+Lets see which model is better. Pylightnix comes with a set of simple bash-like oneliners
+designe to be used for quick manual checks.
+
+```python, term=True,wrap=False
+from pylightnix import lsref, catref
+
+lsref(mnist_model)
+catref(mnist1,['accuracy.txt'])
+catref(mnist2,['accuracy.txt'])
+```
+
+Clearly,
+<%'mnist1' if float(catref(mnist1,['accuracy.txt'])[0])>float(catref(mnist2,['accuracy.txt'])[0]) else 'mnist2' %>
+shows slightly better results. Our matcher thinks the same, so if we don't force
+Pylightnix to produce more realizations, it will return it as a better match:
+
+```python, complete=True, wrap=False
+mnistX = realize_inplace(mnist_model)
+print(mnistX)
+```
+
+
 ### Stage 3: the application
 
 
