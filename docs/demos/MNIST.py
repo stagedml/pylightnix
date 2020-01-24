@@ -64,7 +64,7 @@ def mnist_build(b:Build)->None:
 
   model.compile(loss='categorical_crossentropy', optimizer='adam', metrics = ['accuracy'])
   model.fit(x_train, y_train, batch_size = 32, epochs = c.num_epoches, verbose = 0)
-  accuracy = model.evaluate(x_test, y_test, verbose = 0)
+  accuracy = model.evaluate(x_test, y_test, verbose = 0)[-1]
   model.save_weights(join(o, 'weights.h5'), save_format='h5')
   with open(join(o,'accuracy.txt'),'w') as f:
     f.write(str(accuracy))

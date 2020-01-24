@@ -204,9 +204,9 @@ Matchers should met the following important requirement:
 
 #### Putting it all together
 
-Finally, we register new stage by calling `mkdrv` function. It's instantiation
-gives us derivation reference which means that dependencies are checked and we
-are ready for actual training.
+Finally, we register our stage by calling `mkdrv` function. As before,
+`instantiate` provides us with a derivation reference. This reference is a proof
+that safety checkes are done. Now we are ready for actual training.
 
 
 ```python
@@ -226,9 +226,11 @@ dref:5cd9248aabb529c207a20b8b9fc576ce-unnamed
 
 
 
-Lets get a ciuple of realizations of our stage. We call `realize_inplace`
-function with `force_rebuild` argument. Without it, the second call to realize
-would have returned existing realization obtained after the first call.
+To demonstrate how does matching work, let's ask Pylightnix to make more than
+one realization of our stage. We call `realize_inplace` function with
+`force_rebuild` argument two times. Without `force_rebuild`, the second call to
+realize would have returned an already existing realization obtained after the
+first call.
 
 
 ```python
@@ -247,8 +249,8 @@ x_train shape: (60000, 28, 28, 1)
 x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
-rref:72ac6667ed39d7df22a40111e3b9a005-5cd9248aabb529c207a20b8b9fc576ce-unnamed
-rref:4f7edae27d08a7a9938e55867339639f-5cd9248aabb529c207a20b8b9fc576ce-unnamed
+rref:a6d01db725d1be2edb53b26de6d42aec-5cd9248aabb529c207a20b8b9fc576ce-unnamed
+rref:5766ef62b5e980d75a07d01530265ef4-5cd9248aabb529c207a20b8b9fc576ce-unnamed
 ```
 
 
