@@ -129,11 +129,10 @@ class ConfigAttrs(dict):
 #: thus be mapped to different realizations within each closure.
 Context=Dict[DRef,RRef]
 
-#: `Build` objects tracks the process of [realization](#pylightnix.core.realize).
-#: As may be seen from it's signature, it stores timeprefix, the Context, and the output
-#: path. Output path contains the path to existing temporary folder for placing *build artifacts*.
+#: Build is a helper object which tracks the process of [realization](#pylightnix.core.realize).
 #:
-#: Users may access fields of a `Build` object by calling:
+#: Useful associated functions are:
+#: - [build_wrapper](#pylightnix.core.build_wrapper)
 #: - [build_config](#pylightnix.core.build_config)
 #: - [build_deref](#pylightnix.core.build_deref)
 #: - [build_outpath](#pylightnix.core.build_outpath)
@@ -149,7 +148,7 @@ Derivation = NamedTuple('Derivation', [('dref',DRef), ('matcher',Matcher), ('rea
 
 #: Closure is a named tuple, encoding a reference to derivation and a whole list
 #: of it's dependencies, plus maybe some additional derivations. So the closure
-#: is not necessarily minimal.
+#: is complete but not necessary minimal.
 Closure = NamedTuple('Closure', [('dref',DRef),('derivations',List[Derivation])])
 
 class Manager:

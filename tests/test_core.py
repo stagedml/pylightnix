@@ -324,19 +324,18 @@ def test_build_name()->None:
 def test_largest()->None:
   with setup_storage('test_largest'):
 
-    def _mklrg(m, cfg, fscore):
+    fname:str='score'
+    score:str='0'
+    def _mklrg(m, cfg):
       def _instantiate()->Config:
         return mkconfig(cfg)
       def _realize(b:Build)->None:
-        with open(join(build_outpath(b),'score'),'w') as f:
-          f.write(fscore())
+        nonlocal score, fname
+        with open(join(build_outpath(b),fname),'w') as f:
+          f.write(score)
       return mkdrv(m, _instantiate, largest('score'), build_wrapper(_realize))
 
-    score:str
-    def _builder()->str:
-      nonlocal score
-      return score
-    clo1=instantiate(_mklrg, {'a':1}, _builder)
+    clo1=instantiate(_mklrg, {'a':1})
 
     score='0'
     rref1a=realize(clo1)
@@ -352,6 +351,12 @@ def test_largest()->None:
     rref1c=realize(clo1, force_rebuild=[clo1.dref])
     assert isfile(join(rref2path(rref1c),'score'))
     assert len(list(store_rrefs_(clo1.dref))) == 3
+    assert tryread(Path(join(rref2path(rref1c),'score')))=='1'
+    score='100500'
+    fname='baz'
+    rref1c=realize(clo1, force_rebuild=[clo1.dref])
+    assert isfile(join(rref2path(rref1c),'score'))
+    assert len(list(store_rrefs_(clo1.dref))) == 4
     assert tryread(Path(join(rref2path(rref1c),'score')))=='1'
 
 

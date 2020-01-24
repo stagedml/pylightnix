@@ -58,9 +58,10 @@ def datahash(data:Iterable[bytes])->Hash:
   return Hash(e.hexdigest())
 
 def dirhash(path:Path)->Hash:
-  """ Calculate recursive SHA256 hash of a directory.
-  FIXME: stop ignoring file/directory names
-  Don't count files starting from underscope ('_')
+  """ Calculate recursive SHA256 hash of a directory. Ignore files with names
+  starting with underscope ('_').
+
+  FIXME: Include file/directory names into hash data
   """
   assert isdir(path), f"dirhash(path) expects directory path, not '{path}'"
 
@@ -74,8 +75,9 @@ def dirhash(path:Path)->Hash:
   return datahash(_iter())
 
 def scanref_list(l:list)->Tuple[List[DRef],List[RRef]]:
-  """
-  FIXME: Add a better reference detection, in the `assert_valid_ref` style
+  """ Scan Python list of arbitraty data for References.
+
+  FIXME: Add better detection criteia, at least like in `assert_valid_ref`
   """
   assert isinstance(l,list)
   drefs:List[DRef]=[]; rrefs:List[RRef]=[]
@@ -96,14 +98,9 @@ def scanref_list(l:list)->Tuple[List[DRef],List[RRef]]:
     drefs+=dref2; rrefs+=rref2
   return (drefs,rrefs)
 
-# def scanref_tuple(t:tuple)->Tuple[List[DRef],List[RRef]]:
-#   assert isinstance(t,tuple)
-#   return scanref_list(list(t))
-
 def scanref_dict(obj:dict)->Tuple[List[DRef],List[RRef]]:
   assert isinstance(obj,dict)
   return scanref_list(list(obj.values()))
-
 
 def dicthash(d:dict)->Hash:
   """ Calculate hashsum of a Python dict. Top-level fields starting from '_' are ignored """
