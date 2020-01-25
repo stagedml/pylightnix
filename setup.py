@@ -35,7 +35,7 @@ setup(
   ],
   python_requires='>=3.6',
   test_suite='pytest',
-  tests_require=['hypothesis', 'pytest-mypy'],
+  tests_require=['pytest', 'pytest-mypy', 'hypothesis'],
 )
 
 
