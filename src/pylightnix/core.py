@@ -447,14 +447,16 @@ def instantiate(stage:Any, *args, **kwargs)->Closure:
   return instantiate_(Manager(), stage, *args, **kwargs)
 
 def realize(closure:Closure, force_rebuild:List[DRef]=[])->RRef:
-  """ Builds a realization of a derivation by executing a
-  [Realizer](#pylightnix.types.Realizer) that is a user-defined Python code for
-  producing build artifacts.
+  """ Build a realization of a derivation by executing a
+  [Realizer](#pylightnix.types.Realizer).
 
-  Return value of realization is a [reference to new
-  realization](#pylightnix.types.RRef) which could be
-  later [converted to system path](#pylightnix.core.rref2path)
-  to access build artifacts. """
+  Return [reference to new realization](#pylightnix.types.RRef) which could be
+  later [converted to system path](#pylightnix.core.rref2path) to access build
+  artifacts.
+
+  - FIXME: stage's context is calculated inefficiently. Maybe one should track
+    dep.tree to avoid calling `store_deepdeps` within the cycle.
+  """
   assert_valid_closure(closure)
   with recursion_manager('realize'):
     context:Context={}
@@ -465,13 +467,15 @@ def realize(closure:Closure, force_rebuild:List[DRef]=[])->RRef:
     for (dref,matcher,realizer) in closure.derivations:
       if dref in target_deps or dref==target_dref:
         c=store_config(dref)
+        dref_deps=store_deepdeps([dref])
+        dref_context={k:v for k,v in context.items() if k in dref_deps}
         if dref in force_rebuild_:
           rref=None
         else:
-          rref=matcher(dref,context)
+          rref=matcher(dref,dref_context)
         if not rref:
-          rref=store_realize(dref,context,realizer(dref,context))
-          rreftmp=matcher(dref,context)
+          rref=store_realize(dref,dref_context,realizer(dref,dref_context))
+          rreftmp=matcher(dref,dref_context)
         context=context_add(context,dref,rref)
     assert rref is not None
     return rref

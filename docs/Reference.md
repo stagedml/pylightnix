@@ -255,12 +255,10 @@ Context = Dict[DRef,RRef]
 Context type is an alias for Python dict which maps
 [DRefs](#pylightnix.types.DRef) into [RRefs](#pylightnix.types.RRef).
 
-For any [Closure](#pylightnix.types.Closure), pylightnix maintains a mapping
-from member derivations to their realizations. This makes us sure that
-derivations within a closure are self-consistent.
-
-Note that derivations may be included into different closures at the same
-time, and those closures may have different mappings.
+For any derivation, Context stores a mapping from it's dependencie's
+derivations to their realizations. In contrast to
+[Closure](#pylightnix.types.Closure) type, Context contains a minimal closure
+of derivation's dependencies.
 
 <a name="pylightnix.types.Build"></a>
 ## `Build`
@@ -878,14 +876,15 @@ storage.
 def realize(closure: Closure, force_rebuild: List[DRef] = []) -> RRef
 ```
 
-Builds a realization of a derivation by executing a
-[Realizer](#pylightnix.types.Realizer) that is a user-defined Python code for
-producing build artifacts.
+Build a realization of a derivation by executing a
+[Realizer](#pylightnix.types.Realizer).
 
-Return value of realization is a [reference to new
-realization](#pylightnix.types.RRef) which could be
-later [converted to system path](#pylightnix.core.rref2path)
-to access build artifacts.
+Return [reference to new realization](#pylightnix.types.RRef) which could be
+later [converted to system path](#pylightnix.core.rref2path) to access build
+artifacts.
+
+- FIXME: stage's context is calculated inefficiently. Maybe one should track
+  dep.tree to avoid calling `store_deepdeps` within the cycle.
 
 <a name="pylightnix.core.mksymlink"></a>
 ## `mksymlink()`

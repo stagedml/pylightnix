@@ -362,3 +362,21 @@ def test_largest()->None:
     assert isfile(join(rref2path(rref1),'score'))
     assert tryread(Path(join(rref2path(rref1),'score')))=='1'
 
+
+def test_minimal_closure():
+  with setup_storage('test_minimal_closure'):
+
+    def _somenode(m):
+      return mktestnode(m,{'a':0})
+
+    def _anothernode(m):
+      n1=mktestnode(m,{'a':1})
+      n2=_somenode(m)
+      n3=mktestnode(m,{'maman':n1,'papa':n2})
+      return n3
+
+    rref1=realize(instantiate(_somenode))
+    rref=realize(instantiate(_anothernode))
+    rref2=store_deref(rref,store_cattrs(rref).papa)
+    assert rref1==rref2
+

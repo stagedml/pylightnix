@@ -121,12 +121,10 @@ class ConfigAttrs(dict):
 #: Context type is an alias for Python dict which maps
 #: [DRefs](#pylightnix.types.DRef) into [RRefs](#pylightnix.types.RRef).
 #:
-#: For any [Closure](#pylightnix.types.Closure), pylightnix maintains a mapping
-#: from member derivations to their realizations. This makes us sure that
-#: derivations within a closure are self-consistent.
-#:
-#: Note that derivations may be included into different closures at the same
-#: time, and those closures may have different mappings.
+#: For any derivation, Context stores a mapping from it's dependencie's
+#: derivations to their realizations. In contrast to
+#: [Closure](#pylightnix.types.Closure) type, Context contains a minimal closure
+#: of derivation's dependencies.
 Context=Dict[DRef,RRef]
 
 #: Build is a helper object which tracks the process of [realization](#pylightnix.core.realize).
