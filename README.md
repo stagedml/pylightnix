@@ -57,12 +57,14 @@ Implementation:
      $ make wheels
      $ sudo -H pip3 install --force dist/*whl
      ```
+   - (c) Nix users may refer to [default.nix](./default.nix) and
+     [shell.nix](./shell.nix) expressions.
 3. (Optional) Run the tests and make docs
    ```
    $ make coverage
    $ make docs
    ```
-4. (Optional) Demos require additional packages, once you install it, do
+4. (Optional) Demos require `pweave` package.
    ```
    $ make demos
    ```

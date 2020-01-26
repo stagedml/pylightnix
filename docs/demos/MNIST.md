@@ -1,6 +1,8 @@
 MNIST Demo
 ==========
 
+[Complete source of the demo](./MNIST.py)
+
 In this document we show how
 [Pylightnix](https://github.com/stagedml/pylightnix) can be used in machine
 learning applications. We focus on `inplace` subset of [Pylightnix
@@ -10,8 +12,6 @@ internal global state.
 
 We will use Pylightnix in well-known MNIST classifier application. [TensorFlow
 2.0](https://www.tensorflow.org) framework is required to run this demo.
-
-[Complete source](./MNIST.py).
 
 ## The problem
 
@@ -250,8 +250,8 @@ x_train shape: (60000, 28, 28, 1)
 x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
-rref:0773e11aec79c2fd5b1ae6e95cb4af32-5cd9248aabb529c207a20b8b9fc576ce-unnamed
-rref:5e45ee993bd2db07153b0b9594d29dcd-5cd9248aabb529c207a20b8b9fc576ce-unnamed
+rref:8d954aa02846b8019898203c63d909d8-5cd9248aabb529c207a20b8b9fc576ce-unnamed
+rref:e32e71630ae2a0a0ac1736dcf3b6f189-5cd9248aabb529c207a20b8b9fc576ce-unnamed
 ```
 
 
@@ -267,8 +267,8 @@ lsref(mnist_model)
 ```
 
 ```
-['0773e11aec79c2fd5b1ae6e95cb4af32',
- '5e45ee993bd2db07153b0b9594d29dcd',
+['e32e71630ae2a0a0ac1736dcf3b6f189',
+ '8d954aa02846b8019898203c63d909d8',
  'config.json']
 ```
 
@@ -278,7 +278,7 @@ catref(mnist1,['accuracy.txt'])
 ```
 
 ```
-['0.9839']
+['0.9835']
 ```
 
 
@@ -287,7 +287,7 @@ catref(mnist2,['accuracy.txt'])
 ```
 
 ```
-['0.9844']
+['0.9857']
 ```
 
 
@@ -304,7 +304,7 @@ print(mnistX)
 ```
 
 ```
-rref:5e45ee993bd2db07153b0b9594d29dcd-5cd9248aabb529c207a20b8b9fc576ce-unnamed
+rref:e32e71630ae2a0a0ac1736dcf3b6f189-5cd9248aabb529c207a20b8b9fc576ce-unnamed
 ```
 
 
