@@ -22,6 +22,9 @@ let
       hypothesis
       pytest
       pytest-mypy
+      Pweave
+      coverage
+      gnumake
     ]);
 
     shellHook = with pkgs; ''
