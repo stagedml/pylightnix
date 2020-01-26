@@ -9,8 +9,8 @@ Contents:
 
 1. [Features](#Features)
 2. [Build](#Build)
-3. [Quick start](#Quick-start)
-4. [Documentation](#Documentation)
+3. [Documentation](#Documentation)
+4. [Quick start](#Quick-start)
 
 ## Features:
 
@@ -68,6 +68,13 @@ Implementation:
    ```
    $ make demos
    ```
+
+## Documentation
+
+* [API Reference](./docs/Reference.md)
+* [HELLO demo](./docs/demos/HELLO.md)
+* [MNIST demo](./docs/demos/MNIST.md)
+* [Tests](./tests)
 
 ## Quick start
 
@@ -136,12 +143,3 @@ Implementation:
    ```
    Hello World!
    ```
-
-## Documentation
-
-* [HELLO demo](./docs/demos/HELLO.md)
-* [MNIST demo](./docs/demos/MNIST.md)
-* [API Reference](./docs/Reference.md)
-* [A bunch of tests](./tests)
-
-
