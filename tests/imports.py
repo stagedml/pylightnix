@@ -1,4 +1,5 @@
-from os import makedirs, replace, listdir
+from os import makedirs, replace, listdir, stat, chmod, system
+from stat import S_IEXEC
 from os.path import (basename, join, isfile, isdir, islink, relpath, abspath,
                      dirname )
 from shutil import rmtree
@@ -12,12 +13,14 @@ from hypothesis.strategies import ( text, decimals, integers, characters,
 from string import printable
 from distutils.spawn import find_executable
 
-from subprocess import Popen, run
+from subprocess import Popen, run, PIPE
 
 from re import compile as re_compile
 
 from typing import Any, List, Optional, Callable
 from contextlib import contextmanager
+
+from tempfile import TemporaryDirectory
 
 def get_executable(name:str, not_found_message:str)->str:
   e=find_executable(name)

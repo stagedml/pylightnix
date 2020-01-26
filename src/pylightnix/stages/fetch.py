@@ -12,17 +12,19 @@ AUNPACK=get_executable('aunpack', 'Please install `apack` tool from `atool` pack
 
 
 
-def fetchurl(m:Manager, url:str, sha256:str, mode:str='unpack,remove', name:Optional[Name]=None)->DRef:
+def fetchurl(m:Manager, url:str, sha256:str, mode:str='unpack,remove',
+             drvname:Optional[Name]=None, filename:Optional[str]=None)->DRef:
   """ Download and unpack an URL addess.
 
   Downloading is done by calling `wget` application. Optional unpacking is
-  performed with `aunpack` script from `atool` package. `sha256` defines a
-  SHA-256 hashsum of the stored data that should match. `mode` allows to tweak
-  the stage's behavior: adding word 'unpack' instructs fetchurl to unpack the
-  package, 'remove' instructs it to remove the archive after unpacking.  """
+  performed with the `aunpack` script from `atool` package. `sha256` defines the
+  expected SHA-256 hashsum of the stored data. `mode` allows to tweak the
+  stage's behavior: adding word 'unpack' instructs fetchurl to unpack the
+  package, adding 'remove' instructs it to remove the archive after unpacking.
+  """
 
   def _instantiate()->Config:
-    return mkconfig({'name':name or 'fetchurl',
+    return mkconfig({'name':drvname or 'fetchurl',
                      'url':url,
                      'sha256':sha256,
                      'mode':mode})
@@ -32,7 +34,8 @@ def fetchurl(m:Manager, url:str, sha256:str, mode:str='unpack,remove', name:Opti
     o=build_outpath(b)
 
     try:
-      fname=basename(urlparse(c.url).path)
+      fname=filename or basename(urlparse(c.url).path)
+      assert len(fname)>0,"Downloadable filename shouldn't be empty. Try specifying a valid `filename` argument"
       partpath=join(o,fname+'.tmp')
       p=Popen([WGET, "--continue", '--output-document', partpath, c.url], cwd=o)
       p.wait()

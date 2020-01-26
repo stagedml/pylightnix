@@ -1,3 +1,3 @@
 from pylightnix.stages.trivial import *
-from pylightnix.stages.fetchurl import *
+from pylightnix.stages.fetch import *
 
