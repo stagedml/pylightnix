@@ -13,7 +13,7 @@ AUNPACK=get_executable('aunpack', 'Please install `apack` tool from `atool` pack
 
 
 def fetchurl(m:Manager, url:str, sha256:str, mode:str='unpack,remove',
-             name:Optional[Name]=None, filename:Optional[str]=None)->DRef:
+             name:Optional[str]=None, filename:Optional[str]=None)->DRef:
   """ Download and unpack an URL addess.
 
   Downloading is done by calling `wget` application. Optional unpacking is
