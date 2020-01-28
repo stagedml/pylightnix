@@ -48,8 +48,8 @@ def rmref(r:Union[RRef,DRef])->None:
   [DRefs](#pylightnix.types.DRef) also removes all their realizations.
 
   Currently Pylightnix makes no attempts to synchronize an access to the
-  storage. In scenarious involving parallelisatin, users are expected to take
-  care of possible parallelization issues.
+  storage. In scenarious involving parallelization, users are expected to take
+  care of possible race conditions.
   """
   if isrref(r):
     rmrref(RRef(r))
