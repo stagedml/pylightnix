@@ -1162,7 +1162,7 @@ def lsref(r: Union[RRef,DRef]) -> List[str]
 ```
 
 List the contents of `r`. For [DRefs](#pylightnix.types.DRef), return
-realization hashes. For [RRefs](#pylightnix.types.RRef), list artifact files
+realization hashes. For [RRefs](#pylightnix.types.RRef), list artifact files.
 
 <a name="pylightnix.bashlike.catrref_"></a>
 ## `catrref_()`
@@ -1205,9 +1205,8 @@ def rmref(r: Union[RRef,DRef]) -> None
 ```
 
 Forcebly remove a reference from the storage. Removing
-[DRefs](#pylightnix.types.DRef) also removes all it's realizations.
+[DRefs](#pylightnix.types.DRef) also removes all their realizations.
 
 Currently Pylightnix makes no attempts to synchronize an access to the
-storage.  Users have to take care of possible parallelization issues by
-themselves.
+storage.  Users are expected to take care of possible parallelization issues.
 
