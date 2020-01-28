@@ -13,7 +13,7 @@ AUNPACK=get_executable('aunpack', 'Please install `apack` tool from `atool` pack
 
 
 def fetchurl(m:Manager, url:str, sha256:str, mode:str='unpack,remove',
-             drvname:Optional[Name]=None, filename:Optional[str]=None)->DRef:
+             name:Optional[Name]=None, filename:Optional[str]=None)->DRef:
   """ Download and unpack an URL addess.
 
   Downloading is done by calling `wget` application. Optional unpacking is
@@ -24,7 +24,7 @@ def fetchurl(m:Manager, url:str, sha256:str, mode:str='unpack,remove',
   """
 
   def _instantiate()->Config:
-    return mkconfig({'name':drvname or 'fetchurl',
+    return mkconfig({'name':name or 'fetchurl',
                      'url':url,
                      'sha256':sha256,
                      'mode':mode})

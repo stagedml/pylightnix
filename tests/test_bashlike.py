@@ -27,7 +27,7 @@ def test_bashlike():
     except AssertionError:
       pass
     try:
-      catref(clo.dref, ['artifact'])
+      catref(clo.dref, ['artifact']) # type:ignore
       raise ShouldHaveFailed('notimpl')
     except AssertionError:
       pass
