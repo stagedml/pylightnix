@@ -1208,5 +1208,6 @@ Forcebly remove a reference from the storage. Removing
 [DRefs](#pylightnix.types.DRef) also removes all their realizations.
 
 Currently Pylightnix makes no attempts to synchronize an access to the
-storage.  Users are expected to take care of possible parallelization issues.
+storage. In scenarious involving parallelisatin, users are expected to take
+care of possible parallelization issues.
 
