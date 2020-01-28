@@ -1,5 +1,5 @@
 from pylightnix.types import ( Iterable, List, Union, Optional, DRef, RRef )
-from pylightnix.imports import ( isfile, isdir, listdir, join )
+from pylightnix.imports import ( isfile, isdir, listdir, join, rmtree )
 from pylightnix.core import ( store_dref2path, rref2path, isrref, isdref )
 
 
@@ -33,6 +33,22 @@ def catref(r:str, fn:List[str])->List[str]:
     return list(catrref_(RRef(r),fn))
   else:
     assert False, 'not implemented'
+
+def rmrref(r:RRef)->None:
+  rmtree(rref2path(r))
+
+def rmdref(r:DRef)->None:
+  rmtree(store_dref2path(r))
+
+def rmref(r:Union[RRef,DRef])->None:
+  if isrref(r):
+    rmrref(RRef(r))
+  elif isdref(r):
+    rmdref(DRef(r))
+  else:
+    assert False, f"Invalid reference {r}"
+
+
 
 
 

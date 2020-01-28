@@ -1,8 +1,10 @@
 from pylightnix import ( DRef, RRef, lsref, catref, instantiate, realize,
-    unrref )
+    unrref, rmref, store_dref2path, rref2path )
 
 from tests.setup import (
     ShouldHaveFailed, setup_testpath, setup_storage, mktestnode_nondetermenistic )
+
+from tests.imports import ( isdir )
 
 
 def test_bashlike():
@@ -22,11 +24,33 @@ def test_bashlike():
     try:
       lsref('foobar') # type:ignore
       raise ShouldHaveFailed('should reject garbage')
-    except:
+    except AssertionError:
       pass
     try:
       catref(clo.dref, ['artifact'])
       raise ShouldHaveFailed('notimpl')
-    except:
+    except AssertionError:
       pass
+
+
+
+def test_rmdref():
+  with setup_storage('test_bashlike') as s:
+    clo=instantiate(mktestnode_nondetermenistic, {'a':1}, lambda:42)
+    drefpath=store_dref2path(clo.dref)
+    rref1=realize(clo, force_rebuild=[clo.dref])
+    rrefpath=rref2path(rref1)
+    assert isdir(rrefpath)
+    rmref(rref1)
+    assert not isdir(rrefpath)
+    assert isdir(drefpath)
+    rmref(clo.dref)
+    assert not isdir(drefpath)
+    try:
+      rmref('asdasd') # type:ignore
+      raise ShouldHaveFailed('shoud reject garbage')
+    except AssertionError:
+      pass
+
+
 
