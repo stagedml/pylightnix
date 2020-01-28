@@ -91,14 +91,27 @@
     * [assert\_valid\_closure](#pylightnix.core.assert_valid_closure)
     * [assert\_no\_rref\_deps](#pylightnix.core.assert_no_rref_deps)
     * [assert\_have\_realizers](#pylightnix.core.assert_have_realizers)
+  * [pylightnix.inplace](#pylightnix.inplace)
+    * [PYLIGHTNIX\_MANAGER](#pylightnix.inplace.PYLIGHTNIX_MANAGER)
+    * [instantiate\_inplace](#pylightnix.inplace.instantiate_inplace)
+    * [realize\_inplace](#pylightnix.inplace.realize_inplace)
   * [pylightnix.stages](#pylightnix.stages)
   * [pylightnix.stages.trivial](#pylightnix.stages.trivial)
     * [mknode](#pylightnix.stages.trivial.mknode)
     * [mkfile](#pylightnix.stages.trivial.mkfile)
-  * [pylightnix.stages.fetchurl](#pylightnix.stages.fetchurl)
-    * [WGET](#pylightnix.stages.fetchurl.WGET)
-    * [AUNPACK](#pylightnix.stages.fetchurl.AUNPACK)
-    * [fetchurl](#pylightnix.stages.fetchurl.fetchurl)
+  * [pylightnix.stages.fetch](#pylightnix.stages.fetch)
+    * [WGET](#pylightnix.stages.fetch.WGET)
+    * [AUNPACK](#pylightnix.stages.fetch.AUNPACK)
+    * [fetchurl](#pylightnix.stages.fetch.fetchurl)
+  * [pylightnix.bashlike](#pylightnix.bashlike)
+    * [lsdref\_](#pylightnix.bashlike.lsdref_)
+    * [lsrref\_](#pylightnix.bashlike.lsrref_)
+    * [lsref](#pylightnix.bashlike.lsref)
+    * [catrref\_](#pylightnix.bashlike.catrref_)
+    * [catref](#pylightnix.bashlike.catref)
+    * [rmrref](#pylightnix.bashlike.rmrref)
+    * [rmdref](#pylightnix.bashlike.rmdref)
+    * [rmref](#pylightnix.bashlike.rmref)
 
 <a name="pylightnix.types"></a>
 # `pylightnix.types`
@@ -869,6 +882,9 @@ restrictions. In particular, it shouldn't start new instantiations or
 realizations recursively, and it shouldn't access realization objects in the
 storage.
 
+New derivations are added to the storage by moving a temporary folder inside
+the storage folder.
+
 <a name="pylightnix.core.realize"></a>
 ## `realize()`
 
@@ -876,12 +892,17 @@ storage.
 def realize(closure: Closure, force_rebuild: List[DRef] = []) -> RRef
 ```
 
-Build a realization of a derivation by executing a
-[Realizer](#pylightnix.types.Realizer).
+Build a realization of the derivation by executing a
+[Realizer](#pylightnix.types.Realizer) on it's
+[Closure](#pylightnix.types.Closure).
 
 Return [reference to new realization](#pylightnix.types.RRef) which could be
 later [converted to system path](#pylightnix.core.rref2path) to access build
 artifacts.
+
+New realization is added to the storage by moving a temporary folder inside
+the storage. `realize` assumes that derivation is still there at this moment
+(See e.g. [rmref](#pylightnix.bashlike.rmref))
 
 - FIXME: stage's context is calculated inefficiently. Maybe one should track
   dep.tree to avoid calling `store_deepdeps` within the cycle.
@@ -1025,6 +1046,35 @@ def assert_have_realizers(m: Manager, drefs: List[DRef]) -> None
 ```
 
 
+<a name="pylightnix.inplace"></a>
+# `pylightnix.inplace`
+
+
+<a name="pylightnix.inplace.PYLIGHTNIX_MANAGER"></a>
+## `PYLIGHTNIX_MANAGER`
+
+```python
+PYLIGHTNIX_MANAGER = Manager()
+```
+
+Global Derivation manager used for Inplace mode of operation
+
+<a name="pylightnix.inplace.instantiate_inplace"></a>
+## `instantiate_inplace()`
+
+```python
+def instantiate_inplace(stage: Any, args, *,, ,, kwargs) -> DRef
+```
+
+
+<a name="pylightnix.inplace.realize_inplace"></a>
+## `realize_inplace()`
+
+```python
+def realize_inplace(dref: DRef, force_rebuild: List[DRef] = []) -> RRef
+```
+
+
 <a name="pylightnix.stages"></a>
 # `pylightnix.stages`
 
@@ -1049,11 +1099,11 @@ def mkfile(m: Manager, name: Name, contents: bytes, filename: Optional[Name] = N
 ```
 
 
-<a name="pylightnix.stages.fetchurl"></a>
-# `pylightnix.stages.fetchurl`
+<a name="pylightnix.stages.fetch"></a>
+# `pylightnix.stages.fetch`
 
 
-<a name="pylightnix.stages.fetchurl.WGET"></a>
+<a name="pylightnix.stages.fetch.WGET"></a>
 ## `WGET`
 
 ```python
@@ -1061,7 +1111,7 @@ WGET = get_executable('wget', 'Please install `wget` pacakge')
 ```
 
 
-<a name="pylightnix.stages.fetchurl.AUNPACK"></a>
+<a name="pylightnix.stages.fetch.AUNPACK"></a>
 ## `AUNPACK`
 
 ```python
@@ -1069,18 +1119,95 @@ AUNPACK = get_executable('aunpack', 'Please install `apack` tool from `atool` pa
 ```
 
 
-<a name="pylightnix.stages.fetchurl.fetchurl"></a>
+<a name="pylightnix.stages.fetch.fetchurl"></a>
 ## `fetchurl()`
 
 ```python
-def fetchurl(m: Manager, url: str, sha256: str, mode: str = 'unpack,remove', name: Optional[Name] = None) -> DRef
+def fetchurl(m: Manager, url: str, sha256: str, mode: str = 'unpack,remove', drvname: Optional[Name] = None, filename: Optional[str] = None) -> DRef
 ```
 
 Download and unpack an URL addess.
 
 Downloading is done by calling `wget` application. Optional unpacking is
-performed with `aunpack` script from `atool` package. `sha256` defines a
-SHA-256 hashsum of the stored data that should match. `mode` allows to tweak
-the stage's behavior: adding word 'unpack' instructs fetchurl to unpack the
-package, 'remove' instructs it to remove the archive after unpacking.
+performed with the `aunpack` script from `atool` package. `sha256` defines the
+expected SHA-256 hashsum of the stored data. `mode` allows to tweak the
+stage's behavior: adding word 'unpack' instructs fetchurl to unpack the
+package, adding 'remove' instructs it to remove the archive after unpacking.
+
+<a name="pylightnix.bashlike"></a>
+# `pylightnix.bashlike`
+
+
+<a name="pylightnix.bashlike.lsdref_"></a>
+## `lsdref_()`
+
+```python
+def lsdref_(r: DRef) -> Iterable[str]
+```
+
+
+<a name="pylightnix.bashlike.lsrref_"></a>
+## `lsrref_()`
+
+```python
+def lsrref_(r: RRef) -> Iterable[str]
+```
+
+
+<a name="pylightnix.bashlike.lsref"></a>
+## `lsref()`
+
+```python
+def lsref(r: Union[RRef,DRef]) -> List[str]
+```
+
+List the contents of `r`. For [DRefs](#pylightnix.types.DRef), return
+realization hashes. For [RRefs](#pylightnix.types.RRef), list artifact files
+
+<a name="pylightnix.bashlike.catrref_"></a>
+## `catrref_()`
+
+```python
+def catrref_(r: RRef, fn: List[str]) -> Iterable[str]
+```
+
+
+<a name="pylightnix.bashlike.catref"></a>
+## `catref()`
+
+```python
+def catref(r: RRef, fn: List[str]) -> List[str]
+```
+
+Return the contents of r's artifact file `fn` line by line.
+
+<a name="pylightnix.bashlike.rmrref"></a>
+## `rmrref()`
+
+```python
+def rmrref(r: RRef) -> None
+```
+
+
+<a name="pylightnix.bashlike.rmdref"></a>
+## `rmdref()`
+
+```python
+def rmdref(r: DRef) -> None
+```
+
+
+<a name="pylightnix.bashlike.rmref"></a>
+## `rmref()`
+
+```python
+def rmref(r: Union[RRef,DRef]) -> None
+```
+
+Forcebly remove a reference from the storage. Removing
+[DRefs](#pylightnix.types.DRef) also removes all it's realizations.
+
+Currently Pylightnix makes no attempts to synchronize an access to the
+storage.  Users have to take care of possible parallelization issues by
+themselves.
 

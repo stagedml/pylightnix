@@ -16,6 +16,8 @@ def lsrref_(r:RRef)->Iterable[str]:
     yield d
 
 def lsref(r:Union[RRef,DRef])->List[str]:
+  """ List the contents of `r`. For [DRefs](#pylightnix.types.DRef), return
+  realization hashes. For [RRefs](#pylightnix.types.RRef), list artifact files """
   if isrref(r):
     return list(lsrref_(RRef(r)))
   elif isdref(r):
@@ -28,7 +30,8 @@ def catrref_(r:RRef, fn:List[str])->Iterable[str]:
     for l in f.readlines():
       yield l
 
-def catref(r:str, fn:List[str])->List[str]:
+def catref(r:RRef, fn:List[str])->List[str]:
+  """ Return the contents of r's artifact file `fn` line by line. """
   if isrref(r):
     return list(catrref_(RRef(r),fn))
   else:
@@ -41,6 +44,12 @@ def rmdref(r:DRef)->None:
   rmtree(store_dref2path(r))
 
 def rmref(r:Union[RRef,DRef])->None:
+  """ Forcebly remove a reference from the storage. Removing
+  [DRefs](#pylightnix.types.DRef) also removes all it's realizations.
+
+  Currently Pylightnix makes no attempts to synchronize an access to the
+  storage.  Users have to take care of possible parallelization issues by
+  themselves. """
   if isrref(r):
     rmrref(RRef(r))
   elif isdref(r):

@@ -443,16 +443,24 @@ def instantiate(stage:Any, *args, **kwargs)->Closure:
   restrictions. In particular, it shouldn't start new instantiations or
   realizations recursively, and it shouldn't access realization objects in the
   storage.
+
+  New derivations are added to the storage by moving a temporary folder inside
+  the storage folder.
   """
   return instantiate_(Manager(), stage, *args, **kwargs)
 
 def realize(closure:Closure, force_rebuild:List[DRef]=[])->RRef:
-  """ Build a realization of a derivation by executing a
-  [Realizer](#pylightnix.types.Realizer).
+  """ Build a realization of the derivation by executing a
+  [Realizer](#pylightnix.types.Realizer) on it's
+  [Closure](#pylightnix.types.Closure).
 
   Return [reference to new realization](#pylightnix.types.RRef) which could be
   later [converted to system path](#pylightnix.core.rref2path) to access build
   artifacts.
+
+  New realization is added to the storage by moving a temporary folder inside
+  the storage. `realize` assumes that derivation is still there at this moment
+  (See e.g. [rmref](#pylightnix.bashlike.rmref))
 
   - FIXME: stage's context is calculated inefficiently. Maybe one should track
     dep.tree to avoid calling `store_deepdeps` within the cycle.
