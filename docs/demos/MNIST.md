@@ -250,8 +250,8 @@ x_train shape: (60000, 28, 28, 1)
 x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
-rref:8d954aa02846b8019898203c63d909d8-5cd9248aabb529c207a20b8b9fc576ce-unnamed
-rref:e32e71630ae2a0a0ac1736dcf3b6f189-5cd9248aabb529c207a20b8b9fc576ce-unnamed
+rref:8a183675020e1f82105255a0c471b473-5cd9248aabb529c207a20b8b9fc576ce-unnamed
+rref:f886e96d66d6162980bc91fda149b5a1-5cd9248aabb529c207a20b8b9fc576ce-unnamed
 ```
 
 
@@ -267,9 +267,9 @@ lsref(mnist_model)
 ```
 
 ```
-['e32e71630ae2a0a0ac1736dcf3b6f189',
- '8d954aa02846b8019898203c63d909d8',
- 'config.json']
+['8a183675020e1f82105255a0c471b473',
+ 'config.json',
+ 'f886e96d66d6162980bc91fda149b5a1']
 ```
 
 
@@ -278,7 +278,7 @@ catref(mnist1,['accuracy.txt'])
 ```
 
 ```
-['0.9835']
+['0.9849']
 ```
 
 
@@ -287,13 +287,13 @@ catref(mnist2,['accuracy.txt'])
 ```
 
 ```
-['0.9857']
+['0.9847']
 ```
 
 
 
 Clearly,
-'mnist2'
+'mnist1'
 shows slightly better results. Our matcher thinks the same, so if we don't force
 Pylightnix to produce more realizations, it will return it as a better match:
 
@@ -304,7 +304,7 @@ print(mnistX)
 ```
 
 ```
-rref:e32e71630ae2a0a0ac1736dcf3b6f189-5cd9248aabb529c207a20b8b9fc576ce-unnamed
+rref:8a183675020e1f82105255a0c471b473-5cd9248aabb529c207a20b8b9fc576ce-unnamed
 ```
 
 
