@@ -141,7 +141,9 @@ class Build:
 
 Instantiator = Callable[[],Config]
 
-Matcher = Callable[[DRef, Context],Optional[RRef]]
+#: FIXME: Make matchers more algebra-friendly. E.g. one could make them return
+#: RRef ranks which could be composed and re-used.
+Matcher = Callable[[DRef,Context],Optional[RRef]]
 
 #: Realizer is a user-defined function which defines how to
 #: [build](#pylightnix.core.realize) a given derivation in a given
