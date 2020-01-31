@@ -199,7 +199,11 @@ Names are restircted to contain charaters matching `PYLIGHTNIX_NAMEPAT`.
 See also `mkname`
 
 <a name="pylightnix.types.RefPath"></a>
-## `RefPath` Objects
+## `RefPath`
+
+```python
+RefPath = List[Any]
+```
 
 RefPath is an alias for Python list (of strings). The first item of
 `RefPath` is a [derivation reference](#pylightnix.types.DRef). Other elements
@@ -209,10 +213,10 @@ relative to unspecified realization of this derivation.
 To convert `RefPath` into [system path](#pylightnix.types.Path), one generally
 have to perform the following elementary actions:
 1. Get the reference to realization of current derivation, see
-   [store_deref](#pylightnix.core.store_deref) or
-   [build_deref](#pylightnix.core.build_deref).
+[store_deref](#pylightnix.core.store_deref) or
+[build_deref](#pylightnix.core.build_deref).
 2. Convert the realization reference into system path with
-   [rref2path](#pylightnix.core.rref2path)
+[rref2path](#pylightnix.core.rref2path)
 3. Join the system path with 'relative' part of RRefPath
 
 The above algorithm is implemented as
@@ -274,10 +278,10 @@ derivations to their realizations. In contrast to
 of derivation's dependencies.
 
 <a name="pylightnix.types.Build"></a>
-## `Build`
+## `Build` Objects
 
 ```python
-Build = NamedTuple('Build', [('dref',DRef), ('context',Context), ('timeprefix',str), ('outpath',Path)])
+def __init__(self, dref: DRef, context: Context, timeprefix: str, outpath: Path) -> None
 ```
 
 Build is a helper object which tracks the process of [realization](#pylightnix.core.realize).
@@ -287,6 +291,14 @@ Useful associated functions are:
 - [build_config](#pylightnix.core.build_config)
 - [build_deref](#pylightnix.core.build_deref)
 - [build_outpath](#pylightnix.core.build_outpath)
+
+<a name="pylightnix.types.Build.__init__"></a>
+### `Build.__init__()`
+
+```python
+def __init__(self, dref: DRef, context: Context, timeprefix: str, outpath: Path) -> None
+```
+
 
 <a name="pylightnix.types.Instantiator"></a>
 ## `Instantiator`
@@ -795,6 +807,7 @@ realization of dependency `dref`.
 def build_path(b: Build, refpath: RefPath) -> Path
 ```
 
+Return a system path, corresponding to RefPath `refpath`
 
 <a name="pylightnix.core.mkcontext"></a>
 ## `mkcontext()`
@@ -1123,7 +1136,7 @@ AUNPACK = get_executable('aunpack', 'Please install `apack` tool from `atool` pa
 ## `fetchurl()`
 
 ```python
-def fetchurl(m: Manager, url: str, sha256: str, mode: str = 'unpack,remove', drvname: Optional[Name] = None, filename: Optional[str] = None) -> DRef
+def fetchurl(m: Manager, url: str, sha256: str, mode: str = 'unpack,remove', name: Optional[str] = None, filename: Optional[str] = None) -> DRef
 ```
 
 Download and unpack an URL addess.

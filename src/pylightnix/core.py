@@ -165,7 +165,7 @@ def rref2path(r:RRef)->Path:
 def mkrefpath(r:DRef, items:List[str]=[])->RefPath:
   """ Construct a RefPath out of a reference `ref` and a path within the node """
   assert_valid_dref(r)
-  return RefPath([str(r)]+items)
+  return [str(r)]+items
 
 def store_config(r:Union[DRef,RRef])->Config:
   assert r[:4]=='rref' or r[:4]=='dref', (
@@ -349,6 +349,7 @@ def build_deref(b:Build, dref:DRef)->RRef:
   return context_deref(build_context(b), dref)
 
 def build_path(b:Build, refpath:RefPath)->Path:
+  """ Return a system path, corresponding to RefPath `refpath`"""
   assert_valid_refpath(refpath)
   return Path(join(rref2path(build_deref(b, refpath[0])), *refpath[1:]))
 

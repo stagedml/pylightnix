@@ -78,25 +78,23 @@ class Name(str):
   See also `mkname` """
   pass
 
-class RefPath(list):
-  """ RefPath is an alias for Python list (of strings). The first item of
-  `RefPath` is a [derivation reference](#pylightnix.types.DRef). Other elements
-  represent path (names of folders and optionally a filename). The path is
-  relative to unspecified realization of this derivation.
-
-  To convert `RefPath` into [system path](#pylightnix.types.Path), one generally
-  have to perform the following elementary actions:
-  1. Get the reference to realization of current derivation, see
-     [store_deref](#pylightnix.core.store_deref) or
-     [build_deref](#pylightnix.core.build_deref).
-  2. Convert the realization reference into system path with
-     [rref2path](#pylightnix.core.rref2path)
-  3. Join the system path with 'relative' part of RRefPath
-
-  The above algorithm is implemented as
-  [build_deref_path](#pylightnix.core.build_deref_path) helper function
-  """
-  pass
+#: RefPath is an alias for Python list (of strings). The first item of
+#: `RefPath` is a [derivation reference](#pylightnix.types.DRef). Other elements
+#: represent path (names of folders and optionally a filename). The path is
+#: relative to unspecified realization of this derivation.
+#:
+#: To convert `RefPath` into [system path](#pylightnix.types.Path), one generally
+#: have to perform the following elementary actions:
+#: 1. Get the reference to realization of current derivation, see
+#:    [store_deref](#pylightnix.core.store_deref) or
+#:    [build_deref](#pylightnix.core.build_deref).
+#: 2. Convert the realization reference into system path with
+#:    [rref2path](#pylightnix.core.rref2path)
+#: 3. Join the system path with 'relative' part of RRefPath
+#:
+#: The above algorithm is implemented as
+#: [build_deref_path](#pylightnix.core.build_deref_path) helper function
+RefPath = List[Any]
 
 class Config:
   """ `Config` is a JSON-serializable dictionary. Configs are required by
@@ -127,14 +125,19 @@ class ConfigAttrs(dict):
 #: of derivation's dependencies.
 Context=Dict[DRef,RRef]
 
-#: Build is a helper object which tracks the process of [realization](#pylightnix.core.realize).
-#:
-#: Useful associated functions are:
-#: - [build_wrapper](#pylightnix.core.build_wrapper)
-#: - [build_config](#pylightnix.core.build_config)
-#: - [build_deref](#pylightnix.core.build_deref)
-#: - [build_outpath](#pylightnix.core.build_outpath)
-Build = NamedTuple('Build', [('dref',DRef), ('context',Context), ('timeprefix',str), ('outpath',Path)])
+class Build:
+  """Build is a helper object which tracks the process of [realization](#pylightnix.core.realize).
+
+  Useful associated functions are:
+  - [build_wrapper](#pylightnix.core.build_wrapper)
+  - [build_config](#pylightnix.core.build_config)
+  - [build_deref](#pylightnix.core.build_deref)
+  - [build_outpath](#pylightnix.core.build_outpath) """
+  def __init__(self, dref:DRef, context:Context, timeprefix:str, outpath:Path)->None:
+    self.dref=dref
+    self.context=context
+    self.timeprefix=timeprefix
+    self.outpath=outpath
 
 Instantiator = Callable[[],Config]
 
