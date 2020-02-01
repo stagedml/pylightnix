@@ -34,7 +34,7 @@
     * [mkname](#pylightnix.core.mkname)
     * [mkconfig](#pylightnix.core.mkconfig)
     * [config\_dict](#pylightnix.core.config_dict)
-    * [config\_ro](#pylightnix.core.config_ro)
+    * [config\_cattrs](#pylightnix.core.config_cattrs)
     * [config\_serialize](#pylightnix.core.config_serialize)
     * [config\_hash](#pylightnix.core.config_hash)
     * [config\_name](#pylightnix.core.config_name)
@@ -206,21 +206,22 @@ RefPath = List[Any]
 ```
 
 RefPath is an alias for Python list (of strings). The first item of
-`RefPath` is a [derivation reference](#pylightnix.types.DRef). Other elements
-represent path (names of folders and optionally a filename). The path is
-relative to unspecified realization of this derivation.
+`RefPath` is a [derivation reference](#pylightnix.types.DRef). Other
+elements represent path (names of folders and optionally a filename).
 
-To convert `RefPath` into [system path](#pylightnix.types.Path), one generally
-have to perform the following elementary actions:
-1. Get the reference to realization of current derivation, see
+To convert `RefPath` into [system path](#pylightnix.types.Path), one
+generally have to perform the following basic actions:
+1. Dereference it's first item to obtain the realization. See
 [store_deref](#pylightnix.core.store_deref) or
 [build_deref](#pylightnix.core.build_deref).
 2. Convert the realization reference into system path with
 [rref2path](#pylightnix.core.rref2path)
-3. Join the system path with 'relative' part of RRefPath
+3. Join the system path with `[1:]` part of RefPath to get the reali
+filename.
 
-The above algorithm is implemented as
-[build_deref_path](#pylightnix.core.build_deref_path) helper function
+Above algorithm is implemented as [build_path](#pylightnix.core.build_path)
+helper function. The general idea behind RefPath is to declare it during
+instantiation, but delay the access to it until the realization.
 
 <a name="pylightnix.types.Config"></a>
 ## `Config` Objects
@@ -251,14 +252,18 @@ def __init__(self, d: dict)
 <a name="pylightnix.types.ConfigAttrs"></a>
 ## `ConfigAttrs` Objects
 
-`ConfigAttrs` is a helper object for providing a read-only access to
-[Config](#pylightnix.types.Config) fields as to Python object attributes
+```python
+def __init__(self, d: dict)
+```
 
-<a name="pylightnix.types.ConfigAttrs.__getattr__"></a>
-### `__getattr__`
+`ConfigAttrs` is a helper object allowing to access
+[Config](#pylightnix.types.Config) fields as Python object attributes
+
+<a name="pylightnix.types.ConfigAttrs.__init__"></a>
+### `ConfigAttrs.__init__()`
 
 ```python
-__getattr__ = dict.__getitem__
+def __init__(self, d: dict)
 ```
 
 
@@ -269,19 +274,12 @@ __getattr__ = dict.__getitem__
 Context = Dict[DRef,RRef]
 ```
 
-Context type is an alias for Python dict which maps
-[DRefs](#pylightnix.types.DRef) into [RRefs](#pylightnix.types.RRef).
-
-For any derivation, Context stores a mapping from it's dependencie's
-derivations to their realizations. In contrast to
-[Closure](#pylightnix.types.Closure) type, Context contains a minimal closure
-of derivation's dependencies.
 
 <a name="pylightnix.types.Build"></a>
 ## `Build` Objects
 
 ```python
-def __init__(self, dref: DRef, context: Context, timeprefix: str, outpath: Path) -> None
+def __init__(self, dref: DRef, cattrs: ConfigAttrs, context: Context, timeprefix: str, outpath: Path) -> None
 ```
 
 Build is a helper object which tracks the process of [realization](#pylightnix.core.realize).
@@ -296,7 +294,7 @@ Useful associated functions are:
 ### `Build.__init__()`
 
 ```python
-def __init__(self, dref: DRef, context: Context, timeprefix: str, outpath: Path) -> None
+def __init__(self, dref: DRef, cattrs: ConfigAttrs, context: Context, timeprefix: str, outpath: Path) -> None
 ```
 
 
@@ -312,9 +310,11 @@ Instantiator = Callable[[],Config]
 ## `Matcher`
 
 ```python
-Matcher = Callable[[DRef, Context],Optional[RRef]]
+Matcher = Callable[[DRef,Context],Optional[RRef]]
 ```
 
+FIXME: Make matchers more algebra-friendly. E.g. one could make them return
+RRef ranks which could be composed and re-used.
 
 <a name="pylightnix.types.Realizer"></a>
 ## `Realizer`
@@ -513,11 +513,11 @@ def config_dict(c: Config) -> dict
 ```
 
 
-<a name="pylightnix.core.config_ro"></a>
-## `config_ro()`
+<a name="pylightnix.core.config_cattrs"></a>
+## `config_cattrs()`
 
 ```python
-def config_ro(c: Config) -> Any
+def config_cattrs(c: Config) -> Any
 ```
 
 
@@ -761,7 +761,7 @@ being built.
 ## `build_cattrs()`
 
 ```python
-def build_cattrs(m: Build) -> Any
+def build_cattrs(b: Build) -> Any
 ```
 
 

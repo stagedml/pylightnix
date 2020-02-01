@@ -4,7 +4,7 @@ from pylightnix import (
     assert_valid_hash, assert_valid_config, Manager, mkcontext, store_realize,
     store_rrefs, mkdref, mkrref, unrref, undref, realize, rref2dref,
     store_config, mkconfig, Build, Context, build_outpath, only, mkdrv,
-    store_deref, rref2path, store_rrefs_, config_ro, mksymlink,
+    store_deref, rref2path, store_rrefs_, config_cattrs, mksymlink,
     store_cattrs, build_deref, build_path, mkrefpath, build_config,
     store_drefs, store_rrefs, store_rrefs_, build_wrapper, recursion_manager,
     build_cattrs, build_name, largest, tryread)
@@ -177,7 +177,7 @@ def test_recursion_manager()->None:
 def test_config_ro():
   d={'a':1,'b':33}
   c=mkconfig(d)
-  cro=config_ro(c)
+  cro=config_cattrs(c)
   for k in d.keys():
     assert getattr(cro,k) == d[k]
 
@@ -239,6 +239,23 @@ def test_build_deref()->None:
     rref = realize(instantiate(_setting))
     assert_valid_rref(rref)
 
+def test_build_cattrs():
+  with setup_storage('test_build_cattrs'):
+    def _setting(m:Manager)->DRef:
+      def _instantiate()->Config:
+        return mkconfig({'a':1,'b':2})
+      def _realize(b)->None:
+        c = build_cattrs(b)
+        assert hasattr(c,'a')
+        assert hasattr(c,'b')
+        assert not hasattr(c,'c')
+        c.c = 'foo'
+        assert hasattr(c,'c')
+        return
+      return mkdrv(m, _instantiate, only(), build_wrapper(_realize))
+
+    rref = realize(instantiate(_setting))
+    assert_valid_rref(rref)
 
 def test_ignored_stage()->None:
   with setup_storage('test_ignored_stage'):

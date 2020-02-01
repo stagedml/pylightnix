@@ -79,21 +79,22 @@ class Name(str):
   pass
 
 #: RefPath is an alias for Python list (of strings). The first item of
-#: `RefPath` is a [derivation reference](#pylightnix.types.DRef). Other elements
-#: represent path (names of folders and optionally a filename). The path is
-#: relative to unspecified realization of this derivation.
+#: `RefPath` is a [derivation reference](#pylightnix.types.DRef). Other
+#: elements represent path (names of folders and optionally a filename).
 #:
-#: To convert `RefPath` into [system path](#pylightnix.types.Path), one generally
-#: have to perform the following elementary actions:
-#: 1. Get the reference to realization of current derivation, see
+#: To convert `RefPath` into [system path](#pylightnix.types.Path), one
+#: generally have to perform the following basic actions:
+#: 1. Dereference it's first item to obtain the realization. See
 #:    [store_deref](#pylightnix.core.store_deref) or
 #:    [build_deref](#pylightnix.core.build_deref).
 #: 2. Convert the realization reference into system path with
 #:    [rref2path](#pylightnix.core.rref2path)
-#: 3. Join the system path with 'relative' part of RRefPath
+#: 3. Join the system path with `[1:]` part of RefPath to get the reali
+#:    filename.
 #:
-#: The above algorithm is implemented as
-#: [build_deref_path](#pylightnix.core.build_deref_path) helper function
+#: Above algorithm is implemented as [build_path](#pylightnix.core.build_path)
+#: helper function. The general idea behind RefPath is to declare it during
+#: instantiation, but delay the access to it until the realization.
 RefPath = List[Any]
 
 class Config:
@@ -110,11 +111,12 @@ class Config:
   def __init__(self, d:dict):
     self.__dict__=deepcopy(d)
 
-class ConfigAttrs(dict):
-  """ `ConfigAttrs` is a helper object for providing a read-only access to
-  [Config](#pylightnix.types.Config) fields as to Python object attributes """
-  __getattr__ = dict.__getitem__ # type:ignore
-
+class ConfigAttrs:
+  """ `ConfigAttrs` is a helper object allowing to access
+  [Config](#pylightnix.types.Config) fields as Python object attributes """
+  def __init__(self, d:dict):
+    for k,v in d.items():
+      setattr(self,k,v)
 
 #: Context type is an alias for Python dict which maps
 #: [DRefs](#pylightnix.types.DRef) into [RRefs](#pylightnix.types.RRef).
@@ -133,8 +135,9 @@ class Build:
   - [build_config](#pylightnix.core.build_config)
   - [build_deref](#pylightnix.core.build_deref)
   - [build_outpath](#pylightnix.core.build_outpath) """
-  def __init__(self, dref:DRef, context:Context, timeprefix:str, outpath:Path)->None:
+  def __init__(self, dref:DRef, cattrs:ConfigAttrs, context:Context, timeprefix:str, outpath:Path)->None:
     self.dref=dref
+    self.cattrs=cattrs
     self.context=context
     self.timeprefix=timeprefix
     self.outpath=outpath

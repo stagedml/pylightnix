@@ -92,8 +92,8 @@ def mkconfig(d:dict)->Config:
 def config_dict(c:Config)->dict:
   return deepcopy(c.__dict__)
 
-def config_ro(c:Config)->Any:
-  return ConfigAttrs(c.__dict__)
+def config_cattrs(c:Config)->Any:
+  return ConfigAttrs(config_dict(c))
 
 def config_serialize(c:Config)->str:
   return json_dumps(config_dict(c), indent=4)
@@ -180,7 +180,7 @@ def store_context(r:RRef)->Context:
   return readjson(join(rref2path(r),'context.json'))
 
 def store_cattrs(r:Union[DRef,RRef])->Any:
-  return config_ro(store_config(r))
+  return config_cattrs(store_config(r))
 
 def store_deps(refs:List[DRef])->List[DRef]:
   """ Return a list of reference's immediate dependencies, not including `refs`
@@ -306,9 +306,10 @@ def mkbuild(dref:DRef, context:Context, buildtime:bool=True)->Build:
   assert_valid_config(c)
   timeprefix=timestring()
   outpath=Path(mkdtemp(prefix=f'{timeprefix}_{config_hash(c)[:8]}_', dir=PYLIGHTNIX_TMP))
+  cattrs=store_cattrs(dref)
   if buildtime:
     with open(join(outpath,'__buildtime__.txt'), 'w') as f: f.write(timeprefix)
-  return Build(dref, context, timeprefix, outpath)
+  return Build(dref, cattrs, context, timeprefix, outpath)
 
 def build_wrapper(f:Callable[[Build],None], buildtime:bool=True)->Realizer:
   def _wrapper(dref,context):
@@ -325,8 +326,8 @@ def build_context(b:Build)->Context:
   being built. """
   return b.context
 
-def build_cattrs(m:Build)->Any:
-  return config_ro(build_config(m))
+def build_cattrs(b:Build)->Any:
+  return b.cattrs
 
 def build_outpath(m:Build)->Path:
   """ Return the output path of the realization being built. Output path is a
