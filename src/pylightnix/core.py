@@ -9,7 +9,7 @@ from pylightnix.types import (
     Dict, List, Any, Tuple, Union, Optional, Iterable, IO, Path, Hash, DRef,
     RRef, RefPath, HashPart, Callable, Context, Name, NamedTuple, Build,
     Config, ConfigAttrs, Derivation, Stage, Manager, Instantiator, Matcher,
-    Realizer, Set, Closure )
+    Realizer, Set, Closure, Generator )
 
 #: *Do not change!*
 #: Tracks the version of pylightnix storage
@@ -168,6 +168,7 @@ def mkrefpath(r:DRef, items:List[str]=[])->RefPath:
   return [str(r)]+items
 
 def store_config(r:Union[DRef,RRef])->Config:
+  """ Read the [Config](#pylightnix.types.Config) of the storage node `r`. """
   assert r[:4]=='rref' or r[:4]=='dref', (
       f"Invalid reference type {r}. Expected either RRef or DRef." )
   if r[:4]=='rref':
@@ -180,6 +181,9 @@ def store_context(r:RRef)->Context:
   return readjson(join(rref2path(r),'context.json'))
 
 def store_cattrs(r:Union[DRef,RRef])->Any:
+  """ Read the [ConfigAttrs](#pylightnix.types.ConfigAttr) of the storage node `r`.
+  Note, that it is a kind of 'syntactic sugar' for `store_config`. Both
+  functions do the same thing. """
   return config_cattrs(store_config(r))
 
 def store_deps(refs:List[DRef])->List[DRef]:
@@ -460,32 +464,46 @@ def realize(closure:Closure, force_rebuild:List[DRef]=[])->RRef:
   later [converted to system path](#pylightnix.core.rref2path) to access build
   artifacts.
 
-  New realization is added to the storage by moving a temporary folder inside
-  the storage. `realize` assumes that derivation is still there at this moment
-  (See e.g. [rmref](#pylightnix.bashlike.rmref))
+  New realization node is created in storage by moving Realizer's output folder
+  into the derivation folder in the storage. `realize` assumes that derivation
+  is still there at this moment (See e.g. [rmref](#pylightnix.bashlike.rmref))
 
   - FIXME: stage's context is calculated inefficiently. Maybe one should track
     dep.tree to avoid calling `store_deepdeps` within the cycle.
   """
+  force_rebuild_:Set[DRef]=set(force_rebuild)
+  try:
+    gen=realize_seq(closure)
+    dref,context,drv=next(gen)
+    while True:
+      rref:Optional[RRef]=None
+      if dref in force_rebuild_:
+        rref=None
+      else:
+        rref=drv.matcher(dref,context)
+      if not rref:
+        path=drv.realizer(dref,context)
+        rref=store_realize(dref,context,path)
+        rreftmp=drv.matcher(dref,context)
+      dref,context,drv=gen.send(rref)
+  except StopIteration as e:
+    return e.value
+
+def realize_seq(closure:Closure)->Generator[Tuple[DRef,Context,Derivation],RRef,RRef]:
+  """ Sequentially realize the closure by issuing steps via Python's generator
+  interface """
   assert_valid_closure(closure)
   with recursion_manager('realize'):
     context:Context={}
-    rref:Optional[RRef]=None
-    force_rebuild_:Set[DRef]=set(force_rebuild)
     target_dref=closure.dref
     target_deps=store_deepdeps([target_dref])
-    for (dref,matcher,realizer) in closure.derivations:
+    for drv in closure.derivations:
+      dref=drv.dref
       if dref in target_deps or dref==target_dref:
         c=store_config(dref)
         dref_deps=store_deepdeps([dref])
         dref_context={k:v for k,v in context.items() if k in dref_deps}
-        if dref in force_rebuild_:
-          rref=None
-        else:
-          rref=matcher(dref,dref_context)
-        if not rref:
-          rref=store_realize(dref,dref_context,realizer(dref,dref_context))
-          rreftmp=matcher(dref,dref_context)
+        rref=yield (dref,dref_context,drv)
         context=context_add(context,dref,rref)
     assert rref is not None
     return rref

@@ -1,6 +1,6 @@
 from pylightnix.imports import ( deepcopy, OrderedDict )
 from typing import ( List, Any, Tuple, Union, Optional, Iterable, IO, Callable,
-    Dict, NamedTuple, Set )
+    Dict, NamedTuple, Set, Generator )
 
 class Path(str):
   """ `Path` is an alias for string. It is used in pylightnix to
