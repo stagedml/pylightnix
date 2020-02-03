@@ -1,10 +1,10 @@
 from pylightnix.types import ( Closure, Context, Derivation, RRef, DRef, List,
     Tuple, Optional, Generator  )
 
-from pylightnix.core import ( realize_seq, store_realize )
+from pylightnix.core import ( realize_seq, store_realize, RealizeSeqCancelled )
 
 class ReplHelper:
-  def __init__(self, gen:Generator[Tuple[DRef,Context,Derivation],RRef,RRef],
+  def __init__(self, gen:Generator[Tuple[DRef,Context,Derivation],Optional[RRef],RRef],
                      force_interrupt:List[DRef])->None:
     self.force_interrupt=set(force_interrupt)
     self.gen=gen
@@ -12,12 +12,14 @@ class ReplHelper:
     self.context:Optional[Context]=None
     self.drv:Optional[Derivation]=None
 
+
 def repl_start_(rh:ReplHelper)->Optional[RRef]:
   try:
     rh.dref,rh.context,rh.drv=next(rh.gen)
     return None
   except StopIteration as e:
     return e.value
+
 
 def repl_continue(rh:ReplHelper, rref:Optional[RRef])->Optional[RRef]:
   try:
@@ -40,3 +42,9 @@ def repl_continue(rh:ReplHelper, rref:Optional[RRef])->Optional[RRef]:
 def repl_realize(closure:Closure, force_interrupt:List[DRef]=[])->Optional[RRef]:
   return repl_start_(ReplHelper(realize_seq(closure), force_interrupt))
 
+def repl_cancel(rh:ReplHelper)->None:
+  try:
+    rh.gen.send(None)
+    assert False
+  except RealizeSeqCancelled:
+    pass

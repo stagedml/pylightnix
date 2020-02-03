@@ -485,11 +485,16 @@ def realize(closure:Closure, force_rebuild:List[DRef]=[])->RRef:
         path=drv.realizer(dref,context)
         rref=store_realize(dref,context,path)
         rreftmp=drv.matcher(dref,context)
+      assert rref is not None
       dref,context,drv=gen.send(rref)
   except StopIteration as e:
-    return e.value
+    res=e.value
+  return res
 
-def realize_seq(closure:Closure)->Generator[Tuple[DRef,Context,Derivation],RRef,RRef]:
+class RealizeSeqCancelled(Exception):
+  pass
+
+def realize_seq(closure:Closure)->Generator[Tuple[DRef,Context,Derivation],Optional[RRef],RRef]:
   """ Sequentially realize the closure by issuing steps via Python's generator
   interface """
   assert_valid_closure(closure)
@@ -504,6 +509,8 @@ def realize_seq(closure:Closure)->Generator[Tuple[DRef,Context,Derivation],RRef,
         dref_deps=store_deepdeps([dref])
         dref_context={k:v for k,v in context.items() if k in dref_deps}
         rref=yield (dref,dref_context,drv)
+        if not rref:
+          raise RealizeSeqCancelled()
         context=context_add(context,dref,rref)
     assert rref is not None
     return rref
