@@ -8,6 +8,9 @@ from pylightnix.types import ( Hash, Path, List, Any, Optional, Iterable, IO,
 
 
 def timestring()->str:
+  """ Return a time string
+  - FIXME: Include a year
+  """
   return strftime("%m%d-%H:%M:%S%z")
 
 def logdir(tag:str, logrootdir:Path, timetag:Optional[str]=None):

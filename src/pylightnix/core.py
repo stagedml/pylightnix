@@ -312,7 +312,8 @@ def mkbuild(dref:DRef, context:Context, buildtime:bool=True)->Build:
   outpath=Path(mkdtemp(prefix=f'{timeprefix}_{config_hash(c)[:8]}_', dir=PYLIGHTNIX_TMP))
   cattrs=store_cattrs(dref)
   if buildtime:
-    with open(join(outpath,'__buildtime__.txt'), 'w') as f: f.write(timeprefix)
+    with open(join(outpath,'__buildtime__.txt'), 'w') as f:
+      f.write(timeprefix)
   return Build(dref, cattrs, context, timeprefix, outpath)
 
 def build_wrapper(f:Callable[[Build],None], buildtime:bool=True)->Realizer:
