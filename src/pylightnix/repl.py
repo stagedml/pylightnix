@@ -1,7 +1,7 @@
 from pylightnix.types import ( Closure, Context, Derivation, RRef, DRef, List,
     Tuple, Optional, Generator, Path, Build  )
 
-from pylightnix.core import ( realize_seq, store_realize, RealizeSeqGen,
+from pylightnix.core import ( realizeSeq, store_realize, RealizeSeqGen,
     mkbuild, build_outpaths )
 
 class ReplHelper:
@@ -13,7 +13,7 @@ class ReplHelper:
     self.build:Optional[Build]=None
     self.rrefs:Optional[List[RRef]]=None
 
-def repl_continue_(rh:ReplHelper, out_paths:Optional[List[Path]]=None)->Optional[List[RRef]]:
+def repl_continueMany(rh:ReplHelper, out_paths:Optional[List[Path]]=None)->Optional[List[RRef]]:
   try:
     assert rh.gen is not None
     assert rh.dref is not None
@@ -35,14 +35,14 @@ def repl_continue_(rh:ReplHelper, out_paths:Optional[List[Path]]=None)->Optional
   return rh.rrefs
 
 def repl_continue(rh:ReplHelper, out_paths:Optional[List[Path]]=None)->Optional[RRef]:
-  rrefs=repl_continue_(rh, out_paths)
+  rrefs=repl_continueMany(rh, out_paths)
   if rrefs is None:
     return None
   assert len(rrefs)==1
   return rrefs[0]
 
 def repl_realize(closure:Closure, force_interrupt:List[DRef]=[])->ReplHelper:
-  rh=ReplHelper(realize_seq(closure,force_interrupt))
+  rh=ReplHelper(realizeSeq(closure,force_interrupt))
   assert rh.gen is not None
   try:
     rh.dref,rh.context,rh.drv=next(rh.gen)

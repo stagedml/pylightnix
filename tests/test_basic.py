@@ -121,3 +121,4 @@ def test_dirhash3(d)->None:
   h=dirhash(path)
   assert (p.stdout[:len(h)].decode('utf-8'))==h
 
+

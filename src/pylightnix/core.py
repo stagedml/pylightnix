@@ -479,38 +479,41 @@ def instantiate(stage:Any, *args, **kwargs)->Closure:
 RealizeSeqGen = Generator[Tuple[DRef,Context,Derivation],Optional[List[RRef]],List[RRef]]
 
 def realize(closure:Closure, force_rebuild:List[DRef]=[])->RRef:
-  """ Build a realization of the derivation by executing a
-  [Realizer](#pylightnix.types.Realizer) on it's
-  [Closure](#pylightnix.types.Closure).
+  """ A simplified version of [realizeMany](#pylightnix.core.realizeMany).
+  Expects only one result. """
+  rrefs=realizeMany(closure, force_interrupt=force_rebuild)
+  assert len(rrefs)==1
+  return rrefs[0]
 
-  Return [reference to new realization](#pylightnix.types.RRef) which could be
-  later [converted to system path](#pylightnix.core.rref2path) to access build
-  artifacts.
+def realizeMany(closure:Closure, force_interrupt:List[DRef]=[])->List[RRef]:
+  """ Build one or many realizations of a derivation's
+  [Closure](#pylightnix.types.Closure) by executing it's
+  [Realizer](#pylightnix.types.Realizer).
 
-  New realization node is created in storage by moving Realizer's output folder
-  into the derivation folder in the storage. `realize` assumes that derivation
-  is still there at this moment (See e.g. [rmref](#pylightnix.bashlike.rmref))
+  Return [one or many references to new realizations](#pylightnix.types.RRef).
+  Later, references could be [converted to system
+  paths](#pylightnix.core.rref2path) of build artifacts.
+
+  For every new realization, it's node is created in the storage by moving
+  Realizer's output folders into the derivation folder. `realize`
+  assumes that derivation is still there at the moment of moving (See e.g.
+  [rmref](#pylightnix.bashlike.rmref))
 
   - FIXME: Stage's context is calculated inefficiently. Maybe one should track
     dep.tree to avoid calling `store_deepdeps` within the cycle.
   - FIXME: Update derivation's matcher after forced rebuilds. Matchers should
     remember and reproduce user's preferences.
   """
-  rrefs=realize_(closure, force_interrupt=force_rebuild)
-  assert len(rrefs)==1
-  return rrefs[0]
-
-def realize_(closure:Closure, force_interrupt:List[DRef]=[])->List[RRef]:
   try:
-    gen=realize_seq(closure,force_interrupt)
+    gen=realizeSeq(closure,force_interrupt)
     next(gen)
     while True:
-      gen.send([])
+      gen.send([]) # Ask for default action
   except StopIteration as e:
     res=e.value
   return res
 
-def realize_seq(closure:Closure, force_interrupt:List[DRef]=[])->RealizeSeqGen:
+def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[])->RealizeSeqGen:
   """ Sequentially realize the closure by issuing steps via Python's generator
   interface """
   assert_valid_closure(closure)
