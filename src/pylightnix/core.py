@@ -413,8 +413,8 @@ def recursion_manager(funcname:str):
   global PYLIGHTNIX_RECURSION
   if get_ident() not in PYLIGHTNIX_RECURSION:
     PYLIGHTNIX_RECURSION[get_ident()]=[]
-  error_msg=(f"Recursion manager alerted while in {funcname}. "
-               f"Contents of the recursion stack: {PYLIGHTNIX_RECURSION[get_ident()]}")
+  error_msg=(f"Recursion manager alert, during an attempt to call '{funcname}'. "
+             f"Contents of the recursion stack: {PYLIGHTNIX_RECURSION[get_ident()]}")
   if funcname=='instantiate':
     assert 'instantiate' not in PYLIGHTNIX_RECURSION[get_ident()], error_msg
   elif funcname=='realize':
@@ -468,8 +468,10 @@ def realize(closure:Closure, force_rebuild:List[DRef]=[])->RRef:
   into the derivation folder in the storage. `realize` assumes that derivation
   is still there at this moment (See e.g. [rmref](#pylightnix.bashlike.rmref))
 
-  - FIXME: stage's context is calculated inefficiently. Maybe one should track
+  - FIXME: Stage's context is calculated inefficiently. Maybe one should track
     dep.tree to avoid calling `store_deepdeps` within the cycle.
+  - FIXME: Update derivation's matcher after forced rebuilds. Matchers should
+    remember and reproduce user's preferences.
   """
   force_rebuild_:Set[DRef]=set(force_rebuild)
   try:
@@ -494,7 +496,9 @@ def realize(closure:Closure, force_rebuild:List[DRef]=[])->RRef:
 class RealizeSeqCancelled(Exception):
   pass
 
-def realize_seq(closure:Closure)->Generator[Tuple[DRef,Context,Derivation],Optional[RRef],RRef]:
+RealizeSeqGen = Generator[Tuple[DRef,Context,Derivation],Optional[RRef],RRef]
+
+def realize_seq(closure:Closure)->RealizeSeqGen:
   """ Sequentially realize the closure by issuing steps via Python's generator
   interface """
   assert_valid_closure(closure)
