@@ -229,12 +229,17 @@ def store_rrefs(dref:DRef, context:Context)->Iterable[RRef]:
     if context_eq(context,context2):
       yield rref
 
+def store_deref_(context_holder:RRef, dref:DRef)->List[RRef]:
+  return context_deref(store_context(context_holder), dref)
+
 def store_deref(context_holder:RRef, dref:DRef)->RRef:
   """ For any realization `context_holder` and it's dependency `dref`, `store_deref`
   queries the realization reference of this dependency.
 
   See also [build_deref](#pylightnix.core.build_deref)"""
-  return context_deref(store_context(context_holder), dref)
+  rrefs=store_deref_(context_holder, dref)
+  assert len(rrefs)==1
+  return rrefs[0]
 
 def store_gc(refs_in_use:List[DRef])->List[DRef]:
   """ Take roots which are in use and should not be removed. Return roots which
@@ -305,20 +310,21 @@ def store_realize(dref:DRef, l:Context, o:Path)->RRef:
 # |____/ \__,_|_|_|\__,_|
 
 
-def mkbuild(dref:DRef, context:Context, buildtime:bool=True)->Build:
+def mkbuild(dref:DRef, context:Context, buildtime:bool=True, nouts:int=1)->Build:
   c=store_config(dref)
   assert_valid_config(c)
   timeprefix=timestring()
-  outpath=Path(mkdtemp(prefix=f'{timeprefix}_{config_hash(c)[:8]}_', dir=PYLIGHTNIX_TMP))
+  outpaths=[Path(mkdtemp(prefix=f'{timeprefix}_{config_hash(c)[:8]}_', dir=PYLIGHTNIX_TMP)) for _ in range(nouts)]
   cattrs=store_cattrs(dref)
   if buildtime:
-    with open(join(outpath,'__buildtime__.txt'), 'w') as f:
-      f.write(timeprefix)
-  return Build(dref, cattrs, context, timeprefix, outpath)
+    for outpath in outpaths:
+      with open(join(outpath,'__buildtime__.txt'), 'w') as f:
+        f.write(timeprefix)
+  return Build(dref, cattrs, context, timeprefix, outpaths)
 
-def build_wrapper(f:Callable[[Build],None], buildtime:bool=True)->Realizer:
-  def _wrapper(dref,context):
-    b=mkbuild(dref,context,buildtime); f(b); return build_outpath(b)
+def build_wrapper(f:Callable[[Build],None], buildtime:bool=True, nouts:int=1)->Realizer:
+  def _wrapper(dref,context)->List[Path]:
+    b=mkbuild(dref,context,buildtime,nouts); f(b); return build_outpaths(b)
   return _wrapper
 
 def build_config(b:Build)->Config:
@@ -334,17 +340,22 @@ def build_context(b:Build)->Context:
 def build_cattrs(b:Build)->Any:
   return b.cattrs
 
+def build_outpaths(m:Build)->List[Path]:
+  return m.outpaths
+
 def build_outpath(m:Build)->Path:
   """ Return the output path of the realization being built. Output path is a
   path to valid temporary folder where user may put various build artifacts.
   Later this folder becomes a realization. """
-  return m.outpath
+  paths=build_outpaths(m)
+  assert len(paths)==1
+  return paths[0]
 
 def build_name(b:Build)->Name:
   """ Return the name of a derivation being built. """
   return Name(config_name(build_config(b)))
 
-def build_deref(b:Build, dref:DRef)->RRef:
+def build_deref_(b:Build, dref:DRef)->List[RRef]:
   """ For any [realization](#pylightnix.core.realize) process described with
   it's [Build](#pylightnix.types.Build) handler, `build_deref` queries a
   realization of dependency `dref`.
@@ -354,11 +365,20 @@ def build_deref(b:Build, dref:DRef)->RRef:
   [store_deref](#pylightnix.core.store_deref) should be used.  """
   return context_deref(build_context(b), dref)
 
-def build_path(b:Build, refpath:RefPath)->Path:
+def build_deref(b:Build, dref:DRef)->RRef:
+  rrefs=build_deref_(b,dref)
+  assert len(rrefs)==1
+  return rrefs[0]
+
+def build_paths(b:Build, refpath:RefPath)->List[Path]:
   """ Return a system path, corresponding to RefPath `refpath`"""
   assert_valid_refpath(refpath)
-  return Path(join(rref2path(build_deref(b, refpath[0])), *refpath[1:]))
+  return [Path(join(rref2path(path), *refpath[1:])) for path in build_deref_(b, refpath[0])]
 
+def build_path(b:Build, refpath:RefPath)->Path:
+  paths=build_paths(b,refpath)
+  assert len(paths)==1
+  return paths[0]
 #   ____            _            _
 #  / ___|___  _ __ | |_ _____  _| |_
 # | |   / _ \| '_ \| __/ _ \ \/ / __|
@@ -373,16 +393,16 @@ def mkcontext()->Context:
 def context_eq(a:Context,b:Context)->bool:
   return json_dumps(a)==json_dumps(b)
 
-def context_add(context:Context, dref:DRef, rref:RRef)->Context:
+def context_add(context:Context, dref:DRef, rrefs:List[RRef])->Context:
   assert dref not in context, (
     f"Attempting to re-introduce DRef {dref} to context with "
     f"different realization.\n"
     f" * Old realization: {context[dref]}\n"
-    f" * New realization: {rref}\n" )
-  context[dref]=rref
+    f" * New realization: {rrefs}\n" )
+  context[dref]=rrefs
   return context
 
-def context_deref(context:Context, dref:DRef)->RRef:
+def context_deref(context:Context, dref:DRef)->List[RRef]:
   assert dref in context, (
       f"Context {context} doesn't declare {dref} among it's dependencies so we "
       f"can't dereference it." )
@@ -456,6 +476,36 @@ def instantiate(stage:Any, *args, **kwargs)->Closure:
   """
   return instantiate_(Manager(), stage, *args, **kwargs)
 
+def realize_(closure:Closure, force_rebuild:List[DRef]=[])->List[RRef]:
+  force_rebuild_:Set[DRef]=set(force_rebuild)
+  try:
+    gen=realize_seq(closure)
+    dref,context,drv=next(gen)
+    while True:
+      rrefs:List[RRef]=[]
+      if dref in force_rebuild_:
+        rrefs=[]
+      else:
+        rrefs=drv.matcher(dref,context)
+      if len(rrefs)==0:
+        paths=drv.realizer(dref,context)
+        print('PAAATHS', paths)
+        rrefs=[store_realize(dref,context,path) for path in paths]
+        rrefs_tmp=drv.matcher(dref,context)
+      assert len(rrefs)>0
+      dref,context,drv=gen.send(rrefs)
+  except StopIteration as e:
+    res=e.value
+  except:
+    try:
+      gen.send([])
+    except RealizeSeqCancelled:
+      pass
+    except StopIteration:
+      pass
+    raise
+  return res
+
 def realize(closure:Closure, force_rebuild:List[DRef]=[])->RRef:
   """ Build a realization of the derivation by executing a
   [Realizer](#pylightnix.types.Realizer) on it's
@@ -474,30 +524,14 @@ def realize(closure:Closure, force_rebuild:List[DRef]=[])->RRef:
   - FIXME: Update derivation's matcher after forced rebuilds. Matchers should
     remember and reproduce user's preferences.
   """
-  force_rebuild_:Set[DRef]=set(force_rebuild)
-  try:
-    gen=realize_seq(closure)
-    dref,context,drv=next(gen)
-    while True:
-      rref:Optional[RRef]=None
-      if dref in force_rebuild_:
-        rref=None
-      else:
-        rref=drv.matcher(dref,context)
-      if not rref:
-        path=drv.realizer(dref,context)
-        rref=store_realize(dref,context,path)
-        rreftmp=drv.matcher(dref,context)
-      assert rref is not None
-      dref,context,drv=gen.send(rref)
-  except StopIteration as e:
-    res=e.value
-  return res
+  rrefs=realize_(closure, force_rebuild)
+  assert len(rrefs)==1
+  return rrefs[0]
 
 class RealizeSeqCancelled(Exception):
   pass
 
-RealizeSeqGen = Generator[Tuple[DRef,Context,Derivation],Optional[RRef],RRef]
+RealizeSeqGen = Generator[Tuple[DRef,Context,Derivation],List[RRef],List[RRef]]
 
 def realize_seq(closure:Closure)->RealizeSeqGen:
   """ Sequentially realize the closure by issuing steps via Python's generator
@@ -513,12 +547,12 @@ def realize_seq(closure:Closure)->RealizeSeqGen:
         c=store_config(dref)
         dref_deps=store_deepdeps([dref])
         dref_context={k:v for k,v in context.items() if k in dref_deps}
-        rref=yield (dref,dref_context,drv)
-        if not rref:
+        rrefs=yield (dref,dref_context,drv)
+        if len(rrefs)==0:
           raise RealizeSeqCancelled()
-        context=context_add(context,dref,rref)
-    assert rref is not None
-    return rref
+        context=context_add(context,dref,rrefs)
+    assert rrefs is not None
+    return rrefs
 
 def mksymlink(rref:RRef, tgtpath:Path, name:str, withtime=True)->Path:
   """ Create a symlink pointing to realization `rref`. Other arguments define
@@ -540,14 +574,14 @@ def only()->Matcher:
   """ Return a [Matcher](#pylightnix.types.Matcher) which expects no more than
   one realization for every [derivation](#pylightnix.types.DRef), given the
   [context](#pylightnix.types.Context). """
-  def _matcher(dref:DRef, context:Context)->Optional[RRef]:
+  def _matcher(dref:DRef, context:Context)->List[RRef]:
     matching=[]
     for rref in store_rrefs(dref, context):
       matching.append(rref)
     if len(matching)==0:
-      return None
+      return []
     elif len(matching)==1:
-      return matching[0]
+      return matching
     else:
       assert False, (
           f"only() assumes that {dref} has 0 or 1 realizations under"
@@ -559,7 +593,7 @@ def largest(filename:str)->Matcher:
   realizations and then compares them based on stage-specific scores. For each
   realization, score is read from artifact file named `filename` that should
   contain a single float number. Realization with largest score wins.  """
-  def _matcher(dref:DRef, context:Context)->Optional[RRef]:
+  def _matcher(dref:DRef, context:Context)->List[RRef]:
     scores:List[Tuple[float,RRef]]=[]
     for rref in store_rrefs(dref, context):
       try:
@@ -570,9 +604,9 @@ def largest(filename:str)->Matcher:
       except ValueError as e:
         scores.append((float('-inf'),rref))
     if len(scores)>0:
-      return sorted(scores, reverse=True)[0][1]
+      return [sorted(scores, reverse=True)[0][1]]
     else:
-      return None
+      return []
   return _matcher
 
 #     _                      _
@@ -627,9 +661,10 @@ def assert_valid_hash(h:Hash)->None:
 
 def assert_valid_context(c:Context)->None:
   assert_serializable(c)
-  for dref,rref in c.items():
+  for dref,rrefs in c.items():
     assert_valid_dref(dref)
-    assert_valid_rref(rref)
+    for rref in rrefs:
+      assert_valid_rref(rref)
 
 def assert_valid_closure(closure:Closure)->None:
   assert len(closure.derivations)>0, \
@@ -651,4 +686,9 @@ def assert_have_realizers(m:Manager, drefs:List[DRef])->None:
       f"{missing}\n"
       f"Did you take those DRefs from another manager?")
 
+def assert_recursion_manager_empty():
+  global PYLIGHTNIX_RECURSION
+  if get_ident() not in PYLIGHTNIX_RECURSION:
+    PYLIGHTNIX_RECURSION[get_ident()]=[]
+  assert len(PYLIGHTNIX_RECURSION[get_ident()])==0
 

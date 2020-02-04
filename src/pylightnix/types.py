@@ -125,7 +125,7 @@ class ConfigAttrs:
 #: derivations to their realizations. In contrast to
 #: [Closure](#pylightnix.types.Closure) type, Context contains a minimal closure
 #: of derivation's dependencies.
-Context=Dict[DRef,RRef]
+Context=Dict[DRef,List[RRef]]
 
 class Build:
   """Build is a helper object which tracks the process of [realization](#pylightnix.core.realize).
@@ -135,18 +135,18 @@ class Build:
   - [build_config](#pylightnix.core.build_config)
   - [build_deref](#pylightnix.core.build_deref)
   - [build_outpath](#pylightnix.core.build_outpath) """
-  def __init__(self, dref:DRef, cattrs:ConfigAttrs, context:Context, timeprefix:str, outpath:Path)->None:
+  def __init__(self, dref:DRef, cattrs:ConfigAttrs, context:Context, timeprefix:str, outpaths:List[Path])->None:
     self.dref=dref
     self.cattrs=cattrs
     self.context=context
     self.timeprefix=timeprefix
-    self.outpath=outpath
+    self.outpaths=outpaths
 
 Instantiator = Callable[[],Config]
 
 #: FIXME: Make matchers more algebra-friendly. E.g. one could make them return
 #: RRef ranks which could be composed and re-used.
-Matcher = Callable[[DRef,Context],Optional[RRef]]
+Matcher = Callable[[DRef,Context],List[RRef]]
 
 #: Realizer is a user-defined function which defines how to
 #: [build](#pylightnix.core.realize) a given derivation in a given
@@ -158,7 +158,7 @@ Matcher = Callable[[DRef,Context],Optional[RRef]]
 #:   dependencies. See [build_config](#pylightnix.core.build_config).
 #: - Realizations of all the dependencies (and thus, their build artifacts).
 #:   See [build_path](#pylightnix.core.build_path).
-Realizer = Callable[[DRef,Context],Path]
+Realizer = Callable[[DRef,Context],List[Path]]
 
 #: Derivation is a core type of Pylightnix. It keeps all the information about
 #: a stage: it's [configuration](#pylightnix.types.Config), how to
