@@ -476,35 +476,7 @@ def instantiate(stage:Any, *args, **kwargs)->Closure:
   """
   return instantiate_(Manager(), stage, *args, **kwargs)
 
-def realize_(closure:Closure, force_rebuild:List[DRef]=[])->List[RRef]:
-  force_rebuild_:Set[DRef]=set(force_rebuild)
-  try:
-    gen=realize_seq(closure)
-    dref,context,drv=next(gen)
-    while True:
-      rrefs:List[RRef]=[]
-      if dref in force_rebuild_:
-        rrefs=[]
-      else:
-        rrefs=drv.matcher(dref,context)
-      if len(rrefs)==0:
-        paths=drv.realizer(dref,context)
-        print('PAAATHS', paths)
-        rrefs=[store_realize(dref,context,path) for path in paths]
-        rrefs_tmp=drv.matcher(dref,context)
-      assert len(rrefs)>0
-      dref,context,drv=gen.send(rrefs)
-  except StopIteration as e:
-    res=e.value
-  except:
-    try:
-      gen.send([])
-    except RealizeSeqCancelled:
-      pass
-    except StopIteration:
-      pass
-    raise
-  return res
+RealizeSeqGen = Generator[Tuple[DRef,Context,Derivation],Optional[List[RRef]],List[RRef]]
 
 def realize(closure:Closure, force_rebuild:List[DRef]=[])->RRef:
   """ Build a realization of the derivation by executing a
@@ -524,19 +496,25 @@ def realize(closure:Closure, force_rebuild:List[DRef]=[])->RRef:
   - FIXME: Update derivation's matcher after forced rebuilds. Matchers should
     remember and reproduce user's preferences.
   """
-  rrefs=realize_(closure, force_rebuild)
+  rrefs=realize_(closure, force_interrupt=force_rebuild)
   assert len(rrefs)==1
   return rrefs[0]
 
-class RealizeSeqCancelled(Exception):
-  pass
+def realize_(closure:Closure, force_interrupt:List[DRef]=[])->List[RRef]:
+  try:
+    gen=realize_seq(closure,force_interrupt)
+    next(gen)
+    while True:
+      gen.send([])
+  except StopIteration as e:
+    res=e.value
+  return res
 
-RealizeSeqGen = Generator[Tuple[DRef,Context,Derivation],List[RRef],List[RRef]]
-
-def realize_seq(closure:Closure)->RealizeSeqGen:
+def realize_seq(closure:Closure, force_interrupt:List[DRef]=[])->RealizeSeqGen:
   """ Sequentially realize the closure by issuing steps via Python's generator
   interface """
   assert_valid_closure(closure)
+  force_interrupt_:Set[DRef]=set(force_interrupt)
   with recursion_manager('realize'):
     context:Context={}
     target_dref=closure.dref
@@ -547,9 +525,16 @@ def realize_seq(closure:Closure)->RealizeSeqGen:
         c=store_config(dref)
         dref_deps=store_deepdeps([dref])
         dref_context={k:v for k,v in context.items() if k in dref_deps}
-        rrefs=yield (dref,dref_context,drv)
+        if dref in force_interrupt_:
+          rrefs=yield (dref,dref_context,drv)
+          if rrefs is None:
+            return []
+        else:
+          rrefs=drv.matcher(dref,dref_context)
         if len(rrefs)==0:
-          raise RealizeSeqCancelled()
+          paths=drv.realizer(dref,context)
+          rrefs=[store_realize(dref,context,path) for path in paths]
+          rrefs_tmp=drv.matcher(dref,context)
         context=context_add(context,dref,rrefs)
     assert rrefs is not None
     return rrefs
