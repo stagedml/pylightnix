@@ -572,10 +572,10 @@ def match(keys:List[Key], top:Optional[int]=1, only:bool=False)->Matcher:
   top-n threshold.
 
   Parameters:
-  - `keys`: List of [Key](#pylightnix.types.Key) functions
+  - `keys`: List of [Key](#pylightnix.types.Key) functions. Defaults ot
   - `top`:  An integer selecting how many realizations to accept
-  - `only`: Enable `only` mode, where match asserts if it founds more than one
-    realization.
+  - `only`: Set to True to enable `only` mode, where match asserts if it founds
+    more than one realization.
   """
   keys=keys+[texthash()]
   def _matcher(dref:DRef, context:Context)->List[RRef]:

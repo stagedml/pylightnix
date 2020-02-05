@@ -19,6 +19,7 @@
     * [Closure](#pylightnix.types.Closure)
     * [Manager](#pylightnix.types.Manager)
     * [Stage](#pylightnix.types.Stage)
+    * [Key](#pylightnix.types.Key)
   * [pylightnix.core](#pylightnix.core)
     * [PYLIGHTNIX\_STORE\_VERSION](#pylightnix.core.PYLIGHTNIX_STORE_VERSION)
     * [PYLIGHTNIX\_ROOT](#pylightnix.core.PYLIGHTNIX_ROOT)
@@ -52,6 +53,7 @@
     * [store\_drefs](#pylightnix.core.store_drefs)
     * [store\_rrefs\_](#pylightnix.core.store_rrefs_)
     * [store\_rrefs](#pylightnix.core.store_rrefs)
+    * [store\_deref\_](#pylightnix.core.store_deref_)
     * [store\_deref](#pylightnix.core.store_deref)
     * [store\_gc](#pylightnix.core.store_gc)
     * [store\_instantiate](#pylightnix.core.store_instantiate)
@@ -61,9 +63,12 @@
     * [build\_config](#pylightnix.core.build_config)
     * [build\_context](#pylightnix.core.build_context)
     * [build\_cattrs](#pylightnix.core.build_cattrs)
+    * [build\_outpaths](#pylightnix.core.build_outpaths)
     * [build\_outpath](#pylightnix.core.build_outpath)
     * [build\_name](#pylightnix.core.build_name)
+    * [build\_deref\_](#pylightnix.core.build_deref_)
     * [build\_deref](#pylightnix.core.build_deref)
+    * [build\_paths](#pylightnix.core.build_paths)
     * [build\_path](#pylightnix.core.build_path)
     * [mkcontext](#pylightnix.core.mkcontext)
     * [context\_eq](#pylightnix.core.context_eq)
@@ -74,10 +79,18 @@
     * [recursion\_manager](#pylightnix.core.recursion_manager)
     * [instantiate\_](#pylightnix.core.instantiate_)
     * [instantiate](#pylightnix.core.instantiate)
+    * [RealizeSeqGen](#pylightnix.core.RealizeSeqGen)
     * [realize](#pylightnix.core.realize)
+    * [realizeMany](#pylightnix.core.realizeMany)
+    * [realizeSeq](#pylightnix.core.realizeSeq)
     * [mksymlink](#pylightnix.core.mksymlink)
-    * [only](#pylightnix.core.only)
-    * [largest](#pylightnix.core.largest)
+    * [match](#pylightnix.core.match)
+    * [latest](#pylightnix.core.latest)
+    * [exact](#pylightnix.core.exact)
+    * [best](#pylightnix.core.best)
+    * [texthash](#pylightnix.core.texthash)
+    * [match\_only](#pylightnix.core.match_only)
+    * [match\_best](#pylightnix.core.match_best)
     * [assert\_valid\_refpath](#pylightnix.core.assert_valid_refpath)
     * [assert\_valid\_config](#pylightnix.core.assert_valid_config)
     * [assert\_valid\_name](#pylightnix.core.assert_valid_name)
@@ -91,6 +104,7 @@
     * [assert\_valid\_closure](#pylightnix.core.assert_valid_closure)
     * [assert\_no\_rref\_deps](#pylightnix.core.assert_no_rref_deps)
     * [assert\_have\_realizers](#pylightnix.core.assert_have_realizers)
+    * [assert\_recursion\_manager\_empty](#pylightnix.core.assert_recursion_manager_empty)
   * [pylightnix.inplace](#pylightnix.inplace)
     * [PYLIGHTNIX\_MANAGER](#pylightnix.inplace.PYLIGHTNIX_MANAGER)
     * [instantiate\_inplace](#pylightnix.inplace.instantiate_inplace)
@@ -271,7 +285,7 @@ def __init__(self, d: dict)
 ## `Context`
 
 ```python
-Context = Dict[DRef,RRef]
+Context = Dict[DRef,List[RRef]]
 ```
 
 
@@ -279,7 +293,7 @@ Context = Dict[DRef,RRef]
 ## `Build` Objects
 
 ```python
-def __init__(self, dref: DRef, cattrs: ConfigAttrs, context: Context, timeprefix: str, outpath: Path) -> None
+def __init__(self, dref: DRef, cattrs: ConfigAttrs, context: Context, timeprefix: str, outpaths: List[Path]) -> None
 ```
 
 Build is a helper object which tracks the process of [realization](#pylightnix.core.realize).
@@ -294,7 +308,7 @@ Useful associated functions are:
 ### `Build.__init__()`
 
 ```python
-def __init__(self, dref: DRef, cattrs: ConfigAttrs, context: Context, timeprefix: str, outpath: Path) -> None
+def __init__(self, dref: DRef, cattrs: ConfigAttrs, context: Context, timeprefix: str, outpaths: List[Path]) -> None
 ```
 
 
@@ -310,7 +324,7 @@ Instantiator = Callable[[],Config]
 ## `Matcher`
 
 ```python
-Matcher = Callable[[DRef,Context],Optional[RRef]]
+Matcher = Callable[[DRef,Context],List[RRef]]
 ```
 
 FIXME: Make matchers more algebra-friendly. E.g. one could make them return
@@ -320,7 +334,7 @@ RRef ranks which could be composed and re-used.
 ## `Realizer`
 
 ```python
-Realizer = Callable[[DRef,Context],Path]
+Realizer = Callable[[DRef,Context],List[Path]]
 ```
 
 Realizer is a user-defined function which defines how to
@@ -379,6 +393,14 @@ def __init__(self)
 
 ```python
 Stage = Callable[[Manager],DRef]
+```
+
+
+<a name="pylightnix.types.Key"></a>
+## `Key`
+
+```python
+Key = Callable[[RRef],Optional[Union[int,float,str]]]
 ```
 
 
@@ -616,6 +638,7 @@ Construct a RefPath out of a reference `ref` and a path within the node
 def store_config(r: Union[DRef,RRef]) -> Config
 ```
 
+Read the [Config](#pylightnix.types.Config) of the storage node `r`.
 
 <a name="pylightnix.core.store_context"></a>
 ## `store_context()`
@@ -632,6 +655,9 @@ def store_context(r: RRef) -> Context
 def store_cattrs(r: Union[DRef,RRef]) -> Any
 ```
 
+Read the [ConfigAttrs](#pylightnix.types.ConfigAttr) of the storage node `r`.
+Note, that it is a kind of 'syntactic sugar' for `store_config`. Both
+functions do the same thing.
 
 <a name="pylightnix.core.store_deps"></a>
 ## `store_deps()`
@@ -679,8 +705,16 @@ unspecified.
 def store_rrefs(dref: DRef, context: Context) -> Iterable[RRef]
 ```
 
-Iterate over those realizations of a derivation `dref`, which match a
+Iterate over realizations of a derivation `dref`, which match a
 [context]($pylightnix.types.Context). The sort order is unspecified.
+
+<a name="pylightnix.core.store_deref_"></a>
+## `store_deref_()`
+
+```python
+def store_deref_(context_holder: RRef, dref: DRef) -> List[RRef]
+```
+
 
 <a name="pylightnix.core.store_deref"></a>
 ## `store_deref()`
@@ -725,7 +759,7 @@ def store_realize(dref: DRef, l: Context, o: Path) -> RRef
 ## `mkbuild()`
 
 ```python
-def mkbuild(dref: DRef, context: Context, buildtime: bool = True) -> Build
+def mkbuild(dref: DRef, context: Context, buildtime: bool = True, nouts: int = 1) -> Build
 ```
 
 
@@ -733,7 +767,7 @@ def mkbuild(dref: DRef, context: Context, buildtime: bool = True) -> Build
 ## `build_wrapper()`
 
 ```python
-def build_wrapper(f: Callable[[Build],None], buildtime: bool = True) -> Realizer
+def build_wrapper(f: Callable[[Build],None], buildtime: bool = True, nouts: int = 1) -> Realizer
 ```
 
 
@@ -765,6 +799,14 @@ def build_cattrs(b: Build) -> Any
 ```
 
 
+<a name="pylightnix.core.build_outpaths"></a>
+## `build_outpaths()`
+
+```python
+def build_outpaths(m: Build) -> List[Path]
+```
+
+
 <a name="pylightnix.core.build_outpath"></a>
 ## `build_outpath()`
 
@@ -785,11 +827,11 @@ def build_name(b: Build) -> Name
 
 Return the name of a derivation being built.
 
-<a name="pylightnix.core.build_deref"></a>
-## `build_deref()`
+<a name="pylightnix.core.build_deref_"></a>
+## `build_deref_()`
 
 ```python
-def build_deref(b: Build, dref: DRef) -> RRef
+def build_deref_(b: Build, dref: DRef) -> List[RRef]
 ```
 
 For any [realization](#pylightnix.core.realize) process described with
@@ -800,6 +842,23 @@ realization of dependency `dref`.
 [Realizer](#pylightnix.types.Realizer) functions. In other cases,
 [store_deref](#pylightnix.core.store_deref) should be used.
 
+<a name="pylightnix.core.build_deref"></a>
+## `build_deref()`
+
+```python
+def build_deref(b: Build, dref: DRef) -> RRef
+```
+
+
+<a name="pylightnix.core.build_paths"></a>
+## `build_paths()`
+
+```python
+def build_paths(b: Build, refpath: RefPath) -> List[Path]
+```
+
+Return a system path, corresponding to RefPath `refpath`
+
 <a name="pylightnix.core.build_path"></a>
 ## `build_path()`
 
@@ -807,7 +866,6 @@ realization of dependency `dref`.
 def build_path(b: Build, refpath: RefPath) -> Path
 ```
 
-Return a system path, corresponding to RefPath `refpath`
 
 <a name="pylightnix.core.mkcontext"></a>
 ## `mkcontext()`
@@ -829,7 +887,7 @@ def context_eq(a: Context, b: Context) -> bool
 ## `context_add()`
 
 ```python
-def context_add(context: Context, dref: DRef, rref: RRef) -> Context
+def context_add(context: Context, dref: DRef, rrefs: List[RRef]) -> Context
 ```
 
 
@@ -837,7 +895,7 @@ def context_add(context: Context, dref: DRef, rref: RRef) -> Context
 ## `context_deref()`
 
 ```python
-def context_deref(context: Context, dref: DRef) -> RRef
+def context_deref(context: Context, dref: DRef) -> List[RRef]
 ```
 
 
@@ -898,6 +956,14 @@ storage.
 New derivations are added to the storage by moving a temporary folder inside
 the storage folder.
 
+<a name="pylightnix.core.RealizeSeqGen"></a>
+## `RealizeSeqGen`
+
+```python
+RealizeSeqGen = Generator[Tuple[DRef,Context,Derivation],Optional[List[RRef]],List[RRef]]
+```
+
+
 <a name="pylightnix.core.realize"></a>
 ## `realize()`
 
@@ -905,20 +971,43 @@ the storage folder.
 def realize(closure: Closure, force_rebuild: List[DRef] = []) -> RRef
 ```
 
-Build a realization of the derivation by executing a
-[Realizer](#pylightnix.types.Realizer) on it's
-[Closure](#pylightnix.types.Closure).
+A simplified version of [realizeMany](#pylightnix.core.realizeMany).
+Expects only one result.
 
-Return [reference to new realization](#pylightnix.types.RRef) which could be
-later [converted to system path](#pylightnix.core.rref2path) to access build
-artifacts.
+<a name="pylightnix.core.realizeMany"></a>
+## `realizeMany()`
 
-New realization is added to the storage by moving a temporary folder inside
-the storage. `realize` assumes that derivation is still there at this moment
-(See e.g. [rmref](#pylightnix.bashlike.rmref))
+```python
+def realizeMany(closure: Closure, force_interrupt: List[DRef] = []) -> List[RRef]
+```
 
-- FIXME: stage's context is calculated inefficiently. Maybe one should track
+Build one or many realizations of a derivation's
+[Closure](#pylightnix.types.Closure) by executing it's
+[Realizer](#pylightnix.types.Realizer).
+
+Return [one or many references to new realizations](#pylightnix.types.RRef).
+Later, references could be [converted to system
+paths](#pylightnix.core.rref2path) of build artifacts.
+
+For every new realization, it's node is created in the storage by moving
+Realizer's output folders into the derivation folder. `realize`
+assumes that derivation is still there at the moment of moving (See e.g.
+[rmref](#pylightnix.bashlike.rmref))
+
+- FIXME: Stage's context is calculated inefficiently. Maybe one should track
   dep.tree to avoid calling `store_deepdeps` within the cycle.
+- FIXME: Update derivation's matcher after forced rebuilds. Matchers should
+  remember and reproduce user's preferences.
+
+<a name="pylightnix.core.realizeSeq"></a>
+## `realizeSeq()`
+
+```python
+def realizeSeq(closure: Closure, force_interrupt: List[DRef] = []) -> RealizeSeqGen
+```
+
+Sequentially realize the closure by issuing steps via Python's generator
+interface
 
 <a name="pylightnix.core.mksymlink"></a>
 ## `mksymlink()`
@@ -931,22 +1020,70 @@ Create a symlink pointing to realization `rref`. Other arguments define
 symlink name and location. Informally,
 `{tgtpath}/{timeprefix}{name} --> $PYLIGHTNIX_STORE/{rref2dref(rref)}/{rref}`
 
-<a name="pylightnix.core.only"></a>
-## `only()`
+<a name="pylightnix.core.match"></a>
+## `match()`
 
 ```python
-def only() -> Matcher
+def match(keys: List[Key], top: Optional[int] = 1, only: bool = False) -> Matcher
+```
+
+Create a matcher by combining different sorting keys and selecting a
+top-n threshold.
+
+Parameters:
+- `keys`: List of [Key](#pylightnix.types.Key) functions. Defaults ot
+- `top`:  An integer selecting how many realizations to accept
+- `only`: Set to True to enable `only` mode, where match asserts if it founds
+  more than one realization.
+
+<a name="pylightnix.core.latest"></a>
+## `latest()`
+
+```python
+def latest() -> Key
+```
+
+
+<a name="pylightnix.core.exact"></a>
+## `exact()`
+
+```python
+def exact(expected: List[RRef]) -> Key
+```
+
+
+<a name="pylightnix.core.best"></a>
+## `best()`
+
+```python
+def best(filename: str) -> Key
+```
+
+
+<a name="pylightnix.core.texthash"></a>
+## `texthash()`
+
+```python
+def texthash() -> Key
+```
+
+
+<a name="pylightnix.core.match_only"></a>
+## `match_only()`
+
+```python
+def match_only() -> Matcher
 ```
 
 Return a [Matcher](#pylightnix.types.Matcher) which expects no more than
 one realization for every [derivation](#pylightnix.types.DRef), given the
 [context](#pylightnix.types.Context).
 
-<a name="pylightnix.core.largest"></a>
-## `largest()`
+<a name="pylightnix.core.match_best"></a>
+## `match_best()`
 
 ```python
-def largest(filename: str) -> Matcher
+def match_best(filename: str) -> Matcher
 ```
 
 Return a [Matcher](#pylightnix.types.Matcher) which checks contexts of
@@ -1056,6 +1193,14 @@ def assert_no_rref_deps(c: Config) -> None
 
 ```python
 def assert_have_realizers(m: Manager, drefs: List[DRef]) -> None
+```
+
+
+<a name="pylightnix.core.assert_recursion_manager_empty"></a>
+## `assert_recursion_manager_empty()`
+
+```python
+def assert_recursion_manager_empty()
 ```
 
 
