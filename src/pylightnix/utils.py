@@ -1,4 +1,4 @@
-from pylightnix.imports import ( strftime, join, makedirs,
+from pylightnix.imports import ( strftime, strptime, gmtime, timegm, join, makedirs,
     symlink, basename, mkdir, isdir, isfile, islink, remove, sha256, EEXIST,
     json_dumps, json_loads, makedirs, replace, dirname, walk, abspath,
     normalize, re_sub, split, json_load, find_executable )
@@ -7,8 +7,22 @@ from pylightnix.types import ( Hash, Path, List, Any, Optional, Iterable, IO,
     DRef, RRef, Tuple)
 
 
-def timestring()->str:
-  return strftime("%m%d-%H:%M:%S%z")
+PYLIGHTNIX_TIME="%y%m%d-%H:%M:%S+0000"
+
+def timestring(sec:Optional[int]=None)->str:
+  """ Return a time string
+  - FIXME: Include a year
+  """
+  if sec is None:
+    return strftime(PYLIGHTNIX_TIME,gmtime())
+  else:
+    return strftime(PYLIGHTNIX_TIME,gmtime(sec))
+
+def parsetime(time:str)->Optional[int]:
+  try:
+    return timegm(strptime(time,PYLIGHTNIX_TIME))
+  except ValueError:
+    return None
 
 def logdir(tag:str, logrootdir:Path, timetag:Optional[str]=None):
   timetag=timestring() if timetag is None else timetag

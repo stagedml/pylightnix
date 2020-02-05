@@ -1,7 +1,8 @@
 """ All external dependencies are listed here """
 
 from json import ( loads as json_loads, dumps as json_dumps, dump as json_dump, load as json_load )
-from time import strftime
+from time import strftime, strptime, gmtime
+from calendar import timegm
 from errno import EEXIST
 from os import (
     mkdir, makedirs, replace, listdir, rmdir, symlink, rename, remove, environ, walk)

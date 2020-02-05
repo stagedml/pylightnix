@@ -7,7 +7,7 @@ from pylightnix import (
     store_deref, rref2path, store_rrefs_, config_cattrs, mksymlink,
     store_cattrs, build_deref, build_path, mkrefpath, build_config,
     store_drefs, store_rrefs, store_rrefs_, build_wrapper, recursion_manager,
-    build_cattrs, build_name, largest, tryread)
+    build_cattrs, build_name, largest, tryread, assert_recursion_manager_empty)
 
 from tests.imports import ( given, Any, Callable, join, Optional, islink,
     isfile, List )
@@ -27,12 +27,13 @@ def test_realize(d)->None:
     dref=list(m.builders.values())[-1].dref
     assert_valid_dref(dref)
     assert len(list(store_rrefs(dref, mkcontext()))) == 0
-    rref=list(m.builders.values())[-1].matcher(dref, mkcontext())
-    assert rref is None
-    rref=store_realize(dref, mkcontext(), list(m.builders.values())[-1].realizer(dref, mkcontext()))
+    rrefs=list(m.builders.values())[-1].matcher(dref, mkcontext())
+    assert rrefs==[]
+    rref=store_realize(dref, mkcontext(), list(m.builders.values())[-1].realizer(dref, mkcontext())[0])
     assert len(list(store_rrefs(dref, mkcontext()))) == 1
     assert_valid_rref(rref)
-    rref2=list(m.builders.values())[-1].matcher(dref, mkcontext())
+    rrefs2=list(m.builders.values())[-1].matcher(dref, mkcontext())
+    rref2=rrefs2[0]
     assert rref==rref2
 
 
@@ -391,6 +392,8 @@ def test_minimal_closure():
       n2=_somenode(m)
       n3=mktestnode(m,{'maman':n1,'papa':n2})
       return n3
+
+    assert_recursion_manager_empty()
 
     rref1=realize(instantiate(_somenode))
     rref=realize(instantiate(_anothernode))

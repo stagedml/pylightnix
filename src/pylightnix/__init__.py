@@ -5,3 +5,4 @@ from pylightnix.core import *
 from pylightnix.stages import *
 from pylightnix.inplace import *
 from pylightnix.bashlike import *
+from pylightnix.repl import *

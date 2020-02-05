@@ -9,7 +9,7 @@ from pylightnix.types import (
     Dict, List, Any, Tuple, Union, Optional, Iterable, IO, Path, Hash, DRef,
     RRef, RefPath, HashPart, Callable, Context, Name, NamedTuple, Build,
     Config, ConfigAttrs, Derivation, Stage, Manager, Instantiator, Matcher,
-    Realizer, Set, Closure )
+    Realizer, Set, Closure, Generator )
 
 #: *Do not change!*
 #: Tracks the version of pylightnix storage
@@ -168,6 +168,7 @@ def mkrefpath(r:DRef, items:List[str]=[])->RefPath:
   return [str(r)]+items
 
 def store_config(r:Union[DRef,RRef])->Config:
+  """ Read the [Config](#pylightnix.types.Config) of the storage node `r`. """
   assert r[:4]=='rref' or r[:4]=='dref', (
       f"Invalid reference type {r}. Expected either RRef or DRef." )
   if r[:4]=='rref':
@@ -180,6 +181,9 @@ def store_context(r:RRef)->Context:
   return readjson(join(rref2path(r),'context.json'))
 
 def store_cattrs(r:Union[DRef,RRef])->Any:
+  """ Read the [ConfigAttrs](#pylightnix.types.ConfigAttr) of the storage node `r`.
+  Note, that it is a kind of 'syntactic sugar' for `store_config`. Both
+  functions do the same thing. """
   return config_cattrs(store_config(r))
 
 def store_deps(refs:List[DRef])->List[DRef]:
@@ -225,12 +229,17 @@ def store_rrefs(dref:DRef, context:Context)->Iterable[RRef]:
     if context_eq(context,context2):
       yield rref
 
+def store_deref_(context_holder:RRef, dref:DRef)->List[RRef]:
+  return context_deref(store_context(context_holder), dref)
+
 def store_deref(context_holder:RRef, dref:DRef)->RRef:
   """ For any realization `context_holder` and it's dependency `dref`, `store_deref`
   queries the realization reference of this dependency.
 
   See also [build_deref](#pylightnix.core.build_deref)"""
-  return context_deref(store_context(context_holder), dref)
+  rrefs=store_deref_(context_holder, dref)
+  assert len(rrefs)==1
+  return rrefs[0]
 
 def store_gc(refs_in_use:List[DRef])->List[DRef]:
   """ Take roots which are in use and should not be removed. Return roots which
@@ -301,19 +310,21 @@ def store_realize(dref:DRef, l:Context, o:Path)->RRef:
 # |____/ \__,_|_|_|\__,_|
 
 
-def mkbuild(dref:DRef, context:Context, buildtime:bool=True)->Build:
+def mkbuild(dref:DRef, context:Context, buildtime:bool=True, nouts:int=1)->Build:
   c=store_config(dref)
   assert_valid_config(c)
   timeprefix=timestring()
-  outpath=Path(mkdtemp(prefix=f'{timeprefix}_{config_hash(c)[:8]}_', dir=PYLIGHTNIX_TMP))
+  outpaths=[Path(mkdtemp(prefix=f'{timeprefix}_{config_hash(c)[:8]}_', dir=PYLIGHTNIX_TMP)) for _ in range(nouts)]
   cattrs=store_cattrs(dref)
   if buildtime:
-    with open(join(outpath,'__buildtime__.txt'), 'w') as f: f.write(timeprefix)
-  return Build(dref, cattrs, context, timeprefix, outpath)
+    for outpath in outpaths:
+      with open(join(outpath,'__buildtime__.txt'), 'w') as f:
+        f.write(timeprefix)
+  return Build(dref, cattrs, context, timeprefix, outpaths)
 
-def build_wrapper(f:Callable[[Build],None], buildtime:bool=True)->Realizer:
-  def _wrapper(dref,context):
-    b=mkbuild(dref,context,buildtime); f(b); return build_outpath(b)
+def build_wrapper(f:Callable[[Build],None], buildtime:bool=True, nouts:int=1)->Realizer:
+  def _wrapper(dref,context)->List[Path]:
+    b=mkbuild(dref,context,buildtime,nouts); f(b); return build_outpaths(b)
   return _wrapper
 
 def build_config(b:Build)->Config:
@@ -329,17 +340,22 @@ def build_context(b:Build)->Context:
 def build_cattrs(b:Build)->Any:
   return b.cattrs
 
+def build_outpaths(m:Build)->List[Path]:
+  return m.outpaths
+
 def build_outpath(m:Build)->Path:
   """ Return the output path of the realization being built. Output path is a
   path to valid temporary folder where user may put various build artifacts.
   Later this folder becomes a realization. """
-  return m.outpath
+  paths=build_outpaths(m)
+  assert len(paths)==1
+  return paths[0]
 
 def build_name(b:Build)->Name:
   """ Return the name of a derivation being built. """
   return Name(config_name(build_config(b)))
 
-def build_deref(b:Build, dref:DRef)->RRef:
+def build_deref_(b:Build, dref:DRef)->List[RRef]:
   """ For any [realization](#pylightnix.core.realize) process described with
   it's [Build](#pylightnix.types.Build) handler, `build_deref` queries a
   realization of dependency `dref`.
@@ -349,11 +365,20 @@ def build_deref(b:Build, dref:DRef)->RRef:
   [store_deref](#pylightnix.core.store_deref) should be used.  """
   return context_deref(build_context(b), dref)
 
-def build_path(b:Build, refpath:RefPath)->Path:
+def build_deref(b:Build, dref:DRef)->RRef:
+  rrefs=build_deref_(b,dref)
+  assert len(rrefs)==1
+  return rrefs[0]
+
+def build_paths(b:Build, refpath:RefPath)->List[Path]:
   """ Return a system path, corresponding to RefPath `refpath`"""
   assert_valid_refpath(refpath)
-  return Path(join(rref2path(build_deref(b, refpath[0])), *refpath[1:]))
+  return [Path(join(rref2path(path), *refpath[1:])) for path in build_deref_(b, refpath[0])]
 
+def build_path(b:Build, refpath:RefPath)->Path:
+  paths=build_paths(b,refpath)
+  assert len(paths)==1
+  return paths[0]
 #   ____            _            _
 #  / ___|___  _ __ | |_ _____  _| |_
 # | |   / _ \| '_ \| __/ _ \ \/ / __|
@@ -368,16 +393,16 @@ def mkcontext()->Context:
 def context_eq(a:Context,b:Context)->bool:
   return json_dumps(a)==json_dumps(b)
 
-def context_add(context:Context, dref:DRef, rref:RRef)->Context:
+def context_add(context:Context, dref:DRef, rrefs:List[RRef])->Context:
   assert dref not in context, (
     f"Attempting to re-introduce DRef {dref} to context with "
     f"different realization.\n"
     f" * Old realization: {context[dref]}\n"
-    f" * New realization: {rref}\n" )
-  context[dref]=rref
+    f" * New realization: {rrefs}\n" )
+  context[dref]=rrefs
   return context
 
-def context_deref(context:Context, dref:DRef)->RRef:
+def context_deref(context:Context, dref:DRef)->List[RRef]:
   assert dref in context, (
       f"Context {context} doesn't declare {dref} among it's dependencies so we "
       f"can't dereference it." )
@@ -409,8 +434,8 @@ def recursion_manager(funcname:str):
   global PYLIGHTNIX_RECURSION
   if get_ident() not in PYLIGHTNIX_RECURSION:
     PYLIGHTNIX_RECURSION[get_ident()]=[]
-  error_msg=(f"Recursion manager alerted while in {funcname}. "
-               f"Contents of the recursion stack: {PYLIGHTNIX_RECURSION[get_ident()]}")
+  error_msg=(f"Recursion manager alert, during an attempt to call '{funcname}'. "
+             f"Contents of the recursion stack: {PYLIGHTNIX_RECURSION[get_ident()]}")
   if funcname=='instantiate':
     assert 'instantiate' not in PYLIGHTNIX_RECURSION[get_ident()], error_msg
   elif funcname=='realize':
@@ -451,44 +476,71 @@ def instantiate(stage:Any, *args, **kwargs)->Closure:
   """
   return instantiate_(Manager(), stage, *args, **kwargs)
 
+RealizeSeqGen = Generator[Tuple[DRef,Context,Derivation],Optional[List[RRef]],List[RRef]]
+
 def realize(closure:Closure, force_rebuild:List[DRef]=[])->RRef:
-  """ Build a realization of the derivation by executing a
-  [Realizer](#pylightnix.types.Realizer) on it's
-  [Closure](#pylightnix.types.Closure).
+  """ A simplified version of [realizeMany](#pylightnix.core.realizeMany).
+  Expects only one result. """
+  rrefs=realizeMany(closure, force_interrupt=force_rebuild)
+  assert len(rrefs)==1
+  return rrefs[0]
 
-  Return [reference to new realization](#pylightnix.types.RRef) which could be
-  later [converted to system path](#pylightnix.core.rref2path) to access build
-  artifacts.
+def realizeMany(closure:Closure, force_interrupt:List[DRef]=[])->List[RRef]:
+  """ Build one or many realizations of a derivation's
+  [Closure](#pylightnix.types.Closure) by executing it's
+  [Realizer](#pylightnix.types.Realizer).
 
-  New realization is added to the storage by moving a temporary folder inside
-  the storage. `realize` assumes that derivation is still there at this moment
-  (See e.g. [rmref](#pylightnix.bashlike.rmref))
+  Return [one or many references to new realizations](#pylightnix.types.RRef).
+  Later, references could be [converted to system
+  paths](#pylightnix.core.rref2path) of build artifacts.
 
-  - FIXME: stage's context is calculated inefficiently. Maybe one should track
+  For every new realization, it's node is created in the storage by moving
+  Realizer's output folders into the derivation folder. `realize`
+  assumes that derivation is still there at the moment of moving (See e.g.
+  [rmref](#pylightnix.bashlike.rmref))
+
+  - FIXME: Stage's context is calculated inefficiently. Maybe one should track
     dep.tree to avoid calling `store_deepdeps` within the cycle.
+  - FIXME: Update derivation's matcher after forced rebuilds. Matchers should
+    remember and reproduce user's preferences.
   """
+  try:
+    gen=realizeSeq(closure,force_interrupt)
+    next(gen)
+    while True:
+      gen.send([]) # Ask for default action
+  except StopIteration as e:
+    res=e.value
+  return res
+
+def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[])->RealizeSeqGen:
+  """ Sequentially realize the closure by issuing steps via Python's generator
+  interface """
   assert_valid_closure(closure)
+  force_interrupt_:Set[DRef]=set(force_interrupt)
   with recursion_manager('realize'):
     context:Context={}
-    rref:Optional[RRef]=None
-    force_rebuild_:Set[DRef]=set(force_rebuild)
     target_dref=closure.dref
     target_deps=store_deepdeps([target_dref])
-    for (dref,matcher,realizer) in closure.derivations:
+    for drv in closure.derivations:
+      dref=drv.dref
       if dref in target_deps or dref==target_dref:
         c=store_config(dref)
         dref_deps=store_deepdeps([dref])
         dref_context={k:v for k,v in context.items() if k in dref_deps}
-        if dref in force_rebuild_:
-          rref=None
+        if dref in force_interrupt_:
+          rrefs=yield (dref,dref_context,drv)
+          if rrefs is None:
+            return []
         else:
-          rref=matcher(dref,dref_context)
-        if not rref:
-          rref=store_realize(dref,dref_context,realizer(dref,dref_context))
-          rreftmp=matcher(dref,dref_context)
-        context=context_add(context,dref,rref)
-    assert rref is not None
-    return rref
+          rrefs=drv.matcher(dref,dref_context)
+        if len(rrefs)==0:
+          paths=drv.realizer(dref,context)
+          rrefs=[store_realize(dref,context,path) for path in paths]
+          rrefs_tmp=drv.matcher(dref,context)
+        context=context_add(context,dref,rrefs)
+    assert rrefs is not None
+    return rrefs
 
 def mksymlink(rref:RRef, tgtpath:Path, name:str, withtime=True)->Path:
   """ Create a symlink pointing to realization `rref`. Other arguments define
@@ -510,14 +562,14 @@ def only()->Matcher:
   """ Return a [Matcher](#pylightnix.types.Matcher) which expects no more than
   one realization for every [derivation](#pylightnix.types.DRef), given the
   [context](#pylightnix.types.Context). """
-  def _matcher(dref:DRef, context:Context)->Optional[RRef]:
+  def _matcher(dref:DRef, context:Context)->List[RRef]:
     matching=[]
     for rref in store_rrefs(dref, context):
       matching.append(rref)
     if len(matching)==0:
-      return None
+      return []
     elif len(matching)==1:
-      return matching[0]
+      return matching
     else:
       assert False, (
           f"only() assumes that {dref} has 0 or 1 realizations under"
@@ -529,7 +581,7 @@ def largest(filename:str)->Matcher:
   realizations and then compares them based on stage-specific scores. For each
   realization, score is read from artifact file named `filename` that should
   contain a single float number. Realization with largest score wins.  """
-  def _matcher(dref:DRef, context:Context)->Optional[RRef]:
+  def _matcher(dref:DRef, context:Context)->List[RRef]:
     scores:List[Tuple[float,RRef]]=[]
     for rref in store_rrefs(dref, context):
       try:
@@ -540,9 +592,9 @@ def largest(filename:str)->Matcher:
       except ValueError as e:
         scores.append((float('-inf'),rref))
     if len(scores)>0:
-      return sorted(scores, reverse=True)[0][1]
+      return [sorted(scores, reverse=True)[0][1]]
     else:
-      return None
+      return []
   return _matcher
 
 #     _                      _
@@ -597,9 +649,10 @@ def assert_valid_hash(h:Hash)->None:
 
 def assert_valid_context(c:Context)->None:
   assert_serializable(c)
-  for dref,rref in c.items():
+  for dref,rrefs in c.items():
     assert_valid_dref(dref)
-    assert_valid_rref(rref)
+    for rref in rrefs:
+      assert_valid_rref(rref)
 
 def assert_valid_closure(closure:Closure)->None:
   assert len(closure.derivations)>0, \
@@ -621,4 +674,9 @@ def assert_have_realizers(m:Manager, drefs:List[DRef])->None:
       f"{missing}\n"
       f"Did you take those DRefs from another manager?")
 
+def assert_recursion_manager_empty():
+  global PYLIGHTNIX_RECURSION
+  if get_ident() not in PYLIGHTNIX_RECURSION:
+    PYLIGHTNIX_RECURSION[get_ident()]=[]
+  assert len(PYLIGHTNIX_RECURSION[get_ident()])==0
 

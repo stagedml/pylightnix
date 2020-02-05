@@ -2,11 +2,11 @@ from pylightnix import ( instantiate, DRef, RRef, Path, mklogdir, dirhash,
     assert_valid_dref, assert_valid_rref, mknode, store_deps, store_deepdeps,
     store_gc, assert_valid_hash, assert_valid_config, Manager, mkcontext,
     store_rrefs, mkdref, mkrref, unrref, undref, realize, rref2dref,
-    store_initialize, mkconfig )
+    store_initialize, mkconfig, timestring, parsetime )
 
 from tests.imports import (
     given, text, isdir, isfile, join, from_regex, islink, get_executable, run,
-    dictionaries, binary, one_of, integers )
+    dictionaries, binary, one_of, integers, timegm, gmtime )
 
 from tests.generators import (
     rrefs, drefs, configs, dicts, prims )
@@ -17,6 +17,13 @@ from tests.setup import (
 
 SHA256SUM=get_executable('sha256sum', 'Please install `sha256sum` tool from `coreutils` package')
 
+
+@given(nsec=integers(min_value=0, max_value=timegm(gmtime())+10*365*24*60*60))
+def test_timestring(nsec)->None:
+  ts=timestring(nsec)
+  st=parsetime(ts)
+  ts2=timestring(st)
+  assert ts==ts2
 
 @given(dref=drefs())
 def test_dref(dref):
@@ -120,4 +127,5 @@ def test_dirhash3(d)->None:
   p=run([SHA256SUM, join(path,'a')], stdout=-1, check=True, cwd=path)
   h=dirhash(path)
   assert (p.stdout[:len(h)].decode('utf-8'))==h
+
 

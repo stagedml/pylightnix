@@ -1,7 +1,8 @@
 from pylightnix import ( Manager, Path, store_initialize, DRef, Context,
     Optional, mkbuild, build_outpath, store_rrefs, RRef, mkconfig, Config,
     Name, mkdrv, rref2path )
-from tests.imports import ( rmtree, join, makedirs, listdir, Callable, contextmanager)
+from tests.imports import ( rmtree, join, makedirs, listdir, Callable,
+    contextmanager, List)
 
 PYLIGHTNIX_TEST:str='/tmp/pylightnix_tests'
 
@@ -46,20 +47,20 @@ def mktestnode_nondetermenistic(m:Manager, sources:dict,
   different values from build to build """
   def _instantiate()->Config:
     return mkconfig(sources)
-  def _realize(dref:DRef, context:Context)->Path:
+  def _realize(dref:DRef, context:Context)->List[Path]:
     b=mkbuild(dref, context, buildtime=buildtime)
     with open(join(build_outpath(b),'artifact'),'w') as f:
       f.write(str(nondet()))
-    return build_outpath(b)
-  def _match(dref:DRef, context:Context)->Optional[RRef]:
+    return [build_outpath(b)]
+  def _match(dref:DRef, context:Context)->List[RRef]:
     max_i=-1
-    max_rref=None
+    max_rref=[]
     for rref in store_rrefs(dref, context):
       with open(join(rref2path(rref),'artifact'),'r') as f:
         i=int(f.read())
         if i>max_i:
           max_i=i
-          max_rref=rref
+          max_rref=[rref]
     return max_rref
   return mkdrv(m, _instantiate, _match, _realize)
 
