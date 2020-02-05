@@ -7,10 +7,11 @@ from pylightnix import (
     store_deref, rref2path, store_rrefs_, config_cattrs, mksymlink,
     store_cattrs, build_deref, build_path, mkrefpath, build_config,
     store_drefs, store_rrefs, store_rrefs_, build_wrapper, recursion_manager,
-    build_cattrs, build_name, match_best, tryread, assert_recursion_manager_empty)
+    build_cattrs, build_name, match_best, tryread, assert_recursion_manager_empty,
+    match, latest, best, exact, Key )
 
 from tests.imports import ( given, Any, Callable, join, Optional, islink,
-    isfile, List )
+    isfile, List, randint, sleep )
 
 from tests.generators import (
     rrefs, drefs, configs, dicts )
@@ -344,14 +345,15 @@ def test_largest()->None:
 
     fname:str='score'
     score:str='0'
+    matcher:Key=best('score')
     def _mklrg(m, cfg):
       def _instantiate()->Config:
         return mkconfig(cfg)
       def _realize(b:Build)->None:
-        nonlocal score, fname
+        nonlocal score, fname, matcher
         with open(join(build_outpath(b),fname),'w') as f:
           f.write(score)
-      return mkdrv(m, _instantiate, match_best('score'), build_wrapper(_realize))
+      return mkdrv(m, _instantiate, match([matcher]), build_wrapper(_realize))
 
     clo1=instantiate(_mklrg, {'a':1})
 
@@ -364,7 +366,7 @@ def test_largest()->None:
     rref1b=realize(clo1, force_rebuild=[clo1.dref])
     assert isfile(join(rref2path(rref1b),'score'))
     assert len(list(store_rrefs_(clo1.dref))) == 2
-    assert tryread(Path(join(rref2path(rref1b),'score')))=='non-integer'
+    assert tryread(Path(join(rref2path(rref1b),'score')))=='0'
     score='1'
     rref1c=realize(clo1, force_rebuild=[clo1.dref])
     assert isfile(join(rref2path(rref1c),'score'))
@@ -373,12 +375,46 @@ def test_largest()->None:
     score='100500'
     fname='baz'
     rref1d=realize(clo1, force_rebuild=[clo1.dref])
-    assert not isfile(join(rref2path(rref1d),'score'))
+    assert not isfile(join(rref2path(rref1d),'baz'))
     assert len(list(store_rrefs_(clo1.dref))) == 4
 
+    matcher=exact([RRef('rref:64617f2a2a9446340241b071413f6f68-a76762e9bc54e47c09455bdb226e2388-unnamed')])
+    clo1=instantiate(_mklrg, {'a':1})
+    rref1e=realize(clo1)
+    assert isfile(join(rref2path(rref1e),'baz'))
+    assert len(list(store_rrefs_(clo1.dref))) == 4
+
+    matcher=best('score')
+    clo1=instantiate(_mklrg, {'a':1})
     rref1=realize(clo1)
     assert isfile(join(rref2path(rref1),'score'))
     assert tryread(Path(join(rref2path(rref1),'score')))=='1'
+
+
+def test_latest():
+  with setup_storage('test_latest'):
+    nondet:str
+
+    def _mknode(m,cfg):
+      def _instantiate()->Config:
+        return Config(cfg)
+      def _realize(b:Build)->None:
+        nonlocal nondet
+        with open(join(build_outpath(b),'artifact'),'w') as f:
+          f.write(nondet)
+      return mkdrv(m, _instantiate, match([latest()]), build_wrapper(_realize))
+
+    clo=instantiate(_mknode, {'a':randint(0,1000)})
+    nrefs=len(list(store_rrefs_(clo.dref)))
+    seed=randint(0,1000)
+    nondet=str(seed)
+    rref1=realize(clo)
+    assert len(list(store_rrefs_(clo.dref)))==nrefs+1
+    nondet=str(seed+1)
+    sleep(2) # latest has a 1-sec resolution
+    rref2=realize(clo, force_rebuild=[clo.dref])
+    assert len(list(store_rrefs_(clo.dref)))==nrefs+2
+    assert tryread(Path(join(rref2path(rref2),'artifact')))==nondet
 
 
 def test_minimal_closure():

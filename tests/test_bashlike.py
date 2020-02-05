@@ -35,7 +35,7 @@ def test_bashlike():
 
 
 def test_rmdref():
-  with setup_storage('test_bashlike') as s:
+  with setup_storage('test_rmdref') as s:
     clo=instantiate(mktestnode_nondetermenistic, {'a':1}, lambda:42)
     drefpath=store_dref2path(clo.dref)
     rref1=realize(clo, force_rebuild=[clo.dref])

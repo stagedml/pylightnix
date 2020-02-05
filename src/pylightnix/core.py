@@ -537,8 +537,15 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[])->RealizeSeqGen:
           rrefs=drv.matcher(dref,dref_context)
         if len(rrefs)==0:
           paths=drv.realizer(dref,context)
-          rrefs=[store_realize(dref,context,path) for path in paths]
-          rrefs_tmp=drv.matcher(dref,context)
+          rrefs_built=[store_realize(dref,context,path) for path in paths]
+          rrefs_matched=drv.matcher(dref,context)
+          assert len(rrefs_matched)>0, \
+            f"Unsatisfiable matcher warning: newly obtained realizations of {dref} didn't convince it's matcher"
+          if (set(rrefs_built) & set(rrefs_matched)) == set():
+            print(f"Useless realization warning: Newly obtained realizations of "
+                  f"{dref} appear to be useless. Change it's matcher to "
+                  f"`exact({rrefs_built})` to capture built realizations explicitly")
+          rrefs=rrefs_matched
         context=context_add(context,dref,rrefs)
     assert rrefs is not None
     return rrefs
@@ -561,6 +568,16 @@ def mksymlink(rref:RRef, tgtpath:Path, name:str, withtime=True)->Path:
 
 
 def match(keys:List[Key], top:Optional[int]=1, only:bool=False)->Matcher:
+  """ Create a matcher by combining different sorting keys and selecting a
+  top-n threshold.
+
+  Parameters:
+  - `keys`: List of [Key](#pylightnix.types.Key) functions
+  - `top`:  An integer selecting how many realizations to accept
+  - `only`: Enable `only` mode, where match asserts if it founds more than one
+    realization.
+  """
+  keys=keys+[texthash()]
   def _matcher(dref:DRef, context:Context)->List[RRef]:
     keymap={}
     rrefs=list(store_rrefs(dref, context))
@@ -568,7 +585,8 @@ def match(keys:List[Key], top:Optional[int]=1, only:bool=False)->Matcher:
       assert False, f"match expects no more than one realization for {dref}, but there are {len(rrefs)} of them"
     for rref in rrefs:
       keymap[rref]=[k(rref) for k in keys]
-    res=sorted(rrefs, key=lambda rref:keymap[rref], reverse=True)
+    res=sorted(filter(lambda rref: None not in keymap[rref], rrefs),
+          key=lambda rref:keymap[rref], reverse=True)
     if top is not None:
       res=res[:top]
     return res
@@ -576,7 +594,7 @@ def match(keys:List[Key], top:Optional[int]=1, only:bool=False)->Matcher:
 
 
 def latest()->Key:
-  def _key(rref:RRef)->Union[int,float,str]:
+  def _key(rref:RRef)->Optional[Union[int,float,str]]:
     try:
       with open(join(rref2path(rref),'__buildtime__.txt'),'r') as f:
         t=parsetime(f.read())
@@ -585,9 +603,13 @@ def latest()->Key:
       return 0
   return _key
 
+def exact(expected:List[RRef])->Key:
+  def _key(rref:RRef)->Optional[Union[int,float,str]]:
+    return 1 if rref in expected else None
+  return _key
 
 def best(filename:str)->Key:
-  def _key(rref:RRef)->Union[int,float,str]:
+  def _key(rref:RRef)->Optional[Union[int,float,str]]:
     try:
       with open(join(rref2path(rref),filename),'r') as f:
         return float(f.readline())
@@ -599,7 +621,7 @@ def best(filename:str)->Key:
 
 
 def texthash()->Key:
-  def _key(rref:RRef)->Union[int,float,str]:
+  def _key(rref:RRef)->Optional[Union[int,float,str]]:
     return str(unrref(rref)[0])
   return _key
 

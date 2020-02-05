@@ -189,6 +189,6 @@ class Manager:
 Stage = Callable[[Manager],DRef]
 
 
-Key = Callable[[RRef],Union[int,float,str]]
+Key = Callable[[RRef],Optional[Union[int,float,str]]]
 
 
