@@ -23,7 +23,6 @@ def test_timestring(nsec)->None:
   ts=timestring(nsec)
   st=parsetime(ts)
   ts2=timestring(st)
-  print(ts2)
   assert ts==ts2
 
 @given(dref=drefs())
