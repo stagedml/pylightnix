@@ -3,7 +3,7 @@ from pylightnix.imports import (sha256 as sha256sum, urlparse, Popen, remove,
 from pylightnix.types import ( DRef, Manager, Config, Build, Context, Name,
     Path, Optional)
 from pylightnix.core import ( mkconfig, mkbuild, build_cattrs, build_outpath,
-    mkdrv, only, build_wrapper )
+    mkdrv, match_only, build_wrapper )
 from pylightnix.utils import ( get_executable )
 
 
@@ -64,7 +64,7 @@ def fetchurl(m:Manager, url:str, sha256:str, mode:str='unpack,remove',
       print(f"Temp folder {o}")
       raise
 
-  return mkdrv(m, _instantiate, only(), build_wrapper(_realize))
+  return mkdrv(m, _instantiate, match_only(), build_wrapper(_realize))
 
 
 

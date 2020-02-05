@@ -188,10 +188,10 @@ weights and we surely want a model with the best accuracy.
 
 
 ```python
-from pylightnix import largest
+from pylightnix import match_best
 
 def mnist_match():
-  return largest('accuracy.txt')
+  return match_best('accuracy.txt')
 ```
 
 

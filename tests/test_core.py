@@ -3,11 +3,11 @@ from pylightnix import (
     assert_valid_dref, assert_valid_rref, store_deps, store_deepdeps, store_gc,
     assert_valid_hash, assert_valid_config, Manager, mkcontext, store_realize,
     store_rrefs, mkdref, mkrref, unrref, undref, realize, rref2dref,
-    store_config, mkconfig, Build, Context, build_outpath, only, mkdrv,
+    store_config, mkconfig, Build, Context, build_outpath, match_only, mkdrv,
     store_deref, rref2path, store_rrefs_, config_cattrs, mksymlink,
     store_cattrs, build_deref, build_path, mkrefpath, build_config,
     store_drefs, store_rrefs, store_rrefs_, build_wrapper, recursion_manager,
-    build_cattrs, build_name, largest, tryread, assert_recursion_manager_empty)
+    build_cattrs, build_name, match_best, tryread, assert_recursion_manager_empty)
 
 from tests.imports import ( given, Any, Callable, join, Optional, islink,
     isfile, List )
@@ -229,7 +229,7 @@ def test_build_deref()->None:
           with open(build_path(b, c.maman),'r') as s:
             d.write(s.read())
         return
-      return mkdrv(m, _instantiate, only(), build_wrapper(_realize))
+      return mkdrv(m, _instantiate, match_only(), build_wrapper(_realize))
 
     def _setting(m:Manager)->DRef:
       n1 = mktestnode_nondetermenistic(m, {'a':'1'}, lambda : 42)
@@ -253,7 +253,7 @@ def test_build_cattrs():
         c.c = 'foo'
         assert hasattr(c,'c')
         return
-      return mkdrv(m, _instantiate, only(), build_wrapper(_realize))
+      return mkdrv(m, _instantiate, match_only(), build_wrapper(_realize))
 
     rref = realize(instantiate(_setting))
     assert_valid_rref(rref)
@@ -309,7 +309,7 @@ def test_only()->None:
         nonlocal build
         with open(join(build_outpath(b),'artifact'),'w') as f: f.write(str(build))
         build+=1
-      return mkdrv(m, _instantiate, only(), build_wrapper(_realize))
+      return mkdrv(m, _instantiate, match_only(), build_wrapper(_realize))
 
     closure = instantiate(_setting)
     assert len(list(store_rrefs_(closure.dref))) == 0
@@ -319,7 +319,7 @@ def test_only()->None:
     assert len(list(store_rrefs_(closure.dref))) == 1
     try:
       rref = realize(closure, force_rebuild=[closure.dref])
-      raise ShouldHaveFailed('Should have failed in only assertion')
+      raise ShouldHaveFailed('Should have failed in match_only assertion')
     except AssertionError as e:
       pass
     assert len(list(store_rrefs_(closure.dref))) == 2
@@ -333,7 +333,7 @@ def test_build_name()->None:
       def _realize(b)->None:
         nonlocal n
         n = build_name(b)
-      return mkdrv(m, _instantiate, only(), build_wrapper(_realize))
+      return mkdrv(m, _instantiate, match_only(), build_wrapper(_realize))
 
     rref=realize(instantiate(_setting))
     assert n=='foobar'
@@ -351,7 +351,7 @@ def test_largest()->None:
         nonlocal score, fname
         with open(join(build_outpath(b),fname),'w') as f:
           f.write(score)
-      return mkdrv(m, _instantiate, largest('score'), build_wrapper(_realize))
+      return mkdrv(m, _instantiate, match_best('score'), build_wrapper(_realize))
 
     clo1=instantiate(_mklrg, {'a':1})
 

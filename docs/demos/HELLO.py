@@ -50,10 +50,10 @@ def hello_realize(b:Build)->None:
     finally:
       chdir(cwd)
 
-from pylightnix import mkdrv, build_wrapper, only
+from pylightnix import mkdrv, build_wrapper, match_only
 
 hello:DRef = \
-  instantiate_inplace(mkdrv, hello_config, only(), build_wrapper(hello_realize))
+  instantiate_inplace(mkdrv, hello_config, match_only(), build_wrapper(hello_realize))
 
 print(hello)
 

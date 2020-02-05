@@ -69,10 +69,10 @@ def mnist_build(b:Build)->None:
   with open(join(o,'accuracy.txt'),'w') as f:
     f.write(str(accuracy))
 
-from pylightnix import largest
+from pylightnix import match_best
 
 def mnist_match():
-  return largest('accuracy.txt')
+  return match_best('accuracy.txt')
 
 
 from pylightnix import mkdrv, build_wrapper

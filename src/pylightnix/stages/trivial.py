@@ -1,5 +1,5 @@
 from pylightnix.imports import ( join, deepcopy )
-from pylightnix.core import ( mkdrv, mkconfig, mkbuild, only,
+from pylightnix.core import ( mkdrv, mkconfig, mkbuild, match_only,
     assert_valid_name, build_outpath, datahash )
 from pylightnix.types import ( Manager, Config, Context, Build, Name, DRef,
     RRef, Any, Optional, Dict, Hash, Path, List )
@@ -17,7 +17,7 @@ def mknode(m:Manager, sources:dict, artifacts:Dict[Name,bytes]={})->DRef:
       with open(join(build_outpath(b),an),'wb') as f:
         f.write(av)
     return [build_outpath(b)]
-  return mkdrv(m, _instantiate, only(), _realize)
+  return mkdrv(m, _instantiate, match_only(), _realize)
 
 
 def mkfile(m:Manager, name:Name, contents:bytes, filename:Optional[Name]=None)->DRef:

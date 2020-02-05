@@ -603,18 +603,21 @@ def texthash()->Key:
     return str(unrref(rref)[0])
   return _key
 
-def only()->Matcher:
+
+def match_only()->Matcher:
   """ Return a [Matcher](#pylightnix.types.Matcher) which expects no more than
   one realization for every [derivation](#pylightnix.types.DRef), given the
   [context](#pylightnix.types.Context). """
   return match([texthash()], only=True)
 
-def largest(filename:str)->Matcher:
+
+def match_best(filename:str)->Matcher:
   """ Return a [Matcher](#pylightnix.types.Matcher) which checks contexts of
   realizations and then compares them based on stage-specific scores. For each
   realization, score is read from artifact file named `filename` that should
   contain a single float number. Realization with largest score wins.  """
   return match([best(filename)])
+
 
 #     _                      _
 #    / \   ___ ___  ___ _ __| |_ ___

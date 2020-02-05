@@ -111,7 +111,7 @@ Implementation:
    ```python
    from pylightnix import Config, mkconfig
    from pylightnix import Path, Build, build_cattrs, build_outpath, build_path
-   from pylightnix import mkdrv, build_wrapper, only
+   from pylightnix import mkdrv, build_wrapper, match_only
 
    def hello_config()->Config:
      name = 'hello-bin'
@@ -129,7 +129,7 @@ Implementation:
        system(f'make install DESTDIR={o}')
 
    hello_dref:DRef = \
-       instantiate_inplace(mkdrv, hello_config, only(), build_wrapper(hello_realize))
+       instantiate_inplace(mkdrv, hello_config, match_only(), build_wrapper(hello_realize))
    hello_rref:RRef = realize_inplace(hello_dref)
 
 
