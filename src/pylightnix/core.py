@@ -4,12 +4,13 @@ from pylightnix.imports import (
     split, re_match, ENOTEMPTY, get_ident, contextmanager, OrderedDict )
 from pylightnix.utils import (
     dirhash, assert_serializable, assert_valid_dict, dicthash, scanref_dict,
-    scanref_list, forcelink, timestring, datahash, readjson, tryread, encode )
+    scanref_list, forcelink, timestring, parsetime, datahash, readjson,
+    tryread, encode )
 from pylightnix.types import (
     Dict, List, Any, Tuple, Union, Optional, Iterable, IO, Path, Hash, DRef,
     RRef, RefPath, HashPart, Callable, Context, Name, NamedTuple, Build,
     Config, ConfigAttrs, Derivation, Stage, Manager, Instantiator, Matcher,
-    Realizer, Set, Closure, Generator )
+    Realizer, Set, Closure, Generator, Key )
 
 #: *Do not change!*
 #: Tracks the version of pylightnix storage
@@ -222,7 +223,7 @@ def store_rrefs_(dref:DRef)->Iterable[RRef]:
       yield mkrref(HashPart(f), dhash, nm)
 
 def store_rrefs(dref:DRef, context:Context)->Iterable[RRef]:
-  """ Iterate over those realizations of a derivation `dref`, which match a
+  """ Iterate over realizations of a derivation `dref`, which match a
   [context]($pylightnix.types.Context). The sort order is unspecified. """
   for rref in store_rrefs_(dref):
     context2=store_context(rref)
@@ -558,44 +559,62 @@ def mksymlink(rref:RRef, tgtpath:Path, name:str, withtime=True)->Path:
   forcelink(Path(relpath(rref2path(rref), tgtpath)), symlink)
   return symlink
 
+
+def match(keys:List[Key], top:Optional[int]=1, only:bool=False)->Matcher:
+  def _matcher(dref:DRef, context:Context)->List[RRef]:
+    keymap={}
+    rrefs=list(store_rrefs(dref, context))
+    if only and len(rrefs)>1:
+      assert False, f"match expects no more than one realization for {dref}, but there are {len(rrefs)} of them"
+    for rref in rrefs:
+      keymap[rref]=[k(rref) for k in keys]
+    res=sorted(rrefs, key=lambda rref:keymap[rref], reverse=True)
+    if top is not None:
+      res=res[:top]
+    return res
+  return _matcher
+
+
+def latest()->Key:
+  def _key(rref:RRef)->Union[int,float,str]:
+    try:
+      with open(join(rref2path(rref),'__buildtime__.txt'),'r') as f:
+        t=parsetime(f.read())
+        return 0 if t is None else t
+    except OSError as e:
+      return 0
+  return _key
+
+
+def best(filename:str)->Key:
+  def _key(rref:RRef)->Union[int,float,str]:
+    try:
+      with open(join(rref2path(rref),filename),'r') as f:
+        return float(f.readline())
+    except OSError as e:
+      return float('-inf')
+    except ValueError as e:
+      return float('-inf')
+  return _key
+
+
+def texthash()->Key:
+  def _key(rref:RRef)->Union[int,float,str]:
+    return str(unrref(rref)[0])
+  return _key
+
 def only()->Matcher:
   """ Return a [Matcher](#pylightnix.types.Matcher) which expects no more than
   one realization for every [derivation](#pylightnix.types.DRef), given the
   [context](#pylightnix.types.Context). """
-  def _matcher(dref:DRef, context:Context)->List[RRef]:
-    matching=[]
-    for rref in store_rrefs(dref, context):
-      matching.append(rref)
-    if len(matching)==0:
-      return []
-    elif len(matching)==1:
-      return matching
-    else:
-      assert False, (
-          f"only() assumes that {dref} has 0 or 1 realizations under"
-          f"context {context}, but in fact it has many:\n{matching}" )
-  return _matcher
+  return match([texthash()], only=True)
 
 def largest(filename:str)->Matcher:
   """ Return a [Matcher](#pylightnix.types.Matcher) which checks contexts of
   realizations and then compares them based on stage-specific scores. For each
   realization, score is read from artifact file named `filename` that should
   contain a single float number. Realization with largest score wins.  """
-  def _matcher(dref:DRef, context:Context)->List[RRef]:
-    scores:List[Tuple[float,RRef]]=[]
-    for rref in store_rrefs(dref, context):
-      try:
-        with open(join(rref2path(rref),filename),'r') as f:
-          scores.append((float(f.readline()),rref))
-      except OSError as e:
-        scores.append((float('-inf'),rref))
-      except ValueError as e:
-        scores.append((float('-inf'),rref))
-    if len(scores)>0:
-      return [sorted(scores, reverse=True)[0][1]]
-    else:
-      return []
-  return _matcher
+  return match([best(filename)])
 
 #     _                      _
 #    / \   ___ ___  ___ _ __| |_ ___
