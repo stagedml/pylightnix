@@ -1,4 +1,5 @@
-{ pkgs ?  import <nixpkgs> {} } :
+{ pkgs ?  import <nixpkgs> {}
+, doCheck ? false } :
 
 with pkgs.python36Packages;
 
@@ -18,5 +19,7 @@ buildPythonPackage {
   checkPhase = ''
     pytest
   '';
+
+  inherit doCheck;
 }
 
