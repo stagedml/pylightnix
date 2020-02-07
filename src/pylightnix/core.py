@@ -1,7 +1,7 @@
 from pylightnix.imports import (
     sha256, deepcopy, isdir, makedirs, join, json_dump, json_load, json_dumps,
     json_loads, isfile, relpath, listdir, rmtree, mkdtemp, replace, environ,
-    split, re_match, ENOTEMPTY, get_ident, contextmanager, OrderedDict )
+    split, re_match, ENOTEMPTY, get_ident, contextmanager, OrderedDict, lstat )
 from pylightnix.utils import (
     dirhash, assert_serializable, assert_valid_dict, dicthash, scanref_dict,
     scanref_list, forcelink, timestring, parsetime, datahash, readjson,
@@ -124,12 +124,21 @@ def assert_store_initialized()->None:
   assert isdir(PYLIGHTNIX_TMP), \
     (f"Looks like the Pylightnix tmp ('{PYLIGHTNIX_TMP}') is not initialized. Did "
      f"you call `store_initialize`?")
+  assert lstat(PYLIGHTNIX_STORE).st_dev == lstat(PYLIGHTNIX_TMP).st_dev, \
+    (f"Looks like Pylightnix store and tmp directories belong to different filesystems. "
+     f"This case is not supported yet. Consider setting PYLIGHTNIX_TMP to be on the same "
+     f"device with PYLIGHTNIX_STORE")
 
-def store_initialize(custom_store:Optional[str]=None, custom_tmp:Optional[str]=None)->None:
-  """ Create the storage and temp direcories. Default locations are determined
-  by `PYLIGHTNIX_STORE` and `PYLIGHTNIX_TMP` variables. Note, that they could be
-  overwritten either by setting environment variables of the same name before
-  starting the Python or by assigning to them right after importing pylighnix.
+def store_initialize(custom_store:Optional[str]=None, custom_tmp:Optional[str]=None, check_not_exist:bool=False)->None:
+  """ Create the storage and temp direcories if they don't exist. Default
+  locations are determined by `PYLIGHTNIX_STORE` and `PYLIGHTNIX_TMP` global
+  variables which in turn may be set by either setting environment variables of
+  the same name or by direct assigning.
+
+  Parameters:
+  - `custom_store`: If not None, create new storage located here.
+  - `custom_tmp`: If not None, set the temp files directory here.
+  - `check_not_exist`: Set to True to assert on already existing storages
 
   See also [assert_store_initialized](#pylightnix.core.assert_store_initialized).
 
@@ -142,17 +151,16 @@ def store_initialize(custom_store:Optional[str]=None, custom_tmp:Optional[str]=N
   ```
   """
   global PYLIGHTNIX_STORE, PYLIGHTNIX_TMP
-  if custom_store is None:
-    print(f"Initializing {'' if isdir(PYLIGHTNIX_STORE) else 'non-'}existing {PYLIGHTNIX_STORE}")
-    makedirs(PYLIGHTNIX_STORE, exist_ok=True)
-  else:
+
+  if custom_store is not None:
     PYLIGHTNIX_STORE=custom_store
-    makedirs(PYLIGHTNIX_STORE, exist_ok=False)
-  if custom_tmp is None:
-    makedirs(PYLIGHTNIX_TMP, exist_ok=True)
-  else:
+  print(f"Initializing {'' if isdir(PYLIGHTNIX_STORE) else 'non-'}existing {PYLIGHTNIX_STORE}")
+  makedirs(PYLIGHTNIX_STORE, exist_ok=False if check_not_exist else True)
+
+  if custom_tmp is not None:
     PYLIGHTNIX_TMP=custom_tmp
-    makedirs(PYLIGHTNIX_TMP, exist_ok=True)
+  makedirs(PYLIGHTNIX_TMP, exist_ok=True)
+
   assert_store_initialized()
 
 def store_dref2path(r:DRef)->Path:
@@ -341,14 +349,14 @@ def build_context(b:Build)->Context:
 def build_cattrs(b:Build)->Any:
   return b.cattrs
 
-def build_outpaths(m:Build)->List[Path]:
-  return m.outpaths
+def build_outpaths(b:Build)->List[Path]:
+  return b.outpaths
 
-def build_outpath(m:Build)->Path:
+def build_outpath(b:Build)->Path:
   """ Return the output path of the realization being built. Output path is a
   path to valid temporary folder where user may put various build artifacts.
   Later this folder becomes a realization. """
-  paths=build_outpaths(m)
+  paths=build_outpaths(b)
   assert len(paths)==1
   return paths[0]
 
@@ -483,7 +491,10 @@ def realize(closure:Closure, force_rebuild:List[DRef]=[])->RRef:
   """ A simplified version of [realizeMany](#pylightnix.core.realizeMany).
   Expects only one result. """
   rrefs=realizeMany(closure, force_interrupt=force_rebuild)
-  assert len(rrefs)==1
+  assert len(rrefs)==1, (
+      f"realize is to be used with single-output derivations, but derivation "
+      f"{closure.dref} has {len(rrefs)} outputs:\n{rrefs}\n"
+      f"Consider using `realizeMany`." )
   return rrefs[0]
 
 def realizeMany(closure:Closure, force_interrupt:List[DRef]=[])->List[RRef]:
@@ -626,6 +637,14 @@ def texthash()->Key:
   return _key
 
 
+def match_all()->Matcher:
+  return match([], top=None, only=False)
+
+
+def match_some(top:int=1)->Matcher:
+  return match([], top=top, only=False)
+
+
 def match_only()->Matcher:
   """ Return a [Matcher](#pylightnix.types.Matcher) which expects no more than
   one realization for every [derivation](#pylightnix.types.DRef), given the
@@ -649,9 +668,8 @@ def match_best(filename:str)->Matcher:
 
 
 def assert_valid_refpath(refpath:RefPath)->None:
-  error_msg=(f'Value of type {type(refpath)} is not a valid refpath! Expected '
-             f'list of strings starting from a d-reference, but actual value '
-             f'is "{refpath}"')
+  error_msg=(f"Value of type {type(refpath)} is not a valid refpath! Expected "
+             f"list of strings starting from a valid DRef string, got '{refpath}'")
   assert len(refpath)>0, error_msg
   assert_valid_dref(refpath[0])
 
@@ -662,7 +680,7 @@ def assert_valid_config(c:Config):
 
 def assert_valid_name(s:Name)->None:
   assert re_match(f"^{PYLIGHTNIX_NAMEPAT}+$", s), \
-      f"Name {s} contains characters besides {PYLIGHTNIX_NAMEPAT}"
+      f"Expected a name which matches /^{PYLIGHTNIX_NAMEPAT}+$/, got '{s}'."
 
 def isrref(ref:str)->bool:
   return len(ref)>5 and ref[:5]=='rref:'
