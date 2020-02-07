@@ -54,7 +54,7 @@ def mktestnode_nondetermenistic(m:Manager, sources:dict,
     return [build_outpath(b)]
   def _match(dref:DRef, context:Context)->List[RRef]:
     max_i=-1
-    max_rref=[]
+    max_rref:List[RRef]=[]
     for rref in store_rrefs(dref, context):
       with open(join(rref2path(rref),'artifact'),'r') as f:
         i=int(f.read())
