@@ -10,16 +10,15 @@ manager.
 Pylightnix provides a generic Python API, allowing programmers to:
 * Define linked immutable data objects by defining how to create them
   and operate on them.
-* Actualy create (build) such objects in a filesystem-based storage, query,
+* Actually create (build) such objects in a filesystem-based storage, query,
   inspect and remove them as needed.
-* Special attention is paid to non-determenistic objects which could be
-  produced by various random processes.
+* Special attention is paid to the support of non-deterministic build processes.
 
 
 ## Contents
 
 1. [Features](#Features)
-2. [Related work](#Related work)
+2. [Related work](#Related_work)
 2. [Build](#Build)
 3. [Documentation](#Documentation)
 4. [Quick start](#Quick-start)
@@ -31,11 +30,11 @@ Functions:
 
 * Two-staged build process allows users to check the build plan before executing
   it.
-* Focused on non-determenistic build processes, fomralizing comparison and selection
+* Focused on non-deterministic build processes, formalizing comparison and selection
   of build results.
-* Clean and compact implementation, suitable for:
-  - Data science / Machine learning experiments
-  - Applications which fit into [blackboard design
+* Clean and compact implementation:
+  - Suitable for Data science / Machine learning experiments
+  - Match applications which fit into [blackboard design
     pattern](https://en.wikipedia.org/wiki/Blackboard_design_pattern).
 
 Implementation:
