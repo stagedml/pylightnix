@@ -8,8 +8,8 @@ immutable data objects, inspired by the [Nix](https://nixos.org) package
 manager.
 
 Pylightnix provides a generic Python API, allowing programmers to:
-* Define linked immutable data objects by defining how to create them
-  and operate on them.
+* Define linked immutable data objects by specifying how to create them
+  and how to operate on them.
 * Actually create (build) such objects in a filesystem-based storage, query,
   inspect and remove them as needed.
 * Special attention is paid to the support of non-deterministic build processes.
