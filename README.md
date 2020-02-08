@@ -19,7 +19,7 @@ Pylightnix provides a generic Python API, allowing programmers to:
 
 1. [Features](#Features)
 2. [Related work](#Related_work)
-2. [Build](#Build)
+2. [Build from source](#Build_from_source)
 3. [Documentation](#Documentation)
 4. [Quick start](#Quick-start)
 
