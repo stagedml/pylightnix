@@ -1,44 +1,65 @@
 ![coverage](https://codecov.io/gh/stagedml/pylightnix/branch/master/graph/badge.svg)
 
+
 # Pylightnix
 
-Pylightnix is a Python-based DSL library for manipulating
-[Nix](https://nixos.org/nix)-style data storage.
+Pylightnix is a Python-based DSL library for manipulating filesystem-based
+immutable data objects, inspired by the [Nix](https://nixos.org) package
+manager.
 
-Contents:
+Pylightnix provides a generic Python API, allowing programmers to:
+* Define linked immutable data objects by defining how to create them
+  and operate on them.
+* Actualy create (build) such objects in a filesystem-based storage, query,
+  inspect and remove them as needed.
+* Special attention is paid to non-determenistic objects which could be
+  produced by various random processes.
+
+
+## Contents
 
 1. [Features](#Features)
+2. [Related work](#Related work)
 2. [Build](#Build)
 3. [Documentation](#Documentation)
 4. [Quick start](#Quick-start)
 
-## Features:
 
-Compared to Nix:
+## Features
 
-* Like Nix, pylightnix offers purely-functional solution for data deployment problem.
-* Like Nix, pylightnix allows user to describe and run two-phased build
-  processes in a controllable and reproducible manner.
-* Unlike Nix, pylightnix doesn't aim at building operating systems. It
-  is more suitable for managing application-scale data storage.
-* Unlike Nix, pylightnix doesn't provide things like interpreter for build
-  expression language and build isolation. Here, both configuration and build
-  phases are defined in Python.
-* Unlike Nix, pylightnix is aware of non-deterministic builds, which allows
-  it to cover a potentially larger set of use cases.
+Functions:
+
+* Two-staged build process allows users to check the build plan before executing
+  it.
+* Focused on non-determenistic build processes, fomralizing comparison and selection
+  of build results.
+* Clean and compact implementation, suitable for:
+  - Data science / Machine learning experiments
+  - Applications which fit into [blackboard design
+    pattern](https://en.wikipedia.org/wiki/Blackboard_design_pattern).
 
 Implementation:
 
-* Compact codebase
-* Tested with [mypy static typechecker](http://mypy-lang.org/) and
-  [hypothesis](https://hypothesis.works)
-* Little-to-no non-standard Python dependencies (still we do require certain
-  system packages, like `wget` and [atool](https://www.nongnu.org/atool/)).
+* Written in Python 3.6, employing [mypy static
+  typechecker](http://mypy-lang.org/) and [hypothesis](https://hypothesis.works)
+  test framework
+* No non-standard Python dependencies (still we do require
+  [wget](https://www.gnu.org/software/wget/) and
+  [atool](https://www.nongnu.org/atool/) system packages).
 * Alas, Pylightnix is not a production-ready yet! Nor parallelism, neither network
-  synchronization are supported. Also, we didn't check it on any operating systems
+  synchronization are supported. Also, we didn't check it on any operating system
   besides Linux.
 
-## Build
+
+## Related work
+
+* [Nix](https://nixos.org) ([repo](https://github.com/nixos/nix))
+* [Spack](https://spack.io) ([repo](https://github.com/spack/spack))
+* [Popper](https://falsifiable.us) ([repo](https://github.com/systemslab/popper))
+* [CK](https://cknowledge.org) ([repo](https://github.com/ctuning/ck))
+
+
+## Build from source
 
 1. Clone the repo
    ```
