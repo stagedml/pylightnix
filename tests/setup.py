@@ -52,9 +52,9 @@ def mktestnode_nondetermenistic(m:Manager, sources:dict,
     with open(join(build_outpath(b),'artifact'),'w') as f:
       f.write(str(nondet()))
     return [build_outpath(b)]
-  def _match(dref:DRef, context:Context)->List[RRef]:
+  def _match(dref:DRef, context:Context)->Optional[List[RRef]]:
     max_i=-1
-    max_rref:List[RRef]=[]
+    max_rref:Optional[List[RRef]]=None
     for rref in store_rrefs(dref, context):
       with open(join(rref2path(rref),'artifact'),'r') as f:
         i=int(f.read())
@@ -62,7 +62,7 @@ def mktestnode_nondetermenistic(m:Manager, sources:dict,
           max_i=i
           max_rref=[rref]
     return max_rref
-  return mkdrv(m, _instantiate, _match, _realize)
+  return mkdrv(m, _instantiate(), _match, _realize)
 
 
 def mktestnode(m:Manager, sources:dict, buildtime=True)->DRef:

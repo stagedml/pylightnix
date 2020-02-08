@@ -9,8 +9,8 @@ from pylightnix.utils import (
 from pylightnix.types import (
     Dict, List, Any, Tuple, Union, Optional, Iterable, IO, Path, Hash, DRef,
     RRef, RefPath, HashPart, Callable, Context, Name, NamedTuple, Build,
-    Config, ConfigAttrs, Derivation, Stage, Manager, Instantiator, Matcher,
-    Realizer, Set, Closure, Generator, Key )
+    Config, ConfigAttrs, Derivation, Stage, Manager, Matcher, Realizer, Set,
+    Closure, Generator, Key )
 
 #: *Do not change!*
 #: Tracks the version of pylightnix storage
@@ -172,12 +172,13 @@ def rref2path(r:RRef)->Path:
   return Path(join(PYLIGHTNIX_STORE,dhash+'-'+nm,rhash))
 
 def mkrefpath(r:DRef, items:List[str]=[])->RefPath:
-  """ Construct a RefPath out of a reference `ref` and a path within the node """
+  """ Construct a [RefPath](#pylightnix.types.RefPath) out of a reference `ref`
+  and a path within the stage's realization """
   assert_valid_dref(r)
   return [str(r)]+items
 
 def store_config(r:Union[DRef,RRef])->Config:
-  """ Read the [Config](#pylightnix.types.Config) of the storage node `r`. """
+  """ Read the [Config](#pylightnix.types.Config) of the derivatoin referenced by `r`. """
   assert r[:4]=='rref' or r[:4]=='dref', (
       f"Invalid reference type {r}. Expected either RRef or DRef." )
   if r[:4]=='rref':
@@ -319,21 +320,16 @@ def store_realize(dref:DRef, l:Context, o:Path)->RRef:
 # |____/ \__,_|_|_|\__,_|
 
 
-def mkbuild(dref:DRef, context:Context, buildtime:bool=True, nouts:int=1)->Build:
+def mkbuild(dref:DRef, context:Context, buildtime:bool=True)->Build:
   c=store_config(dref)
   assert_valid_config(c)
   timeprefix=timestring()
-  outpaths=[Path(mkdtemp(prefix=f'{timeprefix}_{config_hash(c)[:8]}_', dir=PYLIGHTNIX_TMP)) for _ in range(nouts)]
   cattrs=store_cattrs(dref)
-  if buildtime:
-    for outpath in outpaths:
-      with open(join(outpath,'__buildtime__.txt'), 'w') as f:
-        f.write(timeprefix)
-  return Build(dref, cattrs, context, timeprefix, outpaths)
+  return Build(dref, cattrs, context, timeprefix, buildtime)
 
-def build_wrapper(f:Callable[[Build],None], buildtime:bool=True, nouts:int=1)->Realizer:
+def build_wrapper(f:Callable[[Build],None], buildtime:bool=True)->Realizer:
   def _wrapper(dref,context)->List[Path]:
-    b=mkbuild(dref,context,buildtime,nouts); f(b); return build_outpaths(b)
+    b=mkbuild(dref,context,buildtime); f(b); return b.outpaths
   return _wrapper
 
 def build_config(b:Build)->Config:
@@ -349,14 +345,26 @@ def build_context(b:Build)->Context:
 def build_cattrs(b:Build)->Any:
   return b.cattrs
 
-def build_outpaths(b:Build)->List[Path]:
+def build_outpaths(b:Build, nouts:int=1)->List[Path]:
+  if len(b.outpaths)==0:
+    prefix=f'{b.timeprefix}_{config_hash(build_config(b))[:8]}_'
+    outpaths=[Path(mkdtemp(prefix=prefix, dir=PYLIGHTNIX_TMP)) for _ in range(nouts)]
+    if b.buildtime:
+      for outpath in outpaths:
+        with open(join(outpath,'__buildtime__.txt'), 'w') as f:
+          f.write(b.timeprefix)
+    b.outpaths=outpaths
+  assert len(b.outpaths)==nouts, (
+      f"Build helper doesn't support changing the number of outputs dynamically. "
+      f"This instance has been already initialized with {len(b.outpaths)} outputs, but "
+      f"now was asked to return {nouts} outputs")
   return b.outpaths
 
 def build_outpath(b:Build)->Path:
   """ Return the output path of the realization being built. Output path is a
   path to valid temporary folder where user may put various build artifacts.
   Later this folder becomes a realization. """
-  paths=build_outpaths(b)
+  paths=build_outpaths(b, nouts=1)
   assert len(paths)==1
   return paths[0]
 
@@ -428,18 +436,32 @@ def context_serialize(c:Context)->str:
 #   |_|\___/| .__/|_|\___| \_/ \___|_|
 #           |_|
 
-def mkdrv(m:Manager, inst:Instantiator, matcher:Matcher, realizer:Realizer)->DRef:
-  dref=store_instantiate(inst())
+def mkdrv(m:Manager, config:Config, matcher:Matcher, realizer:Realizer)->DRef:
+  assert_valid_config(config)
+  dref=store_instantiate(config)
   if dref in m.builders:
-    print(f"Overwriting realizer for {dref} with config:\n{config_dict(store_config(dref))}" )
+    print(f"Overwriting Derivation {dref} with the new config:\n{config_dict(store_config(dref))}" )
   m.builders[dref]=Derivation(dref,matcher,realizer)
   return dref
 
-#! `PYLIGHTNIX_RECURSION` encodes the state of recursion manager, do not modify!
+#: `PYLIGHTNIX_RECURSION` encodes the state of [recursion
+#: manager](#pylightnix.core.recursion_manager), do not modify!
 PYLIGHTNIX_RECURSION:Dict[Any,List[str]]={}
 
 @contextmanager
 def recursion_manager(funcname:str):
+  """ Recursion manager is a helper context manager which detects and prevents
+  unwanted recursions. Currently, the following kinds of recursions are catched:
+
+  - `instantiate() -> <config> -> instantiate()`. Instantiate stores Derivation
+    in Manager and returns a DRef as a proof that given Manager contains given
+    Derivation. Recursive call to instantiate would break this idea by
+    introducing nested Managers.
+  - `realize() -> <realizer> -> realize()`. Sometimes this recursion is OK,
+    but in some cases it may lead to infinite loop, so we deny it completely for now.
+  - `realize() -> <realizer> -> instantiate()`. Instantiate produces new DRefs,
+    while realize should only work with existing DRefs which form a Closure.
+  """
   global PYLIGHTNIX_RECURSION
   if get_ident() not in PYLIGHTNIX_RECURSION:
     PYLIGHTNIX_RECURSION[get_ident()]=[]
@@ -466,18 +488,17 @@ def instantiate_(m:Manager, stage:Any, *args, **kwargs)->Closure:
     return Closure(target_dref,list(m.builders.values()))
 
 def instantiate(stage:Any, *args, **kwargs)->Closure:
-  """ `instantiate` takes the [Stage](#pylightnix.types.Stage) function and
-  produces corresponding derivation object. Resulting list contains derivation
-  of the current stage (in it's last element), preceeded by the derivations of
-  all it's dependencies.
+  """ Instantiate takes the [Stage](#pylightnix.types.Stage) function and
+  produces calculates the [Closure](#pylightnix.types.Closure) of it's
+  [Derivation](#pylightnix.types.Derivation).
 
-  Instantiation is the equivalent of type-checking in the typical compiler's
+  Instantiate's work is somewhat similar to the type-checking in the compiler's
   pipeline.
 
   User-defined [Instantiators](pylightnix.types.Instantiator) calculate stage
   configs during the instantiation. This calculations fall under certain
   restrictions. In particular, it shouldn't start new instantiations or
-  realizations recursively, and it shouldn't access realization objects in the
+  realizations recursively, and it shouldn't access stage realizations in the
   storage.
 
   New derivations are added to the storage by moving a temporary folder inside
@@ -485,31 +506,37 @@ def instantiate(stage:Any, *args, **kwargs)->Closure:
   """
   return instantiate_(Manager(), stage, *args, **kwargs)
 
-RealizeSeqGen = Generator[Tuple[DRef,Context,Derivation],Optional[List[RRef]],List[RRef]]
+RealizeSeqGen = Generator[Tuple[DRef,Context,Derivation],Tuple[Optional[List[RRef]],bool],List[RRef]]
 
 def realize(closure:Closure, force_rebuild:List[DRef]=[])->RRef:
   """ A simplified version of [realizeMany](#pylightnix.core.realizeMany).
   Expects only one result. """
-  rrefs=realizeMany(closure, force_interrupt=force_rebuild)
+  rrefs=realizeMany(closure, force_rebuild)
   assert len(rrefs)==1, (
       f"realize is to be used with single-output derivations, but derivation "
       f"{closure.dref} has {len(rrefs)} outputs:\n{rrefs}\n"
       f"Consider using `realizeMany`." )
   return rrefs[0]
 
-def realizeMany(closure:Closure, force_interrupt:List[DRef]=[])->List[RRef]:
-  """ Build one or many realizations of a derivation's
-  [Closure](#pylightnix.types.Closure) by executing it's
-  [Realizer](#pylightnix.types.Realizer).
+def realizeMany(closure:Closure, force_rebuild:List[DRef]=[])->List[RRef]:
+  """ Obtain one or many realizations of a stage's
+  [Closure](#pylightnix.types.Closure).
 
-  Return [one or many references to new realizations](#pylightnix.types.RRef).
-  Later, references could be [converted to system
-  paths](#pylightnix.core.rref2path) of build artifacts.
+  If [matching](#pylightnix.types.Matcher) realizations do exist in the storage,
+  and user doesn't ask for rebuild, realizeMany returns immediately.
 
-  For every new realization, it's node is created in the storage by moving
-  Realizer's output folders into the derivation folder. `realize`
-  assumes that derivation is still there at the moment of moving (See e.g.
-  [rmref](#pylightnix.bashlike.rmref))
+  Otherwize, it calls one or many [Realizers](#pylightnix.types.Realizer) to
+  get the desiared realizations.
+
+  Returned value is a list references to new
+  [realizations](#pylightnix.types.RRef). Every realization may be [converted
+  to system path](#pylightnix.core.rref2path) pointing to the folder which
+  contains build artifacts.
+
+  To create each new realization, realizeMany moves it's build artifacts inside
+  the storage by executing `os.replace` function which are meant to be atomic.
+  `realizeMany` assumes that derivation's config is present in the storage at
+  the moment of replacing (See e.g. [rmref](#pylightnix.bashlike.rmref))
 
   - FIXME: Stage's context is calculated inefficiently. Maybe one should track
     dep.tree to avoid calling `store_deepdeps` within the cycle.
@@ -517,10 +544,10 @@ def realizeMany(closure:Closure, force_interrupt:List[DRef]=[])->List[RRef]:
     remember and reproduce user's preferences.
   """
   try:
-    gen=realizeSeq(closure,force_interrupt)
+    gen=realizeSeq(closure,force_interrupt=force_rebuild)
     next(gen)
     while True:
-      gen.send([]) # Ask for default action
+      gen.send((None,False)) # Ask for default action
   except StopIteration as e:
     res=e.value
   return res
@@ -541,18 +568,18 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[])->RealizeSeqGen:
         dref_deps=store_deepdeps([dref])
         dref_context={k:v for k,v in context.items() if k in dref_deps}
         if dref in force_interrupt_:
-          rrefs=yield (dref,dref_context,drv)
-          if rrefs is None:
+          rrefs,abort=yield (dref,dref_context,drv)
+          if abort:
             return []
         else:
           rrefs=drv.matcher(dref,dref_context)
-        if len(rrefs)==0:
+        if rrefs is None:
           paths=drv.realizer(dref,context)
           rrefs_built=[store_realize(dref,context,path) for path in paths]
           rrefs_matched=drv.matcher(dref,context)
-          assert len(rrefs_matched)>0, \
-            f"Unsatisfiable matcher warning: newly obtained realizations of {dref} didn't convince it's matcher"
-          if (set(rrefs_built) & set(rrefs_matched)) == set():
+          assert rrefs_matched is not None, "Unsatisfiable matcher found"
+          if (set(rrefs_built) & set(rrefs_matched)) == set() and \
+             (set(rrefs_built) | set(rrefs_matched)) != set():
             print(f"Useless realization warning: Newly obtained realizations of "
                   f"{dref} appear to be useless. Change it's matcher to "
                   f"`exact({rrefs_built})` to capture built realizations explicitly")
@@ -578,6 +605,13 @@ def mksymlink(rref:RRef, tgtpath:Path, name:str, withtime=True)->Path:
   return symlink
 
 
+#  __  __       _       _
+# |  \/  | __ _| |_ ___| |__   ___ _ __ ___
+# | |\/| |/ _` | __/ __| '_ \ / _ \ '__/ __|
+# | |  | | (_| | || (__| | | |  __/ |  \__ \
+# |_|  |_|\__,_|\__\___|_| |_|\___|_|  |___/
+
+
 def match(keys:List[Key], top:Optional[int]=1, only:bool=False)->Matcher:
   """ Create a matcher by combining different sorting keys and selecting a
   top-n threshold.
@@ -589,7 +623,7 @@ def match(keys:List[Key], top:Optional[int]=1, only:bool=False)->Matcher:
     more than one realization.
   """
   keys=keys+[texthash()]
-  def _matcher(dref:DRef, context:Context)->List[RRef]:
+  def _matcher(dref:DRef, context:Context)->Optional[List[RRef]]:
     keymap={}
     rrefs=list(store_rrefs(dref, context))
     if only and len(rrefs)>1:
@@ -600,6 +634,8 @@ def match(keys:List[Key], top:Optional[int]=1, only:bool=False)->Matcher:
           key=lambda rref:keymap[rref], reverse=True)
     if top is not None:
       res=res[:top]
+    if len(res)<1:
+      return None
     return res
   return _matcher
 

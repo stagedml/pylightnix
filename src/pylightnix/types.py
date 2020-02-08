@@ -98,8 +98,8 @@ class Name(str):
 RefPath = List[Any]
 
 class Config:
-  """ `Config` is a JSON-serializable dictionary. Configs are required by
-  definintion of Stages and should determine the realization process.
+  """ Config is a JSON-serializable set of user-defined attributes of Pylightnix
+  node. Typically, configs should determine node's realization process.
 
   `Config` should match the requirements of `assert_valid_config`. Typically,
   it's `__dict__` should contain JSON-serializable types only: strings, string
@@ -107,7 +107,17 @@ class Config:
   other dicts. No bytes, `numpy.float32` or lambdas are allowed. Tuples are also
   forbidden because they are not preserved (decoded into lists).
 
-  Use [mkconfig](#pylightnix.core.mkconfig) to create Configs from dicts. """
+  A typical usage pattern is:
+  ```python
+  def somenode(m:Manager)->Dref
+    def _config():
+      nepoches = 4
+      learning_rate = 1e-5
+      hidden_size = 128
+      return Config(locals())
+    return mkdrv(_config(),...)
+  ```
+  """
   def __init__(self, d:dict):
     self.__dict__=deepcopy(d)
 
@@ -119,34 +129,34 @@ class ConfigAttrs:
       setattr(self,k,v)
 
 #: Context type is an alias for Python dict which maps
-#: [DRefs](#pylightnix.types.DRef) into [RRefs](#pylightnix.types.RRef).
+#: [DRefs](#pylightnix.types.DRef) into one or many
+#: [RRefs](#pylightnix.types.RRef).
 #:
-#: For any derivation, Context stores a mapping from it's dependencie's
-#: derivations to their realizations. In contrast to
-#: [Closure](#pylightnix.types.Closure) type, Context contains a minimal closure
-#: of derivation's dependencies.
+#: For any derivation, Context stores a mapping from it's dependency's
+#: derivations to realizations.
 Context=Dict[DRef,List[RRef]]
 
 class Build:
-  """Build is a helper object which tracks the process of [realization](#pylightnix.core.realize).
+  """Build is a helper object which tracks the process of stage's
+  [realization](#pylightnix.core.realize).
 
   Useful associated functions are:
   - [build_wrapper](#pylightnix.core.build_wrapper)
   - [build_config](#pylightnix.core.build_config)
   - [build_deref](#pylightnix.core.build_deref)
   - [build_outpath](#pylightnix.core.build_outpath) """
-  def __init__(self, dref:DRef, cattrs:ConfigAttrs, context:Context, timeprefix:str, outpaths:List[Path])->None:
+  def __init__(self, dref:DRef, cattrs:ConfigAttrs, context:Context, timeprefix:str, buildtime:bool)->None:
     self.dref=dref
     self.cattrs=cattrs
     self.context=context
     self.timeprefix=timeprefix
-    self.outpaths=outpaths
+    self.outpaths:List[Path]=[]
+    self.buildtime=buildtime
 
-Instantiator = Callable[[],Config]
-
-#: FIXME: Make matchers more algebra-friendly. E.g. one could make them return
-#: RRef ranks which could be composed and re-used.
-Matcher = Callable[[DRef,Context],List[RRef]]
+#: Matcher is a type of functions which select required realizations from the
+#: set of all available. Matchers may ask the caller to build new realizations by
+#: returning an empty list.
+Matcher = Callable[[DRef,Context],Optional[List[RRef]]]
 
 #: Realizer is a user-defined function which defines how to
 #: [build](#pylightnix.core.realize) a given derivation in a given

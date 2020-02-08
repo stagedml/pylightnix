@@ -23,11 +23,12 @@ def repl_continueMany(rh:ReplHelper, out_paths:Optional[List[Path]]=None)->Optio
       if rh.build is not None:
         out_paths=build_outpaths(rh.build)
         rh.build=None
+    rrefs:Optional[List[RRef]]
     if out_paths is not None:
       rrefs=[store_realize(rh.dref,rh.context,out_path) for out_path in out_paths]
     else:
-      rrefs=[]
-    rh.dref,rh.context,rh.drv=rh.gen.send(rrefs)
+      rrefs=None
+    rh.dref,rh.context,rh.drv=rh.gen.send((rrefs,False))
   except StopIteration as e:
     rh.gen=None
     rh.build=None
@@ -38,7 +39,7 @@ def repl_continue(rh:ReplHelper, out_paths:Optional[List[Path]]=None)->Optional[
   rrefs=repl_continueMany(rh, out_paths)
   if rrefs is None:
     return None
-  assert len(rrefs)==1
+  assert len(rrefs)==1, f"Acturally {len(rrefs)}"
   return rrefs[0]
 
 def repl_realize(closure:Closure, force_interrupt:List[DRef]=[])->ReplHelper:
@@ -62,17 +63,17 @@ def repl_rref(rh:ReplHelper)->Optional[RRef]:
   assert len(rrefs)==1
   return rrefs[0]
 
-def repl_build(rh:ReplHelper, buildtime:bool=True, nouts:int=1)->Build:
+def repl_build(rh:ReplHelper, buildtime:bool=True)->Build:
   assert rh.gen is not None
   assert rh.dref is not None
   assert rh.context is not None
-  rh.build=mkbuild(rh.dref, rh.context, buildtime=buildtime, nouts=nouts)
+  rh.build=mkbuild(rh.dref, rh.context, buildtime=buildtime)
   return rh.build
 
 def repl_cancel(rh:ReplHelper)->None:
   try:
     assert rh.gen is not None
-    rh.gen.send(None)
+    rh.gen.send((None,True))
   except StopIteration as e:
     rh.gen=None
     rh.build=None

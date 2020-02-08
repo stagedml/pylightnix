@@ -165,7 +165,7 @@ Finally, we introduce our new stage to Pylightnix:
 from pylightnix import mkdrv, build_wrapper, match_only
 
 hello:DRef = \
-  instantiate_inplace(mkdrv, hello_config, match_only(), build_wrapper(hello_realize))
+  instantiate_inplace(mkdrv, hello_config(), match_only(), build_wrapper(hello_realize))
 
 print(hello)
 ```

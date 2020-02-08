@@ -196,7 +196,7 @@ that safety checkes are done. Now we are ready for actual training.
 from pylightnix import mkdrv, build_wrapper
 
 def model(m)->DRef:
-  return mkdrv(m, mnist_config, mnist_match(), build_wrapper(mnist_build))
+  return mkdrv(m, mnist_config(), mnist_match(), build_wrapper(mnist_build))
 
 mnist_model = instantiate_inplace(model)
 print(mnist_model)

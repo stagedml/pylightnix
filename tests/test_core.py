@@ -29,11 +29,12 @@ def test_realize(d)->None:
     assert_valid_dref(dref)
     assert len(list(store_rrefs(dref, mkcontext()))) == 0
     rrefs=list(m.builders.values())[-1].matcher(dref, mkcontext())
-    assert rrefs==[]
+    assert rrefs is None
     rref=store_realize(dref, mkcontext(), list(m.builders.values())[-1].realizer(dref, mkcontext())[0])
     assert len(list(store_rrefs(dref, mkcontext()))) == 1
     assert_valid_rref(rref)
     rrefs2=list(m.builders.values())[-1].matcher(dref, mkcontext())
+    assert rrefs2 is not None
     rref2=rrefs2[0]
     assert rref==rref2
 
@@ -230,7 +231,7 @@ def test_build_deref()->None:
           with open(build_path(b, c.maman),'r') as s:
             d.write(s.read())
         return
-      return mkdrv(m, _instantiate, match_only(), build_wrapper(_realize))
+      return mkdrv(m, _instantiate(), match_only(), build_wrapper(_realize))
 
     def _setting(m:Manager)->DRef:
       n1 = mktestnode_nondetermenistic(m, {'a':'1'}, lambda : 42)
@@ -248,13 +249,14 @@ def test_build_cattrs():
         return mkconfig({'a':1,'b':2})
       def _realize(b)->None:
         c = build_cattrs(b)
+        o = build_outpath(b)
         assert hasattr(c,'a')
         assert hasattr(c,'b')
         assert not hasattr(c,'c')
         c.c = 'foo'
         assert hasattr(c,'c')
         return
-      return mkdrv(m, _instantiate, match_only(), build_wrapper(_realize))
+      return mkdrv(m, _instantiate(), match_only(), build_wrapper(_realize))
 
     rref = realize(instantiate(_setting))
     assert_valid_rref(rref)
@@ -310,7 +312,7 @@ def test_only()->None:
         nonlocal build
         with open(join(build_outpath(b),'artifact'),'w') as f: f.write(str(build))
         build+=1
-      return mkdrv(m, _instantiate, match_only(), build_wrapper(_realize))
+      return mkdrv(m, _instantiate(), match_only(), build_wrapper(_realize))
 
     closure = instantiate(_setting)
     assert len(list(store_rrefs_(closure.dref))) == 0
@@ -334,7 +336,8 @@ def test_build_name()->None:
       def _realize(b)->None:
         nonlocal n
         n = build_name(b)
-      return mkdrv(m, _instantiate, match_only(), build_wrapper(_realize))
+        o = build_outpath(b)
+      return mkdrv(m, _instantiate(), match_only(), build_wrapper(_realize))
 
     rref=realize(instantiate(_setting))
     assert n=='foobar'
@@ -353,7 +356,7 @@ def test_largest()->None:
         nonlocal score, fname, matcher
         with open(join(build_outpath(b),fname),'w') as f:
           f.write(score)
-      return mkdrv(m, _instantiate, match([matcher]), build_wrapper(_realize))
+      return mkdrv(m, _instantiate(), match([matcher]), build_wrapper(_realize))
 
     clo1=instantiate(_mklrg, {'a':1})
 
@@ -402,7 +405,7 @@ def test_latest():
         nonlocal nondet
         with open(join(build_outpath(b),'artifact'),'w') as f:
           f.write(nondet)
-      return mkdrv(m, _instantiate, match([latest()]), build_wrapper(_realize))
+      return mkdrv(m, _instantiate(), match([latest()]), build_wrapper(_realize))
 
     clo=instantiate(_mknode, {'a':randint(0,1000)})
     nrefs=len(list(store_rrefs_(clo.dref)))
