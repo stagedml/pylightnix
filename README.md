@@ -98,16 +98,33 @@ Implementation:
 
 ## Quick start
 
-[HELLO demo](./docs/demos/HELLO.md) will contain a kind of deeper introduction.
+Pylightnix could be used as a lightweight build system (but rather unsafe,
+because of the lack of built-in build isolation). This quick start illustrates
+this use-case by defining a couple of objects ("stages") required to build the
+GNU Hello program.
 
-1. Initialize the storage
+The below operations require pure Python environment with Pylightnix library
+installed.
+
+0. Install the development version of pylightnix and run IPython.
+
+   ```shell
+   $ pip install ipython git+https://github.com/stagedml/pylightnix
+   $ ipython
+   ```
+
+   Subsequent steps may be copypasted into the IPython shell
+
+1. Make sure that the storage is initialized
 
    ```python
    from pylightnix import store_initialize
    store_initialize()
    ```
 
-2. Use builtin `fetchurl` stage
+2. Define the process of  `fetchurl` stage. We use `_inplace` subset of
+   Pylightnix API for simplicity. It relies on a single global variable for
+   storing tracking the build plan.
 
    ```python
    from pylightnix import DRef, instantiate_inplace, fetchurl
@@ -115,6 +132,7 @@ Implementation:
 
    hello_version = '2.10'
 
+   # Phase 1, create the derivation
    hello_src:DRef = \
      instantiate_inplace(
        fetchurl,
@@ -122,20 +140,26 @@ Implementation:
        url=f'http://ftp.gnu.org/gnu/hello/hello-{hello_version}.tar.gz',
        sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b')
 
+   # Phase 2, realize the derivation into actual object
    hello_rref:RRef = realize_inplace(hello_src)
    print(hello_rref)
    ```
 
-3. Define a custom stage
+3. Define how to create an object containing GNU Hello binary, that is, a
+   Hello-builder stage
 
    ```python
+   from tempfile import TemporaryDirectory
+   from shutil import copytree
+   from os import getcwd, chdir, system
+   from os.path import join
    from pylightnix import Config, mkconfig
    from pylightnix import Path, Build, build_cattrs, build_outpath, build_path
-   from pylightnix import mkdrv, build_wrapper, match_only
+   from pylightnix import mkdrv, build_wrapper, match_latest
 
    def hello_config()->Config:
-     name = 'hello-bin'
-     src = [hello_src, f'hello-{hello_version}']
+     name:str = 'hello-bin'
+     src:RefPath = [hello_src, f'hello-{hello_version}']
      return mkconfig(locals())
 
    def hello_realize(b:Build)->None:
@@ -143,16 +167,29 @@ Implementation:
      o:Path = build_outpath(b)
      with TemporaryDirectory() as tmp:
        copytree(build_path(b,c.src),join(tmp,'src'))
-       chdir(join(tmp,'src'))
-       system(f'./configure --prefix=/usr')
-       system(f'make')
-       system(f'make install DESTDIR={o}')
+       cwd = getcwd()
+       try:
+         chdir(join(tmp,'src'))
+         system(f'./configure --prefix=/usr')
+         system(f'make')
+         system(f'make install DESTDIR={o}')
+       finally:
+         chdir(cwd)
 
+   # Phase 1, create the derivation. Note, we reference previous stage's
+   # derivation in the configuration of this derivation.
    hello_dref:DRef = \
-       instantiate_inplace(mkdrv, hello_config(), match_only(), build_wrapper(hello_realize))
+       instantiate_inplace(mkdrv, hello_config(), match_latest(), build_wrapper(hello_realize))
+
+   # Phase 2, realize the derivation
    hello_rref:RRef = realize_inplace(hello_dref)
 
+   print(hello_rref)
+   ```
 
+4. Access the hello-binary object, run the GNU Hello.
+
+   ```python
    from pylightnix import rref2path
 
    path=rref2path(hello_rref)
@@ -160,6 +197,9 @@ Implementation:
    ```
 
    Output:
+
    ```
    Hello World!
    ```
+
+
