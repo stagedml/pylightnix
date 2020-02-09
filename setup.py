@@ -16,6 +16,8 @@ assert SHA256SUM is not None, '`sha256sum` executable not found. It should be in
 setup(
   name="pylightnix",
   package_dir={'':'src'},
+  package_data={"pylightnix": ["py.typed"]},
+  zip_safe=False, # https://mypy.readthedocs.io/en/latest/installed_packages.html
   version="0.0.2",
   author="grwlf",
   author_email="grrwlf@gmail.com",
