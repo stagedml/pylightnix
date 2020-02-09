@@ -672,6 +672,8 @@ def texthash()->Key:
     return str(unrref(rref)[0])
   return _key
 
+def match_latest(top:int=1)->Matcher:
+  return match([latest()], top=top, only=False)
 
 def match_all()->Matcher:
   return match([], top=None, only=False)
