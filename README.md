@@ -187,7 +187,16 @@ installed.
    print(hello_rref)
    ```
 
-4. Access the hello-binary object, run the GNU Hello.
+   We now have a [realization
+   reference](./docs/Reference.md#pylightnix.types.RRef) which describes the
+   concrete folder in the filesystem storage, which contains the binary
+   artifacts we put there during the realization. Next calls to `realize` would
+   simply return the same reference unless we ask it to produce another
+   realization by passing `force_rebuild=[hello_dref]` argument (and unless the
+   build process really produces a different data).
+
+4. We now access our hello-binary object, and run the GNU Hello program it
+   contains.
 
    ```python
    from pylightnix import rref2path
