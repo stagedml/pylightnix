@@ -10,8 +10,8 @@ manager.
 Pylightnix provides a generic Python API, allowing programmers to:
 * Define linked immutable data objects by specifying how to create them
   and how to operate on them.
-* Actually create (build) such objects in a filesystem-based storage, query,
-  inspect and remove them as needed.
+* Actually create (build) such objects in a filesystem-based storage, access
+  their data, inspect dependencies, and remove them as needed.
 * Special attention is paid to the support of non-deterministic build processes.
 
 
@@ -19,7 +19,7 @@ Pylightnix provides a generic Python API, allowing programmers to:
 
 1. [Features](#Features)
 2. [Related work](#Related-work)
-2. [Build from source](#Build-from-source)
+2. [Install](#Install)
 3. [Documentation](#Documentation)
 4. [Quick start](#Quick-start)
 
@@ -39,12 +39,12 @@ Functions:
 
 Implementation:
 
-* Written in Python 3.6, employing [mypy static
-  typechecker](http://mypy-lang.org/) and [hypothesis](https://hypothesis.works)
-  test framework
-* No non-standard Python dependencies (still we do require
+* Written in Python 3.6, [mypy](http://mypy-lang.org/) typing information is
+  provided.
+* Tested with Pytest and [hypothesis](https://hypothesis.works).
+* No non-standard Python dependencies. We do require
   [wget](https://www.gnu.org/software/wget/) and
-  [atool](https://www.nongnu.org/atool/) system packages).
+  [atool](https://www.nongnu.org/atool/) system packages.
 * Alas, Pylightnix is not a production-ready yet! Nor parallelism, neither network
   synchronization are supported. Also, we didn't check it on any operating system
   besides Linux.
@@ -58,7 +58,18 @@ Implementation:
 * [CK](https://cknowledge.org) ([repo](https://github.com/ctuning/ck))
 
 
-## Build from source
+## Install
+
+#### Using Pip
+
+Pylightnix is not yet released on Pypi, the only way to install it with pip
+is to use the git link:
+
+ ```shell
+ $ pip3 install git+https://github.com/stagedml/pylightnix
+ ```
+
+#### Build from source
 
 1. Clone the repo
    ```
@@ -93,6 +104,7 @@ Implementation:
 
 * [API Reference](./docs/Reference.md)
 * [HELLO demo](./docs/demos/HELLO.md)
+* [Ultimatum tutorial](https://github.com/grwlf/ultimatum-game/blob/master/docs/Pylightnix.md)
 * [MNIST demo](./docs/demos/MNIST.md)
 * [Tests](./tests)
 
@@ -106,7 +118,7 @@ GNU Hello program.
 The below operations require pure Python environment with Pylightnix library
 installed.
 
-0. Install the development version of pylightnix and run IPython.
+1. Install the development version of pylightnix and run IPython.
 
    ```shell
    $ pip install ipython git+https://github.com/stagedml/pylightnix
@@ -115,14 +127,14 @@ installed.
 
    Subsequent steps may be copypasted into the IPython shell
 
-1. Make sure that the storage is initialized
+2. Make sure that the storage is initialized
 
    ```python
    from pylightnix import store_initialize
    store_initialize()
    ```
 
-2. Define the process of  `fetchurl` stage. We use `_inplace` subset of
+3. Define the process of  `fetchurl` stage. We use `_inplace` subset of
    Pylightnix API for simplicity. It relies on a single global variable for
    storing tracking the build plan.
 
@@ -145,7 +157,7 @@ installed.
    print(hello_rref)
    ```
 
-3. Define how to create an object containing GNU Hello binary, that is, a
+4. Define how to create an object containing GNU Hello binary, that is, a
    Hello-builder stage
 
    ```python
@@ -195,7 +207,7 @@ installed.
    realization by passing `force_rebuild=[hello_dref]` argument (and unless the
    build process really produces a different data).
 
-4. We now access our hello-binary object, and run the GNU Hello program it
+5. We now access our hello-binary object, and run the GNU Hello program it
    contains.
 
    ```python
