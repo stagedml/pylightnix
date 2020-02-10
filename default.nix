@@ -1,8 +1,9 @@
 { pkgs ?  import <nixpkgs> {}
-, doCheck ? false } :
+, python ? pkgs.python36Packages
+, doCheck ? false
+} :
 
-with pkgs.python36Packages;
-
+with python;
 buildPythonPackage {
   pname = "pylightnix";
   version = "0.0.2";
