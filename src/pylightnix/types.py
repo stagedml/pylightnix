@@ -35,12 +35,13 @@ class DRef(str):
   [instantiation](#pylightnix.core.instantiate).
 
   Derivation reference may be converted into a [realization
-  reference](#pylightnix.types.RRef) by either dereferencing (that is querying
-  for existing realizations) or [realizing](#pylightnix.core.realize) it from
-  scratch.
+  reference](#pylightnix.types.RRef) by either dereferencing (that is by
+  querying for existing realizations) or by
+  [realizing](#pylightnix.core.realize) it from scratch.
 
-  For derefencing, one can use [build_deref](#pylightnix.core.build_deref) at
-  build time or [store_deref](#pylightnix.core.store_deref) otherwise.
+  - For derefencing dependencies at the build time, see
+    [build_deref](#pylightnix.core.build_deref).
+  - For querying the storage, see [store_deref](#pylightnix.core.store_deref).
   """
   pass
 
@@ -140,11 +141,14 @@ class Build:
   """Build is a helper object which tracks the process of stage's
   [realization](#pylightnix.core.realize).
 
-  Useful associated functions are:
+  Associated functions are:
+
   - [build_wrapper](#pylightnix.core.build_wrapper)
   - [build_config](#pylightnix.core.build_config)
   - [build_deref](#pylightnix.core.build_deref)
-  - [build_outpath](#pylightnix.core.build_outpath) """
+  - [build_path](#pylightnix.core.build_path)
+  - [build_outpath](#pylightnix.core.build_outpath)
+  """
   def __init__(self, dref:DRef, cattrs:ConfigAttrs, context:Context, timeprefix:str, buildtime:bool)->None:
     self.dref=dref
     self.cattrs=cattrs
@@ -153,21 +157,35 @@ class Build:
     self.outpaths:List[Path]=[]
     self.buildtime=buildtime
 
-#: Matcher is a type of functions which select required realizations from the
-#: set of all available. Matchers may ask the caller to build new realizations by
-#: returning an empty list.
+#: Matcher is a type of user-defined functions which select required
+#: realizations from the set of all available. Matchers also may ask the caller
+#: to build new realizations by returning None.
+#:
+#: There are certain rules for matchers:
+#:
+#: - Matchers should be **pure**. It's output should depend only on the existing
+#:   build artifacts of available realizations.
+#: - Matchers should be **satisfiable** by the their realizaitons. If
+#:   matcher returns None, the core calls realizer and re-run the matcher only
+#:   once.
+#:
+#: Matchers may return an empty list instructs Pylightnix to leave it's
+#: derivation without realizations.
 Matcher = Callable[[DRef,Context],Optional[List[RRef]]]
 
-#: Realizer is a user-defined function which defines how to
-#: [build](#pylightnix.core.realize) a given derivation in a given
+#: Realizer is a type of user-defined functions implementing the
+#: [realization](#pylightnix.core.realize) of derivation in a given
 #: [context](#pylightnix.types.Context).
 #:
-#: For given derivation being built, it's Realizer may access the following
-#: objects via [Build helpers](#pylightnix.types.Build):
-#: - Configuration of the derivation and configurations of all it's
-#:   dependencies. See [build_config](#pylightnix.core.build_config).
-#: - Realizations of all the dependencies (and thus, their build artifacts).
-#:   See [build_path](#pylightnix.core.build_path).
+#: Realizer accepts the following arguments:
+#: - Derivation reference to build the realizations of
+#: - A Context encoding the result of dependency resolution.
+#:
+#: Realizer should return one or many system paths of output folders containing
+#: realization artifacts. Those folders will be destroyed (moved) by the core at
+#: the final stage of realization. [Build](#pylightnix.types.Build) helper
+#: objects may be used for simplified output path management and dependency
+#: access.
 Realizer = Callable[[DRef,Context],List[Path]]
 
 #: Derivation is a core type of Pylightnix. It keeps all the information about
