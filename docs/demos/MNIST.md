@@ -163,7 +163,7 @@ def mnist_match():
 
 
 
-### Realizer
+#### Realizer
 
 The third component of our Recognizer stage is `mnist_build` realizer which
 does the training of our MNIST model. The brief sequence of actions is follows:
@@ -268,7 +268,7 @@ print(mnist1)
 x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
-rref:6a224932449a41c23356f0835343be3b-5cd9248aabb529c207a20b8b9fc576ce-unnamed
+rref:5f904b93b238fdc040b15fe2abe360af-5cd9248aabb529c207a20b8b9fc576ce-unnamed
 ```
 
 
@@ -294,7 +294,7 @@ print(mnist2)
 x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
-rref:2fae561508067ed404bdfed2f403b95f-5cd9248aabb529c207a20b8b9fc576ce-unnamed
+rref:6b6d7166758aa2af654d1ddb0be7514a-5cd9248aabb529c207a20b8b9fc576ce-unnamed
 ```
 
 
@@ -323,7 +323,7 @@ catref(mnist1,['accuracy.txt'])
 ```
 
 ```
-['0.985']
+['0.9853']
 ```
 
 
@@ -332,7 +332,7 @@ catref(mnist2,['accuracy.txt'])
 ```
 
 ```
-['0.9874']
+['0.9861']
 ```
 
 
@@ -366,12 +366,12 @@ catref(mnist_best,['accuracy.txt'])
 ```
 
 ```
-['0.9874']
+['0.9861']
 ```
 
 
 
-#### Garbage collection
+##### Garbage collection
 
 TODO
 
