@@ -1,27 +1,32 @@
-from pylightnix.imports import ( strftime, strptime, gmtime, timegm, join, makedirs,
-    symlink, basename, mkdir, isdir, isfile, islink, remove, sha256, EEXIST,
-    json_dumps, json_loads, makedirs, replace, dirname, walk, abspath,
+from pylightnix.imports import ( datetime, tzlocal, gmtime, timegm, join,
+    makedirs, symlink, basename, mkdir, isdir, isfile, islink, remove, sha256,
+    EEXIST, json_dumps, json_loads, makedirs, replace, dirname, walk, abspath,
     normalize, re_sub, split, json_load, find_executable )
 
 from pylightnix.types import ( Hash, Path, List, Any, Optional, Iterable, IO,
     DRef, RRef, Tuple)
 
+#: Defines the `strftime`-compatible format of time, used in e.g.
+#: `__buildtime__.txt` files. Do not change!
+PYLIGHTNIX_TIME="%y%m%d-%H:%M:%S:%f%z"
 
-PYLIGHTNIX_TIME="%y%m%d-%H:%M:%S+0000"
-
-def timestring(sec:Optional[int]=None)->str:
-  """ Return a time string
-  - FIXME: Include a year
-  """
+def timestring(sec:Optional[float]=None)->str:
+  """ Return a time string, representing the local time, with a timezone
+  suffix. Resolution is subsecond, platform-dependent. """
   if sec is None:
-    return strftime(PYLIGHTNIX_TIME,gmtime())
+    dt=datetime.now(tzlocal())
   else:
-    return strftime(PYLIGHTNIX_TIME,gmtime(sec))
+    dt=datetime.fromtimestamp(sec,tz=tzlocal())
+  return dt.strftime(PYLIGHTNIX_TIME)
 
-def parsetime(time:str)->Optional[int]:
+def parsetime(time:str)->Optional[float]:
+  """ Parses the time string into floating-seconds since the Epoch. String
+  format is fixed and compatible with `timestring`. """
   try:
-    return timegm(strptime(time,PYLIGHTNIX_TIME))
-  except ValueError:
+    return datetime.strptime(time,PYLIGHTNIX_TIME).timestamp()
+  except ValueError as e:
+    return None
+  except OverflowError:
     return None
 
 def logdir(tag:str, logrootdir:Path, timetag:Optional[str]=None):

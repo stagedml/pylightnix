@@ -660,9 +660,9 @@ def latest()->Key:
     try:
       with open(join(rref2path(rref),'__buildtime__.txt'),'r') as f:
         t=parsetime(f.read())
-        return 0 if t is None else t
+        return float(0 if t is None else t)
     except OSError as e:
-      return 0
+      return float(0)
   return _key
 
 def exact(expected:List[RRef])->Key:

@@ -427,7 +427,7 @@ def test_match_latest():
     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=1)
     rref1=realize(clo)
     assert len(list(store_rrefs_(clo.dref)))==1
-    sleep(2) # match_latest has a 1-sec resolution
+    sleep(0.01)
     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=2)
     rref2=realize(clo, force_rebuild=[clo.dref])
     assert len(list(store_rrefs_(clo.dref)))==2
@@ -437,7 +437,7 @@ def test_match_latest():
     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=1)
     rref1=realize(clo)
     assert len(list(store_rrefs_(clo.dref)))==1
-    sleep(2) # match_latest has a 1-sec resolution
+    sleep(0.01)
     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=2, buildtime=False)
     rref2=realize(clo, force_rebuild=[clo.dref])
     assert len(list(store_rrefs_(clo.dref)))==2
