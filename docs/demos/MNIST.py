@@ -69,32 +69,41 @@ def mnist_build(b:Build)->None:
   with open(join(o,'accuracy.txt'),'w') as f:
     f.write(str(accuracy))
 
-from pylightnix import match_best
+from pylightnix import match_latest
 
 def mnist_match():
-  return match_best('accuracy.txt')
+  return match_latest()
 
 
 from pylightnix import mkdrv, build_wrapper
 
 def model(m)->DRef:
-  return mkdrv(m, mnist_config, mnist_match(), build_wrapper(mnist_build))
+  return mkdrv(m, mnist_config(), mnist_match(), build_wrapper(mnist_build))
 
 mnist_model = instantiate_inplace(model)
 print(mnist_model)
 
 from pylightnix import realize_inplace
 
-mnist1 = realize_inplace(mnist_model, force_rebuild=[mnist_model])
-mnist2 = realize_inplace(mnist_model, force_rebuild=[mnist_model])
+mnist1 = realize_inplace(mnist_model)
 print(mnist1)
+
+from pylightnix import realize_inplace
+
+mnist2 = realize_inplace(mnist_model, force_rebuild=[mnist_model])
 print(mnist2)
 
 from pylightnix import lsref, catref
 
-lsref(mnist_model)
+lsref(mnist1)
 catref(mnist1,['accuracy.txt'])
 catref(mnist2,['accuracy.txt'])
 
-mnistX = realize_inplace(mnist_model)
-print(mnistX)
+from pylightnix import match_best
+
+def model_best(m)->DRef:
+  return mkdrv(m, mnist_config(), match_best('accuracy.txt'), build_wrapper(mnist_build))
+
+mnist_best = realize_inplace(instantiate_inplace(model_best))
+
+catref(mnist_best,['accuracy.txt'])

@@ -32,6 +32,10 @@ rmtree('/tmp/pylightnix_hello_demo', ignore_errors=True)
 store_initialize(custom_store='/tmp/pylightnix_hello_demo', custom_tmp='/tmp')
 ```
 
+```
+Initializing non-existing /tmp/pylightnix_hello_demo
+```
+
 
 
 Location of the storage is kept in an internal global variable. It may be
@@ -87,8 +91,8 @@ print(hello_rref)
 ```
 
 ```
-Unpacking /tmp/0128-19:51:57+0300_2f56e6f9_h46y60rb/hello-2.10.tar.gz..
-Removing /tmp/0128-19:51:57+0300_2f56e6f9_h46y60rb/hello-2.10.tar.gz..
+Unpacking /tmp/200211-16:58:10+0000_2f56e6f9_8a26to72/hello-2.10.tar.gz..
+Removing /tmp/200211-16:58:10+0000_2f56e6f9_8a26to72/hello-2.10.tar.gz..
 rref:3fce7614ca738e68d6ad5b8a2057c488-2f56e6f987a1da0271915894ca19e28f-hello-src
 ```
 
@@ -186,10 +190,10 @@ Finally, we introduce our new stage to Pylightnix:
 
 
 ```python
-from pylightnix import mkdrv, build_wrapper, only
+from pylightnix import mkdrv, build_wrapper, match_only
 
 hello:DRef = \
-  instantiate_inplace(mkdrv, hello_config, only(), build_wrapper(hello_realize))
+  instantiate_inplace(mkdrv, hello_config(), match_only(), build_wrapper(hello_realize))
 
 print(hello)
 ```
@@ -211,7 +215,7 @@ print(rref)
 ```
 
 ```
-rref:702d63a0ba2d69c4ae816fe7d8586a2a-53ccb94819ad4c9f55acb61460ec97ed-hello-bin
+rref:9a01762070d0541c53047d65dc1e5af0-53ccb94819ad4c9f55acb61460ec97ed-hello-bin
 ```
 
 

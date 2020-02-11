@@ -49,6 +49,10 @@ rmtree('/tmp/pylightnix_mnist_demo', ignore_errors=True)
 store_initialize(custom_store='/tmp/pylightnix_mnist_demo', custom_tmp='/tmp')
 ```
 
+```
+Initializing non-existing /tmp/pylightnix_mnist_demo
+```
+
 
 
 Now we are ready to code.
@@ -91,7 +95,7 @@ directory to collect the output files from.
 
 ### Stage 2: the recognizer
 
-#### Stage configuration
+#### Configuration
 
 We need some parameters to run the training. A natural place for them is the
 configuration of our new stage.
@@ -109,7 +113,7 @@ def mnist_config()->Config:
 
 
 
-#### Stage realization
+### Realization
 
 Here comes the training itself. We access the configuration by calling
 `build_cattrs` function which returns an object with configuratin attributes.
@@ -173,7 +177,7 @@ the **output folder** `o`:
 - Checkpoint of a model, see `model.save_weights(join(o, 'weights.h5')...)`
 - Evaluation accuracy, see `open(join(o,'accuracy.txt'),'w')`
 
-#### Stage matching
+#### Matching
 
 In this section we will prepare to deal with multiple realizations of our stage.
 Training of machine learning model is generally a non-determenistic process,
@@ -188,10 +192,10 @@ weights and we surely want a model with the best accuracy.
 
 
 ```python
-from pylightnix import match_best
+from pylightnix import match_latest
 
 def mnist_match():
-  return match_best('accuracy.txt')
+  return match_latest()
 ```
 
 
@@ -205,6 +209,8 @@ Matchers should met the following important requirement:
 
 #### Putting it all together
 
+##### Instantiate
+
 Finally, we register our stage by calling `mkdrv` function. As before,
 `instantiate` provides us with a derivation reference. This reference is a proof
 that safety checkes are done. Now we are ready for actual training.
@@ -215,7 +221,7 @@ that safety checkes are done. Now we are ready for actual training.
 from pylightnix import mkdrv, build_wrapper
 
 def model(m)->DRef:
-  return mkdrv(m, mnist_config, mnist_match(), build_wrapper(mnist_build))
+  return mkdrv(m, mnist_config(), mnist_match(), build_wrapper(mnist_build))
 
 mnist_model = instantiate_inplace(model)
 print(mnist_model)
@@ -227,19 +233,38 @@ dref:5cd9248aabb529c207a20b8b9fc576ce-unnamed
 
 
 
+##### Realize
+
 To demonstrate how does matching work, let's ask Pylightnix to make more than
 one realization of our stage. We call `realize_inplace` function with
 `force_rebuild` argument two times. Without `force_rebuild`, the second call to
-realize would have returned an already existing realization obtained after the
-first call.
+realize would have returned an already existing realization obtained after the first call.
 
 
 ```python
 from pylightnix import realize_inplace
 
-mnist1 = realize_inplace(mnist_model, force_rebuild=[mnist_model])
-mnist2 = realize_inplace(mnist_model, force_rebuild=[mnist_model])
+mnist1 = realize_inplace(mnist_model)
 print(mnist1)
+```
+
+```
+x_train shape: (60000, 28, 28, 1)
+60000 train samples
+10000 test samples
+rref:1aacfac68d7f1bba30ae3132fcc327de-5cd9248aabb529c207a20b8b9fc576ce-unnamed
+```
+
+
+
+##### Forced realize
+
+
+
+```python
+from pylightnix import realize_inplace
+
+mnist2 = realize_inplace(mnist_model, force_rebuild=[mnist_model])
 print(mnist2)
 ```
 
@@ -247,29 +272,28 @@ print(mnist2)
 x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
-x_train shape: (60000, 28, 28, 1)
-60000 train samples
-10000 test samples
-rref:8a183675020e1f82105255a0c471b473-5cd9248aabb529c207a20b8b9fc576ce-unnamed
-rref:f886e96d66d6162980bc91fda149b5a1-5cd9248aabb529c207a20b8b9fc576ce-unnamed
+rref:342fa58da058bac050224ebb651dffde-5cd9248aabb529c207a20b8b9fc576ce-unnamed
 ```
 
 
 
-Lets see which model is better. Pylightnix comes with a set of simple bash-like oneliners
-designe to be used for quick manual checks.
+##### Best match
+
+We now have 2 realizations of our model, `mnist1` and `mnist2`. Lets see which
+one is better. As ML typical practitioners, let's just pick up a model with
+higher accuracy:) First, lets look at the accuracies. Pylightnix offers simple
+bash-like functions to quickly examine references. So far, our models have the
+following numbers:
 
 
 ```python
 from pylightnix import lsref, catref
 
-lsref(mnist_model)
+lsref(mnist1)
 ```
 
 ```
-['8a183675020e1f82105255a0c471b473',
- 'config.json',
- 'f886e96d66d6162980bc91fda149b5a1']
+['context.json', '__buildtime__.txt', 'accuracy.txt', 'weights.h5']
 ```
 
 
@@ -278,7 +302,7 @@ catref(mnist1,['accuracy.txt'])
 ```
 
 ```
-['0.9849']
+['0.9856']
 ```
 
 
@@ -287,26 +311,42 @@ catref(mnist2,['accuracy.txt'])
 ```
 
 ```
-['0.9847']
+['0.9863']
 ```
 
 
 
-Clearly,
-'mnist1'
-shows slightly better results. Our matcher thinks the same, so if we don't force
-Pylightnix to produce more realizations, it will return it as a better match:
+We prefer
+'mnist2'
+because it's accuracy is slightly better. This choice could be
+encoded in Pylightnix by using appropriate matcher. In our case we could use a
+standard matcher called `match_best`. It takes one filename argument  and
+matches with the realization, which have the biggest floating point number
+stored in a file with this name.
 
 
 ```python
-mnistX = realize_inplace(mnist_model)
-print(mnistX)
+from pylightnix import match_best
+
+def model_best(m)->DRef:
+  return mkdrv(m, mnist_config(), match_best('accuracy.txt'), build_wrapper(mnist_build))
+
+mnist_best = realize_inplace(instantiate_inplace(model_best))
 ```
 
 ```
-rref:8a183675020e1f82105255a0c471b473-5cd9248aabb529c207a20b8b9fc576ce-unnamed
+Overwriting matcher or realizer of derivation dref:5cd9248aabb529c207a20b8b9fc576ce-unnamed, configured as:
+{'num_epoches': 1, 'learning_rate': 0.001, 'dataset': ['dref:90531e2f6d210ae159c0100d59f50b2c-mnist', 'mnist.npz']}
 ```
 
+
+```python
+catref(mnist_best,['accuracy.txt'])
+```
+
+```
+['0.9863']
+```
 
 
 
