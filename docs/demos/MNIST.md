@@ -60,8 +60,8 @@ Now we are ready to code.
 ### Stage 1: the dataset
 
 MNIST is a well-known dataset, it is available in many places on the Internet.
-We may pick the closest one and download a single file `mnist.npz`.
-
+We need to pick the closest one by downloading it into `mnist.npz` file.
+Pylightnix has a built-in stage called `fetchurl` for that.
 
 
 ```python
@@ -84,28 +84,38 @@ dref:90531e2f6d210ae159c0100d59f50b2c-mnist
 
 
 
-What did we do? We created `mnist_dataset` variable of type
-[DRef](./../Reference.md#pylightnix.types.DRef) which takes a reference to a
-**Derivation** of `fetchurl` builtin stage. The existance of DRef means that: a)
-the configuration of it's stage does exist in the storage and it doesn't
-contain critical errors like invalid links. b) Pylighnix knows how to
-**Realize** this stage, i.e. what Python function to call on it and which
-directory to collect the output files from.
+What we just created is a `mnist_dataset` variable of type
+[DRef](./../Reference.md#pylightnix.types.DRef). It contains a reference to a
+**Derivation** of `fetchurl` builtin stage. The existance of DRefs means that:
+
+* The configuration of it's stage does exist in the storage and it doesn't
+  contain critical errors.
+* Pylighnix knows how to **Realize** this stage, i.e. what Python function to
+  call on it and which directory to collect the output files from.
 
 
 ### Stage 2: the recognizer
 
-#### Configuration
+In case of recognizer, we have no choice but to implement the stage from
+scratch. In Pylightnix every stage consists of 3 parts:
+[Config](./../Reference.md#pylightnix.types.Config),
+[Matcher](./../Reference.md#pylightnix.types.Matcher) and
+[Realizer](./../Reference.md#pylightnix.types.Realizer).
+
+#### Config
 
 We need some parameters to run the training. A natural place for them is the
-configuration of our new stage.
+stage configuration. The more parameters we move to configuration, the better,
+because Pylightnix executes all configurations **before** all realizations. This
+gives us an opportunity to check the build plan and catch some errors early,
+which may become a big time-saver for long dependency chains.
 
 
 ```python
-from pylightnix import Config, mkconfig
+from pylightnix import Config, RefPath, mkconfig
 
 def mnist_config()->Config:
-  dataset = [mnist_dataset, 'mnist.npz']
+  dataset:RefPath = [mnist_dataset, 'mnist.npz']
   learning_rate = 1e-3
   num_epoches = 1
   return mkconfig(locals())
@@ -113,14 +123,57 @@ def mnist_config()->Config:
 
 
 
-### Realization
+All we need is actually to wrap some dict with a `Config` marker object, but
+above we use `mkconfig` helper which makes checks on JSON-serializability and
+`locals` python magic to collect local variables into a dict.
 
-Here comes the training itself. We access the configuration by calling
-`build_cattrs` function which returns an object with configuratin attributes.
+Note how do we use `mnist_dataset` reference, obtained from the previous stage.
+By including it into Config, we added the **stage dependency**. Pylightnix will
+scan such dependencies and call stage realizers in the appropriate order.
 
-Attributes like strings or floats may be used directly, but refpaths have to be
-**dereferenced** first. So we access our dataset by calling `build_path(b,
-c.dataset)` function.
+Note also the list form `[mnist_dataset, 'mnist.npz']`. It is a so-called
+RefPath expression. Pylightnix has a helper function `build_path` which knows
+how to conver RefPath into real system Path at the time of realization.
+
+#### Matcher
+
+Matchers allow us to deal with uncertainty when we work with non-deterministic
+builders. ML training is often a non-deterministic process (for any
+configuration, we could get very different results after different runs because
+of e.g. true-random initialization).
+
+Pylightnix attempts to let us live with this fact by allowing multiple
+realizations for every derivation. In order to keep dependency resolution
+stable, we introduce the concept of **Matcher** which is a component of every
+Pylightnix derivation. Matcher match with one or more realizations (or ask the
+core to produce them). The core then 'freeze' matched realizations and use them
+as current derivation's representatives.
+
+Here we don't want to go deep into the concept and just use the `match_latest`
+matcher which by default picks the realization we have built last (Build-start
+time is measured by a timer with platform-dependent sub-second resolution).
+
+
+```python
+from pylightnix import match_latest
+
+def mnist_match():
+  return match_latest()
+```
+
+
+
+### Realizer
+
+The third component of our Recognizer stage is `mnist_build` realizer which
+does the training of our MNIST model. The brief sequence of actions is follows:
+
+1. We ask `build_outpath` directory to put realization artifacts into.
+2. We access the configuration by calling `build_cattrs` function which returns an
+   object containing our config fields as attributes.
+3. We also dereference our `dataset` Refpath by calling `build_path(b, c.dataset)`
+4. When training is complete, we save model checkpoint into `weights.h5` file
+   and the accuracy into `accuracy.txt` artifacts.
 
 
 ```python
@@ -172,48 +225,13 @@ def mnist_build(b:Build)->None:
 
 
 
-At the end of the training, we are going to save important artifacts into
-the **output folder** `o`:
-- Checkpoint of a model, see `model.save_weights(join(o, 'weights.h5')...)`
-- Evaluation accuracy, see `open(join(o,'accuracy.txt'),'w')`
-
-#### Matching
-
-In this section we will prepare to deal with multiple realizations of our stage.
-Training of machine learning model is generally a non-determenistic process,
-were results may change from run to run.
-
-Pylightnix is aware of this fact. We may deal with it by specifying a
-[matcher](./../Reference.md#pylightnix.types.Matcher) function, that will choose
-the best realization among available.
-
-In the machine learning domain, we often want to pick the realizations of mode
-weights and we surely want a model with the best accuracy.
-
-
-```python
-from pylightnix import match_latest
-
-def mnist_match():
-  return match_latest()
-```
-
-
-
-Matchers should met the following important requirement:
-
-- They should be pure, i.e. results should depend only on the information
-  contained in the input realizations (so, inside no global variables and no
-  randoms are allowed)
-
-
 #### Putting it all together
 
 ##### Instantiate
 
 Finally, we register our stage by calling `mkdrv` function. As before,
 `instantiate` provides us with a derivation reference. This reference is a proof
-that safety checkes are done. Now we are ready for actual training.
+that safety checkes has been completed.
 
 
 ```python
@@ -235,16 +253,14 @@ dref:5cd9248aabb529c207a20b8b9fc576ce-unnamed
 
 ##### Realize
 
-To demonstrate how does matching work, let's ask Pylightnix to make more than
-one realization of our stage. We call `realize_inplace` function with
-`force_rebuild` argument two times. Without `force_rebuild`, the second call to
-realize would have returned an already existing realization obtained after the first call.
+Now we are ready to actually get our dataset (note that we didn't access the
+network up to this moment) and start the training.
 
 
 ```python
-from pylightnix import realize_inplace
+from pylightnix import RRef, realize_inplace
 
-mnist1 = realize_inplace(mnist_model)
+mnist1:RRef = realize_inplace(mnist_model)
 print(mnist1)
 ```
 
@@ -252,13 +268,19 @@ print(mnist1)
 x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
-rref:1aacfac68d7f1bba30ae3132fcc327de-5cd9248aabb529c207a20b8b9fc576ce-unnamed
+rref:6a224932449a41c23356f0835343be3b-5cd9248aabb529c207a20b8b9fc576ce-unnamed
 ```
 
 
 
+After some time, we get the `mnist1` value which is a realization reference. One
+good property of `RRefs` is that we could always convert them into system paths.
+
 ##### Forced realize
 
+By default, subsequent calls to `realize` will return RRef which is already
+exists. But since Pylightnix supports multiple realizations, we could ask it to
+produce new realizations regardless of what Matcher thinks:
 
 
 ```python
@@ -272,18 +294,17 @@ print(mnist2)
 x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
-rref:342fa58da058bac050224ebb651dffde-5cd9248aabb529c207a20b8b9fc576ce-unnamed
+rref:2fae561508067ed404bdfed2f403b95f-5cd9248aabb529c207a20b8b9fc576ce-unnamed
 ```
 
 
 
 ##### Best match
 
-We now have 2 realizations of our model, `mnist1` and `mnist2`. Lets see which
-one is better. As ML typical practitioners, let's just pick up a model with
-higher accuracy:) First, lets look at the accuracies. Pylightnix offers simple
-bash-like functions to quickly examine references. So far, our models have the
-following numbers:
+Now we have 2 realizations of our model, `mnist1` and `mnist2`. Lets see which
+one is better. As good ML practitioners, let's just pick the model with higher
+accuracy:) First, lets review the accuracies we have. Pylightnix offers simple
+bash-like functions to quickly examine references, we could use them as follows:
 
 
 ```python
@@ -302,7 +323,7 @@ catref(mnist1,['accuracy.txt'])
 ```
 
 ```
-['0.9856']
+['0.985']
 ```
 
 
@@ -311,7 +332,7 @@ catref(mnist2,['accuracy.txt'])
 ```
 
 ```
-['0.9863']
+['0.9874']
 ```
 
 
@@ -321,7 +342,7 @@ We prefer
 because it's accuracy is slightly better. This choice could be
 encoded in Pylightnix by using appropriate matcher. In our case we could use a
 standard matcher called `match_best`. It takes one filename argument  and
-matches with the realization, which have the biggest floating point number
+matches with the realization, which has the biggest floating point number
 stored in a file with this name.
 
 
@@ -345,10 +366,16 @@ catref(mnist_best,['accuracy.txt'])
 ```
 
 ```
-['0.9863']
+['0.9874']
 ```
 
 
+
+#### Garbage collection
+
+TODO
+
+See `rmref`.
 
 ### Stage 3: the application
 

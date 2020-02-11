@@ -16,13 +16,18 @@ mnist_dataset:DRef = \
 
 print(mnist_dataset)
 
-from pylightnix import Config, mkconfig
+from pylightnix import Config, RefPath, mkconfig
 
 def mnist_config()->Config:
-  dataset = [mnist_dataset, 'mnist.npz']
+  dataset:RefPath = [mnist_dataset, 'mnist.npz']
   learning_rate = 1e-3
   num_epoches = 1
   return mkconfig(locals())
+
+from pylightnix import match_latest
+
+def mnist_match():
+  return match_latest()
 
 from pylightnix import ( Build, build_outpath, build_cattrs, build_path )
 from os.path import join
@@ -69,11 +74,6 @@ def mnist_build(b:Build)->None:
   with open(join(o,'accuracy.txt'),'w') as f:
     f.write(str(accuracy))
 
-from pylightnix import match_latest
-
-def mnist_match():
-  return match_latest()
-
 
 from pylightnix import mkdrv, build_wrapper
 
@@ -83,9 +83,9 @@ def model(m)->DRef:
 mnist_model = instantiate_inplace(model)
 print(mnist_model)
 
-from pylightnix import realize_inplace
+from pylightnix import RRef, realize_inplace
 
-mnist1 = realize_inplace(mnist_model)
+mnist1:RRef = realize_inplace(mnist_model)
 print(mnist1)
 
 from pylightnix import realize_inplace
