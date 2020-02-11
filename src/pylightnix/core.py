@@ -441,7 +441,8 @@ def mkdrv(m:Manager, config:Config, matcher:Matcher, realizer:Realizer)->DRef:
   assert_valid_config(config)
   dref=store_instantiate(config)
   if dref in m.builders:
-    print(f"Overwriting Derivation {dref} with the new config:\n{config_dict(store_config(dref))}" )
+    print(f"Overwriting matcher or realizer of derivation {dref}, configured "
+          f"as:\n{config_dict(store_config(dref))}")
   m.builders[dref]=Derivation(dref,matcher,realizer)
   return dref
 
