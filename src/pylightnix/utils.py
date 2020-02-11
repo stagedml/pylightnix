@@ -154,6 +154,14 @@ def tryread(path:Path)->Optional[str]:
   except Exception:
     return None
 
+def trywrite(path:Path, data:str)->bool:
+  try:
+    with open(path,'w') as f:
+      f.write(data)
+    return True
+  except Exception:
+    return False
+
 def get_executable(name:str, not_found_message:str)->str:
   e=find_executable(name)
   assert e is not None, not_found_message

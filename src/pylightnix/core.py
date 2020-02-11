@@ -1,7 +1,8 @@
 from pylightnix.imports import (
     sha256, deepcopy, isdir, makedirs, join, json_dump, json_load, json_dumps,
     json_loads, isfile, relpath, listdir, rmtree, mkdtemp, replace, environ,
-    split, re_match, ENOTEMPTY, get_ident, contextmanager, OrderedDict, lstat )
+    split, re_match, ENOTEMPTY, get_ident, contextmanager, OrderedDict, lstat,
+    maxsize )
 from pylightnix.utils import (
     dirhash, assert_serializable, assert_valid_dict, dicthash, scanref_dict,
     scanref_list, forcelink, timestring, parsetime, datahash, readjson,
@@ -577,12 +578,14 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[])->RealizeSeqGen:
           paths=drv.realizer(dref,context)
           rrefs_built=[store_realize(dref,context,path) for path in paths]
           rrefs_matched=drv.matcher(dref,context)
-          assert rrefs_matched is not None, "Unsatisfiable matcher found"
+          assert rrefs_matched is not None, (
+            f"Derivation {dref}: Matcher repeatedly asked the core to "
+            "realize. Probably, realizer doesn't match the matcher" )
           if (set(rrefs_built) & set(rrefs_matched)) == set() and \
              (set(rrefs_built) | set(rrefs_matched)) != set():
-            print(f"Useless realization warning: Newly obtained realizations of "
-                  f"{dref} appear to be useless. Change it's matcher to "
-                  f"`exact({rrefs_built})` to capture built realizations explicitly")
+            print(f"Warning: None of the newly obtained realizations of "
+                  f"{dref} were matched by the matcher. To capture those "
+                  f"realizations explicitly, try `matcher([exact(..)])`")
           rrefs=rrefs_matched
         context=context_add(context,dref,rrefs)
     assert rrefs is not None
@@ -612,30 +615,42 @@ def mksymlink(rref:RRef, tgtpath:Path, name:str, withtime=True)->Path:
 # |_|  |_|\__,_|\__\___|_| |_|\___|_|  |___/
 
 
-def match(keys:List[Key], top:Optional[int]=1, only:bool=False)->Matcher:
+def match(keys:List[Key],
+          rmin:Optional[int]=1,
+          rmax:Optional[int]=1,
+          exclusive:bool=False)->Matcher:
   """ Create a matcher by combining different sorting keys and selecting a
   top-n threshold.
 
   Parameters:
   - `keys`: List of [Key](#pylightnix.types.Key) functions. Defaults ot
-  - `top`:  An integer selecting how many realizations to accept
-  - `only`: Set to True to enable `only` mode, where match asserts if it founds
-    more than one realization.
+  - `rmin`: An integer selecting the minimum number of realizations to accept.
+    If non-None, Realizer is expected to produce at least this number of
+    realizations.
+  - `rmax`: An integer selecting the maximum number of realizations to return
+    (realizer is free to produce more realizations)
+  - `exclusive`: If true, asserts if the number of realizations exceeds `rmax`
   """
+  assert (rmin or 0) <= (rmax or maxsize)
+  assert not (len(keys)>0 and (rmax is None)), (
+    "Specifying non-default sorting keys has no effect without specifying `rmax`.")
+  assert not ((rmax is None) and exclusive), (
+    "Specifying `exclusive` has no effect without specifying `rmax`.")
   keys=keys+[texthash()]
   def _matcher(dref:DRef, context:Context)->Optional[List[RRef]]:
     keymap={}
     rrefs=list(store_rrefs(dref, context))
-    if only and len(rrefs)>1:
-      assert False, f"match expects no more than one realization for {dref}, but there are {len(rrefs)} of them"
     for rref in rrefs:
       keymap[rref]=[k(rref) for k in keys]
     res=sorted(filter(lambda rref: None not in keymap[rref], rrefs),
           key=lambda rref:keymap[rref], reverse=True)
-    if top is not None:
-      res=res[:top]
-    if len(res)<1:
-      return None
+    if rmin is not None:
+      if not rmin<=len(res):
+        return None
+    if rmax is not None:
+      if not len(res)<=rmax:
+        assert not exclusive
+        res=res[:rmax]
     return res
   return _matcher
 
@@ -672,30 +687,36 @@ def texthash()->Key:
     return str(unrref(rref)[0])
   return _key
 
-def match_latest(top:int=1)->Matcher:
-  return match([latest()], top=top, only=False)
+def match_n(n:int=1, keys=[])->Matcher:
+  """ Return a [Matcher](#pylightnix.types.Matcher) which matchs with any
+  number of realizations which is greater or equal than `n`. """
+  return match(keys, rmin=n, rmax=n, exclusive=False)
+
+def match_latest(n:int=1)->Matcher:
+  return match_n(n, keys=[latest()])
+
+def match_best(filename:str, n:int=1)->Matcher:
+  """ Return a [Matcher](#pylightnix.types.Matcher) which checks contexts of
+  realizations and then compares them based on stage-specific scores. For each
+  realization, score is read from artifact file named `filename` that should
+  contain a single float number. Realization with largest score wins.  """
+  return match_n(n, keys=[best(filename)])
 
 def match_all()->Matcher:
-  return match([], top=None, only=False)
+  """ Return a [Matcher](#pylightnix.types.Matcher) which matchs with **ANY**
+  number of realizations, including zero. """
+  return match([], rmin=None, rmax=None, exclusive=False)
 
-
-def match_some(top:int=1)->Matcher:
-  return match([], top=top, only=False)
-
+def match_some(n:int=1)->Matcher:
+  """ Return a [Matcher](#pylightnix.types.Matcher) which matchs with any
+  number of realizations which is greater or equal than `n`. """
+  return match([], rmin=n, rmax=None, exclusive=False)
 
 def match_only()->Matcher:
   """ Return a [Matcher](#pylightnix.types.Matcher) which expects no more than
   one realization for every [derivation](#pylightnix.types.DRef), given the
   [context](#pylightnix.types.Context). """
-  return match([texthash()], only=True)
-
-
-def match_best(filename:str)->Matcher:
-  """ Return a [Matcher](#pylightnix.types.Matcher) which checks contexts of
-  realizations and then compares them based on stage-specific scores. For each
-  realization, score is read from artifact file named `filename` that should
-  contain a single float number. Realization with largest score wins.  """
-  return match([best(filename)])
+  return match([], rmin=1, rmax=1, exclusive=True)
 
 
 #     _                      _
@@ -776,7 +797,6 @@ def assert_have_realizers(m:Manager, drefs:List[DRef])->None:
 
 def assert_recursion_manager_empty():
   global PYLIGHTNIX_RECURSION
-  if get_ident() not in PYLIGHTNIX_RECURSION:
-    PYLIGHTNIX_RECURSION[get_ident()]=[]
-  assert len(PYLIGHTNIX_RECURSION[get_ident()])==0
+  stack=PYLIGHTNIX_RECURSION.get(get_ident(),[])
+  assert len(stack)==0
 

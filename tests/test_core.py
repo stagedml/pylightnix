@@ -1,14 +1,14 @@
-from pylightnix import (
-    Config, instantiate, DRef, RRef, Path, mklogdir, dirhash,
-    assert_valid_dref, assert_valid_rref, store_deps, store_deepdeps, store_gc,
-    assert_valid_hash, assert_valid_config, Manager, mkcontext, store_realize,
-    store_rrefs, mkdref, mkrref, unrref, undref, realize, rref2dref,
-    store_config, mkconfig, Build, Context, build_outpath, match_only, mkdrv,
-    store_deref, rref2path, store_rrefs_, config_cattrs, mksymlink,
-    store_cattrs, build_deref, build_path, mkrefpath, build_config,
+from pylightnix import ( Config, instantiate, DRef, RRef, Path, mklogdir,
+    dirhash, assert_valid_dref, assert_valid_rref, store_deps, store_deepdeps,
+    store_gc, assert_valid_hash, assert_valid_config, Manager, mkcontext,
+    store_realize, store_rrefs, mkdref, mkrref, unrref, undref, realize,
+    rref2dref, store_config, mkconfig, Build, Context, build_outpath,
+    match_only, mkdrv, store_deref, rref2path, store_rrefs_, config_cattrs,
+    mksymlink, store_cattrs, build_deref, build_path, mkrefpath, build_config,
     store_drefs, store_rrefs, store_rrefs_, build_wrapper, recursion_manager,
-    build_cattrs, build_name, match_best, tryread, assert_recursion_manager_empty,
-    match, latest, best, exact, Key )
+    build_cattrs, build_name, match_best, tryread, trywrite,
+    assert_recursion_manager_empty, match, latest, best, exact, Key,
+    match_latest, match_all, match_some, match_n, realizeMany, build_outpaths )
 
 from tests.imports import ( given, Any, Callable, join, Optional, islink,
     isfile, List, randint, sleep )
@@ -77,7 +77,10 @@ def test_no_rref_deps()->None:
     try:
       rref=realize(instantiate(mktestnode,{'a':1}))
       clo=instantiate(mktestnode,{'a':1,'maman':rref})
-      raise ShouldHaveFailed('rref deps are forbidden')
+      raise ShouldHaveFailed('''
+        RRef deps are forbidden because otherwise we can't see the whole plan
+        of realization before attemptung to evaluate it.
+        ''')
     except AssertionError:
       pass
 
@@ -111,6 +114,28 @@ def test_repeated_realize()->None:
     rref2 = realize(instantiate(_setting))
     rref3 = realize(instantiate(_setting), force_rebuild=[instantiate(_setting).dref])
     assert rref1==rref2 and rref2==rref3
+
+def test_minimal_closure():
+  with setup_storage('test_minimal_closure'):
+
+    def _somenode(m):
+      return mktestnode(m,{'a':0})
+
+    def _anothernode(m):
+      n1=mktestnode(m,{'a':1})
+      n2=_somenode(m)
+      n3=mktestnode(m,{'maman':n1,'papa':n2})
+      return n3
+
+    assert_recursion_manager_empty()
+
+    rref1=realize(instantiate(_somenode))
+    rref=realize(instantiate(_anothernode))
+    rref2=store_deref(rref,store_cattrs(rref).papa)
+    assert rref1==rref2, '''
+      Nodes with no dependencies should have empty context, regardless of their
+      position in the closure.
+      '''
 
 
 def test_non_determenistic()->None:
@@ -261,6 +286,21 @@ def test_build_cattrs():
     rref = realize(instantiate(_setting))
     assert_valid_rref(rref)
 
+def test_build_name()->None:
+  with setup_storage('test_build_name'):
+    n:str = ""
+    def _setting(m:Manager)->DRef:
+      def _instantiate()->Config:
+        return mkconfig({'name':'foobar'})
+      def _realize(b)->None:
+        nonlocal n
+        n = build_name(b)
+        o = build_outpath(b)
+      return mkdrv(m, _instantiate(), match_only(), build_wrapper(_realize))
+
+    rref=realize(instantiate(_setting))
+    assert n=='foobar'
+
 def test_ignored_stage()->None:
   with setup_storage('test_ignored_stage'):
     n1:DRef; n2:DRef; n3:DRef; n4:DRef
@@ -301,8 +341,8 @@ def test_overwrite_realizer()->None:
     rref_n3=store_deref(rref_n2, store_cattrs(rref_n2).maman)
     assert open(join(rref2path(rref_n3),'artifact'),'r').read() == '42'
 
-def test_only()->None:
-  with setup_storage('test_only'):
+def test_match_only()->None:
+  with setup_storage('test_match_only'):
 
     build:int = 0
     def _setting(m:Manager)->DRef:
@@ -327,39 +367,21 @@ def test_only()->None:
       pass
     assert len(list(store_rrefs_(closure.dref))) == 2
 
-def test_build_name()->None:
-  with setup_storage('test_build_name'):
-    n:str = ""
-    def _setting(m:Manager)->DRef:
-      def _instantiate()->Config:
-        return mkconfig({'name':'foobar'})
-      def _realize(b)->None:
-        nonlocal n
-        n = build_name(b)
-        o = build_outpath(b)
-      return mkdrv(m, _instantiate(), match_only(), build_wrapper(_realize))
 
-    rref=realize(instantiate(_setting))
-    assert n=='foobar'
-
-
-def test_largest()->None:
-  with setup_storage('test_largest'):
-
+def test_match_best()->None:
+  with setup_storage('test_match_best'):
     fname:str='score'
     score:str='0'
-    matcher:Key=best('score')
-    def _mklrg(m, cfg):
+    def _mklrg(m, cfg, matcher):
       def _instantiate()->Config:
         return mkconfig(cfg)
       def _realize(b:Build)->None:
         nonlocal score, fname, matcher
         with open(join(build_outpath(b),fname),'w') as f:
           f.write(score)
-      return mkdrv(m, _instantiate(), match([matcher]), build_wrapper(_realize))
+      return mkdrv(m, _instantiate(), matcher, build_wrapper(_realize))
 
-    clo1=instantiate(_mklrg, {'a':1})
-
+    clo1=instantiate(_mklrg, {'a':1}, matcher=match_best('score'))
     score='0'
     rref1a=realize(clo1)
     assert isfile(join(rref2path(rref1a),'score'))
@@ -381,61 +403,98 @@ def test_largest()->None:
     assert not isfile(join(rref2path(rref1d),'baz'))
     assert len(list(store_rrefs_(clo1.dref))) == 4
 
-    matcher=exact([RRef('rref:64617f2a2a9446340241b071413f6f68-a76762e9bc54e47c09455bdb226e2388-unnamed')])
-    clo1=instantiate(_mklrg, {'a':1})
+    clo1=instantiate(_mklrg, {'a':1},
+      matcher=match([exact([
+        RRef('rref:64617f2a2a9446340241b071413f6f68-a76762e9bc54e47c09455bdb226e2388-unnamed')])]))
     rref1e=realize(clo1)
     assert isfile(join(rref2path(rref1e),'baz'))
     assert len(list(store_rrefs_(clo1.dref))) == 4
 
-    matcher=best('score')
-    clo1=instantiate(_mklrg, {'a':1})
+    clo1=instantiate(_mklrg, {'a':1}, matcher=match_best('score'))
     rref1=realize(clo1)
     assert isfile(join(rref2path(rref1),'score'))
     assert tryread(Path(join(rref2path(rref1),'score')))=='1'
 
 
-def test_latest():
-  with setup_storage('test_latest'):
-    nondet:str
+def test_match_latest():
+  def _mknode(m, cfg, matcher, nouts:int, data=0, buildtime=True):
+    def _realize(b:Build)->None:
+      for i,out in enumerate(build_outpaths(b, nouts=nouts)):
+        assert trywrite(Path(join(out,'artifact')),str(data)+'_'+str(i))
+    return mkdrv(m, Config(cfg), matcher, build_wrapper(_realize, buildtime=buildtime))
 
-    def _mknode(m,cfg):
-      def _instantiate()->Config:
-        return Config(cfg)
-      def _realize(b:Build)->None:
-        nonlocal nondet
-        with open(join(build_outpath(b),'artifact'),'w') as f:
-          f.write(nondet)
-      return mkdrv(m, _instantiate(), match([latest()]), build_wrapper(_realize))
-
-    clo=instantiate(_mknode, {'a':randint(0,1000)})
-    nrefs=len(list(store_rrefs_(clo.dref)))
-    seed=randint(0,1000)
-    nondet=str(seed)
+  with setup_storage('test_match_latest'):
+    clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=1)
     rref1=realize(clo)
-    assert len(list(store_rrefs_(clo.dref)))==nrefs+1
-    nondet=str(seed+1)
-    sleep(2) # latest has a 1-sec resolution
+    assert len(list(store_rrefs_(clo.dref)))==1
+    sleep(2) # match_latest has a 1-sec resolution
+    clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=2)
     rref2=realize(clo, force_rebuild=[clo.dref])
-    assert len(list(store_rrefs_(clo.dref)))==nrefs+2
-    assert tryread(Path(join(rref2path(rref2),'artifact')))==nondet
+    assert len(list(store_rrefs_(clo.dref)))==2
+    assert tryread(Path(join(rref2path(rref2),'artifact')))==str('2_0')
+
+  with setup_storage('test_match_latest'):
+    clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=1)
+    rref1=realize(clo)
+    assert len(list(store_rrefs_(clo.dref)))==1
+    sleep(2) # match_latest has a 1-sec resolution
+    clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=2, buildtime=False)
+    rref2=realize(clo, force_rebuild=[clo.dref])
+    assert len(list(store_rrefs_(clo.dref)))==2
+    assert tryread(Path(join(rref2path(rref2),'artifact')))==str('1_0')
+
+  for i in range(10):
+    with setup_storage('test_match_latest'):
+      nouts=randint(1,10)
+      ntop=randint(1,10)
+      try:
+        clo=instantiate(_mknode, {'a':0}, match_latest(ntop), nouts)
+        rrefs=realizeMany(clo)
+        times=set([tryread(Path(join(rref2path(rref),'__buildtime__.txt'))) for rref in rrefs])
+        assert len(list(times))==1
+      except AssertionError:
+        assert ntop>nouts
 
 
-def test_minimal_closure():
-  with setup_storage('test_minimal_closure'):
+def test_match_all():
+  """ match_all() should match all the references """
+  def _mknode(m,cfg, matcher, nouts:int):
+    def _realize(b:Build)->None:
+      for i,out in enumerate(build_outpaths(b, nouts=nouts)):
+        assert trywrite(Path(join(out,'artifact')),str(nouts+i))
+    return mkdrv(m, Config(cfg), matcher, build_wrapper(_realize))
 
-    def _somenode(m):
-      return mktestnode(m,{'a':0})
+  with setup_storage('test_match_all_empty'):
+    clo=instantiate(_mknode, {'a':1}, match_all(), 5)
+    rrefs=realizeMany(clo)
+    assert len(rrefs)==0
 
-    def _anothernode(m):
-      n1=mktestnode(m,{'a':1})
-      n2=_somenode(m)
-      n3=mktestnode(m,{'maman':n1,'papa':n2})
-      return n3
+  for i in range(10):
+    data=randint(1,10)
+    nouts=randint(1,10)
+    with setup_storage('test_match_all'):
+      clo=instantiate(_mknode, {'a':data}, match_n(1), nouts)
+      rrefs_1=realizeMany(clo)
+      assert len(rrefs_1)==1
+      clo=instantiate(_mknode, {'a':data}, match_all(), nouts)
+      rrefs_all=realizeMany(clo)
+      assert len(rrefs_all)==nouts
 
-    assert_recursion_manager_empty()
+def test_match_some():
+  with setup_storage('test_match_some'):
+    def _mknode(m,cfg, nouts:int, top:int):
+      def _realize(b:Build)->None:
+        for i,out in enumerate(build_outpaths(b, nouts=nouts)):
+          assert trywrite(Path(join(out,'artifact')),str(nouts+i))
+      return mkdrv(m, Config(cfg), match_some(n=top), build_wrapper(_realize))
 
-    rref1=realize(instantiate(_somenode))
-    rref=realize(instantiate(_anothernode))
-    rref2=store_deref(rref,store_cattrs(rref).papa)
-    assert rref1==rref2
+    for i in range(10):
+      nouts=randint(1,10)
+      top=randint(1,10)
+      clo=instantiate(_mknode, {'a':randint(0,1000)}, nouts, top)
+      try:
+        rrefs=realizeMany(clo, force_rebuild=[clo.dref])
+        assert top<=nouts
+      except AssertionError:
+        assert top>nouts
 
