@@ -12,7 +12,6 @@
     * [ConfigAttrs](#pylightnix.types.ConfigAttrs)
     * [Context](#pylightnix.types.Context)
     * [Build](#pylightnix.types.Build)
-    * [Instantiator](#pylightnix.types.Instantiator)
     * [Matcher](#pylightnix.types.Matcher)
     * [Realizer](#pylightnix.types.Realizer)
     * [Derivation](#pylightnix.types.Derivation)
@@ -89,8 +88,12 @@
     * [exact](#pylightnix.core.exact)
     * [best](#pylightnix.core.best)
     * [texthash](#pylightnix.core.texthash)
-    * [match\_only](#pylightnix.core.match_only)
+    * [match\_n](#pylightnix.core.match_n)
+    * [match\_latest](#pylightnix.core.match_latest)
     * [match\_best](#pylightnix.core.match_best)
+    * [match\_all](#pylightnix.core.match_all)
+    * [match\_some](#pylightnix.core.match_some)
+    * [match\_only](#pylightnix.core.match_only)
     * [assert\_valid\_refpath](#pylightnix.core.assert_valid_refpath)
     * [assert\_valid\_config](#pylightnix.core.assert_valid_config)
     * [assert\_valid\_name](#pylightnix.core.assert_valid_name)
@@ -169,12 +172,13 @@ Derivation references are results of
 [instantiation](#pylightnix.core.instantiate).
 
 Derivation reference may be converted into a [realization
-reference](#pylightnix.types.RRef) by either dereferencing (that is querying
-for existing realizations) or [realizing](#pylightnix.core.realize) it from
-scratch.
+reference](#pylightnix.types.RRef) by either dereferencing (that is by
+querying for existing realizations) or by
+[realizing](#pylightnix.core.realize) it from scratch.
 
-For derefencing, one can use [build_deref](#pylightnix.core.build_deref) at
-build time or [store_deref](#pylightnix.core.store_deref) otherwise.
+- For derefencing dependencies at the build time, see
+  [build_deref](#pylightnix.core.build_deref).
+- For querying the storage, see [store_deref](#pylightnix.core.store_deref).
 
 <a name="pylightnix.types.RRef"></a>
 ## `RRef` Objects
@@ -244,8 +248,8 @@ instantiation, but delay the access to it until the realization.
 def __init__(self, d: dict)
 ```
 
-`Config` is a JSON-serializable dictionary. Configs are required by
-definintion of Stages and should determine the realization process.
+Config is a JSON-serializable set of user-defined attributes of Pylightnix
+node. Typically, configs should determine node's realization process.
 
 `Config` should match the requirements of `assert_valid_config`. Typically,
 it's `__dict__` should contain JSON-serializable types only: strings, string
@@ -253,7 +257,16 @@ aliases such as [DRefs](#pylightnix.types.DRef), bools, ints, floats, lists or
 other dicts. No bytes, `numpy.float32` or lambdas are allowed. Tuples are also
 forbidden because they are not preserved (decoded into lists).
 
-Use [mkconfig](#pylightnix.core.mkconfig) to create Configs from dicts.
+A typical usage pattern is:
+```python
+def somenode(m:Manager)->Dref
+  def _config():
+    nepoches = 4
+    learning_rate = 1e-5
+    hidden_size = 128
+    return Config(locals())
+  return mkdrv(_config(),...)
+```
 
 <a name="pylightnix.types.Config.__init__"></a>
 ### `Config.__init__()`
@@ -293,30 +306,25 @@ Context = Dict[DRef,List[RRef]]
 ## `Build` Objects
 
 ```python
-def __init__(self, dref: DRef, cattrs: ConfigAttrs, context: Context, timeprefix: str, outpaths: List[Path]) -> None
+def __init__(self, dref: DRef, cattrs: ConfigAttrs, context: Context, timeprefix: str, buildtime: bool) -> None
 ```
 
-Build is a helper object which tracks the process of [realization](#pylightnix.core.realize).
+Build is a helper object which tracks the process of stage's
+[realization](#pylightnix.core.realize).
 
-Useful associated functions are:
+Associated functions are:
+
 - [build_wrapper](#pylightnix.core.build_wrapper)
 - [build_config](#pylightnix.core.build_config)
 - [build_deref](#pylightnix.core.build_deref)
+- [build_path](#pylightnix.core.build_path)
 - [build_outpath](#pylightnix.core.build_outpath)
 
 <a name="pylightnix.types.Build.__init__"></a>
 ### `Build.__init__()`
 
 ```python
-def __init__(self, dref: DRef, cattrs: ConfigAttrs, context: Context, timeprefix: str, outpaths: List[Path]) -> None
-```
-
-
-<a name="pylightnix.types.Instantiator"></a>
-## `Instantiator`
-
-```python
-Instantiator = Callable[[],Config]
+def __init__(self, dref: DRef, cattrs: ConfigAttrs, context: Context, timeprefix: str, buildtime: bool) -> None
 ```
 
 
@@ -324,11 +332,9 @@ Instantiator = Callable[[],Config]
 ## `Matcher`
 
 ```python
-Matcher = Callable[[DRef,Context],List[RRef]]
+Matcher = Callable[[DRef,Context],Optional[List[RRef]]]
 ```
 
-FIXME: Make matchers more algebra-friendly. E.g. one could make them return
-RRef ranks which could be composed and re-used.
 
 <a name="pylightnix.types.Realizer"></a>
 ## `Realizer`
@@ -337,16 +343,19 @@ RRef ranks which could be composed and re-used.
 Realizer = Callable[[DRef,Context],List[Path]]
 ```
 
-Realizer is a user-defined function which defines how to
-[build](#pylightnix.core.realize) a given derivation in a given
+Realizer is a type of user-defined functions implementing the
+[realization](#pylightnix.core.realize) of derivation in a given
 [context](#pylightnix.types.Context).
 
-For given derivation being built, it's Realizer may access the following
-objects via [Build helpers](#pylightnix.types.Build):
-- Configuration of the derivation and configurations of all it's
-dependencies. See [build_config](#pylightnix.core.build_config).
-- Realizations of all the dependencies (and thus, their build artifacts).
-See [build_path](#pylightnix.core.build_path).
+Realizer accepts the following arguments:
+- Derivation reference to build the realizations of
+- A Context encoding the result of dependency resolution.
+
+Realizer should return one or many system paths of output folders containing
+realization artifacts. Those folders will be destroyed (moved) by the core at
+the final stage of realization. [Build](#pylightnix.types.Build) helper
+objects may be used for simplified output path management and dependency
+access.
 
 <a name="pylightnix.types.Derivation"></a>
 ## `Derivation`
@@ -588,13 +597,18 @@ def assert_store_initialized() -> None
 ## `store_initialize()`
 
 ```python
-def store_initialize(custom_store: Optional[str] = None, custom_tmp: Optional[str] = None) -> None
+def store_initialize(custom_store: Optional[str] = None, custom_tmp: Optional[str] = None, check_not_exist: bool = False) -> None
 ```
 
-Create the storage and temp direcories. Default locations are determined
-by `PYLIGHTNIX_STORE` and `PYLIGHTNIX_TMP` variables. Note, that they could be
-overwritten either by setting environment variables of the same name before
-starting the Python or by assigning to them right after importing pylighnix.
+Create the storage and temp direcories if they don't exist. Default
+locations are determined by `PYLIGHTNIX_STORE` and `PYLIGHTNIX_TMP` global
+variables which in turn may be set by either setting environment variables of
+the same name or by direct assigning.
+
+Parameters:
+- `custom_store`: If not None, create new storage located here.
+- `custom_tmp`: If not None, set the temp files directory here.
+- `check_not_exist`: Set to True to assert on already existing storages
 
 See also [assert_store_initialized](#pylightnix.core.assert_store_initialized).
 
@@ -629,7 +643,8 @@ def rref2path(r: RRef) -> Path
 def mkrefpath(r: DRef, items: List[str] = []) -> RefPath
 ```
 
-Construct a RefPath out of a reference `ref` and a path within the node
+Construct a [RefPath](#pylightnix.types.RefPath) out of a reference `ref`
+and a path within the stage's realization
 
 <a name="pylightnix.core.store_config"></a>
 ## `store_config()`
@@ -638,7 +653,7 @@ Construct a RefPath out of a reference `ref` and a path within the node
 def store_config(r: Union[DRef,RRef]) -> Config
 ```
 
-Read the [Config](#pylightnix.types.Config) of the storage node `r`.
+Read the [Config](#pylightnix.types.Config) of the derivatoin referenced by `r`.
 
 <a name="pylightnix.core.store_context"></a>
 ## `store_context()`
@@ -759,7 +774,7 @@ def store_realize(dref: DRef, l: Context, o: Path) -> RRef
 ## `mkbuild()`
 
 ```python
-def mkbuild(dref: DRef, context: Context, buildtime: bool = True, nouts: int = 1) -> Build
+def mkbuild(dref: DRef, context: Context, buildtime: bool = True) -> Build
 ```
 
 
@@ -767,7 +782,7 @@ def mkbuild(dref: DRef, context: Context, buildtime: bool = True, nouts: int = 1
 ## `build_wrapper()`
 
 ```python
-def build_wrapper(f: Callable[[Build],None], buildtime: bool = True, nouts: int = 1) -> Realizer
+def build_wrapper(f: Callable[[Build],None], buildtime: bool = True) -> Realizer
 ```
 
 
@@ -803,7 +818,7 @@ def build_cattrs(b: Build) -> Any
 ## `build_outpaths()`
 
 ```python
-def build_outpaths(m: Build) -> List[Path]
+def build_outpaths(b: Build, nouts: int = 1) -> List[Path]
 ```
 
 
@@ -811,7 +826,7 @@ def build_outpaths(m: Build) -> List[Path]
 ## `build_outpath()`
 
 ```python
-def build_outpath(m: Build) -> Path
+def build_outpath(b: Build) -> Path
 ```
 
 Return the output path of the realization being built. Output path is a
@@ -911,7 +926,7 @@ def context_serialize(c: Context) -> str
 ## `mkdrv()`
 
 ```python
-def mkdrv(m: Manager, inst: Instantiator, matcher: Matcher, realizer: Realizer) -> DRef
+def mkdrv(m: Manager, config: Config, matcher: Matcher, realizer: Realizer) -> DRef
 ```
 
 
@@ -923,6 +938,17 @@ def mkdrv(m: Manager, inst: Instantiator, matcher: Matcher, realizer: Realizer) 
 def recursion_manager(funcname: str)
 ```
 
+Recursion manager is a helper context manager which detects and prevents
+unwanted recursions. Currently, the following kinds of recursions are catched:
+
+- `instantiate() -> <config> -> instantiate()`. Instantiate stores Derivation
+  in Manager and returns a DRef as a proof that given Manager contains given
+  Derivation. Recursive call to instantiate would break this idea by
+  introducing nested Managers.
+- `realize() -> <realizer> -> realize()`. Sometimes this recursion is OK,
+  but in some cases it may lead to infinite loop, so we deny it completely for now.
+- `realize() -> <realizer> -> instantiate()`. Instantiate produces new DRefs,
+  while realize should only work with existing DRefs which form a Closure.
 
 <a name="pylightnix.core.instantiate_"></a>
 ## `instantiate_()`
@@ -939,18 +965,17 @@ def instantiate_(m: Manager, stage: Any, args, *,, ,, kwargs) -> Closure
 def instantiate(stage: Any, args, *,, ,, kwargs) -> Closure
 ```
 
-`instantiate` takes the [Stage](#pylightnix.types.Stage) function and
-produces corresponding derivation object. Resulting list contains derivation
-of the current stage (in it's last element), preceeded by the derivations of
-all it's dependencies.
+Instantiate takes the [Stage](#pylightnix.types.Stage) function and
+produces calculates the [Closure](#pylightnix.types.Closure) of it's
+[Derivation](#pylightnix.types.Derivation).
 
-Instantiation is the equivalent of type-checking in the typical compiler's
+Instantiate's work is somewhat similar to the type-checking in the compiler's
 pipeline.
 
 User-defined [Instantiators](pylightnix.types.Instantiator) calculate stage
 configs during the instantiation. This calculations fall under certain
 restrictions. In particular, it shouldn't start new instantiations or
-realizations recursively, and it shouldn't access realization objects in the
+realizations recursively, and it shouldn't access stage realizations in the
 storage.
 
 New derivations are added to the storage by moving a temporary folder inside
@@ -960,7 +985,7 @@ the storage folder.
 ## `RealizeSeqGen`
 
 ```python
-RealizeSeqGen = Generator[Tuple[DRef,Context,Derivation],Optional[List[RRef]],List[RRef]]
+RealizeSeqGen = Generator[Tuple[DRef,Context,Derivation],Tuple[Optional[List[RRef]],bool],List[RRef]]
 ```
 
 
@@ -978,21 +1003,27 @@ Expects only one result.
 ## `realizeMany()`
 
 ```python
-def realizeMany(closure: Closure, force_interrupt: List[DRef] = []) -> List[RRef]
+def realizeMany(closure: Closure, force_rebuild: List[DRef] = []) -> List[RRef]
 ```
 
-Build one or many realizations of a derivation's
-[Closure](#pylightnix.types.Closure) by executing it's
-[Realizer](#pylightnix.types.Realizer).
+Obtain one or many realizations of a stage's
+[Closure](#pylightnix.types.Closure).
 
-Return [one or many references to new realizations](#pylightnix.types.RRef).
-Later, references could be [converted to system
-paths](#pylightnix.core.rref2path) of build artifacts.
+If [matching](#pylightnix.types.Matcher) realizations do exist in the storage,
+and user doesn't ask for rebuild, realizeMany returns immediately.
 
-For every new realization, it's node is created in the storage by moving
-Realizer's output folders into the derivation folder. `realize`
-assumes that derivation is still there at the moment of moving (See e.g.
-[rmref](#pylightnix.bashlike.rmref))
+Otherwize, it calls one or many [Realizers](#pylightnix.types.Realizer) to
+get the desiared realizations.
+
+Returned value is a list references to new
+[realizations](#pylightnix.types.RRef). Every realization may be [converted
+to system path](#pylightnix.core.rref2path) pointing to the folder which
+contains build artifacts.
+
+To create each new realization, realizeMany moves it's build artifacts inside
+the storage by executing `os.replace` function which are meant to be atomic.
+`realizeMany` assumes that derivation's config is present in the storage at
+the moment of replacing (See e.g. [rmref](#pylightnix.bashlike.rmref))
 
 - FIXME: Stage's context is calculated inefficiently. Maybe one should track
   dep.tree to avoid calling `store_deepdeps` within the cycle.
@@ -1024,7 +1055,7 @@ symlink name and location. Informally,
 ## `match()`
 
 ```python
-def match(keys: List[Key], top: Optional[int] = 1, only: bool = False) -> Matcher
+def match(keys: List[Key], rmin: Optional[int] = 1, rmax: Optional[int] = 1, exclusive: bool = False) -> Matcher
 ```
 
 Create a matcher by combining different sorting keys and selecting a
@@ -1032,9 +1063,12 @@ top-n threshold.
 
 Parameters:
 - `keys`: List of [Key](#pylightnix.types.Key) functions. Defaults ot
-- `top`:  An integer selecting how many realizations to accept
-- `only`: Set to True to enable `only` mode, where match asserts if it founds
-  more than one realization.
+- `rmin`: An integer selecting the minimum number of realizations to accept.
+  If non-None, Realizer is expected to produce at least this number of
+  realizations.
+- `rmax`: An integer selecting the maximum number of realizations to return
+  (realizer is free to produce more realizations)
+- `exclusive`: If true, asserts if the number of realizations exceeds `rmax`
 
 <a name="pylightnix.core.latest"></a>
 ## `latest()`
@@ -1068,6 +1102,56 @@ def texthash() -> Key
 ```
 
 
+<a name="pylightnix.core.match_n"></a>
+## `match_n()`
+
+```python
+def match_n(n: int = 1, keys=[]) -> Matcher
+```
+
+Return a [Matcher](#pylightnix.types.Matcher) which matchs with any
+number of realizations which is greater or equal than `n`.
+
+<a name="pylightnix.core.match_latest"></a>
+## `match_latest()`
+
+```python
+def match_latest(n: int = 1) -> Matcher
+```
+
+
+<a name="pylightnix.core.match_best"></a>
+## `match_best()`
+
+```python
+def match_best(filename: str, n: int = 1) -> Matcher
+```
+
+Return a [Matcher](#pylightnix.types.Matcher) which checks contexts of
+realizations and then compares them based on stage-specific scores. For each
+realization, score is read from artifact file named `filename` that should
+contain a single float number. Realization with largest score wins.
+
+<a name="pylightnix.core.match_all"></a>
+## `match_all()`
+
+```python
+def match_all() -> Matcher
+```
+
+Return a [Matcher](#pylightnix.types.Matcher) which matchs with **ANY**
+number of realizations, including zero.
+
+<a name="pylightnix.core.match_some"></a>
+## `match_some()`
+
+```python
+def match_some(n: int = 1) -> Matcher
+```
+
+Return a [Matcher](#pylightnix.types.Matcher) which matchs with any
+number of realizations which is greater or equal than `n`.
+
 <a name="pylightnix.core.match_only"></a>
 ## `match_only()`
 
@@ -1078,18 +1162,6 @@ def match_only() -> Matcher
 Return a [Matcher](#pylightnix.types.Matcher) which expects no more than
 one realization for every [derivation](#pylightnix.types.DRef), given the
 [context](#pylightnix.types.Context).
-
-<a name="pylightnix.core.match_best"></a>
-## `match_best()`
-
-```python
-def match_best(filename: str) -> Matcher
-```
-
-Return a [Matcher](#pylightnix.types.Matcher) which checks contexts of
-realizations and then compares them based on stage-specific scores. For each
-realization, score is read from artifact file named `filename` that should
-contain a single float number. Realization with largest score wins.
 
 <a name="pylightnix.core.assert_valid_refpath"></a>
 ## `assert_valid_refpath()`
