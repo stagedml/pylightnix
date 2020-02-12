@@ -52,7 +52,7 @@ Implementation:
 
 ## Related work
 
-* [Nix](https://nixos.org) ([repo](https://github.com/nixos/nix))
+* [Nix](https://nixos.org) ([repo](https://github.com/nixos/nix), [comparison](./docs/Comparison.md#Pylightnix-vs-Nix))
 * [Spack](https://spack.io) ([repo](https://github.com/spack/spack))
 * [Popper](https://falsifiable.us) ([repo](https://github.com/systemslab/popper))
 * [CK](https://cknowledge.org) ([repo](https://github.com/ctuning/ck))
