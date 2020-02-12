@@ -1,10 +1,12 @@
-from pylightnix.imports import ( datetime, tzlocal, gmtime, timegm, join,
+from pylightnix.imports import ( datetime, gmtime, timegm, join,
     makedirs, symlink, basename, mkdir, isdir, isfile, islink, remove, sha256,
     EEXIST, json_dumps, json_loads, makedirs, replace, dirname, walk, abspath,
     normalize, re_sub, split, json_load, find_executable )
 
 from pylightnix.types import ( Hash, Path, List, Any, Optional, Iterable, IO,
     DRef, RRef, Tuple)
+
+from pylightnix.tz import tzlocal
 
 #: Defines the `strftime`-compatible format of time, used in e.g.
 #: `__buildtime__.txt` files. Do not change!
