@@ -98,36 +98,6 @@ class Name(str):
 #: instantiation, but delay the access to it until the realization.
 RefPath = List[Any]
 
-class Config:
-  """ Config is a JSON-serializable set of user-defined attributes of Pylightnix
-  node. Typically, configs should determine node's realization process.
-
-  `Config` should match the requirements of `assert_valid_config`. Typically,
-  it's `__dict__` should contain JSON-serializable types only: strings, string
-  aliases such as [DRefs](#pylightnix.types.DRef), bools, ints, floats, lists or
-  other dicts. No bytes, `numpy.float32` or lambdas are allowed. Tuples are also
-  forbidden because they are not preserved (decoded into lists).
-
-  A typical usage pattern is:
-  ```python
-  def somenode(m:Manager)->Dref
-    def _config():
-      nepoches = 4
-      learning_rate = 1e-5
-      hidden_size = 128
-      return Config(locals())
-    return mkdrv(_config(),...)
-  ```
-  """
-  def __init__(self, d:dict):
-    self.__dict__=deepcopy(d)
-
-class ConfigAttrs:
-  """ `ConfigAttrs` is a helper object allowing to access
-  [Config](#pylightnix.types.Config) fields as Python object attributes """
-  def __init__(self, d:dict):
-    for k,v in d.items():
-      setattr(self,k,v)
 
 #: Context type is an alias for Python dict which maps
 #: [DRefs](#pylightnix.types.DRef) into one or many
@@ -136,26 +106,6 @@ class ConfigAttrs:
 #: For any derivation, Context stores a mapping from it's dependency's
 #: derivations to realizations.
 Context=Dict[DRef,List[RRef]]
-
-class Build:
-  """Build is a helper object which tracks the process of stage's
-  [realization](#pylightnix.core.realize).
-
-  Associated functions are:
-
-  - [build_wrapper](#pylightnix.core.build_wrapper)
-  - [build_config](#pylightnix.core.build_config)
-  - [build_deref](#pylightnix.core.build_deref)
-  - [build_path](#pylightnix.core.build_path)
-  - [build_outpath](#pylightnix.core.build_outpath)
-  """
-  def __init__(self, dref:DRef, cattrs:ConfigAttrs, context:Context, timeprefix:str, buildtime:bool)->None:
-    self.dref=dref
-    self.cattrs=cattrs
-    self.context=context
-    self.timeprefix=timeprefix
-    self.outpaths:List[Path]=[]
-    self.buildtime=buildtime
 
 #: Matcher is a type of user-defined functions which select required
 #: realizations from the set of all available. Matchers also may ask the caller
@@ -199,6 +149,57 @@ Derivation = NamedTuple('Derivation', [('dref',DRef), ('matcher',Matcher), ('rea
 #: of it's dependencies, plus maybe some additional derivations. So the closure
 #: is complete but not necessary minimal.
 Closure = NamedTuple('Closure', [('dref',DRef),('derivations',List[Derivation])])
+
+class Config:
+  """ Config is a JSON-serializable set of user-defined attributes of Pylightnix
+  node. Typically, configs should determine node's realization process.
+
+  `Config` should match the requirements of `assert_valid_config`. Typically,
+  it's `__dict__` should contain JSON-serializable types only: strings, string
+  aliases such as [DRefs](#pylightnix.types.DRef), bools, ints, floats, lists or
+  other dicts. No bytes, `numpy.float32` or lambdas are allowed. Tuples are also
+  forbidden because they are not preserved (decoded into lists).
+
+  A typical usage pattern is:
+  ```python
+  def somenode(m:Manager)->Dref
+    def _config():
+      nepoches = 4
+      learning_rate = 1e-5
+      hidden_size = 128
+      return Config(locals())
+    return mkdrv(_config(),...)
+  ```
+  """
+  def __init__(self, d:dict):
+    self.__dict__=deepcopy(d)
+
+class ConfigAttrs:
+  """ `ConfigAttrs` is a helper object allowing to access
+  [Config](#pylightnix.types.Config) fields as Python object attributes """
+  def __init__(self, d:dict):
+    for k,v in d.items():
+      setattr(self,k,v)
+
+class Build:
+  """Build is a helper object which tracks the process of stage's
+  [realization](#pylightnix.core.realize).
+
+  Associated functions are:
+
+  - [build_wrapper](#pylightnix.core.build_wrapper)
+  - [build_config](#pylightnix.core.build_config)
+  - [build_deref](#pylightnix.core.build_deref)
+  - [build_path](#pylightnix.core.build_path)
+  - [build_outpath](#pylightnix.core.build_outpath)
+  """
+  def __init__(self, dref:DRef, cattrs:ConfigAttrs, context:Context, timeprefix:str, buildtime:bool)->None:
+    self.dref=dref
+    self.cattrs=cattrs
+    self.context=context
+    self.timeprefix=timeprefix
+    self.outpaths:List[Path]=[]
+    self.buildtime=buildtime
 
 class Manager:
   def __init__(self):

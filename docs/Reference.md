@@ -8,14 +8,14 @@
     * [RRef](#pylightnix.types.RRef)
     * [Name](#pylightnix.types.Name)
     * [RefPath](#pylightnix.types.RefPath)
-    * [Config](#pylightnix.types.Config)
-    * [ConfigAttrs](#pylightnix.types.ConfigAttrs)
     * [Context](#pylightnix.types.Context)
-    * [Build](#pylightnix.types.Build)
     * [Matcher](#pylightnix.types.Matcher)
     * [Realizer](#pylightnix.types.Realizer)
     * [Derivation](#pylightnix.types.Derivation)
     * [Closure](#pylightnix.types.Closure)
+    * [Config](#pylightnix.types.Config)
+    * [ConfigAttrs](#pylightnix.types.ConfigAttrs)
+    * [Build](#pylightnix.types.Build)
     * [Manager](#pylightnix.types.Manager)
     * [Stage](#pylightnix.types.Stage)
     * [Key](#pylightnix.types.Key)
@@ -241,6 +241,87 @@ Above algorithm is implemented as [build_path](#pylightnix.core.build_path)
 helper function. The general idea behind RefPath is to declare it during
 instantiation, but delay the access to it until the realization.
 
+<a name="pylightnix.types.Context"></a>
+## `Context`
+
+```python
+Context = Dict[DRef,List[RRef]]
+```
+
+Context type is an alias for Python dict which maps
+[DRefs](#pylightnix.types.DRef) into one or many
+[RRefs](#pylightnix.types.RRef).
+
+For any derivation, Context stores a mapping from it's dependency's
+derivations to realizations.
+
+<a name="pylightnix.types.Matcher"></a>
+## `Matcher`
+
+```python
+Matcher = Callable[[DRef,Context],Optional[List[RRef]]]
+```
+
+Matcher is a type of user-defined functions which select required
+realizations from the set of all available. Matchers also may ask the caller
+to build new realizations by returning None.
+
+There are certain rules for matchers:
+
+- Matchers should be **pure**. It's output should depend only on the existing
+build artifacts of available realizations.
+- Matchers should be **satisfiable** by the their realizaitons. If
+matcher returns None, the core calls realizer and re-run the matcher only
+once.
+
+Matchers may return an empty list instructs Pylightnix to leave it's
+derivation without realizations.
+
+<a name="pylightnix.types.Realizer"></a>
+## `Realizer`
+
+```python
+Realizer = Callable[[DRef,Context],List[Path]]
+```
+
+Realizer is a type of user-defined functions implementing the
+[realization](#pylightnix.core.realize) of derivation in a given
+[context](#pylightnix.types.Context).
+
+Realizer accepts the following arguments:
+- Derivation reference to build the realizations of
+- A Context encoding the result of dependency resolution.
+
+Realizer should return one or many system paths of output folders containing
+realization artifacts. Those folders will be destroyed (moved) by the core at
+the final stage of realization. [Build](#pylightnix.types.Build) helper
+objects may be used for simplified output path management and dependency
+access.
+
+<a name="pylightnix.types.Derivation"></a>
+## `Derivation`
+
+```python
+Derivation = NamedTuple('Derivation', [('dref',DRef), ('matcher',Matcher), ('realizer',Realizer) ])
+```
+
+Derivation is a core type of Pylightnix. It keeps all the information about
+a stage: it's [configuration](#pylightnix.types.Config), how to
+[realize](#pylightnix.core.realize) it and how to make a selection among
+multiple realizations. Information is stored partly on disk (in the
+storage), partly in memory in form of a Python code.
+
+<a name="pylightnix.types.Closure"></a>
+## `Closure`
+
+```python
+Closure = NamedTuple('Closure', [('dref',DRef),('derivations',List[Derivation])])
+```
+
+Closure is a named tuple, encoding a reference to derivation and a whole list
+of it's dependencies, plus maybe some additional derivations. So the closure
+is complete but not necessary minimal.
+
 <a name="pylightnix.types.Config"></a>
 ## `Config` Objects
 
@@ -294,14 +375,6 @@ def __init__(self, d: dict)
 ```
 
 
-<a name="pylightnix.types.Context"></a>
-## `Context`
-
-```python
-Context = Dict[DRef,List[RRef]]
-```
-
-
 <a name="pylightnix.types.Build"></a>
 ## `Build` Objects
 
@@ -327,59 +400,6 @@ Associated functions are:
 def __init__(self, dref: DRef, cattrs: ConfigAttrs, context: Context, timeprefix: str, buildtime: bool) -> None
 ```
 
-
-<a name="pylightnix.types.Matcher"></a>
-## `Matcher`
-
-```python
-Matcher = Callable[[DRef,Context],Optional[List[RRef]]]
-```
-
-
-<a name="pylightnix.types.Realizer"></a>
-## `Realizer`
-
-```python
-Realizer = Callable[[DRef,Context],List[Path]]
-```
-
-Realizer is a type of user-defined functions implementing the
-[realization](#pylightnix.core.realize) of derivation in a given
-[context](#pylightnix.types.Context).
-
-Realizer accepts the following arguments:
-- Derivation reference to build the realizations of
-- A Context encoding the result of dependency resolution.
-
-Realizer should return one or many system paths of output folders containing
-realization artifacts. Those folders will be destroyed (moved) by the core at
-the final stage of realization. [Build](#pylightnix.types.Build) helper
-objects may be used for simplified output path management and dependency
-access.
-
-<a name="pylightnix.types.Derivation"></a>
-## `Derivation`
-
-```python
-Derivation = NamedTuple('Derivation', [('dref',DRef), ('matcher',Matcher), ('realizer',Realizer) ])
-```
-
-Derivation is a core type of Pylightnix. It keeps all the information about
-a stage: it's [configuration](#pylightnix.types.Config), how to
-[realize](#pylightnix.core.realize) it and how to make a selection among
-multiple realizations. Information is stored partly on disk (in the
-storage), partly in memory in form of a Python code.
-
-<a name="pylightnix.types.Closure"></a>
-## `Closure`
-
-```python
-Closure = NamedTuple('Closure', [('dref',DRef),('derivations',List[Derivation])])
-```
-
-Closure is a named tuple, encoding a reference to derivation and a whole list
-of it's dependencies, plus maybe some additional derivations. So the closure
-is complete but not necessary minimal.
 
 <a name="pylightnix.types.Manager"></a>
 ## `Manager` Objects
