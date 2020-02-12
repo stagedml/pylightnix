@@ -8,7 +8,7 @@ from subprocess import Popen, PIPE
 
 from shutil import rmtree
 from pylightnix import store_initialize
-rmtree('/tmp/pylightnix_hello_demo', ignore_errors=True)
+rmtree('/tmp/pylightnix_hello_demo', ignore_errors=True) # Optional
 store_initialize(custom_store='/tmp/pylightnix_hello_demo', custom_tmp='/tmp')
 
 from pylightnix import DRef, instantiate_inplace, fetchurl
@@ -26,6 +26,14 @@ from pylightnix import RRef, realize_inplace
 
 hello_rref:RRef = realize_inplace(hello_src)
 print(hello_rref)
+
+from pylightnix import rref2path
+
+print(rref2path(hello_rref))
+
+from pylightnix import lsref
+
+print(lsref(hello_rref))
 
 from pylightnix import Config, mkconfig
 
@@ -60,7 +68,6 @@ print(hello)
 rref:RRef=realize_inplace(hello)
 print(rref)
 
-from pylightnix import rref2path
 
 hello_bin=join(rref2path(rref),'usr/bin/hello')
 print(Popen([hello_bin], stdout=PIPE, shell=True).stdout.read())
