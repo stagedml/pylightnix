@@ -102,10 +102,15 @@ is to use the git link:
 
 ## Documentation
 
+Demos:
+
+* [Hello](./docs/demos/HELLO.md), building GNU Hello with a toy package manager.
+* [Ultimatum tutorial](https://github.com/grwlf/ultimatum-game/blob/master/docs/Pylightnix.md), managing experiments.
+* [MNIST demo](./docs/demos/MNIST.md), running machine learning models.
+
+Reference:
+
 * [API Reference](./docs/Reference.md)
-* [HELLO demo](./docs/demos/HELLO.md)
-* [Ultimatum tutorial](https://github.com/grwlf/ultimatum-game/blob/master/docs/Pylightnix.md)
-* [MNIST demo](./docs/demos/MNIST.md)
 * [Tests](./tests)
 
 ## Quick start
