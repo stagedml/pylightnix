@@ -290,6 +290,9 @@ def store_realize(dref:DRef, l:Context, o:Path)->RRef:
   c=store_config(dref)
   (dhash,nm)=undref(dref)
 
+  assert isdir(o), (
+     f"While realizing {dref}: Outpath is expected to be a path to existing "
+     f"directory, but got {o}")
   assert not isfile(join(o,'context.json')), (
      f"While realizing {dref}: one of build artifacts has name 'context.json'. "
      f"This name is reserved, please rename the artifact.")
