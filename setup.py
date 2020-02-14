@@ -28,7 +28,7 @@ setup(
   packages=find_packages(where='src'),
   classifiers=[
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: BSD License",
+    "License :: OSI Approved :: Apache Software License",
     "Operating System :: POSIX :: Linux",
     "Topic :: System :: Software Distribution",
     "Topic :: Software Development :: Build Tools",
