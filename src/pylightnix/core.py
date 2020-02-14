@@ -1,12 +1,11 @@
-from pylightnix.imports import (
-    sha256, deepcopy, isdir, makedirs, join, json_dump, json_load, json_dumps,
-    json_loads, isfile, relpath, listdir, rmtree, mkdtemp, replace, environ,
-    split, re_match, ENOTEMPTY, get_ident, contextmanager, OrderedDict, lstat,
-    maxsize )
+from pylightnix.imports import ( sha256, deepcopy, isdir, makedirs, join,
+    json_dump, json_load, json_dumps, json_loads, isfile, relpath, listdir,
+    rmtree, mkdtemp, replace, environ, split, re_match, ENOTEMPTY, get_ident,
+    contextmanager, OrderedDict, lstat, maxsize )
 from pylightnix.utils import (
     dirhash, assert_serializable, assert_valid_dict, dicthash, scanref_dict,
     scanref_list, forcelink, timestring, parsetime, datahash, readjson,
-    tryread, encode )
+    tryread, encode, dirchmod )
 from pylightnix.types import (
     Dict, List, Any, Tuple, Union, Optional, Iterable, IO, Path, Hash, DRef,
     RRef, RefPath, HashPart, Callable, Context, Name, NamedTuple, Build,
@@ -229,7 +228,7 @@ def store_rrefs_(dref:DRef)->Iterable[RRef]:
   (dhash,nm)=undref(dref)
   drefpath=store_dref2path(dref)
   for f in listdir(drefpath):
-    if isdir(join(drefpath,f)):
+    if f[-4:]!='.tmp' and isdir(join(drefpath,f)):
       yield mkrref(HashPart(f), dhash, nm)
 
 def store_rrefs(dref:DRef, context:Context)->Iterable[RRef]:
@@ -301,19 +300,22 @@ def store_realize(dref:DRef, l:Context, o:Path)->RRef:
 
   rhash=dirhash(o)
   rref=mkrref(trimhash(rhash),dhash,nm)
+  rrefpath=rref2path(rref)
+  rreftmp=Path(rrefpath+'.tmp')
+
+  replace(o,rreftmp)
+  dirchmod(rreftmp,'ro')
 
   try:
-    replace(o,rref2path(rref))
+    replace(rreftmp,rrefpath)
   except OSError as err:
     if err.errno == ENOTEMPTY:
-      try:
-        replace(join(o,'__buildtime__.txt'),join(rref2path(rref),'__buildtime__.txt'))
-      except OSError as err:
-        if err.errno == ENOTEMPTY:
-          pass # Exactly matching realization already exists
-        else:
-          raise
+      dirchmod(rreftmp,'rw')
+      rmtree(rreftmp)
     else:
+      # Attempt to roll-back
+      dirchmod(rreftmp,'rw')
+      replace(rreftmp,o)
       raise
   return rref
 
@@ -331,9 +333,12 @@ def mkbuild(dref:DRef, context:Context, buildtime:bool=True)->Build:
   cattrs=store_cattrs(dref)
   return Build(dref, cattrs, context, timeprefix, buildtime)
 
-def build_wrapper(f:Callable[[Build],None], buildtime:bool=True)->Realizer:
+def build_wrapper(
+    f:Callable[[Build],None],
+    buildtime:bool=True,
+    constructor:Callable[[DRef,Context,bool],Build]=mkbuild)->Realizer:
   def _wrapper(dref,context)->List[Path]:
-    b=mkbuild(dref,context,buildtime); f(b); return b.outpaths
+    b=constructor(dref,context,buildtime); f(b); return b.outpaths
   return _wrapper
 
 def build_config(b:Build)->Config:
@@ -400,6 +405,7 @@ def build_path(b:Build, refpath:RefPath)->Path:
   paths=build_paths(b,refpath)
   assert len(paths)==1
   return paths[0]
+
 #   ____            _            _
 #  / ___|___  _ __ | |_ _____  _| |_
 # | |   / _ \| '_ \| __/ _ \ \/ / __|

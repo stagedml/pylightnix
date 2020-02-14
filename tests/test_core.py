@@ -11,7 +11,7 @@ from pylightnix import ( Config, instantiate, DRef, RRef, Path, mklogdir,
     match_latest, match_all, match_some, match_n, realizeMany, build_outpaths )
 
 from tests.imports import ( given, Any, Callable, join, Optional, islink,
-    isfile, List, randint, sleep )
+    isfile, List, randint, sleep, rmtree )
 
 from tests.generators import (
     rrefs, drefs, configs, dicts )
@@ -115,6 +115,23 @@ def test_repeated_realize()->None:
     rref3 = realize(instantiate(_setting), force_rebuild=[instantiate(_setting).dref])
     assert rref1==rref2 and rref2==rref3
 
+def test_realize_readonly()->None:
+  with setup_storage('test_realize_readonly'):
+    rref1 = realize(instantiate(mktestnode, {'a':'1'}))
+
+    try:
+      with open(join(rref2path(rref1),'newfile'),'w') as f:
+        f.write('foo')
+      raise ShouldHaveFailed('No write-protection??')
+    except OSError as err:
+      pass
+
+    try:
+      rmtree(rref2path(rref1))
+      raise ShouldHaveFailed('No remove-protection??')
+    except OSError as err:
+      pass
+
 def test_minimal_closure():
   with setup_storage('test_minimal_closure'):
 
@@ -213,29 +230,32 @@ def test_config_ro():
 def test_mksymlink()->None:
   with setup_storage('test_mksymlink'):
     tp=setup_testpath('test_mksymlink')
+    print(tp)
 
     def _setting1(m:Manager)->DRef:
-      return mktestnode(m, {'a':'1'}, buildtime=False)
+      return mktestnode_nondetermenistic(m, {'a':'1'}, lambda: 33, buildtime=False)
     def _setting2(m:Manager)->DRef:
-      return mktestnode(m, {'a':'1'}, buildtime=True)
+      return mktestnode_nondetermenistic(m, {'a':'1'}, lambda: 42, buildtime=True)
 
     clo=instantiate(_setting1)
-    clo2=instantiate(_setting2)
-    assert clo.dref==clo2.dref
-
     rref=realize(clo)
+
+    clo2=instantiate(_setting2)
+    rref2=realize(clo2, force_rebuild=[clo2.dref])
+
+    assert clo.dref==clo2.dref
+    assert rref2!=rref
+
     s=mksymlink(rref, tgtpath=tp, name='thelink')
     assert islink(s)
     assert not isfile(join(s,'__buildtime__.txt'))
     assert tp in s
 
-    rref2=realize(clo2, force_rebuild=[clo2.dref])
     s2=mksymlink(rref2, tgtpath=tp, name='thelink')
     assert islink(s2)
     assert isfile(join(s2,'__buildtime__.txt'))
     assert tp in s
 
-    assert rref2==rref, "Should be (==), because configs are the same"
     assert s2!=s, "s2 should have timestamp"
 
     s3=mksymlink(rref2, tgtpath=tp, name='thelink', withtime=False)

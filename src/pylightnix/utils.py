@@ -1,7 +1,8 @@
-from pylightnix.imports import ( datetime, gmtime, timegm, join,
-    makedirs, symlink, basename, mkdir, isdir, isfile, islink, remove, sha256,
-    EEXIST, json_dumps, json_loads, makedirs, replace, dirname, walk, abspath,
-    normalize, re_sub, split, json_load, find_executable )
+from pylightnix.imports import ( datetime, gmtime, timegm, join, makedirs,
+    symlink, basename, mkdir, isdir, isfile, islink, remove, sha256, EEXIST,
+    json_dumps, json_loads, makedirs, replace, dirname, walk, abspath,
+    normalize, re_sub, split, json_load, find_executable, chmod, S_IWRITE, S_IREAD,
+    S_IRGRP, S_IROTH, S_IXUSR, S_IXGRP, S_IXOTH, walk )
 
 from pylightnix.types import ( Hash, Path, List, Any, Optional, Iterable, IO,
     DRef, RRef, Tuple)
@@ -94,6 +95,23 @@ def dirhash(path:Path)->Hash:
             yield f.read()
 
   return datahash(_iter())
+
+def dirchmod(o:Path, mode:str)->None:
+  if mode=='ro':
+    dir_perms=S_IREAD|S_IRGRP|S_IROTH | S_IXUSR|S_IXGRP|S_IXOTH
+    file_perms=S_IREAD|S_IRGRP|S_IROTH
+  elif mode=='rw':
+    dir_perms=S_IWRITE|S_IREAD|S_IRGRP|S_IROTH | S_IXUSR|S_IXGRP|S_IXOTH
+    file_perms=S_IWRITE|S_IREAD|S_IRGRP|S_IROTH
+  else:
+    assert False, f"Attempt to set invalid mode {mode} for path {o}"
+  for root, dirs, files in walk(o):
+    for d in dirs:
+      chmod(join(root, d), dir_perms)
+    for f in files:
+      chmod(join(root, f), file_perms)
+  chmod(o, dir_perms)
+
 
 def scanref_list(l:list)->Tuple[List[DRef],List[RRef]]:
   """ Scan Python list of arbitraty data for References.

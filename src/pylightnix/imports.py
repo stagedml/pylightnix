@@ -6,9 +6,10 @@ from calendar import timegm
 from errno import EEXIST
 from os import (
     mkdir, makedirs, replace, listdir, rmdir, symlink, rename, remove, environ,
-    walk, lstat )
+    walk, lstat, chmod )
 from os.path import (
     basename, join, isfile, isdir, islink, relpath, abspath, dirname, split )
+from stat import ( S_IWRITE, S_IREAD, S_IRGRP, S_IROTH, S_IXUSR, S_IXGRP, S_IXOTH )
 from hashlib import sha256
 from copy import deepcopy
 from tempfile import mkdtemp

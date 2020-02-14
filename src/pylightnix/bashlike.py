@@ -1,6 +1,7 @@
 from pylightnix.types import ( Iterable, List, Union, Optional, DRef, RRef )
 from pylightnix.imports import ( isfile, isdir, listdir, join, rmtree )
 from pylightnix.core import ( store_dref2path, rref2path, isrref, isdref )
+from pylightnix.utils import ( dirchmod )
 
 
 def lsdref_(r:DRef)->Iterable[str]:
@@ -38,9 +39,11 @@ def catref(r:RRef, fn:List[str])->List[str]:
     assert False, 'not implemented'
 
 def rmrref(r:RRef)->None:
+  dirchmod(rref2path(r),'rw')
   rmtree(rref2path(r))
 
 def rmdref(r:DRef)->None:
+  dirchmod(store_dref2path(r),'rw')
   rmtree(store_dref2path(r))
 
 def rmref(r:Union[RRef,DRef])->None:

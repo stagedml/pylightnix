@@ -1,6 +1,6 @@
 from pylightnix import ( Manager, Path, store_initialize, DRef, Context,
     Optional, mkbuild, build_outpath, store_rrefs, RRef, mkconfig, Config,
-    Name, mkdrv, rref2path )
+    Name, mkdrv, rref2path, dirchmod )
 from tests.imports import ( rmtree, join, makedirs, listdir, Callable,
     contextmanager, List)
 
@@ -21,7 +21,11 @@ def setup_storage(tn:str):
   assert pylightnix.core.PYLIGHTNIX_STORE is None
   assert pylightnix.core.PYLIGHTNIX_TMP is None
   storepath=f'/tmp/{tn}'
-  rmtree(storepath, onerror=lambda a,b,c:())
+  try:
+    dirchmod(storepath, 'rw')
+    rmtree(storepath)
+  except FileNotFoundError:
+    pass
   store_initialize(custom_store=storepath, custom_tmp='/tmp')
   assert 0==len(listdir(storepath))
   try:
