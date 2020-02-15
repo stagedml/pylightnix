@@ -19,7 +19,7 @@ from pylightnix.imports import ( datetime, gmtime, timegm, join, makedirs,
     S_IRGRP, S_IROTH, S_IXUSR, S_IXGRP, S_IXOTH, walk )
 
 from pylightnix.types import ( Hash, Path, List, Any, Optional, Iterable, IO,
-    DRef, RRef, Tuple)
+    DRef, RRef, Tuple, Callable )
 
 from pylightnix.tz import tzlocal
 
@@ -201,8 +201,17 @@ def trywrite(path:Path, data:str)->bool:
   except Exception:
     return False
 
-def get_executable(name:str, not_found_message:str)->str:
+def try_executable(name:str, not_found_message:Optional[str]=None)->Callable[[],str]:
   e=find_executable(name)
-  assert e is not None, not_found_message
-  return e
+  if e is None:
+    def _err():
+      assert False, not_found_message
+      return f"<{name}_not_found>"
+    return _err
+  else:
+    return lambda: str(e)
+
+def get_executable(name:str, not_found_message:str)->str:
+  e=try_executable(name)
+  return e()
 

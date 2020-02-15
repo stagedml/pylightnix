@@ -28,7 +28,7 @@ def test_fetchurl():
       import pylightnix.stages.fetch
       oldwget=pylightnix.stages.fetch.WGET
       try:
-        pylightnix.stages.fetch.WGET=mockwget
+        pylightnix.stages.fetch.WGET=lambda: mockwget
 
         clo=instantiate(fetchurl,
               url='mockwget://result.tar.gz',

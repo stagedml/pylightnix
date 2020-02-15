@@ -18,12 +18,11 @@ from pylightnix.types import ( DRef, Manager, Config, Build, Context, Name,
     Path, Optional)
 from pylightnix.core import ( mkconfig, mkbuild, build_cattrs, build_outpath,
     mkdrv, match_only, build_wrapper )
-from pylightnix.utils import ( get_executable )
+from pylightnix.utils import ( try_executable )
 
 
-WGET=get_executable('wget', 'Please install `wget` pacakge')
-AUNPACK=get_executable('aunpack', 'Please install `apack` tool from `atool` package')
-
+WGET=try_executable('wget', 'Please install `wget` pacakge.')
+AUNPACK=try_executable('aunpack', 'Please install `apack` tool from `atool` package.')
 
 
 def fetchurl(m:Manager, url:str, sha256:str, mode:str='unpack,remove',
@@ -38,6 +37,8 @@ def fetchurl(m:Manager, url:str, sha256:str, mode:str='unpack,remove',
   """
 
   def _instantiate()->Config:
+    assert WGET() is not None
+    assert AUNPACK() is not None
     return mkconfig({'name':name or 'fetchurl',
                      'url':url,
                      'sha256':sha256,
@@ -51,7 +52,7 @@ def fetchurl(m:Manager, url:str, sha256:str, mode:str='unpack,remove',
       fname=filename or basename(urlparse(c.url).path)
       assert len(fname)>0,"Downloadable filename shouldn't be empty. Try specifying a valid `filename` argument"
       partpath=join(o,fname+'.tmp')
-      p=Popen([WGET, "--continue", '--output-document', partpath, c.url], cwd=o)
+      p=Popen([WGET(), "--continue", '--output-document', partpath, c.url], cwd=o)
       p.wait()
 
       assert p.returncode == 0, f"Download failed, errcode '{p.returncode}'"
@@ -66,7 +67,7 @@ def fetchurl(m:Manager, url:str, sha256:str, mode:str='unpack,remove',
 
       if 'unpack' in c.mode:
         print(f"Unpacking {fullpath}..")
-        p=Popen([AUNPACK, fullpath], cwd=o)
+        p=Popen([AUNPACK(), fullpath], cwd=o)
         p.wait()
         assert p.returncode == 0, f"Unpack failed, errcode '{p.returncode}'"
         if 'remove' in c.mode:
