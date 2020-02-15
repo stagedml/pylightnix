@@ -305,11 +305,11 @@ access.
 Derivation = NamedTuple('Derivation', [('dref',DRef), ('matcher',Matcher), ('realizer',Realizer) ])
 ```
 
-Derivation is a core type of Pylightnix. It keeps all the information about
+Derivation is the core type of Pylightnix. It keeps all the information about
 a stage: it's [configuration](#pylightnix.types.Config), how to
 [realize](#pylightnix.core.realize) it and how to make a selection among
 multiple realizations. Information is stored partly on disk (in the
-storage), partly in memory in form of a Python code.
+storage), partly in memory in form of Python code.
 
 <a name="pylightnix.types.Closure"></a>
 ## `Closure`
@@ -802,7 +802,7 @@ def mkbuild(dref: DRef, context: Context, buildtime: bool = True) -> Build
 ## `build_wrapper()`
 
 ```python
-def build_wrapper(f: Callable[[Build],None], buildtime: bool = True) -> Realizer
+def build_wrapper(f: Callable[[Build],None], buildtime: bool = True, constructor: Callable[[DRef,Context,bool],Build] = mkbuild) -> Realizer
 ```
 
 
@@ -1357,7 +1357,7 @@ def mkfile(m: Manager, name: Name, contents: bytes, filename: Optional[Name] = N
 ## `WGET`
 
 ```python
-WGET = get_executable('wget', 'Please install `wget` pacakge')
+WGET = try_executable('wget', 'Please install `wget` pacakge.')
 ```
 
 
@@ -1365,7 +1365,7 @@ WGET = get_executable('wget', 'Please install `wget` pacakge')
 ## `AUNPACK`
 
 ```python
-AUNPACK = get_executable('aunpack', 'Please install `apack` tool from `atool` package')
+AUNPACK = try_executable('aunpack', 'Please install `apack` tool from `atool` package.')
 ```
 
 
