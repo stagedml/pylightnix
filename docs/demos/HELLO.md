@@ -126,8 +126,8 @@ print(hello_rref)
 ```
 
 ```
-Unpacking /tmp/200212-13:24:43:790085+0300_2f56e6f9_y1j5831u/hello-2.10.tar.gz..
-Removing /tmp/200212-13:24:43:790085+0300_2f56e6f9_y1j5831u/hello-2.10.tar.gz..
+Unpacking /tmp/200216-15:06:05:292405+0300_2f56e6f9_c3uz3v2t/hello-2.10.tar.gz..
+Removing /tmp/200216-15:06:05:292405+0300_2f56e6f9_c3uz3v2t/hello-2.10.tar.gz..
 rref:3fce7614ca738e68d6ad5b8a2057c488-2f56e6f987a1da0271915894ca19e28f-hello-src
 ```
 
@@ -224,13 +224,14 @@ Let's now move to the realization part of our Hello builder stage:
 
 
 ```python
-from pylightnix import Path, Build, build_cattrs, build_outpath, build_path
+from pylightnix import ( Path, Build, build_cattrs, build_outpath, build_path, dirchmod )
 
 def hello_realize(b:Build)->None:
   c:Any = build_cattrs(b)
   o:Path = build_outpath(b)
   with TemporaryDirectory() as tmp:
     copytree(build_path(b,c.src),join(tmp,'src'))
+    dirchmod(join(tmp,'src'),'rw')
     cwd = getcwd()
     try:
       chdir(join(tmp,'src'))
@@ -293,7 +294,7 @@ print(rref)
 ```
 
 ```
-rref:a48da30640b3e4db6c1bae2128c512c0-53ccb94819ad4c9f55acb61460ec97ed-hello-bin
+rref:eb14eaa937ffa45013f1a4c5ea525a53-53ccb94819ad4c9f55acb61460ec97ed-hello-bin
 ```
 
 

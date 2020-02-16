@@ -42,13 +42,14 @@ def hello_config()->Config:
   src = [hello_src, f'hello-{hello_version}']
   return mkconfig(locals())
 
-from pylightnix import Path, Build, build_cattrs, build_outpath, build_path
+from pylightnix import ( Path, Build, build_cattrs, build_outpath, build_path, dirchmod )
 
 def hello_realize(b:Build)->None:
   c:Any = build_cattrs(b)
   o:Path = build_outpath(b)
   with TemporaryDirectory() as tmp:
     copytree(build_path(b,c.src),join(tmp,'src'))
+    dirchmod(join(tmp,'src'),'rw')
     cwd = getcwd()
     try:
       chdir(join(tmp,'src'))

@@ -152,11 +152,11 @@ Matcher = Callable[[DRef,Context],Optional[List[RRef]]]
 #: access.
 Realizer = Callable[[DRef,Context],List[Path]]
 
-#: Derivation is a core type of Pylightnix. It keeps all the information about
+#: Derivation is the core type of Pylightnix. It keeps all the information about
 #: a stage: it's [configuration](#pylightnix.types.Config), how to
 #: [realize](#pylightnix.core.realize) it and how to make a selection among
 #: multiple realizations. Information is stored partly on disk (in the
-#: storage), partly in memory in form of a Python code.
+#: storage), partly in memory in form of Python code.
 Derivation = NamedTuple('Derivation', [('dref',DRef), ('matcher',Matcher), ('realizer',Realizer) ])
 
 #: Closure is a named tuple, encoding a reference to derivation and a whole list

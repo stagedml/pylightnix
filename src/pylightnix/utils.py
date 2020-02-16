@@ -16,7 +16,8 @@ from pylightnix.imports import ( datetime, gmtime, timegm, join, makedirs,
     symlink, basename, mkdir, isdir, isfile, islink, remove, sha256, EEXIST,
     json_dumps, json_loads, makedirs, replace, dirname, walk, abspath,
     normalize, re_sub, split, json_load, find_executable, chmod, S_IWRITE, S_IREAD,
-    S_IRGRP, S_IROTH, S_IXUSR, S_IXGRP, S_IXOTH, walk )
+    S_IRGRP, S_IROTH, S_IXUSR, S_IXGRP, S_IXOTH, walk, stat, ST_MODE, S_IWGRP,
+    S_IWOTH )
 
 from pylightnix.types import ( Hash, Path, List, Any, Optional, Iterable, IO,
     DRef, RRef, Tuple, Callable )
@@ -110,22 +111,33 @@ def dirhash(path:Path)->Hash:
 
   return datahash(_iter())
 
-def dirchmod(o:Path, mode:str)->None:
-  if mode=='ro':
-    dir_perms=S_IREAD|S_IRGRP|S_IROTH | S_IXUSR|S_IXGRP|S_IXOTH
-    file_perms=S_IREAD|S_IRGRP|S_IROTH
-  elif mode=='rw':
-    dir_perms=S_IWRITE|S_IREAD|S_IRGRP|S_IROTH | S_IXUSR|S_IXGRP|S_IXOTH
-    file_perms=S_IWRITE|S_IREAD|S_IRGRP|S_IROTH
-  else:
-    assert False, f"Attempt to set invalid mode {mode} for path {o}"
+def dirro(o:Path)->None:
   for root, dirs, files in walk(o):
     for d in dirs:
-      chmod(join(root, d), dir_perms)
+      mode=stat(join(root, d))[ST_MODE]
+      chmod(join(root, d), mode & ~(S_IWRITE | S_IWGRP | S_IWOTH) )
     for f in files:
-      chmod(join(root, f), file_perms)
-  chmod(o, dir_perms)
+      mode=stat(join(root, f))[ST_MODE]
+      chmod(join(root, f), mode & ~(S_IWRITE | S_IWGRP | S_IWOTH) )
+  chmod(o, stat(o)[ST_MODE] & ~(S_IWRITE | S_IWGRP | S_IWOTH) )
 
+def dirrw(o:Path)->None:
+  for root, dirs, files in walk(o):
+    for d in dirs:
+      mode=stat(join(root, d))[ST_MODE]
+      chmod(join(root, d), mode | (S_IWRITE) )
+    for f in files:
+      mode=stat(join(root, f))[ST_MODE]
+      chmod(join(root, f), mode | (S_IWRITE) )
+  chmod(o, stat(o)[ST_MODE] | (S_IWRITE | S_IWGRP | S_IWOTH) )
+
+def dirchmod(o:Path, mode:str)->None:
+  if mode=='ro':
+    dirro(o)
+  elif mode=='rw':
+    dirrw(o)
+  else:
+    assert False, f"Attempt to set invalid mode {mode} for path {o}"
 
 def scanref_list(l:list)->Tuple[List[DRef],List[RRef]]:
   """ Scan Python list of arbitraty data for References.
