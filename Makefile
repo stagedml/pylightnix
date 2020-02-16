@@ -62,6 +62,7 @@ codecov: .stamp_codecov
 
 docs/demos/MNIST.md: docs/demos/MNIST.pmd $(SRC) .stamp_check
 	pweave -f markdown $<
+	! grep -i traceback $@
 
 docs/demos/MNIST.py: docs/demos/MNIST.pmd $(SRC) .stamp_check
 	ptangle $<
@@ -71,6 +72,7 @@ demo_mnist: docs/demos/MNIST.md docs/demos/MNIST.py
 
 docs/demos/HELLO.md: docs/demos/HELLO.pmd $(SRC) .stamp_check
 	pweave -f markdown $<
+	! grep -i traceback $@
 
 docs/demos/HELLO.py: docs/demos/HELLO.pmd $(SRC) .stamp_check
 	ptangle $<

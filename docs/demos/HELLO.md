@@ -56,9 +56,8 @@ call `store_initialize`:
 
 
 ```python
-from shutil import rmtree
-from pylightnix import store_initialize, dirrm
-dirrm('/tmp/pylightnix_hello_demo')
+from pylightnix import Path, store_initialize, dirrm
+dirrm(Path('/tmp/pylightnix_hello_demo'))
 store_initialize(custom_store='/tmp/pylightnix_hello_demo', custom_tmp='/tmp')
 ```
 
@@ -67,6 +66,9 @@ Initializing non-existing /tmp/pylightnix_hello_demo
 ```
 
 
+
+(Here we also call `dirrm` to *clear* the storage to demonstrate how do
+realizers work)
 
 Location of the storage is kept in an internal global variable and normally
 shouldn't be changed during the work, but since Pylightnix doesnt run any
@@ -126,8 +128,8 @@ print(hello_rref)
 ```
 
 ```
-Unpacking /tmp/200216-15:39:43:533958+0300_2f56e6f9_82_26549/hello-2.10.tar.gz..
-Removing /tmp/200216-15:39:43:533958+0300_2f56e6f9_82_26549/hello-2.10.tar.gz..
+Unpacking /tmp/200216-23:38:58:445828+0300_2f56e6f9_x9nyt0av/hello-2.10.tar.gz..
+Removing /tmp/200216-23:38:58:445828+0300_2f56e6f9_x9nyt0av/hello-2.10.tar.gz..
 rref:3fce7614ca738e68d6ad5b8a2057c488-2f56e6f987a1da0271915894ca19e28f-hello-src
 ```
 
@@ -294,7 +296,7 @@ print(rref)
 ```
 
 ```
-rref:02ea859ebb3b21fbe3b21c4d74f16524-53ccb94819ad4c9f55acb61460ec97ed-hello-bin
+rref:d53ce8dbb10006c460635e1691cb4854-53ccb94819ad4c9f55acb61460ec97ed-hello-bin
 ```
 
 

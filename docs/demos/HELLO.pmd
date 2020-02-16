@@ -52,11 +52,13 @@ global, it is the central part of library. In order to check or create it, we
 call `store_initialize`:
 
 ```python
-from shutil import rmtree
-from pylightnix import store_initialize, dirrm
-dirrm('/tmp/pylightnix_hello_demo')
+from pylightnix import Path, store_initialize, dirrm
+dirrm(Path('/tmp/pylightnix_hello_demo'))
 store_initialize(custom_store='/tmp/pylightnix_hello_demo', custom_tmp='/tmp')
 ```
+
+(Here we also call `dirrm` to *clear* the storage to demonstrate how do
+realizers work)
 
 Location of the storage is kept in an internal global variable and normally
 shouldn't be changed during the work, but since Pylightnix doesnt run any
