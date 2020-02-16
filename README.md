@@ -172,7 +172,7 @@ installed.
    from os.path import join
    from pylightnix import Config, mkconfig
    from pylightnix import Path, Build, build_cattrs, build_outpath, build_path
-   from pylightnix import mkdrv, build_wrapper, match_latest
+   from pylightnix import mkdrv, build_wrapper, match_latest, dirrw
 
    def hello_config()->Config:
      name:str = 'hello-bin'
@@ -184,6 +184,7 @@ installed.
      o:Path = build_outpath(b)
      with TemporaryDirectory() as tmp:
        copytree(build_path(b,c.src),join(tmp,'src'))
+       dirrw(Path(join(tmp,'src')))
        cwd = getcwd()
        try:
          chdir(join(tmp,'src'))
