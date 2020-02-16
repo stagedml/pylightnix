@@ -116,6 +116,9 @@ def test_repeated_realize()->None:
     assert rref1==rref2 and rref2==rref3
 
 def test_realize_readonly()->None:
+  """
+  FIXME: check that executable bits are preserved
+  """
   with setup_storage('test_realize_readonly'):
     rref1 = realize(instantiate(mktestnode, {'a':'1'}))
 

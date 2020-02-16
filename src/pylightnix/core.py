@@ -279,6 +279,10 @@ def store_gc(refs_in_use:List[DRef])->List[DRef]:
 
 
 def store_instantiate(c:Config)->DRef:
+  """
+
+  FIXME: make 'config.json' write-protected
+  """
   assert_store_initialized()
 
   refname=config_name(c)
