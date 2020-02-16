@@ -19,7 +19,7 @@ from pylightnix.imports import ( sha256, deepcopy, isdir, makedirs, join,
 from pylightnix.utils import (
     dirhash, assert_serializable, assert_valid_dict, dicthash, scanref_dict,
     scanref_list, forcelink, timestring, parsetime, datahash, readjson,
-    tryread, encode, dirchmod )
+    tryread, encode, dirchmod, dirrm, filero )
 from pylightnix.types import (
     Dict, List, Any, Tuple, Union, Optional, Iterable, IO, Path, Hash, DRef,
     RRef, RefPath, HashPart, Callable, Context, Name, NamedTuple, Build,
@@ -234,7 +234,8 @@ def store_deepdeps(roots:List[DRef])->Set[DRef]:
 def store_drefs()->Iterable[DRef]:
   """ Iterates over all derivations of the storage """
   for dirname in listdir(PYLIGHTNIX_STORE):
-    yield mkdref(HashPart(dirname[:32]), Name(dirname[32+1:]))
+    if dirname[-4:]!='.tmp' and isdir(join(PYLIGHTNIX_STORE,dirname)):
+      yield mkdref(HashPart(dirname[:32]), Name(dirname[32+1:]))
 
 def store_rrefs_(dref:DRef)->Iterable[RRef]:
   """ Iterate over all realizations of a derivation `dref`. The sort order is
@@ -279,9 +280,10 @@ def store_gc(refs_in_use:List[DRef])->List[DRef]:
 
 
 def store_instantiate(c:Config)->DRef:
-  """
+  """ Place new instantiation into the storage. We attempt to do it atomically
+  by moving the directory right into it's place.
 
-  FIXME: make 'config.json' write-protected
+  FIXME: Assert or handle possible (but improbable) hash collision (*)
   """
   assert_store_initialized()
 
@@ -294,16 +296,25 @@ def store_instantiate(c:Config)->DRef:
   with open(join(o,'config.json'), 'w') as f:
     f.write(config_serialize(c))
 
+  filero(Path(join(o,'config.json')))
+  drefpath=store_dref2path(dref)
+  dreftmp=Path(drefpath+'.tmp')
+  replace(o,dreftmp)
+
   try:
-    replace(o, store_dref2path(dref))
+    replace(dreftmp, drefpath)
   except OSError as err:
     if err.errno == ENOTEMPTY:
-      pass # Exactly matching derivation already exists
+      # Existing folder means that it has a matched content (*)
+      dirrm(dreftmp, ignore_not_found=False)
     else:
       raise
   return dref
 
 def store_realize(dref:DRef, l:Context, o:Path)->RRef:
+  """
+  FIXME: Assert or handle possible but improbable hash collision (*)
+  """
   c=store_config(dref)
   (dhash,nm)=undref(dref)
 
@@ -328,8 +339,8 @@ def store_realize(dref:DRef, l:Context, o:Path)->RRef:
     replace(rreftmp,rrefpath)
   except OSError as err:
     if err.errno == ENOTEMPTY:
-      dirchmod(rreftmp,'rw')
-      rmtree(rreftmp)
+      # Existing folder means that it has a matched content (*)
+      dirrm(rreftmp, ignore_not_found=False)
     else:
       # Attempt to roll-back
       dirchmod(rreftmp,'rw')

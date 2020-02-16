@@ -1,5 +1,5 @@
 from os import makedirs, replace, listdir, stat, chmod, system
-from stat import S_IEXEC
+from stat import S_IEXEC, S_IWRITE, S_IREAD
 from os.path import (basename, join, isfile, isdir, islink, relpath, abspath,
                      dirname )
 from shutil import rmtree

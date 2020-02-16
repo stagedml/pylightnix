@@ -111,14 +111,21 @@ def dirhash(path:Path)->Hash:
 
   return datahash(_iter())
 
+def filerw(f:Path)->None:
+  assert isfile(f)
+  chmod(f, stat(f)[ST_MODE] | (S_IWRITE) )
+
+def filero(f:Path)->None:
+  assert isfile(f)
+  chmod(f, stat(f)[ST_MODE] & ~(S_IWRITE | S_IWGRP | S_IWOTH) )
+
 def dirro(o:Path)->None:
   for root, dirs, files in walk(o):
     for d in dirs:
       mode=stat(join(root, d))[ST_MODE]
       chmod(join(root, d), mode & ~(S_IWRITE | S_IWGRP | S_IWOTH) )
     for f in files:
-      mode=stat(join(root, f))[ST_MODE]
-      chmod(join(root, f), mode & ~(S_IWRITE | S_IWGRP | S_IWOTH) )
+      filero(Path(join(root, f)))
   chmod(o, stat(o)[ST_MODE] & ~(S_IWRITE | S_IWGRP | S_IWOTH) )
 
 def dirrw(o:Path)->None:
@@ -127,8 +134,7 @@ def dirrw(o:Path)->None:
       mode=stat(join(root, d))[ST_MODE]
       chmod(join(root, d), mode | (S_IWRITE) )
     for f in files:
-      mode=stat(join(root, f))[ST_MODE]
-      chmod(join(root, f), mode | (S_IWRITE) )
+      filerw(Path(join(root, f)))
   chmod(o, stat(o)[ST_MODE] | (S_IWRITE | S_IWGRP | S_IWOTH) )
 
 def dirchmod(o:Path, mode:str)->None:
@@ -140,7 +146,7 @@ def dirchmod(o:Path, mode:str)->None:
     assert False, f"Attempt to set invalid mode {mode} for path {o}"
 
 def dirrm(path:Path, ignore_not_found:bool=True)->None:
-  """ Force-remove file tree """
+  """ Force-remove file tree. Deal with possible write-protection. """
   try:
     dirrw(path)
     rmtree(path)

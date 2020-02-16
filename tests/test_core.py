@@ -11,7 +11,8 @@ from pylightnix import ( Config, instantiate, DRef, RRef, Path, mklogdir,
     match_latest, match_all, match_some, match_n, realizeMany, build_outpaths )
 
 from tests.imports import ( given, Any, Callable, join, Optional, islink,
-    isfile, List, randint, sleep, rmtree )
+    isfile, List, randint, sleep, rmtree, system, S_IWRITE, S_IREAD, S_IEXEC,
+    chmod, Popen, PIPE )
 
 from tests.generators import (
     rrefs, drefs, configs, dicts )
@@ -116,9 +117,6 @@ def test_repeated_realize()->None:
     assert rref1==rref2 and rref2==rref3
 
 def test_realize_readonly()->None:
-  """
-  FIXME: check that executable bits are preserved
-  """
   with setup_storage('test_realize_readonly'):
     rref1 = realize(instantiate(mktestnode, {'a':'1'}))
 
@@ -134,6 +132,16 @@ def test_realize_readonly()->None:
       raise ShouldHaveFailed('No remove-protection??')
     except OSError as err:
       pass
+
+    def _realize(b:Build):
+      with open(join(build_outpath(b),'exe'),'w') as f:
+        f.write('#!/bin/sh\necho "Fooo"')
+      chmod(join(build_outpath(b),'exe'), S_IWRITE|S_IREAD|S_IEXEC)
+    rref2=realize(instantiate(mkdrv, Config({}), match_only(), build_wrapper(_realize)))
+    assert Popen([join(rref2path(rref2),'exe')],
+        stdout=PIPE).stdout.read()=='Fooo\n'.encode('utf-8'), \
+        "Did we lost exec permission?"
+
 
 def test_minimal_closure():
   with setup_storage('test_minimal_closure'):

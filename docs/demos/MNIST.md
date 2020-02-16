@@ -280,7 +280,7 @@ print(mnist1)
 x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
-rref:9782fd615e3050ea012d5c9b5e4f7c74-5cd9248aabb529c207a20b8b9fc576ce-unnamed
+rref:7921c6ef26d29c7c166ac8bb746d68f7-5cd9248aabb529c207a20b8b9fc576ce-unnamed
 ```
 
 
@@ -306,7 +306,7 @@ print(mnist2)
 x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
-rref:52f3f567c2e2a90162bf467bcb4145d3-5cd9248aabb529c207a20b8b9fc576ce-unnamed
+rref:c37be604c19fb2c926b6ab75d456d92b-5cd9248aabb529c207a20b8b9fc576ce-unnamed
 ```
 
 
@@ -339,7 +339,7 @@ catref(mnist1,['accuracy.txt'])
 ```
 
 ```
-['0.9853']
+['0.9869']
 ```
 
 
@@ -348,7 +348,7 @@ catref(mnist2,['accuracy.txt'])
 ```
 
 ```
-['0.9843']
+['0.984']
 ```
 
 
@@ -382,7 +382,7 @@ catref(mnist_best,['accuracy.txt'])
 ```
 
 ```
-['0.9853']
+['0.9869']
 ```
 
 

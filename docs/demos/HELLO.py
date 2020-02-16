@@ -6,9 +6,8 @@ from tempfile import TemporaryDirectory
 from typing import Any
 from subprocess import Popen, PIPE
 
-from shutil import rmtree
-from pylightnix import store_initialize, dirrm
-dirrm('/tmp/pylightnix_hello_demo')
+from pylightnix import Path, store_initialize, dirrm
+dirrm(Path('/tmp/pylightnix_hello_demo'))
 store_initialize(custom_store='/tmp/pylightnix_hello_demo', custom_tmp='/tmp')
 
 from pylightnix import DRef, instantiate_inplace, fetchurl
@@ -42,14 +41,14 @@ def hello_config()->Config:
   src = [hello_src, f'hello-{hello_version}']
   return mkconfig(locals())
 
-from pylightnix import ( Path, Build, build_cattrs, build_outpath, build_path, dirchmod )
+from pylightnix import ( Path, Build, build_cattrs, build_outpath, build_path, dirrw )
 
 def hello_realize(b:Build)->None:
   c:Any = build_cattrs(b)
   o:Path = build_outpath(b)
   with TemporaryDirectory() as tmp:
     copytree(build_path(b,c.src),join(tmp,'src'))
-    dirchmod(join(tmp,'src'),'rw')
+    dirrw(Path(join(tmp,'src')))
     cwd = getcwd()
     try:
       chdir(join(tmp,'src'))
