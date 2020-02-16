@@ -17,7 +17,7 @@ from pylightnix.imports import ( datetime, gmtime, timegm, join, makedirs,
     json_dumps, json_loads, makedirs, replace, dirname, walk, abspath,
     normalize, re_sub, split, json_load, find_executable, chmod, S_IWRITE, S_IREAD,
     S_IRGRP, S_IROTH, S_IXUSR, S_IXGRP, S_IXOTH, walk, stat, ST_MODE, S_IWGRP,
-    S_IWOTH )
+    S_IWOTH, rmtree )
 
 from pylightnix.types import ( Hash, Path, List, Any, Optional, Iterable, IO,
     DRef, RRef, Tuple, Callable )
@@ -138,6 +138,15 @@ def dirchmod(o:Path, mode:str)->None:
     dirrw(o)
   else:
     assert False, f"Attempt to set invalid mode {mode} for path {o}"
+
+def dirrm(path:Path, ignore_not_found:bool=True)->None:
+  """ Force-remove file tree """
+  try:
+    dirrw(path)
+    rmtree(path)
+  except FileNotFoundError:
+    if not ignore_not_found:
+      raise
 
 def scanref_list(l:list)->Tuple[List[DRef],List[RRef]]:
   """ Scan Python list of arbitraty data for References.

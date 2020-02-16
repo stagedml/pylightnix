@@ -7,8 +7,8 @@ from typing import Any
 from subprocess import Popen, PIPE
 
 from shutil import rmtree
-from pylightnix import store_initialize
-rmtree('/tmp/pylightnix_hello_demo', ignore_errors=True) # Optional
+from pylightnix import store_initialize, dirrm
+dirrm('/tmp/pylightnix_hello_demo')
 store_initialize(custom_store='/tmp/pylightnix_hello_demo', custom_tmp='/tmp')
 
 from pylightnix import DRef, instantiate_inplace, fetchurl

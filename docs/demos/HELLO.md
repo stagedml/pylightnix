@@ -57,8 +57,8 @@ call `store_initialize`:
 
 ```python
 from shutil import rmtree
-from pylightnix import store_initialize
-rmtree('/tmp/pylightnix_hello_demo', ignore_errors=True) # Optional
+from pylightnix import store_initialize, dirrm
+dirrm('/tmp/pylightnix_hello_demo')
 store_initialize(custom_store='/tmp/pylightnix_hello_demo', custom_tmp='/tmp')
 ```
 
@@ -126,8 +126,8 @@ print(hello_rref)
 ```
 
 ```
-Unpacking /tmp/200216-15:06:05:292405+0300_2f56e6f9_c3uz3v2t/hello-2.10.tar.gz..
-Removing /tmp/200216-15:06:05:292405+0300_2f56e6f9_c3uz3v2t/hello-2.10.tar.gz..
+Unpacking /tmp/200216-15:39:43:533958+0300_2f56e6f9_82_26549/hello-2.10.tar.gz..
+Removing /tmp/200216-15:39:43:533958+0300_2f56e6f9_82_26549/hello-2.10.tar.gz..
 rref:3fce7614ca738e68d6ad5b8a2057c488-2f56e6f987a1da0271915894ca19e28f-hello-src
 ```
 
@@ -294,7 +294,7 @@ print(rref)
 ```
 
 ```
-rref:eb14eaa937ffa45013f1a4c5ea525a53-53ccb94819ad4c9f55acb61460ec97ed-hello-bin
+rref:02ea859ebb3b21fbe3b21c4d74f16524-53ccb94819ad4c9f55acb61460ec97ed-hello-bin
 ```
 
 
