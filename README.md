@@ -14,6 +14,9 @@ Pylightnix provides a generic Python API, allowing programmers to:
   their data, inspect dependencies, and remove them as needed.
 * Special attention is paid to the support of non-deterministic build processes.
 
+Pylightnix originally appeared as a core module of
+[StagedML](https://github.com/stagedml/stagedml) library, later it was moved
+into a separate project.
 
 ## Contents
 
