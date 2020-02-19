@@ -24,7 +24,7 @@ from pylightnix.types import (
     Dict, List, Any, Tuple, Union, Optional, Iterable, IO, Path, Hash, DRef,
     RRef, RefPath, HashPart, Callable, Context, Name, NamedTuple, Build,
     Config, ConfigAttrs, Derivation, Stage, Manager, Matcher, Realizer, Set,
-    Closure, Generator, Key )
+    Closure, Generator, Key, TypeVar )
 
 #: *Do not change!*
 #: Tracks the version of pylightnix storage
@@ -362,13 +362,23 @@ def mkbuild(dref:DRef, context:Context, buildtime:bool=True)->Build:
   cattrs=store_cattrs(dref)
   return Build(dref, cattrs, context, timeprefix, buildtime)
 
+B=TypeVar('B')
+
+def build_wrapper_(
+    f:Callable[[B],None],
+    buildtime:bool,
+    constructor:Callable[[DRef,Context,bool],B],
+    outpaths_accessor:Callable[[B],List[Path]])->Realizer:
+  def _wrapper(dref,context)->List[Path]:
+    b=constructor(dref,context,buildtime); f(b); return outpaths_accessor(b)
+  return _wrapper
+
 def build_wrapper(
     f:Callable[[Build],None],
-    buildtime:bool=True,
-    constructor:Callable[[DRef,Context,bool],Build]=mkbuild)->Realizer:
-  def _wrapper(dref,context)->List[Path]:
-    b=constructor(dref,context,buildtime); f(b); return b.outpaths
-  return _wrapper
+    buildtime:bool=True):
+  def _outs(b:Build)->List[Path]:
+    return b.outpaths
+  return build_wrapper_(f,buildtime,mkbuild,_outs)
 
 def build_config(b:Build)->Config:
   """ Return the [Config](#pylightnix.types.Config) object of the realization
