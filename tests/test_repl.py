@@ -3,7 +3,7 @@ from pylightnix import ( Manager, DRef, RRef, Path, mklogdir, dirhash, mknode,
     realize, instantiate_inplace, realize_inplace, assert_valid_rref,
     store_rrefs_, store_drefs, assert_valid_dref, repl_realize, repl_cancel,
     repl_continue, repl_rref, repl_build, ReplHelper, build_outpath,
-    store_deref, tryread )
+    store_deref, tryread, repl_continueBuild )
 
 from tests.imports import (
     given, assume, example, note, settings, text, decimals, integers, rmtree,
@@ -38,16 +38,16 @@ def test_repl_basic():
       return n2
 
     clo=instantiate(_setting)
-    rh=repl_realize(clo)
+    rh=repl_realize(clo, force_interrupt=False)
     assert repl_rref(rh) is not None
 
     rh=repl_realize(clo, force_interrupt=[n1,n2])
     assert repl_rref(rh) is None
     assert rh.dref==n1
-    repl_continue(rh)
+    repl_continue(rh=rh)
     assert repl_rref(rh) is None
     assert rh.dref==n2
-    repl_continue(rh)
+    repl_continue(rh=rh)
     assert repl_rref(rh) is not None
 
 
@@ -60,7 +60,7 @@ def test_repl_recursion():
       return n2
 
     clo=instantiate(_setting)
-    rh=repl_realize(clo, force_interrupt=[clo.dref])
+    rh=repl_realize(clo, force_interrupt=True)
     assert repl_rref(rh) is None
     assert rh.dref==clo.dref
 
@@ -92,7 +92,7 @@ def test_repl_override():
     b=repl_build(rh)
     with open(join(build_outpath(b),'artifact'),'w') as f:
       f.write('777')
-    repl_continue(rh)
+    repl_continue(rh=rh)
     rref=repl_rref(rh)
     assert rref is not None
 
@@ -101,4 +101,46 @@ def test_repl_override():
 
 
 
+def test_repl_globalHelper():
+  with setup_storage('test_repl_globalHelper'):
 
+    n1:DRef; n2:DRef
+    def _setting(m:Manager)->DRef:
+      nonlocal n1,n2
+      n1 = mktestnode(m, {'a':'1'})
+      n2 = mktestnode(m, {'maman':n1})
+      return n2
+
+    rh=repl_realize(instantiate(_setting), force_interrupt=True)
+    assert repl_rref(rh) is None
+    with open(join(build_outpath(repl_build()),'artifact.txt'), 'w') as f:
+      f.write("Fooo")
+    repl_continueBuild()
+    rref=repl_rref(rh)
+    assert rref is not None
+    assert isfile(join(rref2path(rref),'artifact.txt'))
+
+
+def test_repl_globalCancel():
+  with setup_storage('test_repl_globalCancel'):
+
+    n1:DRef; n2:DRef
+    def _setting(m:Manager)->DRef:
+      nonlocal n1,n2
+      n1 = mktestnode(m, {'a':'1'})
+      n2 = mktestnode(m, {'maman':n1})
+      return n2
+
+    rh=repl_realize(instantiate(_setting), force_interrupt=True)
+    assert repl_rref(rh) is None
+    repl_cancel()
+    assert rh.gen is None
+
+
+def test_repl_realizeInval():
+  with setup_storage('test_repl_realizeInval'):
+    try:
+      repl_realize(instantiate(mktestnode, {'a':1}), force_interrupt=33) #type:ignore
+      raise ShouldHaveFailed('wrong force_interrupt value')
+    except AssertionError:
+      pass
