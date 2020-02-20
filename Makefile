@@ -80,8 +80,18 @@ docs/demos/HELLO.py: docs/demos/HELLO.pmd $(SRC) .stamp_check
 .PHONY: demo_hello
 demo_hello: docs/demos/HELLO.md docs/demos/HELLO.py
 
+docs/demos/REPL.md: docs/demos/REPL.pmd $(SRC) .stamp_check
+	pweave -f markdown $<
+	! grep -i traceback $@
+
+docs/demos/REPL.py: docs/demos/REPL.pmd $(SRC) .stamp_check
+	ptangle $<
+
+.PHONY: demo_repl
+demo_repl: docs/demos/REPL.md docs/demos/REPL.py
+
 .PHONY: demos
-demos: demo_mnist demo_hello
+demos: demo_mnist demo_hello demo_repl
 
 $(WHEEL): $(SRC) $(TESTS)
 	rm -rf build dist || true

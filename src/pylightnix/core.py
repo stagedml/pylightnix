@@ -362,15 +362,17 @@ def mkbuild(dref:DRef, context:Context, buildtime:bool=True)->Build:
   cattrs=store_cattrs(dref)
   return Build(dref, cattrs, context, timeprefix, buildtime)
 
+def mapbuild(f:Any)->Callable[[Build],Any]:
+  return lambda b: f(b.dref, b.cattrs, b.context, b.timeprefix, b.buildtime)
+
 B=TypeVar('B')
 
 def build_wrapper_(
     f:Callable[[B],None],
-    buildtime:bool,
-    constructor:Callable[[DRef,Context,bool],B],
-    outpaths_accessor:Callable[[B],List[Path]])->Realizer:
+    mapper:Callable[[Build],B],
+    buildtime:bool=True)->Realizer:
   def _wrapper(dref,context)->List[Path]:
-    b=constructor(dref,context,buildtime); f(b); return outpaths_accessor(b)
+    b=mapper(mkbuild(dref,context,buildtime)); f(b); return list(getattr(b,'outpaths'))
   return _wrapper
 
 def build_wrapper(
@@ -378,7 +380,7 @@ def build_wrapper(
     buildtime:bool=True):
   def _outs(b:Build)->List[Path]:
     return b.outpaths
-  return build_wrapper_(f,buildtime,mkbuild,_outs)
+  return build_wrapper_(f,lambda x:x,buildtime)
 
 def build_config(b:Build)->Config:
   """ Return the [Config](#pylightnix.types.Config) object of the realization
@@ -558,7 +560,7 @@ def instantiate(stage:Any, *args, **kwargs)->Closure:
 
 RealizeSeqGen = Generator[Tuple[DRef,Context,Derivation],Tuple[Optional[List[RRef]],bool],List[RRef]]
 
-def realize(closure:Closure, force_rebuild:List[DRef]=[])->RRef:
+def realize(closure:Closure, force_rebuild:Union[List[DRef],bool]=[])->RRef:
   """ A simplified version of [realizeMany](#pylightnix.core.realizeMany).
   Expects only one result. """
   rrefs=realizeMany(closure, force_rebuild)
@@ -568,7 +570,7 @@ def realize(closure:Closure, force_rebuild:List[DRef]=[])->RRef:
       f"Consider using `realizeMany`." )
   return rrefs[0]
 
-def realizeMany(closure:Closure, force_rebuild:List[DRef]=[])->List[RRef]:
+def realizeMany(closure:Closure, force_rebuild:Union[List[DRef],bool]=[])->List[RRef]:
   """ Obtain one or many realizations of a stage's
   [Closure](#pylightnix.types.Closure).
 
@@ -593,8 +595,16 @@ def realizeMany(closure:Closure, force_rebuild:List[DRef]=[])->List[RRef]:
   - FIXME: Update derivation's matcher after forced rebuilds. Matchers should
     remember and reproduce user's preferences.
   """
+  force_interrupt:List[DRef]=[]
+  if isinstance(force_rebuild,bool):
+    if force_rebuild:
+      force_interrupt=[closure.dref]
+  elif isinstance(force_rebuild,list):
+    force_interrupt=force_rebuild
+  else:
+    assert False, "Ivalid type of `force_rebuild` argument"
   try:
-    gen=realizeSeq(closure,force_interrupt=force_rebuild)
+    gen=realizeSeq(closure,force_interrupt=force_interrupt)
     next(gen)
     while True:
       gen.send((None,False)) # Ask for default action
@@ -629,7 +639,9 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[])->RealizeSeqGen:
           rrefs_matched=drv.matcher(dref,context)
           assert rrefs_matched is not None, (
             f"Derivation {dref}: Matcher repeatedly asked the core to "
-            "realize. Probably, realizer doesn't match the matcher" )
+            f"realize. Probably, realizer doesn't match the matcher. "
+            f"In particulare, the follwoing just-built rrefs are "
+            f"unmatched: {rrefs_built}" )
           if (set(rrefs_built) & set(rrefs_matched)) == set() and \
              (set(rrefs_built) | set(rrefs_matched)) != set():
             print(f"Warning: None of the newly obtained realizations of "
