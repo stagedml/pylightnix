@@ -37,8 +37,8 @@ Functions:
   of build results.
 * Clean and compact implementation:
   - Suitable for Data science / Machine learning experiments
-  - Match applications which fit into [blackboard design
-    pattern](https://en.wikipedia.org/wiki/Blackboard_design_pattern).
+  - Match applications which fit into
+    [blackboard design pattern](https://en.wikipedia.org/wiki/Blackboard_design_pattern).
 
 Implementation:
 
@@ -110,9 +110,8 @@ Demos:
 * [Hello](./docs/demos/HELLO.md), building GNU Hello with a toy package manager.
 * [Ultimatum tutorial](https://github.com/grwlf/ultimatum-game/blob/master/docs/Pylightnix.md), managing experiments.
 * [MNIST demo](./docs/demos/MNIST.md) shows machine learning specifics.
-* [REPL demo draft](./docs/demos/REPL.md) illustrates how to debug stages
-  using IPython and builtin [REPL](https://en.wikipedia.org/wiki/Read–eval–print_loop)
-  helpers.
+* [REPL demo (draft)](./docs/demos/REPL.md) illustrates how to debug stages
+  using [repl](./src/pylightnix/repl.py) functions.
 
 Reference:
 
