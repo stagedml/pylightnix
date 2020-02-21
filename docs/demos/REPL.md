@@ -1,6 +1,46 @@
 REPL Demo
 =========
 
+[Complete source of this demo](./REPL.py)
+
+This demonstration re-uses the setting of [MNIST demo](./MNIST.md). Here we show
+how to use the collection of `repl_` functions to simplify debug sessions.
+
+Consider the following chain of stages `Stage1 -> Stage2 -> Stage3`. Pylightnix
+effectively caches the results of Stages 1 and 2 so if Stage 3 require debugging
+(which is a fix-and-rerun loop), it will not trigger their re-calculation.
+
+But if Stage 3 is a long-running job, and the problem appears near to it's final
+part, we may want some way to re-use some of it's internal results. Naturally,
+Pylightnix can't see what is inside the stage, but nevetheless the process of
+debugging may be simplified by pausing the computation as close to the point of
+interest as possible.
+
+Inserting calls to python debuggers like `ipdb` is one possible way to pause the
+computation, but they typically offer a limited debugging shell and may not
+provide full access to the Python environment.
+
+In Pylightnix we offer a more generic solution which 'drops' user into normal
+IPython shell while the main computation state is stored in a single Puthon
+object waiting to be resumed.
+
+Pylightnix uses Generators for internal event processing. It's generic functions
+like `realize` hide related details, but the functions of the [Repl
+module](./../../src/pylightnix/repl.py) provide an API for some non-trivial use
+cases. It allows us to pause the computation before the specific stage, do manual
+tweaks either in IPython or in other Python shells, and finally continue the
+process by either providing explicit result or by running default realizer.
+
+During the supposed manual tweaks, Pylightnix state is kept in a `ReplHelper`
+object, either a global one or specifically chosen by the user.
+
+
+Defining MNIST stages
+---------------------
+
+We repeat the MNIST definitions explained in the MNIST demo. First, the
+necessary imports and initializations.
+
 
 ```python
 import tensorflow as tf
@@ -30,6 +70,9 @@ Initializing existing /workspace/_pylightnix/store-v0
 
 
 
+Next, we define two stages required to train the MNIST classifier. Note, how do
+we split the realization into two subroutines: `mnist_train` and `mnist_eval`.
+We will use it to track the problems.
 
 
 ```python
@@ -123,9 +166,16 @@ def convnn_mnist(m:Manager)->DRef:
 
 
 
+Debugging convnn_mnist stage
+----------------------------
+
+
+The last definition of `convnn_mnist` introduces our desired stage of training
+the MNIST classifier. Let's try to obtain it's realization
+
 
 ```python
-realize(instantiate(convnn_mnist), force_rebuild=True)
+realize(instantiate(convnn_mnist), force_rebuild=True)   # Spoiler: will fail
 ```
 
 ```
@@ -133,16 +183,17 @@ x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
 
-Epoch 00001: val_accuracy improved from -inf to 0.98317, saving model
+Epoch 00001: val_accuracy improved from -inf to 0.98233, saving model
 to
-/workspace/_pylightnix/tmp/200220-23:55:05:529142+0300_d20f6e78_abv8f3hc/checkpoint.ckpt
+/workspace/_pylightnix/tmp/200221-17:00:02:564953+0300_d20f6e78_o1sctipb/checkpoint.ckpt
 ```
 
 ```
 ---------------------------------------------------------------------------AttributeError
-Traceback (most recent call last)<ipython-input-1-cdc8dda3fa26> in
+Traceback (most recent call last)<ipython-input-1-9b8c69999b87> in
 <module>
-----> 1 realize(instantiate(convnn_mnist), force_rebuild=True)
+----> 1 realize(instantiate(convnn_mnist), force_rebuild=True)   #
+Spoiler: will fail
 ~/3rdparty/pylightnix/src/pylightnix/core.py in realize(closure,
 force_rebuild)
     564   """ A simplified version of
@@ -195,6 +246,13 @@ AttributeError: 'Sequential' object has no attribute 'load'
 
 Oh no!!!
 
+We see a backtrace saying that TensorFlow model doesn't have `load` method. It
+is not very intuitive, (note that `save` method does exist), but probably TF
+team has a good reason for implementing design. Looking through the
+documentation shows us that the right method to call is `load_weights`.
+
+We may make this trivial fix in-place but for this document I have to define
+a new funtion, containing the right call.
 
 
 ```python
@@ -209,6 +267,24 @@ def mnist_eval_correct(b:Model):
 
 
 
+Now, we need to re-realize the derivation, but if this is not the last problem,
+than we will have to run realizations 3 or more times. In order to check
+everything carefully we want to be in a position to manually run `mnist_train`
+and `mnist_eval`. In Pylightnix it is possible with it's `repl` helpers.
+
+The most straightforward wat to debug stage is to:
+
+1. Run IPython and load above definitions into it by e.g executing
+`from REPL import *`. (Jupyther Notebooks would probably also work).
+2. Manually run `repl_realize` to pause the computation before the appropriate
+   place.
+3. Run components of the stage one-by-one.
+4. Call `repl_continue` or analog to resume the computation.
+
+In contrast to normal `realize`, `repl_realize` pauses before the last
+realization. Other interrupts may be programmed by passing a list of derivations
+to pause via it's `force_interrupt=[...]` argument.
+
 
 ```python
 from pylightnix import repl_realize, repl_build, repl_continueBuild
@@ -217,8 +293,19 @@ repl_realize(instantiate(convnn_mnist))
 ```
 
 ```
-<pylightnix.repl.ReplHelper at 0x7f32c0ada5f8>
+<pylightnix.repl.ReplHelper at 0x7f0bac7dcc18>
 ```
+
+
+
+We see that Pylightnix returned `ReplHelper` object. This object holds the
+paused state of Pylightnix. In particular, it contains a field of type `Build`,
+accessible by calling `repl_build` function. Note, that all repl functions
+normally use global `ReplHelper` if called without arguments. Global ReplHelper
+is a link to the last `ReplHelper` created.
+
+Now we could call our `mnist_train` and `mnist_eval_correct` as many times as we
+want.
 
 
 ```python
@@ -230,7 +317,7 @@ x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
 
-Epoch 00001: val_accuracy improved from -inf to 0.98225, saving model to /workspace/_pylightnix/tmp/200220-23:55:12:585081+0300_d20f6e78_917s2blt/checkpoint.ckpt
+Epoch 00001: val_accuracy improved from -inf to 0.98408, saving model to /workspace/_pylightnix/tmp/200221-17:00:09:600667+0300_d20f6e78_9dwrfe5b/checkpoint.ckpt
 ```
 
 
@@ -239,22 +326,40 @@ mnist_eval_correct(repl_build())
 ```
 
 ```
-0.9847
+0.9861
 ```
+
+
+
+When we are done (it turns out that we don't have any errors), we could call
+`repl_continue` or it's simpler equivalent `repl_continueBuild` to take the
+Pylightnix state out of the ReplHelper and continue it's normal execution
 
 
 ```python
-repl_continueBuild()
+rref=repl_continueBuild()
+assert rref is not None
+print(rref)
 ```
 
 ```
-'rref:b7148e9a0165a06414da54fd5891f28f-d20f6e78a3801f50d5df4872ca0c79b4-convnn_mnist'
+rref:4a2d03b45c3283ac9c3b5e911e69006f-d20f6e78a3801f50d5df4872ca0c79b4-convnn_mnist
 ```
 
 
 
+`repl_continueBuild` returns `RRef` if the build process is complete and None if
+it was forced to make a new interrupt. Since we programmed only one interrupt,
+we now should have our realization.
+
+As a final note, one should understand that the resulting realization may now
+contain manual fixes. Pylightnix is not able to see this effects and can't
+distinguish repl- and normal realizations. User may terminate REPL realization at
+any time by calling `repl_cancel` or just closing the shell.
 
 
+
+[Complete source of this demo](./REPL.py)
 
 
 

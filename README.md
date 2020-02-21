@@ -110,8 +110,8 @@ Demos:
 * [Hello](./docs/demos/HELLO.md), building GNU Hello with a toy package manager.
 * [Ultimatum tutorial](https://github.com/grwlf/ultimatum-game/blob/master/docs/Pylightnix.md), managing experiments.
 * [MNIST demo](./docs/demos/MNIST.md) shows machine learning specifics.
-* [REPL demo (draft)](./docs/demos/REPL.md) illustrates how to debug stages
-  using [repl](./src/pylightnix/repl.py) functions.
+* [REPL demo](./docs/demos/REPL.md) illustrates how to debug stages
+  using [repl](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop) functions.
 
 Reference:
 

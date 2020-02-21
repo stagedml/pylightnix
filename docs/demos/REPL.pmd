@@ -1,37 +1,42 @@
 REPL Demo
 =========
 
-[Complete source of the demo](./REPL.py)
+[Complete source of this demo](./REPL.py)
 
 This demonstration re-uses the setting of [MNIST demo](./MNIST.md). Here we show
 how to use the collection of `repl_` functions to simplify debug sessions.
 
 Consider the following chain of stages `Stage1 -> Stage2 -> Stage3`. Pylightnix
 effectively caches the results of Stages 1 and 2 so if Stage 3 require debugging
-(fix-and-rerun loop), it will not trigger their re-calculation.
+(which is a fix-and-rerun loop), it will not trigger their re-calculation.
 
-But if Stage 3 is a long running job, and the problem appears at it's final
-stage, we may want some way to pause it, do some manual checks then resume the
-computation. Inserting calls to python debuggers like `ipdb` is one possible way
-to pause the computation, but they typically offer only a limited shell and may
-not provide full access to Python environment.
+But if Stage 3 is a long-running job, and the problem appears near to it's final
+part, we may want some way to re-use some of it's internal results. Naturally,
+Pylightnix can't see what is inside the stage, but nevetheless the process of
+debugging may be simplified by pausing the computation as close to the point of
+interest as possible.
+
+Inserting calls to python debuggers like `ipdb` is one possible way to pause the
+computation, but they typically offer a limited debugging shell and may not
+provide full access to the Python environment.
 
 In Pylightnix we offer a more generic solution which 'drops' user into normal
-IPython shell by storing the whole state of Pylightnix computation into a single
-Puthon object.
+IPython shell while the main computation state is stored in a single Puthon
+object waiting to be resumed.
 
 Pylightnix uses Generators for internal event processing. It's generic functions
-like `realize` hide this details, but the functions of the [Repl
-module](./../../src/pylightnix/repl.py) provide API for non-trivial actions. It
-allows us to pause the computation at the specific stage, do manual tweaks
-either in IPython or in other Python shells, and finally continue the process.
+like `realize` hide related details, but the functions of the [Repl
+module](./../../src/pylightnix/repl.py) provide an API for some non-trivial use
+cases. It allows us to pause the computation before the specific stage, do manual
+tweaks either in IPython or in other Python shells, and finally continue the
+process by either providing explicit result or by running default realizer.
 
-During the pause, Pylightnix state is stored in `ReplHelper` object, either
-global or specifically chosen by the user.
+During the supposed manual tweaks, Pylightnix state is kept in a `ReplHelper`
+object, either a global one or specifically chosen by the user.
 
 
-The setting
------------
+Defining MNIST stages
+---------------------
 
 We repeat the MNIST definitions explained in the MNIST demo. First, the
 necessary imports and initializations.
@@ -151,19 +156,25 @@ def convnn_mnist(m:Manager)->DRef:
 ```
 
 
-The last definition of `convnn_mnist` define our target stage of MNIST
-classifier.  Let's try to obtain it's realization
+Debugging convnn_mnist stage
+----------------------------
+
+
+The last definition of `convnn_mnist` introduces our desired stage of training
+the MNIST classifier. Let's try to obtain it's realization
 
 ```python
 realize(instantiate(convnn_mnist), force_rebuild=True)   # Spoiler: will fail
 ```
 
-Oh no!!! We see a backtrace saying that TensorFlow models don't have `load`
-method. It's strange, since the `save` method does exist, but probably TF team
-has some reason for this design. Looking through the documentation shows us that
-the right method to call is `load_weights`.
+Oh no!!!
 
-We may make this thistrivial fix in-place but for this document I have to define
+We see a backtrace saying that TensorFlow model doesn't have `load` method. It
+is not very intuitive, (note that `save` method does exist), but probably TF
+team has a good reason for implementing design. Looking through the
+documentation shows us that the right method to call is `load_weights`.
+
+We may make this trivial fix in-place but for this document I have to define
 a new funtion, containing the right call.
 
 ```python
@@ -177,18 +188,23 @@ def mnist_eval_correct(b:Model):
 
 ```
 
-Now, we need to re-realize the derivation, but we are not sure it is the last
-problem. In order to save time and prevent more re-runs we may decide to go
-through the realization process 'by hands'. In order to do so, we typically do
-the following:
+Now, we need to re-realize the derivation, but if this is not the last problem,
+than we will have to run realizations 3 or more times. In order to check
+everything carefully we want to be in a position to manually run `mnist_train`
+and `mnist_eval`. In Pylightnix it is possible with it's `repl` helpers.
 
-1. Run IPython and load our defininitions into it. (Python notebook would
-   probably also work)>
-2. Run manually `repl_realize` function as shown below.
+The most straightforward wat to debug stage is to:
+
+1. Run IPython and load above definitions into it by e.g executing
+`from REPL import *`. (Jupyther Notebooks would probably also work).
+2. Manually run `repl_realize` to pause the computation before the appropriate
+   place.
+3. Run components of the stage one-by-one.
+4. Call `repl_continue` or analog to resume the computation.
 
 In contrast to normal `realize`, `repl_realize` pauses before the last
 realization. Other interrupts may be programmed by passing a list of derivations
-to pause via it's `force_interrupt` argument.
+to pause via it's `force_interrupt=[...]` argument.
 
 ```python, term=True,wrap=False
 from pylightnix import repl_realize, repl_build, repl_continueBuild
@@ -197,10 +213,10 @@ repl_realize(instantiate(convnn_mnist))
 ```
 
 We see that Pylightnix returned `ReplHelper` object. This object holds the
-paused state of Pylightnix. In particular, it contains `Build` object,
-accessible by calling `repl_build` function. Note, that repl functions normally
-use global `ReplHelper` if called without arguments. Global ReplHelper is a link
-to the last `ReplHelper` created.
+paused state of Pylightnix. In particular, it contains a field of type `Build`,
+accessible by calling `repl_build` function. Note, that all repl functions
+normally use global `ReplHelper` if called without arguments. Global ReplHelper
+is a link to the last `ReplHelper` created.
 
 Now we could call our `mnist_train` and `mnist_eval_correct` as many times as we
 want.
@@ -221,12 +237,18 @@ assert rref is not None
 print(rref)
 ```
 
-Repl continue build returns `RRef` if the build process is complete
-or None if it has to make a new interrrupt. Since we programmed only one
-interrupt, we now should have our realization.
+`repl_continueBuild` returns `RRef` if the build process is complete and None if
+it was forced to make a new interrupt. Since we programmed only one interrupt,
+we now should have our realization.
+
+As a final note, one should understand that the resulting realization may now
+contain manual fixes. Pylightnix is not able to see this effects and can't
+distinguish repl- and normal realizations. User may terminate REPL realization at
+any time by calling `repl_cancel` or just closing the shell.
 
 
 
+[Complete source of this demo](./REPL.py)
 
 
 

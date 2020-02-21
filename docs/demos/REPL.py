@@ -90,7 +90,7 @@ def mnist_train(b:Model)->None:
 
 def mnist_eval(b:Model):
   o = build_outpath(b)
-  b.model.load_weights(join(o, "checkpoint.ckpt"))
+  b.model.load(join(o, "checkpoint.ckpt"))
   accuracy = b.model.evaluate(b.x_test, b.y_test, verbose = 0)[-1]
   print(accuracy)
   with open(join(o,'accuracy.txt'),'w') as f:
@@ -105,6 +105,24 @@ def convnn_mnist(m:Manager)->DRef:
   return mkdrv(m, mnist_config(mnist), match_best('accuracy.txt'),
     build_wrapper_(mnist_realize, mapbuild(Model)))
 
+realize(instantiate(convnn_mnist), force_rebuild=True)   # Spoiler: will fail
 
-rref=realize(instantiate(convnn_mnist), force_rebuild=True)
+def mnist_eval_correct(b:Model):
+  o = build_outpath(b)
+  b.model.load_weights(join(o, "checkpoint.ckpt"))
+  accuracy = b.model.evaluate(b.x_test, b.y_test, verbose = 0)[-1]
+  print(accuracy)
+  with open(join(o,'accuracy.txt'),'w') as f:
+    f.write(str(accuracy))
+
+from pylightnix import repl_realize, repl_build, repl_continueBuild
+
+repl_realize(instantiate(convnn_mnist))
+
+mnist_train(repl_build())
+
+mnist_eval_correct(repl_build())
+
+rref=repl_continueBuild()
+assert rref is not None
 print(rref)

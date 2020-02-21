@@ -82,7 +82,7 @@ demo_hello: docs/demos/HELLO.md docs/demos/HELLO.py
 
 docs/demos/REPL.md: docs/demos/REPL.pmd $(SRC) .stamp_check
 	pweave -f markdown $<
-	! grep -i traceback $@
+	! cat $@ | grep -i traceback | tail -n +2 | grep -i traceback
 
 docs/demos/REPL.py: docs/demos/REPL.pmd $(SRC) .stamp_check
 	ptangle $<
