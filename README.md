@@ -111,7 +111,8 @@ Demos:
 * [Ultimatum tutorial](https://github.com/grwlf/ultimatum-game/blob/master/docs/Pylightnix.md), managing experiments.
 * [MNIST demo](./docs/demos/MNIST.md) shows machine learning specifics.
 * [REPL demo draft](./docs/demos/REPL.md) illustrates how to debug stages
-  using [repl](./src/pylightnix/repl.py) functions.
+  using IPython and builtin [REPL](https://en.wikipedia.org/wiki/Read–eval–print_loop)
+  helpers.
 
 Reference:
 
