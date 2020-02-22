@@ -56,7 +56,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 from pylightnix import ( Matcher, Build, Path, RefPath, Config, Manager, RRef,
     DRef, Context, build_path, build_outpath, build_cattrs, mkdrv, rref2path,
     mkconfig, mkbuild, match_best, build_wrapper_, tryread, fetchurl,
-    store_initialize, realize, instantiate, mapbuild )
+    store_initialize, realize, instantiate )
 
 from typing import Any
 
@@ -152,7 +152,7 @@ def mnist_realize(b:Model):
 def convnn_mnist(m:Manager)->DRef:
   mnist = fetchmnist(m)
   return mkdrv(m, mnist_config(mnist), match_best('accuracy.txt'),
-    build_wrapper_(mnist_realize, mapbuild(Model)))
+    build_wrapper_(mnist_realize, Model))
 ```
 
 
@@ -207,24 +207,28 @@ realization. Other interrupts may be programmed by passing a list of derivations
 to pause via it's `force_interrupt=[...]` argument.
 
 ```python, term=True,wrap=False
-from pylightnix import repl_realize, repl_build, repl_continueBuild
+from pylightnix import repl_realize, repl_buildargs, repl_continueBuild
 
 repl_realize(instantiate(convnn_mnist))
 ```
 
 We see that Pylightnix returned `ReplHelper` object. This object holds the
-paused state of Pylightnix. In particular, it contains a field of type `Build`,
-accessible by calling `repl_build` function. Note, that all repl functions
-normally use global `ReplHelper` if called without arguments. Global ReplHelper
-is a link to the last `ReplHelper` created.
+paused state of Pylightnix. In particular, it contains all the information
+required to let user create his `Build` object (or it's subtype). This
+information may be received in form of `BuildArgs` object by calling
+`repl_buildargs`. Below we show how to create stage-specific build subtype named
+`Model` out of it.
+
+Note, that all repl functions normally use global `ReplHelper` if called without
+arguments. Global ReplHelper is a link to the last `ReplHelper` created.
 
 Now we could call our `mnist_train` and `mnist_eval_correct` as many times as we
 want.
 
 ```python, term=True,wrap=False
-mnist_train(repl_build())
-
-mnist_eval_correct(repl_build())
+b=Model(repl_buildargs())
+mnist_train(b)
+mnist_eval_correct(b)
 ```
 
 When we are done (it turns out that we don't have any errors), we could call
@@ -232,7 +236,7 @@ When we are done (it turns out that we don't have any errors), we could call
 Pylightnix state out of the ReplHelper and continue it's normal execution
 
 ```python, wrap=False
-rref=repl_continueBuild()
+rref=repl_continueBuild(b)
 assert rref is not None
 print(rref)
 ```

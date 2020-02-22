@@ -57,7 +57,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 from pylightnix import ( Matcher, Build, Path, RefPath, Config, Manager, RRef,
     DRef, Context, build_path, build_outpath, build_cattrs, mkdrv, rref2path,
     mkconfig, mkbuild, match_best, build_wrapper_, tryread, fetchurl,
-    store_initialize, realize, instantiate, mapbuild )
+    store_initialize, realize, instantiate )
 
 from typing import Any
 
@@ -160,7 +160,7 @@ def mnist_realize(b:Model):
 def convnn_mnist(m:Manager)->DRef:
   mnist = fetchmnist(m)
   return mkdrv(m, mnist_config(mnist), match_best('accuracy.txt'),
-    build_wrapper_(mnist_realize, mapbuild(Model)))
+    build_wrapper_(mnist_realize, Model))
 ```
 
 
@@ -183,9 +183,9 @@ x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
 
-Epoch 00001: val_accuracy improved from -inf to 0.98233, saving model
+Epoch 00001: val_accuracy improved from -inf to 0.98358, saving model
 to
-/workspace/_pylightnix/tmp/200221-17:00:02:564953+0300_d20f6e78_o1sctipb/checkpoint.ckpt
+/workspace/_pylightnix/tmp/200222-11:03:43:128793+0300_d20f6e78_qba5tc9w/checkpoint.ckpt
 ```
 
 ```
@@ -196,43 +196,43 @@ Traceback (most recent call last)<ipython-input-1-9b8c69999b87> in
 Spoiler: will fail
 ~/3rdparty/pylightnix/src/pylightnix/core.py in realize(closure,
 force_rebuild)
-    564   """ A simplified version of
+    576   """ A simplified version of
 [realizeMany](#pylightnix.core.realizeMany).
-    565   Expects only one result. """
---> 566   rrefs=realizeMany(closure, force_rebuild)
-    567   assert len(rrefs)==1, (
-    568       f"realize is to be used with single-output derivations,
+    577   Expects only one result. """
+--> 578   rrefs=realizeMany(closure, force_rebuild)
+    579   assert len(rrefs)==1, (
+    580       f"realize is to be used with single-output derivations,
 but derivation "
 ~/3rdparty/pylightnix/src/pylightnix/core.py in realizeMany(closure,
 force_rebuild)
-    608     next(gen)
-    609     while True:
---> 610       gen.send((None,False)) # Ask for default action
-    611   except StopIteration as e:
-    612     res=e.value
+    620     next(gen)
+    621     while True:
+--> 622       gen.send((None,False)) # Ask for default action
+    623   except StopIteration as e:
+    624     res=e.value
 ~/3rdparty/pylightnix/src/pylightnix/core.py in realizeSeq(closure,
 force_interrupt)
-    635           rrefs=drv.matcher(dref,dref_context)
-    636         if rrefs is None:
---> 637           paths=drv.realizer(dref,context)
-    638           rrefs_built=[store_realize(dref,context,path) for
+    647           rrefs=drv.matcher(dref,dref_context)
+    648         if rrefs is None:
+--> 649           paths=drv.realizer(dref,context)
+    650           rrefs_built=[store_realize(dref,context,path) for
 path in paths]
-    639           rrefs_matched=drv.matcher(dref,context)
+    651           rrefs_matched=drv.matcher(dref,context)
 ~/3rdparty/pylightnix/src/pylightnix/core.py in _wrapper(dref,
 context)
-    373     buildtime:bool=True)->Realizer:
-    374   def _wrapper(dref,context)->List[Path]:
---> 375     b=mapper(mkbuild(dref,context,buildtime)); f(b); return
+    389     buildtime:bool=True)->Realizer:
+    390   def _wrapper(dref,context)->List[Path]:
+--> 391     b=ctr(mkbuildargs(dref,context,buildtime)); f(b); return
 list(getattr(b,'outpaths'))
-    376   return _wrapper
-    377
-<ipython-input-1-ab2c31667718> in mnist_realize(b)
+    392   return _wrapper
+    393
+<ipython-input-1-f38c6dead39e> in mnist_realize(b)
      77 def mnist_realize(b:Model):
      78   mnist_train(b)
 ---> 79   mnist_eval(b)
      80
      81 def convnn_mnist(m:Manager)->DRef:
-<ipython-input-1-ab2c31667718> in mnist_eval(b)
+<ipython-input-1-f38c6dead39e> in mnist_eval(b)
      69 def mnist_eval(b:Model):
      70   o = build_outpath(b)
 ---> 71   b.model.load(join(o, "checkpoint.ckpt"))
@@ -287,29 +287,34 @@ to pause via it's `force_interrupt=[...]` argument.
 
 
 ```python
-from pylightnix import repl_realize, repl_build, repl_continueBuild
+from pylightnix import repl_realize, repl_buildargs, repl_continueBuild
 
 repl_realize(instantiate(convnn_mnist))
 ```
 
 ```
-<pylightnix.repl.ReplHelper at 0x7f0bac7dcc18>
+<pylightnix.repl.ReplHelper at 0x7f27086f3c18>
 ```
 
 
 
 We see that Pylightnix returned `ReplHelper` object. This object holds the
-paused state of Pylightnix. In particular, it contains a field of type `Build`,
-accessible by calling `repl_build` function. Note, that all repl functions
-normally use global `ReplHelper` if called without arguments. Global ReplHelper
-is a link to the last `ReplHelper` created.
+paused state of Pylightnix. In particular, it contains all the information
+required to let user create his `Build` object (or it's subtype). This
+information may be received in form of `BuildArgs` object by calling
+`repl_buildargs`. Below we show how to create stage-specific build subtype named
+`Model` out of it.
+
+Note, that all repl functions normally use global `ReplHelper` if called without
+arguments. Global ReplHelper is a link to the last `ReplHelper` created.
 
 Now we could call our `mnist_train` and `mnist_eval_correct` as many times as we
 want.
 
 
 ```python
-mnist_train(repl_build())
+b=Model(repl_buildargs())
+mnist_train(b)
 ```
 
 ```
@@ -317,16 +322,16 @@ x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
 
-Epoch 00001: val_accuracy improved from -inf to 0.98408, saving model to /workspace/_pylightnix/tmp/200221-17:00:09:600667+0300_d20f6e78_9dwrfe5b/checkpoint.ckpt
+Epoch 00001: val_accuracy improved from -inf to 0.98475, saving model to /workspace/_pylightnix/tmp/200222-11:03:51:347676+0300_d20f6e78_1lthrzcn/checkpoint.ckpt
 ```
 
 
 ```python
-mnist_eval_correct(repl_build())
+mnist_eval_correct(b)
 ```
 
 ```
-0.9861
+0.9837
 ```
 
 
@@ -337,13 +342,13 @@ Pylightnix state out of the ReplHelper and continue it's normal execution
 
 
 ```python
-rref=repl_continueBuild()
+rref=repl_continueBuild(b)
 assert rref is not None
 print(rref)
 ```
 
 ```
-rref:4a2d03b45c3283ac9c3b5e911e69006f-d20f6e78a3801f50d5df4872ca0c79b4-convnn_mnist
+rref:4fed79e1182a3eb4481714f473a68311-d20f6e78a3801f50d5df4872ca0c79b4-convnn_mnist
 ```
 
 

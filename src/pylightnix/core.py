@@ -24,7 +24,7 @@ from pylightnix.types import (
     Dict, List, Any, Tuple, Union, Optional, Iterable, IO, Path, Hash, DRef,
     RRef, RefPath, HashPart, Callable, Context, Name, NamedTuple, Build,
     Config, ConfigAttrs, Derivation, Stage, Manager, Matcher, Realizer, Set,
-    Closure, Generator, Key, TypeVar )
+    Closure, Generator, Key, TypeVar, BuildArgs )
 
 #: *Do not change!*
 #: Tracks the version of pylightnix storage
@@ -210,18 +210,18 @@ def store_cattrs(r:Union[DRef,RRef])->Any:
   functions do the same thing. """
   return config_cattrs(store_config(r))
 
-def store_deps(refs:List[DRef])->List[DRef]:
+def store_deps(refs:Iterable[DRef])->Set[DRef]:
   """ Return a list of reference's immediate dependencies, not including `refs`
   themselves. """
   acc=set()
   for r in refs:
     acc.update(config_deps(store_config(r)))
-  return list(acc)
+  return acc
 
-def store_deepdeps(roots:List[DRef])->Set[DRef]:
-  """ Return an exhaustive list of `roots`'s dependencies, not including `roots`
+def store_deepdeps(roots:Iterable[DRef])->Set[DRef]:
+  """ Return the complete set of `roots`'s dependencies, not including `roots`
   themselves. """
-  frontier=set(store_deps(roots))
+  frontier=store_deps(roots)
   processed=set()
   while frontier:
     ref = frontier.pop()
@@ -230,6 +230,16 @@ def store_deepdeps(roots:List[DRef])->Set[DRef]:
       if not dep in processed:
         frontier.add(dep)
   return processed
+
+def store_deepdepRrefs(roots:Iterable[RRef])->Set[RRef]:
+  """ Return the complete set of root's dependencies, not including `roots`
+  themselves.
+  """
+  acc:Set=set()
+  for rref in roots:
+    for rref_deps in store_context(rref).values():
+      acc|=set(rref_deps)
+  return acc
 
 def store_drefs()->Iterable[DRef]:
   """ Iterates over all derivations of the storage """
@@ -248,7 +258,7 @@ def store_rrefs_(dref:DRef)->Iterable[RRef]:
 
 def store_rrefs(dref:DRef, context:Context)->Iterable[RRef]:
   """ Iterate over realizations of a derivation `dref`, which match a
-  [context]($pylightnix.types.Context). The sort order is unspecified. """
+  [context](#pylightnix.types.Context). The sort order is unspecified. """
   for rref in store_rrefs_(dref):
     context2=store_context(rref)
     if context_eq(context,context2):
@@ -266,17 +276,24 @@ def store_deref(context_holder:RRef, dref:DRef)->RRef:
   assert len(rrefs)==1
   return rrefs[0]
 
-def store_gc(refs_in_use:List[DRef])->List[DRef]:
+def store_gc(keep:Tuple[List[DRef],List[RRef]])->Tuple[Set[DRef],Set[RRef]]:
   """ Take roots which are in use and should not be removed. Return roots which
   are not used and may be removed. Actual removing is to be done by user-defined
   application. """
   assert_store_initialized()
-  to_delete=[]
-  roots_with_deps=set(store_deepdeps(refs_in_use)) | set(refs_in_use)
+  keep_rrefs=set(keep[1])
+  keep_drefs=set(keep[0]) | {rref2dref(rref) for rref in keep_rrefs}
+  closure_drefs=store_deepdeps(keep_drefs) | keep_drefs
+  closure_rrefs=store_deepdepRrefs(keep_rrefs) | keep_rrefs
+  remove_drefs=set()
+  remove_rrefs=set()
   for dref in store_drefs():
-    if not dref in roots_with_deps:
-      to_delete.append(dref)
-  return to_delete
+    if dref not in closure_drefs:
+      remove_drefs.add(dref)
+    for rref in store_rrefs_(dref):
+      if rref not in closure_rrefs:
+        remove_rrefs.add(rref)
+  return remove_drefs,remove_rrefs
 
 
 def store_instantiate(c:Config)->DRef:
@@ -354,33 +371,28 @@ def store_realize(dref:DRef, l:Context, o:Path)->RRef:
 # | |_) | |_| | | | (_| |
 # |____/ \__,_|_|_|\__,_|
 
-
-def mkbuild(dref:DRef, context:Context, buildtime:bool=True)->Build:
+def mkbuildargs(dref:DRef, context:Context, buildtime:bool=True)->BuildArgs:
   c=store_config(dref)
   assert_valid_config(c)
   timeprefix=timestring()
   cattrs=store_cattrs(dref)
-  return Build(dref, cattrs, context, timeprefix, buildtime)
+  return BuildArgs(dref, cattrs, context, timeprefix, buildtime)
 
-def mapbuild(f:Any)->Callable[[Build],Any]:
-  return lambda b: f(b.dref, b.cattrs, b.context, b.timeprefix, b.buildtime)
+def mkbuild(dref:DRef, context:Context, buildtime:bool=True)->Build:
+  return Build(mkbuildargs(dref,context,buildtime))
 
 B=TypeVar('B')
 
 def build_wrapper_(
     f:Callable[[B],None],
-    mapper:Callable[[Build],B],
+    ctr:Callable[[BuildArgs],B],
     buildtime:bool=True)->Realizer:
   def _wrapper(dref,context)->List[Path]:
-    b=mapper(mkbuild(dref,context,buildtime)); f(b); return list(getattr(b,'outpaths'))
+    b=ctr(mkbuildargs(dref,context,buildtime)); f(b); return list(getattr(b,'outpaths'))
   return _wrapper
 
-def build_wrapper(
-    f:Callable[[Build],None],
-    buildtime:bool=True):
-  def _outs(b:Build)->List[Path]:
-    return b.outpaths
-  return build_wrapper_(f,lambda x:x,buildtime)
+def build_wrapper(f:Callable[[Build],None], buildtime:bool=True):
+  return build_wrapper_(f,Build,buildtime)
 
 def build_config(b:Build)->Config:
   """ Return the [Config](#pylightnix.types.Config) object of the realization

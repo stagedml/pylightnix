@@ -13,10 +13,10 @@
 # limitations under the License.
 
 from pylightnix.types import ( Closure, Context, Derivation, RRef, DRef, List,
-    Tuple, Optional, Generator, Path, Build, Union  )
+    Tuple, Optional, Generator, Path, Build, Union, Any, BuildArgs  )
 
 from pylightnix.core import ( realizeSeq, store_realize, RealizeSeqGen,
-    mkbuild, build_outpaths )
+    mkbuildargs, build_outpaths )
 
 class ReplHelper:
   def __init__(self, gen:RealizeSeqGen)->None:
@@ -24,19 +24,24 @@ class ReplHelper:
     self.dref:Optional[DRef]=None
     self.context:Optional[Context]=None
     self.drv:Optional[Derivation]=None
-    self.build:Optional[Build]=None
     self.rrefs:Optional[List[RRef]]=None
 
-def repl_continueMany(rh:ReplHelper, out_paths:Optional[List[Path]]=None)->Optional[List[RRef]]:
+ERR_INVALID_RH="Neither global, nor user-defined ReplHelper is valid"
+ERR_INACTIVE_RH="REPL session is not paused or was already unpaused"
+
+PYLIGHTNIX_REPL_HELPER:Optional[ReplHelper]=None
+
+def repl_continueMany(out_paths:Optional[List[Path]],
+                      rh:Optional[ReplHelper]=None)->Optional[List[RRef]]:
+  global PYLIGHTNIX_REPL_HELPER
+  if rh is None:
+    rh=PYLIGHTNIX_REPL_HELPER
+  assert rh is not None, ERR_INVALID_RH
+  assert rh.gen is not None, ERR_INACTIVE_RH
+  assert rh.dref is not None, ERR_INACTIVE_RH
+  assert rh.context is not None, ERR_INACTIVE_RH
+  assert rh.drv is not None, ERR_INACTIVE_RH
   try:
-    assert rh.gen is not None
-    assert rh.dref is not None
-    assert rh.context is not None
-    assert rh.drv is not None
-    if out_paths is None:
-      if rh.build is not None:
-        out_paths=build_outpaths(rh.build)
-        rh.build=None
     rrefs:Optional[List[RRef]]
     if out_paths is not None:
       rrefs=[store_realize(rh.dref,rh.context,out_path) for out_path in out_paths]
@@ -45,27 +50,18 @@ def repl_continueMany(rh:ReplHelper, out_paths:Optional[List[Path]]=None)->Optio
     rh.dref,rh.context,rh.drv=rh.gen.send((rrefs,False))
   except StopIteration as e:
     rh.gen=None
-    rh.build=None
     rh.rrefs=e.value
   return rh.rrefs
 
-PYLIGHTNIX_REPL_HELPER:Optional[ReplHelper]=None
-
-def repl_continue(out_paths:Optional[List[Path]]=None, rh:Optional[ReplHelper]=None)->Optional[RRef]:
-  global PYLIGHTNIX_REPL_HELPER
-  if rh is None:
-    rh=PYLIGHTNIX_REPL_HELPER
-  assert rh is not None
-  rrefs=repl_continueMany(rh, out_paths)
+def repl_continue(out_paths:Optional[List[Path]]=None,
+                  rh:Optional[ReplHelper]=None)->Optional[RRef]:
+  rrefs=repl_continueMany(out_paths,rh)
   if rrefs is None:
     return None
   assert len(rrefs)==1, f"Acturally {len(rrefs)}"
   return rrefs[0]
 
-def repl_continueBuild(b:Optional[Build]=None, rh:Optional[ReplHelper]=None)->Optional[RRef]:
-  if b is None:
-    b=repl_build(rh)
-  assert b is not None
+def repl_continueBuild(b:Build, rh:Optional[ReplHelper]=None)->Optional[RRef]:
   return repl_continue(out_paths=b.outpaths, rh=rh)
 
 def repl_realize(closure:Closure, force_interrupt:Union[List[DRef],bool]=True)->ReplHelper:
@@ -80,12 +76,11 @@ def repl_realize(closure:Closure, force_interrupt:Union[List[DRef],bool]=True)->
     assert False, "Invalid argument"
   rh=ReplHelper(realizeSeq(closure,force_interrupt_))
   PYLIGHTNIX_REPL_HELPER=rh
-  assert rh.gen is not None
+  assert rh.gen is not None, ERR_INACTIVE_RH
   try:
     rh.dref,rh.context,rh.drv=next(rh.gen)
   except StopIteration as e:
     rh.gen=None
-    rh.build=None
     rh.rrefs=e.value
   return rh
 
@@ -99,27 +94,26 @@ def repl_rref(rh:ReplHelper)->Optional[RRef]:
   assert len(rrefs)==1
   return rrefs[0]
 
-def repl_build(rh:Optional[ReplHelper]=None, buildtime:bool=True)->Build:
+def repl_buildargs(rh:Optional[ReplHelper]=None, buildtime:bool=True)->BuildArgs:
   global PYLIGHTNIX_REPL_HELPER
   if rh is None:
     rh=PYLIGHTNIX_REPL_HELPER
-  assert rh is not None
-  assert rh.gen is not None
-  assert rh.dref is not None
-  assert rh.context is not None
-  if rh.build is None:
-    rh.build=mkbuild(rh.dref, rh.context, buildtime=buildtime)
-  return rh.build
+  assert rh is not None, ERR_INVALID_RH
+  assert rh.context is not None, ERR_INACTIVE_RH
+  assert rh.dref is not None, ERR_INACTIVE_RH
+  return mkbuildargs(rh.dref, rh.context, buildtime)
+
+def repl_build(rh:Optional[ReplHelper]=None, buildtime:bool=True)->Build:
+  return Build(repl_buildargs(rh, buildtime))
 
 def repl_cancel(rh:Optional[ReplHelper]=None)->None:
   global PYLIGHTNIX_REPL_HELPER
   if rh is None:
     rh=PYLIGHTNIX_REPL_HELPER
-  assert rh is not None
+  assert rh is not None, ERR_INVALID_RH
   try:
     assert rh.gen is not None
     rh.gen.send((None,True))
   except StopIteration as e:
     rh.gen=None
-    rh.build=None
 

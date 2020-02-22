@@ -92,7 +92,7 @@ def test_repl_override():
     b=repl_build(rh)
     with open(join(build_outpath(b),'artifact'),'w') as f:
       f.write('777')
-    repl_continue(rh=rh)
+    repl_continue(b.outpaths, rh)
     rref=repl_rref(rh)
     assert rref is not None
 
@@ -113,9 +113,10 @@ def test_repl_globalHelper():
 
     rh=repl_realize(instantiate(_setting), force_interrupt=True)
     assert repl_rref(rh) is None
-    with open(join(build_outpath(repl_build()),'artifact.txt'), 'w') as f:
+    b=repl_build()
+    with open(join(build_outpath(b),'artifact.txt'), 'w') as f:
       f.write("Fooo")
-    repl_continueBuild()
+    repl_continueBuild(b)
     rref=repl_rref(rh)
     assert rref is not None
     assert isfile(join(rref2path(rref),'artifact.txt'))

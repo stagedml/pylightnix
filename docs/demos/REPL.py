@@ -13,7 +13,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 from pylightnix import ( Matcher, Build, Path, RefPath, Config, Manager, RRef,
     DRef, Context, build_path, build_outpath, build_cattrs, mkdrv, rref2path,
     mkconfig, mkbuild, match_best, build_wrapper_, tryread, fetchurl,
-    store_initialize, realize, instantiate, mapbuild )
+    store_initialize, realize, instantiate )
 
 from typing import Any
 
@@ -103,7 +103,7 @@ def mnist_realize(b:Model):
 def convnn_mnist(m:Manager)->DRef:
   mnist = fetchmnist(m)
   return mkdrv(m, mnist_config(mnist), match_best('accuracy.txt'),
-    build_wrapper_(mnist_realize, mapbuild(Model)))
+    build_wrapper_(mnist_realize, Model))
 
 realize(instantiate(convnn_mnist), force_rebuild=True)   # Spoiler: will fail
 
@@ -115,14 +115,14 @@ def mnist_eval_correct(b:Model):
   with open(join(o,'accuracy.txt'),'w') as f:
     f.write(str(accuracy))
 
-from pylightnix import repl_realize, repl_build, repl_continueBuild
+from pylightnix import repl_realize, repl_buildargs, repl_continueBuild
 
 repl_realize(instantiate(convnn_mnist))
 
-mnist_train(repl_build())
+b=Model(repl_buildargs())
+mnist_train(b)
+mnist_eval_correct(b)
 
-mnist_eval_correct(repl_build())
-
-rref=repl_continueBuild()
+rref=repl_continueBuild(b)
 assert rref is not None
 print(rref)

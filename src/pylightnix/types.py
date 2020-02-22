@@ -195,6 +195,10 @@ class ConfigAttrs:
     for k,v in d.items():
       setattr(self,k,v)
 
+BuildArgs = NamedTuple('BuildArgs', [('dref',DRef), ('cattrs',ConfigAttrs),
+                                     ('context',Context), ('timeprefix',str),
+                                     ('buildtime',bool)])
+
 class Build:
   """Build is a helper object which tracks the process of stage's
   [realization](#pylightnix.core.realize).
@@ -207,13 +211,14 @@ class Build:
   - [build_path](#pylightnix.core.build_path)
   - [build_outpath](#pylightnix.core.build_outpath)
   """
-  def __init__(self, dref:DRef, cattrs:ConfigAttrs, context:Context, timeprefix:str, buildtime:bool)->None:
-    self.dref=dref
-    self.cattrs=cattrs
-    self.context=context
-    self.timeprefix=timeprefix
+
+  def __init__(self, ba:BuildArgs)->None:
+    self.dref=ba.dref
+    self.cattrs=ba.cattrs
+    self.context=ba.context
+    self.timeprefix=ba.timeprefix
+    self.buildtime=ba.buildtime
     self.outpaths:List[Path]=[]
-    self.buildtime=buildtime
 
 class Manager:
   def __init__(self):
