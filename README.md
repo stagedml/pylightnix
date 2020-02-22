@@ -1,7 +1,7 @@
 ![coverage](https://codecov.io/gh/stagedml/pylightnix/branch/master/graph/badge.svg)
 
-
-# Pylightnix
+Pylightnix
+==========
 
 Pylightnix is a Python-based DSL library for manipulating filesystem-based
 immutable data objects, inspired by the [Nix](https://nixos.org) package
@@ -18,16 +18,19 @@ Pylightnix originally appeared as a core module of
 [StagedML](https://github.com/stagedml/stagedml) library, later it was moved
 into a separate project.
 
-## Contents
+Contents
+--------
 
 1. [Features](#Features)
 2. [Related work](#Related-work)
-2. [Install](#Install)
-3. [Documentation](#Documentation)
-4. [Quick start](#Quick-start)
+3. [Install](#Install)
+4. [Documentation](#Documentation)
+5. [Quick start](#Quick-start)
+6. [Rational](#Rational)
 
 
-## Features
+Features
+--------
 
 Functions:
 
@@ -53,7 +56,8 @@ Implementation:
   besides Linux.
 
 
-## Related work
+Related work
+------------
 
 * [Nix](https://nixos.org) ([repo](https://github.com/nixos/nix), [comparison](./docs/Comparison.md#Pylightnix-vs-Nix))
 * [Spack](https://spack.io) ([repo](https://github.com/spack/spack))
@@ -61,7 +65,8 @@ Implementation:
 * [CK](https://cknowledge.org) ([repo](https://github.com/ctuning/ck))
 
 
-## Install
+Install
+-------
 
 #### Using Pip
 
@@ -103,7 +108,8 @@ is to use the git link:
    $ make demos
    ```
 
-## Documentation
+Documentation
+-------------
 
 Demos:
 
@@ -118,7 +124,9 @@ Reference:
 * [API Reference](./docs/Reference.md)
 * [Tests](./tests)
 
-## Quick start
+
+Quick start
+-----------
 
 Pylightnix could be used as a lightweight build system (but rather unsafe,
 because of the lack of built-in build isolation). This quick start illustrates
@@ -233,5 +241,20 @@ installed.
    ```
    Hello World!
    ```
+
+
+Rational
+--------
+
+* Q: Why does the API contain mostly functions and almost no classes?
+* A: Several reasones: a) This would allow us to keep users informed about the
+  API changes. We are trying to avoid changes in functions which are already
+  published. By importing functions explicitly, users will notice such changes
+  quickly. b) Typical class-based APIs of Python often let users think that they
+  could extend it by sub-classing. Here we don't want to misinform users. c)
+  Class-based wrapper API may be created as a standalone module.
+
+( TODO )
+
 
 
