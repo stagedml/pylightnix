@@ -246,6 +246,15 @@ installed.
 Rational
 --------
 
+* Q: Why based on Nix ideas?
+* A: There are many solutions in the area of software deployment. Besides Nix,
+  we know all the traditional package managers, Docker, AppImage, VirtualBox,
+  other virtualizers. One property of Nix we want to highlight is it's low
+  system requirements. Basically, Nix' core may work on a system which has only
+  a filestorage and symlinks. Here we try to follow this trend by keeping the
+  number of dependencies low while providing a competitive set of features.
+
+
 * Q: Why does the API contain mostly functions and almost no classes?
 * A: Several reasones: a) This would allow us to keep users informed about the
   API changes. We are trying to avoid changes in functions which are already
