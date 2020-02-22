@@ -170,9 +170,9 @@ realize(instantiate(convnn_mnist), force_rebuild=True)   # Spoiler: will fail
 Oh no!!!
 
 We see a backtrace saying that TensorFlow model doesn't have `load` method. It
-is not very intuitive, (note that `save` method does exist), but probably TF
-team has a good reason for implementing design. Looking through the
-documentation shows us that the right method to call is `load_weights`.
+is not very intuitive, (note that `save` method does exist), but this is what we
+have. Looking through the documentation shows us that the right method to call
+is `load_weights`.
 
 We may make this trivial fix in-place but for this document I have to define
 a new funtion, containing the right call.

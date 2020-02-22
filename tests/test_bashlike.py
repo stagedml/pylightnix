@@ -1,10 +1,11 @@
 from pylightnix import ( DRef, RRef, lsref, catref, instantiate, realize,
-    unrref, rmref, store_dref2path, rref2path )
+    unrref, rmref, store_dref2path, rref2path, shellref, rref2dref )
 
-from tests.setup import (
-    ShouldHaveFailed, setup_testpath, setup_storage, mktestnode_nondetermenistic )
+from tests.setup import ( ShouldHaveFailed, setup_testpath, setup_storage,
+    mktestnode, mktestnode_nondetermenistic )
 
-from tests.imports import ( isdir )
+from tests.imports import ( isdir, environ, chmod, stat, TemporaryDirectory,
+    join, S_IEXEC )
 
 
 def test_bashlike():
@@ -32,8 +33,6 @@ def test_bashlike():
     except AssertionError:
       pass
 
-
-
 def test_rmdref():
   with setup_storage('test_rmdref') as s:
     clo=instantiate(mktestnode_nondetermenistic, {'a':1}, lambda:42)
@@ -52,5 +51,21 @@ def test_rmdref():
     except AssertionError:
       pass
 
-
+def test_shellref():
+  with setup_storage('test_shellref') as s:
+    with TemporaryDirectory() as tmp:
+      mockshell=join(tmp,'mockshell')
+      with open(mockshell,'w') as f:
+        f.write(f"#!/bin/sh\n")
+        f.write(f"pwd\n")
+      chmod(mockshell, stat(mockshell).st_mode | S_IEXEC)
+      environ['SHELL']=mockshell
+      rref=realize(instantiate(mktestnode, {'a':1}))
+      shellref(rref)
+      shellref(rref2dref(rref))
+      try:
+        shellref('foo') # type:ignore
+        raise ShouldHaveFailed('Should reject non-refs')
+      except AssertionError:
+        pass
 

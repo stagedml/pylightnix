@@ -13,7 +13,8 @@
 # limitations under the License.
 
 from pylightnix.types import ( Iterable, List, Union, Optional, DRef, RRef )
-from pylightnix.imports import ( isfile, isdir, listdir, join, rmtree )
+from pylightnix.imports import ( isfile, isdir, listdir, join, rmtree, environ,
+    Popen )
 from pylightnix.core import ( store_dref2path, rref2path, isrref, isdref )
 from pylightnix.utils import ( dirchmod )
 
@@ -25,18 +26,21 @@ def lsdref_(r:DRef)->Iterable[str]:
     if isdir(p2):
       yield d
 
-def lsrref_(r:RRef)->Iterable[str]:
-  p=rref2path(r)
+def lsrref_(r:RRef, fn:List[str]=[])->Iterable[str]:
+  p=join(rref2path(r),*fn)
   for d in listdir(p):
     yield d
+
+def lsrref(r:RRef, fn:List[str]=[])->List[str]:
+  return list(lsrref_(r,fn))
 
 def lsref(r:Union[RRef,DRef])->List[str]:
   """ List the contents of `r`. For [DRefs](#pylightnix.types.DRef), return
   realization hashes. For [RRefs](#pylightnix.types.RRef), list artifact files. """
-  if isrref(r):
-    return list(lsrref_(RRef(r)))
-  elif isdref(r):
-    return list(lsdref_(DRef(r)))
+  if isrref(r) and isinstance(r,RRef):
+    return list(lsrref(r))
+  elif isdref(r) and isinstance(r,DRef):
+    return list(lsdref_(r))
   else:
     assert False, f"Invalid reference {r}"
 
@@ -47,8 +51,8 @@ def catrref_(r:RRef, fn:List[str])->Iterable[str]:
 
 def catref(r:RRef, fn:List[str])->List[str]:
   """ Return the contents of r's artifact file `fn` line by line. """
-  if isrref(r):
-    return list(catrref_(RRef(r),fn))
+  if isrref(r) and isinstance(r,RRef):
+    return list(catrref_(r,fn))
   else:
     assert False, 'not implemented'
 
@@ -68,14 +72,24 @@ def rmref(r:Union[RRef,DRef])->None:
   storage. In scenarious involving parallelization, users are expected to take
   care of possible race conditions.
   """
-  if isrref(r):
-    rmrref(RRef(r))
-  elif isdref(r):
-    rmdref(DRef(r))
+  if isrref(r) and isinstance(r,RRef):
+    rmrref(r)
+  elif isdref(r) and isinstance(r,DRef):
+    rmdref(r)
   else:
     assert False, f"Invalid reference {r}"
 
-
-
+def shellref(r:Union[RRef,DRef])->None:
+  """ Open the directory corresponding to `r` in Unix Shell for inspection. The
+  path to shell executable is read from the `SHELL` environment variable,
+  defaulting to `/bin/sh`.  """
+  cwd:str
+  if isrref(r) and isinstance(r,RRef):
+    cwd=rref2path(r)
+  elif isdref(r) and isinstance(r,DRef):
+    cwd=store_dref2path(r)
+  else:
+    assert False, f"Expecting values of type `RRef` or `DRef`, got {r}"
+  Popen([environ.get('SHELL','/bin/sh')], shell=False, cwd=cwd).wait()
 
 
