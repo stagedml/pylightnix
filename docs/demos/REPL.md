@@ -185,9 +185,9 @@ x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
 
-Epoch 00001: val_accuracy improved from -inf to 0.98317, saving model
+Epoch 00001: val_accuracy improved from -inf to 0.98183, saving model
 to
-/workspace/_pylightnix/tmp/200222-21:49:49:483690+0300_d20f6e78_4dnfeij1/checkpoint.ckpt
+/workspace/_pylightnix/tmp/200222-21:58:00:292880+0300_d20f6e78_6diod1co/checkpoint.ckpt
 ```
 
 ```
@@ -295,7 +295,7 @@ repl_realize(instantiate(convnn_mnist))
 ```
 
 ```
-<pylightnix.repl.ReplHelper at 0x7f71ff65e9e8>
+<pylightnix.repl.ReplHelper at 0x7f4214d940f0>
 ```
 
 
@@ -324,7 +324,7 @@ x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
 
-Epoch 00001: val_accuracy improved from -inf to 0.98317, saving model to /workspace/_pylightnix/tmp/200222-21:49:56:857065+0300_d20f6e78_t79md_zn/checkpoint.ckpt
+Epoch 00001: val_accuracy improved from -inf to 0.98158, saving model to /workspace/_pylightnix/tmp/200222-21:58:07:467797+0300_d20f6e78_p7_1h1um/checkpoint.ckpt
 ```
 
 
@@ -333,7 +333,7 @@ mnist_eval_correct(b)
 ```
 
 ```
-0.9813
+0.9823
 ```
 
 
@@ -350,7 +350,7 @@ print(rref)
 ```
 
 ```
-rref:2a8171244646e5dd76088f82e62e0e38-d20f6e78a3801f50d5df4872ca0c79b4-convnn_mnist
+rref:ba9cb2399c103a955b983f4cd586b05d-d20f6e78a3801f50d5df4872ca0c79b4-convnn_mnist
 ```
 
 
@@ -359,11 +359,10 @@ rref:2a8171244646e5dd76088f82e62e0e38-d20f6e78a3801f50d5df4872ca0c79b4-convnn_mn
 it was forced to make a new interrupt. Since we programmed only one interrupt,
 we now should have our realization.
 
-As a final note, one should understand that the resulting realization may now
-contain manual fixes. Pylightnix is not able to see this effects and can't
-distinguish repl- and normal realizations. User may terminate REPL realization at
-any time by calling `repl_cancel` or just closing the shell.
-
+As a final note, one should understand that since the REPL shell is now a part
+of the realization process, the output folder may be made to contain anything
+besides the products of it's realizer. Pylightnix doesn't see any difference
+between repl-tweaked and normal realizations.
 
 
 [Complete source of this demo](./REPL.py)

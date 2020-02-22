@@ -247,11 +247,10 @@ print(rref)
 it was forced to make a new interrupt. Since we programmed only one interrupt,
 we now should have our realization.
 
-As a final note, one should understand that the resulting realization may now
-contain manual fixes. Pylightnix is not able to see this effects and can't
-distinguish repl- and normal realizations. User may terminate REPL realization at
-any time by calling `repl_cancel` or just closing the shell.
-
+As a final note, one should understand that since the REPL shell is now a part
+of the realization process, the output folder may be made to contain anything
+besides the products of it's realizer. Pylightnix doesn't see any difference
+between repl-tweaked and normal realizations.
 
 
 [Complete source of this demo](./REPL.py)
