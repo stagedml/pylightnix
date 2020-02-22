@@ -631,7 +631,7 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[])->RealizeSeqGen:
   assert_valid_closure(closure)
   force_interrupt_:Set[DRef]=set(force_interrupt)
   with recursion_manager('realize'):
-    context:Context={}
+    context_acc:Context={}
     target_dref=closure.dref
     target_deps=store_deepdeps([target_dref])
     for drv in closure.derivations:
@@ -639,7 +639,7 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[])->RealizeSeqGen:
       if dref in target_deps or dref==target_dref:
         c=store_config(dref)
         dref_deps=store_deepdeps([dref])
-        dref_context={k:v for k,v in context.items() if k in dref_deps}
+        dref_context={k:v for k,v in context_acc.items() if k in dref_deps}
         if dref in force_interrupt_:
           rrefs,abort=yield (dref,dref_context,drv)
           if abort:
@@ -647,9 +647,9 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[])->RealizeSeqGen:
         else:
           rrefs=drv.matcher(dref,dref_context)
         if rrefs is None:
-          paths=drv.realizer(dref,context)
-          rrefs_built=[store_realize(dref,context,path) for path in paths]
-          rrefs_matched=drv.matcher(dref,context)
+          paths=drv.realizer(dref,dref_context)
+          rrefs_built=[store_realize(dref,dref_context,path) for path in paths]
+          rrefs_matched=drv.matcher(dref,dref_context)
           assert rrefs_matched is not None, (
             f"Derivation {dref}: Matcher repeatedly asked the core to "
             f"realize. Probably, realizer doesn't match the matcher. "
@@ -661,7 +661,7 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[])->RealizeSeqGen:
                   f"{dref} were matched by the matcher. To capture those "
                   f"realizations explicitly, try `matcher([exact(..)])`")
           rrefs=rrefs_matched
-        context=context_add(context,dref,rrefs)
+        context_acc=context_add(context_acc,dref,rrefs)
     assert rrefs is not None
     return rrefs
 
