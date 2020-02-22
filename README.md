@@ -117,7 +117,7 @@ Demos:
 * [Ultimatum tutorial](https://github.com/grwlf/ultimatum-game/blob/master/docs/Pylightnix.md), managing experiments.
 * [MNIST demo](./docs/demos/MNIST.md) shows machine learning specifics.
 * [REPL demo](./docs/demos/REPL.md) illustrates how to debug stages
-  using [repl](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop) functions.
+  using Read-Eval-Print-friendly routines [(wiki)](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop).
 
 Reference:
 
@@ -255,6 +255,7 @@ Rational
   number of dependencies low while providing a competitive set of features.
 
 
+
 * Q: Why does the API contain mostly functions and almost no classes?
 * A: Several reasones: a) This would allow us to keep users informed about the
   API changes. We are trying to avoid changes in functions which are already
@@ -262,6 +263,7 @@ Rational
   quickly. b) Typical class-based APIs of Python often let users think that they
   could extend it by sub-classing. Here we don't want to misinform users. c)
   Class-based wrapper API may be created as a standalone module.
+
 
 ( TODO )
 
