@@ -276,13 +276,14 @@ def store_deref(context_holder:RRef, dref:DRef)->RRef:
   assert len(rrefs)==1
   return rrefs[0]
 
-def store_gc(keep:Tuple[List[DRef],List[RRef]])->Tuple[Set[DRef],Set[RRef]]:
+def store_gc(keep_drefs_:List[DRef], keep_rrefs_:List[RRef])->Tuple[Set[DRef],Set[RRef]]:
   """ Take roots which are in use and should not be removed. Return roots which
-  are not used and may be removed. Actual removing is to be done by user-defined
-  application. """
+  are not used and may be removed. Actual removing is to be done by the user.
+
+  See also [rmref](#pylightnix.bashlike.rmref)"""
   assert_store_initialized()
-  keep_rrefs=set(keep[1])
-  keep_drefs=set(keep[0]) | {rref2dref(rref) for rref in keep_rrefs}
+  keep_rrefs=set(keep_rrefs_)
+  keep_drefs=set(keep_drefs_) | {rref2dref(rref) for rref in keep_rrefs}
   closure_drefs=store_deepdeps(keep_drefs) | keep_drefs
   closure_rrefs=store_deepdepRrefs(keep_rrefs) | keep_rrefs
   remove_drefs=set()

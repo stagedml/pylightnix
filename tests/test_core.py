@@ -252,7 +252,7 @@ def test_mksymlink()->None:
     rref=realize(clo)
 
     clo2=instantiate(_setting2)
-    rref2=realize(clo2, force_rebuild=[clo2.dref])
+    rref2=realize(clo2, force_rebuild=True)
 
     assert clo.dref==clo2.dref
     assert rref2!=rref
@@ -528,4 +528,25 @@ def test_match_some():
         assert top<=nouts
       except AssertionError:
         assert top>nouts
+
+
+def test_gc():
+  with setup_storage('test_gc'):
+    def _node1(m:Manager)->DRef:
+      return mktestnode(m, {'n':'1'})
+    def _node2(m:Manager)->DRef:
+      return mktestnode(m, {'n':'2', 'maman':_node1(m)})
+    def _node3(m:Manager)->DRef:
+      return mktestnode(m, {'n':'3', 'maman':_node1(m)})
+
+    r1=realize(instantiate(_node1))
+    r2=realize(instantiate(_node2))
+    r3=realize(instantiate(_node3))
+
+    rm_drefs,rm_rrefs=store_gc([],[r2])
+    assert rm_drefs=={rref2dref(r) for r in [r3]}
+    assert rm_rrefs=={x for x in [r3]}
+
+
+
 
