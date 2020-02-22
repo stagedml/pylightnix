@@ -42,9 +42,8 @@ help with that.
 First, let's prepare a separate storage for this demo.
 
 ```python
-from shutil import rmtree
-from pylightnix import store_initialize
-rmtree('/tmp/pylightnix_mnist_demo', ignore_errors=True)
+from pylightnix import Path, store_initialize, dirrm
+dirrm(Path('/tmp/pylightnix_mnist_demo'))
 store_initialize(custom_store='/tmp/pylightnix_mnist_demo', custom_tmp='/tmp')
 ```
 
@@ -298,6 +297,10 @@ mnist_best = realize_inplace(instantiate_inplace(model_best))
 
 catref(mnist_best,['accuracy.txt'])
 ```
+
+In Python shells like IPython, we could also call `shellref(..)` function in
+order to open the Linux shell and inspect the contents of corresponding storage
+folders with standard command-line tools.
 
 ##### Garbage collection
 

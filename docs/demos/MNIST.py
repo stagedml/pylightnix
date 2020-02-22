@@ -1,7 +1,6 @@
 
-from shutil import rmtree
-from pylightnix import store_initialize
-rmtree('/tmp/pylightnix_mnist_demo', ignore_errors=True)
+from pylightnix import Path, store_initialize, dirrm
+dirrm(Path('/tmp/pylightnix_mnist_demo'))
 store_initialize(custom_store='/tmp/pylightnix_mnist_demo', custom_tmp='/tmp')
 
 from pylightnix import DRef, instantiate_inplace, fetchurl

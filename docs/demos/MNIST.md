@@ -43,9 +43,8 @@ First, let's prepare a separate storage for this demo.
 
 
 ```python
-from shutil import rmtree
-from pylightnix import store_initialize
-rmtree('/tmp/pylightnix_mnist_demo', ignore_errors=True)
+from pylightnix import Path, store_initialize, dirrm
+dirrm(Path('/tmp/pylightnix_mnist_demo'))
 store_initialize(custom_store='/tmp/pylightnix_mnist_demo', custom_tmp='/tmp')
 ```
 
@@ -280,7 +279,7 @@ print(mnist1)
 x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
-rref:7921c6ef26d29c7c166ac8bb746d68f7-5cd9248aabb529c207a20b8b9fc576ce-unnamed
+rref:e74bd97d1646fe8d0dea8fa83d9feb65-5cd9248aabb529c207a20b8b9fc576ce-unnamed
 ```
 
 
@@ -306,7 +305,7 @@ print(mnist2)
 x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
-rref:c37be604c19fb2c926b6ab75d456d92b-5cd9248aabb529c207a20b8b9fc576ce-unnamed
+rref:24b091e56f7f46869928cd30c2a67363-5cd9248aabb529c207a20b8b9fc576ce-unnamed
 ```
 
 
@@ -339,7 +338,7 @@ catref(mnist1,['accuracy.txt'])
 ```
 
 ```
-['0.9869']
+['0.9814']
 ```
 
 
@@ -348,13 +347,13 @@ catref(mnist2,['accuracy.txt'])
 ```
 
 ```
-['0.984']
+['0.985']
 ```
 
 
 
 We prefer
-'mnist1'
+'mnist2'
 because it's accuracy is slightly better. This algorithm of choice could be
 encoded with Pylightnix by using more appropriate builtin matcher. In our case
 we stick with `match_best`. It takes one filename argument  and matches with the
@@ -382,10 +381,14 @@ catref(mnist_best,['accuracy.txt'])
 ```
 
 ```
-['0.9869']
+['0.985']
 ```
 
 
+
+In Python shells like IPython, we could also call `shellref(..)` function in
+order to open the Linux shell and inspect the contents of corresponding storage
+folders with standard command-line tools.
 
 ##### Garbage collection
 
