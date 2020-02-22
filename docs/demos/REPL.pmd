@@ -24,15 +24,18 @@ In Pylightnix we offer a more generic solution which 'drops' user into normal
 IPython shell while the main computation state is stored in a single Puthon
 object waiting to be resumed.
 
-Pylightnix uses Generators for internal event processing. It's generic functions
-like `realize` hide related details, but the functions of the [Repl
-module](./../../src/pylightnix/repl.py) provide an API for some non-trivial use
-cases. It allows us to pause the computation before the specific stage, do manual
-tweaks either in IPython or in other Python shells, and finally continue the
-process by either providing explicit result or by running default realizer.
+Pylightnix supports build interrupts which involves triggering core's internal
+Python generators. The generic functions like `realize` and `realizeMany` all
+hide the communication details, but the `repl_realize` of [pylightnix.repl
+module](./../../src/pylightnix/repl.py) does allow us the direct access to this
+machinery. In particular, it allows us to pause the computation by returning
+earlier than it is complete. During the pause, Pylightnix' state is kept in a
+`ReplHelper` object, either global or specifically chosen by the user.
 
-During the supposed manual tweaks, Pylightnix state is kept in a `ReplHelper`
-object, either a global one or specifically chosen by the user.
+`repl_realize` is expected to be called from REPL shells like IPython. There
+user may inspect the Python state during the pause, execute arbitrary functions
+and finally resume the computation by calling `repl_continue` or
+`repl_continueBuild` or cancel it by calling `repl_cancel`.
 
 
 Defining MNIST stages
@@ -65,7 +68,7 @@ store_initialize()
 
 Next, we define two stages required to train the MNIST classifier. Note, how do
 we split the realization into two subroutines: `mnist_train` and `mnist_eval`.
-We will use it to track the problems.
+We will use them to show how to track problems.
 
 ```python
 
@@ -159,9 +162,8 @@ def convnn_mnist(m:Manager)->DRef:
 Debugging convnn_mnist stage
 ----------------------------
 
-
-The last definition of `convnn_mnist` introduces our desired stage of training
-the MNIST classifier. Let's try to obtain it's realization
+The last definition of `convnn_mnist` introduces our desired stage for training
+the MNIST classifier. Let's try to obtain it's realization:
 
 ```python
 realize(instantiate(convnn_mnist), force_rebuild=True)   # Spoiler: will fail

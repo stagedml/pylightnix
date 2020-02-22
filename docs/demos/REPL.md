@@ -24,15 +24,18 @@ In Pylightnix we offer a more generic solution which 'drops' user into normal
 IPython shell while the main computation state is stored in a single Puthon
 object waiting to be resumed.
 
-Pylightnix uses Generators for internal event processing. It's generic functions
-like `realize` hide related details, but the functions of the [Repl
-module](./../../src/pylightnix/repl.py) provide an API for some non-trivial use
-cases. It allows us to pause the computation before the specific stage, do manual
-tweaks either in IPython or in other Python shells, and finally continue the
-process by either providing explicit result or by running default realizer.
+Pylightnix supports build interrupts which involves triggering core's internal
+Python generators. The generic functions like `realize` and `realizeMany` all
+hide the communication details, but the `repl_realize` of [pylightnix.repl
+module](./../../src/pylightnix/repl.py) does allow us the direct access to this
+machinery. In particular, it allows us to pause the computation by returning
+earlier than it is complete. During the pause, Pylightnix' state is kept in a
+`ReplHelper` object, either global or specifically chosen by the user.
 
-During the supposed manual tweaks, Pylightnix state is kept in a `ReplHelper`
-object, either a global one or specifically chosen by the user.
+`repl_realize` is expected to be called from REPL shells like IPython. There
+user may inspect the Python state during the pause, execute arbitrary functions
+and finally resume the computation by calling `repl_continue` or
+`repl_continueBuild` or cancel it by calling `repl_cancel`.
 
 
 Defining MNIST stages
@@ -72,7 +75,7 @@ Initializing existing /workspace/_pylightnix/store-v0
 
 Next, we define two stages required to train the MNIST classifier. Note, how do
 we split the realization into two subroutines: `mnist_train` and `mnist_eval`.
-We will use it to track the problems.
+We will use them to show how to track problems.
 
 
 ```python
@@ -169,9 +172,8 @@ def convnn_mnist(m:Manager)->DRef:
 Debugging convnn_mnist stage
 ----------------------------
 
-
-The last definition of `convnn_mnist` introduces our desired stage of training
-the MNIST classifier. Let's try to obtain it's realization
+The last definition of `convnn_mnist` introduces our desired stage for training
+the MNIST classifier. Let's try to obtain it's realization:
 
 
 ```python
@@ -183,9 +185,9 @@ x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
 
-Epoch 00001: val_accuracy improved from -inf to 0.98358, saving model
+Epoch 00001: val_accuracy improved from -inf to 0.98317, saving model
 to
-/workspace/_pylightnix/tmp/200222-11:03:43:128793+0300_d20f6e78_qba5tc9w/checkpoint.ckpt
+/workspace/_pylightnix/tmp/200222-21:49:49:483690+0300_d20f6e78_4dnfeij1/checkpoint.ckpt
 ```
 
 ```
@@ -196,36 +198,36 @@ Traceback (most recent call last)<ipython-input-1-9b8c69999b87> in
 Spoiler: will fail
 ~/3rdparty/pylightnix/src/pylightnix/core.py in realize(closure,
 force_rebuild)
-    576   """ A simplified version of
+    577   """ A simplified version of
 [realizeMany](#pylightnix.core.realizeMany).
-    577   Expects only one result. """
---> 578   rrefs=realizeMany(closure, force_rebuild)
-    579   assert len(rrefs)==1, (
-    580       f"realize is to be used with single-output derivations,
+    578   Expects only one result. """
+--> 579   rrefs=realizeMany(closure, force_rebuild)
+    580   assert len(rrefs)==1, (
+    581       f"realize is to be used with single-output derivations,
 but derivation "
 ~/3rdparty/pylightnix/src/pylightnix/core.py in realizeMany(closure,
 force_rebuild)
-    620     next(gen)
-    621     while True:
---> 622       gen.send((None,False)) # Ask for default action
-    623   except StopIteration as e:
-    624     res=e.value
+    621     next(gen)
+    622     while True:
+--> 623       gen.send((None,False)) # Ask for default action
+    624   except StopIteration as e:
+    625     res=e.value
 ~/3rdparty/pylightnix/src/pylightnix/core.py in realizeSeq(closure,
 force_interrupt)
-    647           rrefs=drv.matcher(dref,dref_context)
-    648         if rrefs is None:
---> 649           paths=drv.realizer(dref,context)
-    650           rrefs_built=[store_realize(dref,context,path) for
-path in paths]
-    651           rrefs_matched=drv.matcher(dref,context)
+    648           rrefs=drv.matcher(dref,dref_context)
+    649         if rrefs is None:
+--> 650           paths=drv.realizer(dref,dref_context)
+    651           rrefs_built=[store_realize(dref,dref_context,path)
+for path in paths]
+    652           rrefs_matched=drv.matcher(dref,dref_context)
 ~/3rdparty/pylightnix/src/pylightnix/core.py in _wrapper(dref,
 context)
-    389     buildtime:bool=True)->Realizer:
-    390   def _wrapper(dref,context)->List[Path]:
---> 391     b=ctr(mkbuildargs(dref,context,buildtime)); f(b); return
+    390     buildtime:bool=True)->Realizer:
+    391   def _wrapper(dref,context)->List[Path]:
+--> 392     b=ctr(mkbuildargs(dref,context,buildtime)); f(b); return
 list(getattr(b,'outpaths'))
-    392   return _wrapper
-    393
+    393   return _wrapper
+    394
 <ipython-input-1-f38c6dead39e> in mnist_realize(b)
      77 def mnist_realize(b:Model):
      78   mnist_train(b)
@@ -247,9 +249,9 @@ AttributeError: 'Sequential' object has no attribute 'load'
 Oh no!!!
 
 We see a backtrace saying that TensorFlow model doesn't have `load` method. It
-is not very intuitive, (note that `save` method does exist), but probably TF
-team has a good reason for implementing design. Looking through the
-documentation shows us that the right method to call is `load_weights`.
+is not very intuitive, (note that `save` method does exist), but this is what we
+have. Looking through the documentation shows us that the right method to call
+is `load_weights`.
 
 We may make this trivial fix in-place but for this document I have to define
 a new funtion, containing the right call.
@@ -293,7 +295,7 @@ repl_realize(instantiate(convnn_mnist))
 ```
 
 ```
-<pylightnix.repl.ReplHelper at 0x7f27086f3c18>
+<pylightnix.repl.ReplHelper at 0x7f71ff65e9e8>
 ```
 
 
@@ -322,7 +324,7 @@ x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
 
-Epoch 00001: val_accuracy improved from -inf to 0.98475, saving model to /workspace/_pylightnix/tmp/200222-11:03:51:347676+0300_d20f6e78_1lthrzcn/checkpoint.ckpt
+Epoch 00001: val_accuracy improved from -inf to 0.98317, saving model to /workspace/_pylightnix/tmp/200222-21:49:56:857065+0300_d20f6e78_t79md_zn/checkpoint.ckpt
 ```
 
 
@@ -331,7 +333,7 @@ mnist_eval_correct(b)
 ```
 
 ```
-0.9837
+0.9813
 ```
 
 
@@ -348,7 +350,7 @@ print(rref)
 ```
 
 ```
-rref:4fed79e1182a3eb4481714f473a68311-d20f6e78a3801f50d5df4872ca0c79b4-convnn_mnist
+rref:2a8171244646e5dd76088f82e62e0e38-d20f6e78a3801f50d5df4872ca0c79b4-convnn_mnist
 ```
 
 
