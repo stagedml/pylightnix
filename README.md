@@ -242,6 +242,18 @@ installed.
    Hello World!
    ```
 
+6. Pylightnix provides a set of bash-like functions for inspecting the storage.
+
+   ```python
+   from pylightnix import lsref, catref, shellref, rmref, du
+   ```
+
+   We could list the contents of the realization, cat some of it's text files,
+   open an interactive Unix shell as set by the `SHELL` environment variable.
+   `rmref` may be used to completely remove the realization or derivation from
+   the storage (safety checks are up to the user for now). `du` stands for
+   'disk usage' and calculates the size of realizations stored.
+
 
 Rational
 --------
