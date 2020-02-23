@@ -14,7 +14,8 @@
 
 """ All external dependencies are listed here """
 
-from json import ( loads as json_loads, dumps as json_dumps, dump as json_dump, load as json_load )
+from json import ( loads as json_loads, dumps as json_dumps, dump as json_dump,
+    load as json_load )
 from time import strftime, strptime, gmtime
 from calendar import timegm
 from errno import EEXIST
@@ -22,7 +23,8 @@ from os import (
     mkdir, makedirs, replace, listdir, rmdir, symlink, rename, remove, environ,
     walk, lstat, chmod, stat )
 from os.path import (
-    basename, join, isfile, isdir, islink, relpath, abspath, dirname, split )
+    basename, join, isfile, isdir, islink, relpath, abspath, dirname, split,
+    getsize )
 from stat import ( S_IWRITE, S_IREAD, S_IRGRP, S_IROTH, S_IXUSR, S_IXGRP,
     S_IXOTH, ST_MODE, S_IWGRP, S_IWRITE, S_IWOTH )
 from hashlib import sha256

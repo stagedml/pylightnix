@@ -1,5 +1,5 @@
 from pylightnix import ( DRef, RRef, lsref, catref, instantiate, realize,
-    unrref, rmref, store_dref2path, rref2path, shellref, rref2dref )
+    unrref, rmref, store_dref2path, rref2path, shellref, rref2dref, du )
 
 from tests.setup import ( ShouldHaveFailed, setup_testpath, setup_storage,
     mktestnode, mktestnode_nondetermenistic )
@@ -63,9 +63,26 @@ def test_shellref():
       rref=realize(instantiate(mktestnode, {'a':1}))
       shellref(rref)
       shellref(rref2dref(rref))
+      shellref()
       try:
         shellref('foo') # type:ignore
-        raise ShouldHaveFailed('Should reject non-refs')
+        raise ShouldHaveFailed('shellref should reject garbage')
       except AssertionError:
         pass
+
+
+def test_du():
+  with setup_storage('test_du') as s:
+    usage=du()
+    assert usage=={}
+    clo=instantiate(mktestnode_nondetermenistic, {'name':'1'}, lambda:42)
+    usage=du()
+    assert clo.dref in usage
+    assert usage[clo.dref][0]>0
+    assert usage[clo.dref][1]=={}
+    rref=realize(clo)
+    usage=du()
+    assert rref in usage[clo.dref][1]
+    assert usage[clo.dref][1][rref]>0
+
 

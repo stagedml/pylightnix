@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pylightnix.types import ( Iterable, List, Union, Optional, DRef, RRef )
+from pylightnix.types import ( Iterable, List, Union, Optional, DRef, RRef,
+    Dict, Tuple )
 from pylightnix.imports import ( isfile, isdir, listdir, join, rmtree, environ,
-    Popen )
-from pylightnix.core import ( store_dref2path, rref2path, isrref, isdref )
-from pylightnix.utils import ( dirchmod )
+    Popen, rename, getsize )
+from pylightnix.core import ( store_dref2path, rref2path, isrref, isdref,
+    store_drefs, store_rrefs_ )
+from pylightnix.utils import ( dirchmod, dirrm, dirsize )
 
 
 def lsdref_(r:DRef)->Iterable[str]:
@@ -56,14 +58,6 @@ def catref(r:RRef, fn:List[str])->List[str]:
   else:
     assert False, 'not implemented'
 
-def rmrref(r:RRef)->None:
-  dirchmod(rref2path(r),'rw')
-  rmtree(rref2path(r))
-
-def rmdref(r:DRef)->None:
-  dirchmod(store_dref2path(r),'rw')
-  rmtree(store_dref2path(r))
-
 def rmref(r:Union[RRef,DRef])->None:
   """ Forcebly remove a reference from the storage. Removing
   [DRefs](#pylightnix.types.DRef) also removes all their realizations.
@@ -73,23 +67,45 @@ def rmref(r:Union[RRef,DRef])->None:
   care of possible race conditions.
   """
   if isrref(r) and isinstance(r,RRef):
-    rmrref(r)
+    dirrm(rref2path(r))
   elif isdref(r) and isinstance(r,DRef):
-    rmdref(r)
+    dirrm(store_dref2path(r))
   else:
     assert False, f"Invalid reference {r}"
 
-def shellref(r:Union[RRef,DRef])->None:
+def shellref(r:Union[RRef,DRef,None]=None)->None:
   """ Open the directory corresponding to `r` in Unix Shell for inspection. The
   path to shell executable is read from the `SHELL` environment variable,
-  defaulting to `/bin/sh`.  """
+  defaulting to `/bin/sh`. If `r` is None, open the shell in the root of the
+  storage. """
   cwd:str
-  if isrref(r) and isinstance(r,RRef):
+  if r is None:
+    import pylightnix.core
+    cwd=pylightnix.core.PYLIGHTNIX_STORE
+  elif isrref(r) and isinstance(r,RRef):
     cwd=rref2path(r)
   elif isdref(r) and isinstance(r,DRef):
     cwd=store_dref2path(r)
   else:
     assert False, f"Expecting values of type `RRef` or `DRef`, got {r}"
   Popen([environ.get('SHELL','/bin/sh')], shell=False, cwd=cwd).wait()
+
+def du()->Dict[DRef,Tuple[int,Dict[RRef,int]]]:
+  """ Calculates the disk usage, in bytes. For every derivation, return it's
+  total disk usage and disk usages per realizations. Note, that total disk usage
+  of a derivation is slightly bigger than sum of it's realization's usages."""
+  res={}
+  for dref in store_drefs():
+    rref_res={}
+    dref_total=0
+    for rref in store_rrefs_(dref):
+      usage=dirsize(rref2path(rref))
+      rref_res[rref]=usage
+      dref_total+=usage
+    dref_total+=getsize(join(store_dref2path(dref),'config.json'))
+    res[dref]=(dref_total,rref_res)
+  return res
+
+
 
 

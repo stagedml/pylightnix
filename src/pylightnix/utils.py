@@ -17,7 +17,7 @@ from pylightnix.imports import ( datetime, gmtime, timegm, join, makedirs,
     json_dumps, json_loads, makedirs, replace, dirname, walk, abspath,
     normalize, re_sub, split, json_load, find_executable, chmod, S_IWRITE, S_IREAD,
     S_IRGRP, S_IROTH, S_IXUSR, S_IXGRP, S_IXOTH, walk, stat, ST_MODE, S_IWGRP,
-    S_IWOTH, rmtree )
+    S_IWOTH, rmtree, rename, getsize )
 
 from pylightnix.types import ( Hash, Path, List, Any, Optional, Iterable, IO,
     DRef, RRef, Tuple, Callable )
@@ -137,6 +137,17 @@ def dirrw(o:Path)->None:
       filerw(Path(join(root, f)))
   chmod(o, stat(o)[ST_MODE] | (S_IWRITE | S_IWGRP | S_IWOTH) )
 
+
+def dirsize(o:Path)->int:
+  """ Return size in bytes """
+  total_size=0
+  for dirpath, dirnames, filenames in walk(o):
+    for f in filenames:
+      fp=join(dirpath, f)
+      if not islink(fp):
+        total_size += getsize(fp)
+  return total_size
+
 def dirchmod(o:Path, mode:str)->None:
   if mode=='ro':
     dirro(o)
@@ -146,10 +157,13 @@ def dirchmod(o:Path, mode:str)->None:
     assert False, f"Attempt to set invalid mode {mode} for path {o}"
 
 def dirrm(path:Path, ignore_not_found:bool=True)->None:
-  """ Force-remove file tree. Deal with possible write-protection. """
+  """ Powerful folder remover. Firts rename it to the temporary name. Deal with
+  possible write-protection. """
   try:
-    dirrw(path)
-    rmtree(path)
+    tmppath=Path(path+'.tmp')
+    rename(path,tmppath)
+    dirrw(tmppath)
+    rmtree(tmppath)
   except FileNotFoundError:
     if not ignore_not_found:
       raise
