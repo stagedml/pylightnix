@@ -533,11 +533,11 @@ def test_match_some():
 def test_gc():
   with setup_storage('test_gc'):
     def _node1(m:Manager)->DRef:
-      return mktestnode(m, {'n':'1'})
+      return mktestnode(m, {'name':'1'})
     def _node2(m:Manager)->DRef:
-      return mktestnode(m, {'n':'2', 'maman':_node1(m)})
+      return mktestnode(m, {'name':'2', 'maman':_node1(m)})
     def _node3(m:Manager)->DRef:
-      return mktestnode(m, {'n':'3', 'maman':_node1(m)})
+      return mktestnode(m, {'name':'3', 'maman':_node1(m)})
 
     r1=realize(instantiate(_node1))
     r2=realize(instantiate(_node2))

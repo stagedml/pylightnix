@@ -283,9 +283,9 @@ def store_gc(keep_drefs_:List[DRef], keep_rrefs_:List[RRef])->Tuple[Set[DRef],Se
   See also [rmref](#pylightnix.bashlike.rmref)"""
   assert_store_initialized()
   keep_rrefs=set(keep_rrefs_)
-  keep_drefs=set(keep_drefs_) | {rref2dref(rref) for rref in keep_rrefs}
-  closure_drefs=store_deepdeps(keep_drefs) | keep_drefs
+  keep_drefs=set(keep_drefs_)
   closure_rrefs=store_deepdepRrefs(keep_rrefs) | keep_rrefs
+  closure_drefs=store_deepdeps(keep_drefs) | keep_drefs | {rref2dref(rref) for rref in closure_rrefs}
   remove_drefs=set()
   remove_rrefs=set()
   for dref in store_drefs():
