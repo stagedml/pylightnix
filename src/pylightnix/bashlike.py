@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from pylightnix.types import ( Iterable, List, Union, Optional, DRef, RRef,
-    Dict, Tuple )
+    Dict, Tuple, Path )
 from pylightnix.imports import ( isfile, isdir, listdir, join, rmtree, environ,
     Popen, rename, getsize )
 from pylightnix.core import ( store_dref2path, rref2path, isrref, isdref,
@@ -39,10 +39,10 @@ def lsrref(r:RRef, fn:List[str]=[])->List[str]:
 def lsref(r:Union[RRef,DRef])->List[str]:
   """ List the contents of `r`. For [DRefs](#pylightnix.types.DRef), return
   realization hashes. For [RRefs](#pylightnix.types.RRef), list artifact files. """
-  if isrref(r) and isinstance(r,RRef):
-    return list(lsrref(r))
-  elif isdref(r) and isinstance(r,DRef):
-    return list(lsdref_(r))
+  if isrref(r):
+    return list(lsrref(RRef(r)))
+  elif isdref(r):
+    return list(lsdref_(DRef(r)))
   else:
     assert False, f"Invalid reference {r}"
 
@@ -66,14 +66,18 @@ def rmref(r:Union[RRef,DRef])->None:
   storage. In scenarious involving parallelization, users are expected to take
   care of possible race conditions.
   """
-  if isrref(r) and isinstance(r,RRef):
-    dirrm(rref2path(r))
-  elif isdref(r) and isinstance(r,DRef):
-    dirrm(store_dref2path(r))
+  if isrref(r):
+    dirrm(rref2path(RRef(r)))
+  elif isdref(r):
+    dirrm(store_dref2path(DRef(r)))
   else:
     assert False, f"Invalid reference {r}"
 
 def shellref(r:Union[RRef,DRef,None]=None)->None:
+  """ Alias for [shell](#pylightnix.bashlike.shell) """
+  shell(r)
+
+def shell(r:Union[RRef,DRef,Path,str,None]=None)->None:
   """ Open the directory corresponding to `r` in Unix Shell for inspection. The
   path to shell executable is read from the `SHELL` environment variable,
   defaulting to `/bin/sh`. If `r` is None, open the shell in the root of the
@@ -82,13 +86,16 @@ def shellref(r:Union[RRef,DRef,None]=None)->None:
   if r is None:
     import pylightnix.core
     cwd=pylightnix.core.PYLIGHTNIX_STORE
-  elif isrref(r) and isinstance(r,RRef):
-    cwd=rref2path(r)
-  elif isdref(r) and isinstance(r,DRef):
-    cwd=store_dref2path(r)
+  elif isrref(r):
+    cwd=rref2path(RRef(r))
+  elif isdref(r):
+    cwd=store_dref2path(DRef(r))
+  elif isdir(r):
+    cwd=str(r)
   else:
-    assert False, f"Expecting values of type `RRef` or `DRef`, got {r}"
+    assert False, f"Expecting `RRef`, `DRef`, a directory path (either a string or a `Path`), or None, got {r}"
   Popen([environ.get('SHELL','/bin/sh')], shell=False, cwd=cwd).wait()
+
 
 def du()->Dict[DRef,Tuple[int,Dict[RRef,int]]]:
   """ Calculates the disk usage, in bytes. For every derivation, return it's
