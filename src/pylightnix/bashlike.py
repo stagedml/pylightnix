@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+""" Simple functions imitating unix shell tools.  """
+
 from pylightnix.types import ( Iterable, List, Union, Optional, DRef, RRef,
     Dict, Tuple, Path )
 from pylightnix.imports import ( isfile, isdir, listdir, join, rmtree, environ,

@@ -12,7 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pylightnix.types import ( Any, DRef, Stage, Manager, Derivation, List, RRef, Closure )
+""" This module defines inplace variants of `instantiate` and `realize`.
+Inplace functions use a single global [Manager](#pylightnix.types.Manager)
+which is easier to use but has usual risks of gloabl variables.  """
+
+from pylightnix.types import ( Any, DRef, Stage, Manager, Derivation, List,
+    RRef, Closure )
 from pylightnix.core import ( instantiate_, realize )
 
 

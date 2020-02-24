@@ -15,6 +15,7 @@
     * [Closure](#pylightnix.types.Closure)
     * [Config](#pylightnix.types.Config)
     * [ConfigAttrs](#pylightnix.types.ConfigAttrs)
+    * [BuildArgs](#pylightnix.types.BuildArgs)
     * [Build](#pylightnix.types.Build)
     * [Manager](#pylightnix.types.Manager)
     * [Stage](#pylightnix.types.Stage)
@@ -49,6 +50,7 @@
     * [store\_cattrs](#pylightnix.core.store_cattrs)
     * [store\_deps](#pylightnix.core.store_deps)
     * [store\_deepdeps](#pylightnix.core.store_deepdeps)
+    * [store\_deepdepRrefs](#pylightnix.core.store_deepdepRrefs)
     * [store\_drefs](#pylightnix.core.store_drefs)
     * [store\_rrefs\_](#pylightnix.core.store_rrefs_)
     * [store\_rrefs](#pylightnix.core.store_rrefs)
@@ -57,7 +59,10 @@
     * [store\_gc](#pylightnix.core.store_gc)
     * [store\_instantiate](#pylightnix.core.store_instantiate)
     * [store\_realize](#pylightnix.core.store_realize)
+    * [mkbuildargs](#pylightnix.core.mkbuildargs)
     * [mkbuild](#pylightnix.core.mkbuild)
+    * [B](#pylightnix.core.B)
+    * [build\_wrapper\_](#pylightnix.core.build_wrapper_)
     * [build\_wrapper](#pylightnix.core.build_wrapper)
     * [build\_config](#pylightnix.core.build_config)
     * [build\_context](#pylightnix.core.build_context)
@@ -123,16 +128,19 @@
   * [pylightnix.bashlike](#pylightnix.bashlike)
     * [lsdref\_](#pylightnix.bashlike.lsdref_)
     * [lsrref\_](#pylightnix.bashlike.lsrref_)
+    * [lsrref](#pylightnix.bashlike.lsrref)
     * [lsref](#pylightnix.bashlike.lsref)
     * [catrref\_](#pylightnix.bashlike.catrref_)
     * [catref](#pylightnix.bashlike.catref)
-    * [rmrref](#pylightnix.bashlike.rmrref)
-    * [rmdref](#pylightnix.bashlike.rmdref)
     * [rmref](#pylightnix.bashlike.rmref)
+    * [shellref](#pylightnix.bashlike.shellref)
+    * [shell](#pylightnix.bashlike.shell)
+    * [du](#pylightnix.bashlike.du)
 
 <a name="pylightnix.types"></a>
 # `pylightnix.types`
 
+Main types used in Pylightnix are defined here.
 
 <a name="pylightnix.types.Path"></a>
 ## `Path` Objects
@@ -375,11 +383,20 @@ def __init__(self, d: dict)
 ```
 
 
+<a name="pylightnix.types.BuildArgs"></a>
+## `BuildArgs`
+
+```python
+BuildArgs = NamedTuple('BuildArgs', [('dref',DRef), ('cattrs',ConfigAttrs),
+                                     ...
+```
+
+
 <a name="pylightnix.types.Build"></a>
 ## `Build` Objects
 
 ```python
-def __init__(self, dref: DRef, cattrs: ConfigAttrs, context: Context, timeprefix: str, buildtime: bool) -> None
+def __init__(self, ba: BuildArgs) -> None
 ```
 
 Build is a helper object which tracks the process of stage's
@@ -397,7 +414,7 @@ Associated functions are:
 ### `Build.__init__()`
 
 ```python
-def __init__(self, dref: DRef, cattrs: ConfigAttrs, context: Context, timeprefix: str, buildtime: bool) -> None
+def __init__(self, ba: BuildArgs) -> None
 ```
 
 
@@ -436,6 +453,7 @@ Key = Callable[[RRef],Optional[Union[int,float,str]]]
 <a name="pylightnix.core"></a>
 # `pylightnix.core`
 
+Core Pylightnix definitions
 
 <a name="pylightnix.core.PYLIGHTNIX_STORE_VERSION"></a>
 ## `PYLIGHTNIX_STORE_VERSION`
@@ -698,7 +716,7 @@ functions do the same thing.
 ## `store_deps()`
 
 ```python
-def store_deps(refs: List[DRef]) -> List[DRef]
+def store_deps(refs: Iterable[DRef]) -> Set[DRef]
 ```
 
 Return a list of reference's immediate dependencies, not including `refs`
@@ -708,10 +726,20 @@ themselves.
 ## `store_deepdeps()`
 
 ```python
-def store_deepdeps(roots: List[DRef]) -> Set[DRef]
+def store_deepdeps(roots: Iterable[DRef]) -> Set[DRef]
 ```
 
-Return an exhaustive list of `roots`'s dependencies, not including `roots`
+Return the complete set of `roots`'s dependencies, not including `roots`
+themselves.
+
+<a name="pylightnix.core.store_deepdepRrefs"></a>
+## `store_deepdepRrefs()`
+
+```python
+def store_deepdepRrefs(roots: Iterable[RRef]) -> Set[RRef]
+```
+
+Return the complete set of root's dependencies, not including `roots`
 themselves.
 
 <a name="pylightnix.core.store_drefs"></a>
@@ -741,7 +769,7 @@ def store_rrefs(dref: DRef, context: Context) -> Iterable[RRef]
 ```
 
 Iterate over realizations of a derivation `dref`, which match a
-[context]($pylightnix.types.Context). The sort order is unspecified.
+[context](#pylightnix.types.Context). The sort order is unspecified.
 
 <a name="pylightnix.core.store_deref_"></a>
 ## `store_deref_()`
@@ -767,12 +795,13 @@ See also [build_deref](#pylightnix.core.build_deref)
 ## `store_gc()`
 
 ```python
-def store_gc(refs_in_use: List[DRef]) -> List[DRef]
+def store_gc(keep_drefs_: List[DRef], keep_rrefs_: List[RRef]) -> Tuple[Set[DRef],Set[RRef]]
 ```
 
 Take roots which are in use and should not be removed. Return roots which
-are not used and may be removed. Actual removing is to be done by user-defined
-application.
+are not used and may be removed. Actual removing is to be done by the user.
+
+See also [rmref](#pylightnix.bashlike.rmref)
 
 <a name="pylightnix.core.store_instantiate"></a>
 ## `store_instantiate()`
@@ -781,12 +810,25 @@ application.
 def store_instantiate(c: Config) -> DRef
 ```
 
+Place new instantiation into the storage. We attempt to do it atomically
+by moving the directory right into it's place.
+
+FIXME: Assert or handle possible (but improbable) hash collision (*)
 
 <a name="pylightnix.core.store_realize"></a>
 ## `store_realize()`
 
 ```python
 def store_realize(dref: DRef, l: Context, o: Path) -> RRef
+```
+
+FIXME: Assert or handle possible but improbable hash collision (*)
+
+<a name="pylightnix.core.mkbuildargs"></a>
+## `mkbuildargs()`
+
+```python
+def mkbuildargs(dref: DRef, context: Context, buildtime: bool = True) -> BuildArgs
 ```
 
 
@@ -798,11 +840,27 @@ def mkbuild(dref: DRef, context: Context, buildtime: bool = True) -> Build
 ```
 
 
+<a name="pylightnix.core.B"></a>
+## `B`
+
+```python
+B = TypeVar('B')
+```
+
+
+<a name="pylightnix.core.build_wrapper_"></a>
+## `build_wrapper_()`
+
+```python
+def build_wrapper_(f: Callable[[B],None], ctr: Callable[[BuildArgs],B], buildtime: bool = True) -> Realizer
+```
+
+
 <a name="pylightnix.core.build_wrapper"></a>
 ## `build_wrapper()`
 
 ```python
-def build_wrapper(f: Callable[[Build],None], buildtime: bool = True, constructor: Callable[[DRef,Context,bool],Build] = mkbuild) -> Realizer
+def build_wrapper(f: Callable[[Build],None], buildtime: bool = True)
 ```
 
 
@@ -1013,7 +1071,7 @@ RealizeSeqGen = Generator[Tuple[DRef,Context,Derivation],Tuple[Optional[List[RRe
 ## `realize()`
 
 ```python
-def realize(closure: Closure, force_rebuild: List[DRef] = []) -> RRef
+def realize(closure: Closure, force_rebuild: Union[List[DRef],bool] = []) -> RRef
 ```
 
 A simplified version of [realizeMany](#pylightnix.core.realizeMany).
@@ -1023,7 +1081,7 @@ Expects only one result.
 ## `realizeMany()`
 
 ```python
-def realizeMany(closure: Closure, force_rebuild: List[DRef] = []) -> List[RRef]
+def realizeMany(closure: Closure, force_rebuild: Union[List[DRef],bool] = []) -> List[RRef]
 ```
 
 Obtain one or many realizations of a stage's
@@ -1299,6 +1357,9 @@ def assert_recursion_manager_empty()
 <a name="pylightnix.inplace"></a>
 # `pylightnix.inplace`
 
+This module defines inplace variants of `instantiate` and `realize`.
+Inplace functions use a single global [Manager](#pylightnix.types.Manager)
+which is easier to use but has usual risks of gloabl variables.
 
 <a name="pylightnix.inplace.PYLIGHTNIX_MANAGER"></a>
 ## `PYLIGHTNIX_MANAGER`
@@ -1332,6 +1393,7 @@ def realize_inplace(dref: DRef, force_rebuild: List[DRef] = []) -> RRef
 <a name="pylightnix.stages.trivial"></a>
 # `pylightnix.stages.trivial`
 
+Trivial builtin stages
 
 <a name="pylightnix.stages.trivial.mknode"></a>
 ## `mknode()`
@@ -1352,6 +1414,7 @@ def mkfile(m: Manager, name: Name, contents: bytes, filename: Optional[Name] = N
 <a name="pylightnix.stages.fetch"></a>
 # `pylightnix.stages.fetch`
 
+Builtin stages for fetching things from the Internet
 
 <a name="pylightnix.stages.fetch.WGET"></a>
 ## `WGET`
@@ -1373,7 +1436,7 @@ AUNPACK = try_executable('aunpack', 'Please install `apack` tool from `atool` pa
 ## `fetchurl()`
 
 ```python
-def fetchurl(m: Manager, url: str, sha256: str, mode: str = 'unpack,remove', name: Optional[str] = None, filename: Optional[str] = None) -> DRef
+def fetchurl(m: Manager, url: str, sha256: str, mode: str = 'unpack,remove', name: Optional[str] = None, filename: Optional[str] = None, force_download: bool = False) -> DRef
 ```
 
 Download and unpack an URL addess.
@@ -1384,9 +1447,23 @@ expected SHA-256 hashsum of the stored data. `mode` allows to tweak the
 stage's behavior: adding word 'unpack' instructs fetchurl to unpack the
 package, adding 'remove' instructs it to remove the archive after unpacking.
 
+Agruments:
+- `m:Manager` the dependency resolving manager of Pylightnix. Provided by
+  `instantiate`
+- `url:str` URL to download from. Should point to a single file.
+- `sha256:str` SHA-256 hash sum of the file.
+- `model:str` Additional options. Format: `[unpack[,remove]]`.
+- `name:Optional[str]`: Name of the Derivation. The stage will attempt to
+  deduce the name if not specified.
+- `filename:Optional[str]` Name of the filename on disk after downloading.
+  Stage will attempt to deduced it if not specified.
+- `force_download:bool` If False (the default), resume the last download if
+  possible.
+
 <a name="pylightnix.bashlike"></a>
 # `pylightnix.bashlike`
 
+Simple functions imitating unix shell tools.
 
 <a name="pylightnix.bashlike.lsdref_"></a>
 ## `lsdref_()`
@@ -1400,7 +1477,15 @@ def lsdref_(r: DRef) -> Iterable[str]
 ## `lsrref_()`
 
 ```python
-def lsrref_(r: RRef) -> Iterable[str]
+def lsrref_(r: RRef, fn: List[str] = []) -> Iterable[str]
+```
+
+
+<a name="pylightnix.bashlike.lsrref"></a>
+## `lsrref()`
+
+```python
+def lsrref(r: RRef, fn: List[str] = []) -> List[str]
 ```
 
 
@@ -1431,22 +1516,6 @@ def catref(r: RRef, fn: List[str]) -> List[str]
 
 Return the contents of r's artifact file `fn` line by line.
 
-<a name="pylightnix.bashlike.rmrref"></a>
-## `rmrref()`
-
-```python
-def rmrref(r: RRef) -> None
-```
-
-
-<a name="pylightnix.bashlike.rmdref"></a>
-## `rmdref()`
-
-```python
-def rmdref(r: DRef) -> None
-```
-
-
 <a name="pylightnix.bashlike.rmref"></a>
 ## `rmref()`
 
@@ -1460,4 +1529,36 @@ Forcebly remove a reference from the storage. Removing
 Currently Pylightnix makes no attempts to synchronize an access to the
 storage. In scenarious involving parallelization, users are expected to take
 care of possible race conditions.
+
+<a name="pylightnix.bashlike.shellref"></a>
+## `shellref()`
+
+```python
+def shellref(r: Union[RRef,DRef,None] = None) -> None
+```
+
+Alias for [shell](#pylightnix.bashlike.shell)
+
+<a name="pylightnix.bashlike.shell"></a>
+## `shell()`
+
+```python
+def shell(r: Union[RRef,DRef,Path,str,None] = None) -> None
+```
+
+Open the directory corresponding to `r` in Unix Shell for inspection. The
+path to shell executable is read from the `SHELL` environment variable,
+defaulting to `/bin/sh`. If `r` is None, open the shell in the root of the
+storage.
+
+<a name="pylightnix.bashlike.du"></a>
+## `du()`
+
+```python
+def du() -> Dict[DRef,Tuple[int,Dict[RRef,int]]]
+```
+
+Calculates the disk usage, in bytes. For every derivation, return it's
+total disk usage and disk usages per realizations. Note, that total disk usage
+of a derivation is slightly bigger than sum of it's realization's usages.
 

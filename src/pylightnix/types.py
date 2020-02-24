@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+""" Main types used in Pylightnix are defined here. """
+
+
 from pylightnix.imports import ( deepcopy, OrderedDict )
 from typing import ( List, Any, Tuple, Union, Optional, Iterable, IO, Callable,
     Dict, NamedTuple, Set, Generator, TypeVar )

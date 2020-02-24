@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Core Pylightnix definitions
+"""
+
 from pylightnix.imports import ( sha256, deepcopy, isdir, makedirs, join,
     json_dump, json_load, json_dumps, json_loads, isfile, relpath, listdir,
     rmtree, mkdtemp, replace, environ, split, re_match, ENOTEMPTY, get_ident,

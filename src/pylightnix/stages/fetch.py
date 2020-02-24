@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+""" Builtin stages for fetching things from the Internet """
+
 from pylightnix.imports import (sha256 as sha256sum, urlparse, Popen, remove,
     basename, join, rename, isfile )
 from pylightnix.types import ( DRef, Manager, Config, Build, Context, Name,

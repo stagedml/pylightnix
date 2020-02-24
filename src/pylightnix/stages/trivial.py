@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+""" Trivial builtin stages """
+
 from pylightnix.imports import ( join, deepcopy )
 from pylightnix.core import ( mkdrv, mkconfig, mkbuild, match_only,
     assert_valid_name, build_outpath, datahash )

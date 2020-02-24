@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+""" This module defines variants of `instantiate` and `realize`, suitable for
+REPL shells. They could pause the computation, save the Pylightnix state into a
+variable and return to the REPL's main loop. Good for debugging.
+"""
+
+
 from pylightnix.types import ( Closure, Context, Derivation, RRef, DRef, List,
     Tuple, Optional, Generator, Path, Build, Union, Any, BuildArgs  )
 

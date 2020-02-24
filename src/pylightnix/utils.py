@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+""" Random utils and helper functions """
+
+
 from pylightnix.imports import ( datetime, gmtime, timegm, join, makedirs,
     symlink, basename, mkdir, isdir, isfile, islink, remove, sha256, EEXIST,
     json_dumps, json_loads, makedirs, replace, dirname, walk, abspath,
