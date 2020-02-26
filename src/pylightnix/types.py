@@ -99,22 +99,33 @@ class Name(str):
 #: RefPath is an alias for Python list (of strings). The first item of
 #: `RefPath` is a [derivation reference](#pylightnix.types.DRef). Other
 #: elements represent path (names of folders and optionally a filename).
+#: RefPath is designed to be used in a stage config where they typically refer
+#: to artifacts of the stage's dependencies. To refer to future artifacts of
+#: the derivation being configured, use
+#: [PromisePaths](#pylightnix.types.PromisePath).
 #:
 #: To convert `RefPath` into [system path](#pylightnix.types.Path), one
-#: generally have to perform the following basic actions:
-#: 1. Dereference it's first item to obtain the realization. See
-#:    [store_deref](#pylightnix.core.store_deref) or
-#:    [build_deref](#pylightnix.core.build_deref).
-#: 2. Convert the realization reference into system path with
-#:    [rref2path](#pylightnix.core.rref2path)
-#: 3. Join the system path with `[1:]` part of RefPath to get the reali
-#:    filename.
+#: generally have to perform the following basic actions: 1. Dereference it's
+#: first item to obtain the realization. See
+#: [store_deref](#pylightnix.core.store_deref) or
+#: [build_deref](#pylightnix.core.build_deref).  2. Convert the realization
+#: reference into system path with [rref2path](#pylightnix.core.rref2path) 3.
+#: Join the system path with `[1:]` part of RefPath to get the real filename.
 #:
-#: Above algorithm is implemented as [build_path](#pylightnix.core.build_path)
-#: helper function. The general idea behind RefPath is to declare it during
-#: instantiation, but delay the access to it until the realization.
+#: The algorithm described above is implemented as
+#: [build_path](#pylightnix.core.build_path) helper function.
 RefPath = List[Any]
 
+#: PromisePath is an alias for Python list of strings. The first item is a
+#: special tag and the subsequent items should represent a file or directory
+#: path parts. PromisePaths are to be used in
+#: [Configs](#pylightnix.types.Config). They typically represent paths to the
+#: artifacts which we promise will be created by the derivation being
+#: configured.
+#:
+#: PromisePaths do exist only at the time of instantiation. Pylightnix converts
+#: them into [RefPath](#pylightnix.types.RefPath) before the realization
+#: starts.
 PromisePath = List[Any]
 
 #: Context type is an alias for Python dict which maps

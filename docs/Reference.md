@@ -8,6 +8,7 @@
     * [RRef](#pylightnix.types.RRef)
     * [Name](#pylightnix.types.Name)
     * [RefPath](#pylightnix.types.RefPath)
+    * [PromisePath](#pylightnix.types.PromisePath)
     * [Context](#pylightnix.types.Context)
     * [Matcher](#pylightnix.types.Matcher)
     * [Realizer](#pylightnix.types.Realizer)
@@ -26,6 +27,7 @@
     * [PYLIGHTNIX\_TMP](#pylightnix.core.PYLIGHTNIX_TMP)
     * [PYLIGHTNIX\_STORE](#pylightnix.core.PYLIGHTNIX_STORE)
     * [PYLIGHTNIX\_NAMEPAT](#pylightnix.core.PYLIGHTNIX_NAMEPAT)
+    * [PYLIGHTNIX\_PROMISE\_TAG](#pylightnix.core.PYLIGHTNIX_PROMISE_TAG)
     * [trimhash](#pylightnix.core.trimhash)
     * [mkdref](#pylightnix.core.mkdref)
     * [rref2dref](#pylightnix.core.rref2dref)
@@ -40,11 +42,13 @@
     * [config\_hash](#pylightnix.core.config_hash)
     * [config\_name](#pylightnix.core.config_name)
     * [config\_deps](#pylightnix.core.config_deps)
+    * [config\_replaceSelf](#pylightnix.core.config_replaceSelf)
     * [assert\_store\_initialized](#pylightnix.core.assert_store_initialized)
     * [store\_initialize](#pylightnix.core.store_initialize)
     * [store\_dref2path](#pylightnix.core.store_dref2path)
     * [rref2path](#pylightnix.core.rref2path)
     * [mkrefpath](#pylightnix.core.mkrefpath)
+    * [store\_config\_](#pylightnix.core.store_config_)
     * [store\_config](#pylightnix.core.store_config)
     * [store\_context](#pylightnix.core.store_context)
     * [store\_cattrs](#pylightnix.core.store_cattrs)
@@ -79,6 +83,7 @@
     * [context\_add](#pylightnix.core.context_add)
     * [context\_deref](#pylightnix.core.context_deref)
     * [context\_serialize](#pylightnix.core.context_serialize)
+    * [mkpromise](#pylightnix.core.mkpromise)
     * [mkdrv](#pylightnix.core.mkdrv)
     * [recursion\_manager](#pylightnix.core.recursion_manager)
     * [instantiate\_](#pylightnix.core.instantiate_)
@@ -102,15 +107,13 @@
     * [assert\_valid\_refpath](#pylightnix.core.assert_valid_refpath)
     * [assert\_valid\_config](#pylightnix.core.assert_valid_config)
     * [assert\_valid\_name](#pylightnix.core.assert_valid_name)
-    * [isrref](#pylightnix.core.isrref)
     * [assert\_valid\_rref](#pylightnix.core.assert_valid_rref)
     * [assert\_valid\_hashpart](#pylightnix.core.assert_valid_hashpart)
-    * [isdref](#pylightnix.core.isdref)
     * [assert\_valid\_dref](#pylightnix.core.assert_valid_dref)
     * [assert\_valid\_hash](#pylightnix.core.assert_valid_hash)
     * [assert\_valid\_context](#pylightnix.core.assert_valid_context)
     * [assert\_valid\_closure](#pylightnix.core.assert_valid_closure)
-    * [assert\_no\_rref\_deps](#pylightnix.core.assert_no_rref_deps)
+    * [warn\_rref\_deps](#pylightnix.core.warn_rref_deps)
     * [assert\_have\_realizers](#pylightnix.core.assert_have_realizers)
     * [assert\_recursion\_manager\_empty](#pylightnix.core.assert_recursion_manager_empty)
   * [pylightnix.inplace](#pylightnix.inplace)
@@ -234,20 +237,39 @@ RefPath = List[Any]
 RefPath is an alias for Python list (of strings). The first item of
 `RefPath` is a [derivation reference](#pylightnix.types.DRef). Other
 elements represent path (names of folders and optionally a filename).
+RefPath is designed to be used in a stage config where they typically refer
+to artifacts of the stage's dependencies. To refer to future artifacts of
+the derivation being configured, use
+[PromisePaths](#pylightnix.types.PromisePath).
 
 To convert `RefPath` into [system path](#pylightnix.types.Path), one
-generally have to perform the following basic actions:
-1. Dereference it's first item to obtain the realization. See
+generally have to perform the following basic actions: 1. Dereference it's
+first item to obtain the realization. See
 [store_deref](#pylightnix.core.store_deref) or
-[build_deref](#pylightnix.core.build_deref).
-2. Convert the realization reference into system path with
-[rref2path](#pylightnix.core.rref2path)
-3. Join the system path with `[1:]` part of RefPath to get the reali
-filename.
+[build_deref](#pylightnix.core.build_deref).  2. Convert the realization
+reference into system path with [rref2path](#pylightnix.core.rref2path) 3.
+Join the system path with `[1:]` part of RefPath to get the real filename.
 
-Above algorithm is implemented as [build_path](#pylightnix.core.build_path)
-helper function. The general idea behind RefPath is to declare it during
-instantiation, but delay the access to it until the realization.
+The algorithm described above is implemented as
+[build_path](#pylightnix.core.build_path) helper function.
+
+<a name="pylightnix.types.PromisePath"></a>
+## `PromisePath`
+
+```python
+PromisePath = List[Any]
+```
+
+PromisePath is an alias for Python list of strings. The first item is a
+special tag and the subsequent items should represent a file or directory
+path parts. PromisePaths are to be used in
+[Configs](#pylightnix.types.Config). They typically represent paths to the
+artifacts which we promise will be created by the derivation being
+configured.
+
+PromisePaths do exist only at the time of instantiation. Pylightnix converts
+them into [RefPath](#pylightnix.types.RefPath) before the realization
+starts.
 
 <a name="pylightnix.types.Context"></a>
 ## `Context`
@@ -362,6 +384,14 @@ def somenode(m:Manager)->Dref
 
 ```python
 def __init__(self, d: dict)
+```
+
+
+<a name="pylightnix.types.Config.__repr__"></a>
+### `Config.__repr__()`
+
+```python
+def __repr__(self) -> str
 ```
 
 
@@ -509,6 +539,16 @@ PYLIGHTNIX_NAMEPAT = "[a-zA-Z0-9_-]"
 
 Set the regular expression pattern for valid name characters.
 
+<a name="pylightnix.core.PYLIGHTNIX_PROMISE_TAG"></a>
+## `PYLIGHTNIX_PROMISE_TAG`
+
+```python
+PYLIGHTNIX_PROMISE_TAG = "__promise__"
+```
+
+*Do not change!*
+A tag to mark [Promise RefPaths](#pylightnix.types.RefPath).
+
 <a name="pylightnix.core.trimhash"></a>
 ## `trimhash()`
 
@@ -619,7 +659,15 @@ Return short human-readable name of a config
 ## `config_deps()`
 
 ```python
-def config_deps(c: Config) -> List[DRef]
+def config_deps(c: Config) -> Set[DRef]
+```
+
+
+<a name="pylightnix.core.config_replaceSelf"></a>
+## `config_replaceSelf()`
+
+```python
+def config_replaceSelf(c: Config, r: DRef) -> Config
 ```
 
 
@@ -684,6 +732,14 @@ def mkrefpath(r: DRef, items: List[str] = []) -> RefPath
 Construct a [RefPath](#pylightnix.types.RefPath) out of a reference `ref`
 and a path within the stage's realization
 
+<a name="pylightnix.core.store_config_"></a>
+## `store_config_()`
+
+```python
+def store_config_(r: DRef) -> Config
+```
+
+
 <a name="pylightnix.core.store_config"></a>
 ## `store_config()`
 
@@ -716,7 +772,7 @@ functions do the same thing.
 ## `store_deps()`
 
 ```python
-def store_deps(refs: Iterable[DRef]) -> Set[DRef]
+def store_deps(drefs: Iterable[DRef]) -> Set[DRef]
 ```
 
 Return a list of reference's immediate dependencies, not including `refs`
@@ -950,7 +1006,10 @@ def build_deref(b: Build, dref: DRef) -> RRef
 def build_paths(b: Build, refpath: RefPath) -> List[Path]
 ```
 
-Return a system path, corresponding to RefPath `refpath`
+Convert a given [RefPath](#pylightnix.types.RefPath) (including
+ex-[PromisePath](#pylightnix.types.PromisePath)) into a set of filesystem
+paths.  Conversion takes into account the
+[Context](#pylightnix.types.Context) of the derivation being realized.
 
 <a name="pylightnix.core.build_path"></a>
 ## `build_path()`
@@ -959,6 +1018,7 @@ Return a system path, corresponding to RefPath `refpath`
 def build_path(b: Build, refpath: RefPath) -> Path
 ```
 
+See [build_paths](#pylightnix.core.build_paths)
 
 <a name="pylightnix.core.mkcontext"></a>
 ## `mkcontext()`
@@ -999,6 +1059,23 @@ def context_deref(context: Context, dref: DRef) -> List[RRef]
 def context_serialize(c: Context) -> str
 ```
 
+
+<a name="pylightnix.core.mkpromise"></a>
+## `mkpromise()`
+
+```python
+def mkpromise(pathparts: List[str]) -> PromisePath
+```
+
+Create [PromisePath](#pylightnix.types.PromisePath) out of path
+components. Promise paths exist only during
+[instantiation](#pylightnix.core.instantiate). Before the realization, the
+core replaces all PromisePaths with corresponding
+[RefPaths](#pylightnix.type.RefPath) automatically (see
+[store_config](#pylightnix.core.store_config)).
+
+New RefPaths may be converted into filesystem paths by
+[build_path](#pylightnix.core.build_path) as ususal.
 
 <a name="pylightnix.core.mkdrv"></a>
 ## `mkdrv()`
@@ -1253,7 +1330,7 @@ def assert_valid_refpath(refpath: RefPath) -> None
 ## `assert_valid_config()`
 
 ```python
-def assert_valid_config(c: Config)
+def assert_valid_config(c: Config) -> Config
 ```
 
 
@@ -1262,14 +1339,6 @@ def assert_valid_config(c: Config)
 
 ```python
 def assert_valid_name(s: Name) -> None
-```
-
-
-<a name="pylightnix.core.isrref"></a>
-## `isrref()`
-
-```python
-def isrref(ref: str) -> bool
 ```
 
 
@@ -1286,14 +1355,6 @@ def assert_valid_rref(ref: str) -> None
 
 ```python
 def assert_valid_hashpart(hp: HashPart) -> None
-```
-
-
-<a name="pylightnix.core.isdref"></a>
-## `isdref()`
-
-```python
-def isdref(ref: str) -> bool
 ```
 
 
@@ -1330,11 +1391,11 @@ def assert_valid_closure(closure: Closure) -> None
 ```
 
 
-<a name="pylightnix.core.assert_no_rref_deps"></a>
-## `assert_no_rref_deps()`
+<a name="pylightnix.core.warn_rref_deps"></a>
+## `warn_rref_deps()`
 
 ```python
-def assert_no_rref_deps(c: Config) -> None
+def warn_rref_deps(c: Config) -> None
 ```
 
 

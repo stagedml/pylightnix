@@ -473,7 +473,10 @@ def build_deref(b:Build, dref:DRef)->RRef:
   return rrefs[0]
 
 def build_paths(b:Build, refpath:RefPath)->List[Path]:
-  """ Return a system path, corresponding to RefPath `refpath`"""
+  """ Convert a given [RefPath](#pylightnix.types.RefPath) (including
+  ex-[PromisePath](#pylightnix.types.PromisePath)) into a set of filesystem
+  paths.  Conversion takes into account the
+  [Context](#pylightnix.types.Context) of the derivation being realized. """
   assert_valid_refpath(refpath)
   if refpath[0]==b.dref:
     assert len(b.outpaths), (
@@ -484,6 +487,7 @@ def build_paths(b:Build, refpath:RefPath)->List[Path]:
     return [Path(join(rref2path(rref), *refpath[1:])) for rref in build_deref_(b, refpath[0])]
 
 def build_path(b:Build, refpath:RefPath)->Path:
+  """ See [build_paths](#pylightnix.core.build_paths) """
   paths=build_paths(b,refpath)
   assert len(paths)==1
   return paths[0]
@@ -529,6 +533,16 @@ def context_serialize(c:Context)->str:
 #           |_|
 
 def mkpromise(pathparts:List[str])->PromisePath:
+  """ Create [PromisePath](#pylightnix.types.PromisePath) out of path
+  components. Promise paths exist only during
+  [instantiation](#pylightnix.core.instantiate). Before the realization, the
+  core replaces all PromisePaths with corresponding
+  [RefPaths](#pylightnix.type.RefPath) automatically (see
+  [store_config](#pylightnix.core.store_config)).
+
+  New RefPaths may be converted into filesystem paths by
+  [build_path](#pylightnix.core.build_path) as ususal.
+  """
   return [PYLIGHTNIX_PROMISE_TAG]+pathparts
 
 def mkdrv(m:Manager, config:Config, matcher:Matcher, realizer:Realizer)->DRef:
