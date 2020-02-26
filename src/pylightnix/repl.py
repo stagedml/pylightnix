@@ -17,6 +17,7 @@ REPL shells. They could pause the computation, save the Pylightnix state into a
 variable and return to the REPL's main loop. Good for debugging.
 """
 
+from pylightnix.utils import ( dirrm )
 
 from pylightnix.types import ( Closure, Context, Derivation, RRef, DRef, List,
     Tuple, Optional, Generator, Path, Build, Union, Any, BuildArgs  )
@@ -122,4 +123,9 @@ def repl_cancel(rh:Optional[ReplHelper]=None)->None:
     rh.gen.send((None,True))
   except StopIteration as e:
     rh.gen=None
+
+def repl_cancelBuild(b:Build, rh:Optional[ReplHelper]=None)->None:
+  repl_cancel(rh)
+  for o in b.outpaths:
+    dirrm(o)
 
