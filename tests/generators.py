@@ -5,7 +5,7 @@ from tests.imports import (
     given, assume, example, note, settings, text, decimals, integers, rmtree,
     characters, gettempdir, isdir, join, makedirs, from_regex, islink, listdir,
     get_executable, run, dictionaries, one_of, lists, recursive, printable,
-    none, booleans, floats, re_compile, composite, event, binary )
+    none, booleans, floats, re_compile, composite, event, binary, just )
 
 #   ____                           _
 #  / ___| ___ _ __   ___ _ __ __ _| |_ ___  _ __ ___
@@ -13,13 +13,20 @@ from tests.imports import (
 # | |_| |  __/ | | |  __/ | | (_| | || (_) | |  \__ \
 #  \____|\___|_| |_|\___|_|  \__,_|\__\___/|_|  |___/
 
+@composite
+def drefs(draw):
+  return mkdref(trimhash(draw(hashes())), draw(names()))
 
 @composite
-def dicts(draw):
+def rrefs(draw):
+  return mkrref(trimhash(draw(hashes())), trimhash(draw(hashes())), draw(names()))
+
+@composite
+def dicts(draw, prims=none()):
   d=draw(
     dictionaries(
       keys=text(printable),
-      values=recursive(none() | booleans() | floats() | text(printable) | integers(),
+      values=recursive(none() | booleans() | floats() | text(printable) | integers() | prims,
                 lambda children:
                   lists(children) |
                   dictionaries(text(printable), children),
@@ -27,6 +34,9 @@ def dicts(draw):
       ))
   event(str(d))
   return d
+
+def dicts_with_refs():
+  return dicts(prims=rrefs() | drefs())
 
 @composite
 def configs(draw):
@@ -41,14 +51,6 @@ def names():
 
 def hashes():
   return text().map(lambda x: datahash([encode(x)]))
-
-@composite
-def drefs(draw):
-  return mkdref(trimhash(draw(hashes())), draw(names()))
-
-@composite
-def rrefs(draw):
-  return mkrref(trimhash(draw(hashes())), trimhash(draw(hashes())), draw(names()))
 
 def prims():
   return one_of(none(), booleans(), floats(), text(printable), integers(), binary())

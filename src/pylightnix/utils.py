@@ -19,9 +19,9 @@
 from pylightnix.imports import ( datetime, gmtime, timegm, join, makedirs,
     symlink, basename, mkdir, isdir, isfile, islink, remove, sha256, EEXIST,
     json_dumps, json_loads, makedirs, replace, dirname, walk, abspath,
-    normalize, re_sub, split, json_load, find_executable, chmod, S_IWRITE, S_IREAD,
-    S_IRGRP, S_IROTH, S_IXUSR, S_IXGRP, S_IXOTH, walk, stat, ST_MODE, S_IWGRP,
-    S_IWOTH, rmtree, rename, getsize )
+    normalize, re_sub, split, json_load, find_executable, chmod, S_IWRITE,
+    S_IREAD, S_IRGRP, S_IROTH, S_IXUSR, S_IXGRP, S_IXOTH, stat, ST_MODE,
+    S_IWGRP, S_IWOTH, rmtree, rename, getsize )
 
 from pylightnix.types import ( Hash, Path, List, Any, Optional, Iterable, IO,
     DRef, RRef, Tuple, Callable )
@@ -172,33 +172,54 @@ def dirrm(path:Path, ignore_not_found:bool=True)->None:
     if not ignore_not_found:
       raise
 
-def scanref_list(l:list)->Tuple[List[DRef],List[RRef]]:
-  """ Scan Python list of arbitraty data for References.
 
-  FIXME: Add better detection criteia, at least like in `assert_valid_ref`
-  """
+def isrref(ref:str)->bool:
+  """ FIXME: Add better detection criteia, at least like in `assert_valid_ref` """
+  return isinstance(ref,str) and len(ref)>5 and ref[:5]=='rref:'
+
+def isdref(ref:str)->bool:
+  return isinstance(ref,str) and len(ref)>5 and ref[:5]=='dref:'
+
+
+Mutator=Callable[[Any],Any]
+
+def traverse_list(l:list,mut:Mutator)->None:
+  """ Traverse an arbitrary Python list. """
   assert isinstance(l,list)
-  drefs:List[DRef]=[]; rrefs:List[RRef]=[]
-  for i in l:
-    if isinstance(i,list):
-      dref2,rref2=scanref_list(i)
-    elif isinstance(i,dict):
-      dref2,rref2=scanref_dict(i)
-    elif isinstance(i,str):
-      if i[:5]=='dref:':
-        dref2=[DRef(i)]; rref2=[]
-      elif i[:5]=='rref:':
-        dref2=[]; rref2=[RRef(i)]
-      else:
-        dref2=[]; rref2=[]
+  for i in range(len(l)):
+    if isinstance(l[i],list):
+      traverse_list(l[i],mut)
+    elif isinstance(l[i],dict):
+      traverse_dict(l[i],mut)
     else:
-      dref2=[]; rref2=[]
-    drefs+=dref2; rrefs+=rref2
+      l[i]=mut(l[i])
+
+def traverse_dict(d:dict, mut:Mutator)->None:
+  """ Traverse an arbitrary Python dict. """
+  assert isinstance(d,dict)
+  for k in d.keys():
+    if isinstance(d[k],list):
+      traverse_list(d[k],mut)
+    elif isinstance(d[k],dict):
+      traverse_dict(d[k],mut)
+    else:
+      d[k]=mut(d[k])
+
+def scanref_list(l:list)->Tuple[List[DRef],List[RRef]]:
+  drefs=[];rrefs=[]
+  def _mutator(val):
+    nonlocal drefs,rrefs
+    if isrref(val):
+      rrefs.append(RRef(val))
+    elif isdref(val):
+      drefs.append(DRef(val))
+    return val
+  traverse_list(l, _mutator)
   return (drefs,rrefs)
 
-def scanref_dict(obj:dict)->Tuple[List[DRef],List[RRef]]:
-  assert isinstance(obj,dict)
-  return scanref_list(list(obj.values()))
+def scanref_dict(d:dict)->Tuple[List[DRef],List[RRef]]:
+  assert isinstance(d,dict)
+  return scanref_list(list(d.values()))
 
 def dicthash(d:dict)->Hash:
   """ Calculate hashsum of a Python dict. Top-level fields starting from '_' are ignored """

@@ -2,14 +2,15 @@ from pylightnix import ( instantiate, DRef, RRef, Path, mklogdir, dirhash,
     assert_valid_dref, assert_valid_rref, mknode, store_deps, store_deepdeps,
     store_gc, assert_valid_hash, assert_valid_config, Manager, mkcontext,
     store_rrefs, mkdref, mkrref, unrref, undref, realize, rref2dref,
-    store_initialize, mkconfig, timestring, parsetime )
+    store_initialize, mkconfig, timestring, parsetime, traverse_dict, isrref,
+    isdref, scanref_dict )
 
-from tests.imports import (
-    given, text, isdir, isfile, join, from_regex, islink, get_executable, run,
-    dictionaries, binary, one_of, integers, timegm, gmtime )
+from tests.imports import ( given, text, isdir, isfile, join, from_regex,
+    islink, get_executable, run, dictionaries, binary, one_of, integers,
+    timegm, gmtime, settings, HealthCheck )
 
 from tests.generators import (
-    rrefs, drefs, configs, dicts, prims )
+    rrefs, drefs, configs, dicts, prims, dicts_with_refs )
 
 from tests.setup import (
     ShouldHaveFailed, setup_testpath, setup_storage )
@@ -127,5 +128,24 @@ def test_dirhash3(d)->None:
   p=run([SHA256SUM, join(path,'a')], stdout=-1, check=True, cwd=path)
   h=dirhash(path)
   assert (p.stdout[:len(h)].decode('utf-8'))==h
+
+
+@given(d=dicts())
+def test_traverse(d)->None:
+  replacements=0
+  def _mutator(x):
+    nonlocal replacements
+    if isinstance(x,str):
+      replacements+=1
+      dref=DRef("dref:DUMMY")
+      assert isdref(dref), 'Fix the test DRef if this fails'
+      return dref
+    else:
+      return x
+  traverse_dict(d,_mutator)
+  drefs,rrefs=scanref_dict(d)
+  assert len(rrefs)==0
+  assert len(drefs)==replacements, f"{d}, {replacements}"
+
 
 

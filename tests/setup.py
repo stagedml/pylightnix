@@ -1,6 +1,6 @@
 from pylightnix import ( Manager, Path, store_initialize, DRef, Context,
     Optional, mkbuild, build_outpath, store_rrefs, RRef, mkconfig, Config,
-    Name, mkdrv, rref2path, dirchmod )
+    Name, mkdrv, rref2path, dirchmod, mkpromise )
 from tests.imports import ( rmtree, join, makedirs, listdir, Callable,
     contextmanager, List)
 
@@ -50,7 +50,9 @@ def mktestnode_nondetermenistic(m:Manager, sources:dict,
   """ Emulate non-determenistic builds. `nondet` is expected to return
   different values from build to build """
   def _instantiate()->Config:
-    return mkconfig(sources)
+    c=mkconfig(sources)
+    c.__dict__['promise_artifact']=mkpromise(['artifact'])
+    return c
   def _realize(dref:DRef, context:Context)->List[Path]:
     b=mkbuild(dref, context, buildtime=buildtime)
     with open(join(build_outpath(b),'artifact'),'w') as f:

@@ -23,12 +23,12 @@ from pylightnix.imports import ( sha256, deepcopy, isdir, makedirs, join,
 from pylightnix.utils import (
     dirhash, assert_serializable, assert_valid_dict, dicthash, scanref_dict,
     scanref_list, forcelink, timestring, parsetime, datahash, readjson,
-    tryread, encode, dirchmod, dirrm, filero )
+    tryread, encode, dirchmod, dirrm, filero, isrref, isdref, traverse_dict )
 from pylightnix.types import (
     Dict, List, Any, Tuple, Union, Optional, Iterable, IO, Path, Hash, DRef,
-    RRef, RefPath, HashPart, Callable, Context, Name, NamedTuple, Build,
-    Config, ConfigAttrs, Derivation, Stage, Manager, Matcher, Realizer, Set,
-    Closure, Generator, Key, TypeVar, BuildArgs )
+    RRef, RefPath, PromisePath, HashPart, Callable, Context, Name, NamedTuple,
+    Build, Config, ConfigAttrs, Derivation, Stage, Manager, Matcher, Realizer,
+    Set, Closure, Generator, Key, TypeVar, BuildArgs )
 
 #: *Do not change!*
 #: Tracks the version of pylightnix storage
@@ -55,6 +55,9 @@ PYLIGHTNIX_STORE = join(PYLIGHTNIX_ROOT, f'store-v{PYLIGHTNIX_STORE_VERSION}')
 #: Set the regular expression pattern for valid name characters.
 PYLIGHTNIX_NAMEPAT = "[a-zA-Z0-9_-]"
 
+#: *Do not change!*
+#: A tag to mark [Promise RefPaths](#pylightnix.types.RefPath).
+PYLIGHTNIX_PROMISE_TAG = "__promise__"
 
 #  ____       __
 # |  _ \ ___ / _|___
@@ -124,10 +127,18 @@ def config_name(c:Config)->Name:
   """ Return short human-readable name of a config """
   return mkname(config_dict(c).get('name','unnamed'))
 
-def config_deps(c:Config)->List[DRef]:
+def config_deps(c:Config)->Set[DRef]:
   drefs,_=scanref_dict(config_dict(c))
-  assert_no_rref_deps(c)
-  return list(set(drefs))
+  return set(drefs)
+
+def config_replaceSelf(c:Config, r:DRef)->Config:
+  d=config_dict(c)
+  def _mut(x:Any):
+    if isinstance(x,str) and x==PYLIGHTNIX_PROMISE_TAG:
+      return DRef(r)
+    return x
+  traverse_dict(d,_mut)
+  return Config(d)
 
 #  ____  _
 # / ___|| |_ ___  _ __ ___
@@ -195,14 +206,18 @@ def mkrefpath(r:DRef, items:List[str]=[])->RefPath:
   assert_valid_dref(r)
   return [str(r)]+items
 
+def store_config_(r:DRef)->Config:
+  return assert_valid_config(Config(readjson(join(store_dref2path(r),'config.json'))))
+
 def store_config(r:Union[DRef,RRef])->Config:
   """ Read the [Config](#pylightnix.types.Config) of the derivatoin referenced by `r`. """
-  assert r[:4]=='rref' or r[:4]=='dref', (
-      f"Invalid reference type {r}. Expected either RRef or DRef." )
-  if r[:4]=='rref':
-    return Config(readjson(join(store_dref2path(rref2dref(RRef(r))),'config.json')))
+  assert isrref(r) or isdref(r), (
+      f"Invalid reference {r}. Expected either RRef or DRef." )
+  if isrref(r):
+    dref=rref2dref(RRef(r))
   else:
-    return Config(readjson(join(store_dref2path(DRef(r)),'config.json')))
+    dref=DRef(r)
+  return config_replaceSelf(store_config_(dref),dref)
 
 def store_context(r:RRef)->Context:
   assert_valid_rref(r)
@@ -214,12 +229,12 @@ def store_cattrs(r:Union[DRef,RRef])->Any:
   functions do the same thing. """
   return config_cattrs(store_config(r))
 
-def store_deps(refs:Iterable[DRef])->Set[DRef]:
+def store_deps(drefs:Iterable[DRef])->Set[DRef]:
   """ Return a list of reference's immediate dependencies, not including `refs`
   themselves. """
   acc=set()
-  for r in refs:
-    acc.update(config_deps(store_config(r)))
+  for dref in drefs:
+    acc.update(config_deps(store_config(dref))-{dref})
   return acc
 
 def store_deepdeps(roots:Iterable[DRef])->Set[DRef]:
@@ -308,6 +323,8 @@ def store_instantiate(c:Config)->DRef:
   FIXME: Assert or handle possible (but improbable) hash collision (*)
   """
   assert_store_initialized()
+  assert_valid_config(c)
+  warn_rref_deps(c)
 
   refname=config_name(c)
   dhash=config_hash(c)
@@ -338,6 +355,7 @@ def store_realize(dref:DRef, l:Context, o:Path)->RRef:
   FIXME: Assert or handle possible but improbable hash collision (*)
   """
   c=store_config(dref)
+  assert_valid_config(c)
   (dhash,nm)=undref(dref)
 
   assert isdir(o), (
@@ -457,7 +475,13 @@ def build_deref(b:Build, dref:DRef)->RRef:
 def build_paths(b:Build, refpath:RefPath)->List[Path]:
   """ Return a system path, corresponding to RefPath `refpath`"""
   assert_valid_refpath(refpath)
-  return [Path(join(rref2path(path), *refpath[1:])) for path in build_deref_(b, refpath[0])]
+  if refpath[0]==b.dref:
+    assert len(b.outpaths), (
+        f"Attempt to access build outpaths before they are set. Call"
+        f"`build_outpath(b,num)` first to set their number." )
+    return [Path(join(path, *refpath[1:])) for path in b.outpaths]
+  else:
+    return [Path(join(rref2path(rref), *refpath[1:])) for rref in build_deref_(b, refpath[0])]
 
 def build_path(b:Build, refpath:RefPath)->Path:
   paths=build_paths(b,refpath)
@@ -503,6 +527,9 @@ def context_serialize(c:Context)->str:
 #   | | (_) | |_) | |  __/\ V /  __/ |
 #   |_|\___/| .__/|_|\___| \_/ \___|_|
 #           |_|
+
+def mkpromise(pathparts:List[str])->PromisePath:
+  return [PYLIGHTNIX_PROMISE_TAG]+pathparts
 
 def mkdrv(m:Manager, config:Config, matcher:Matcher, realizer:Realizer)->DRef:
   assert_valid_config(config)
@@ -552,7 +579,6 @@ def recursion_manager(funcname:str):
 def instantiate_(m:Manager, stage:Any, *args, **kwargs)->Closure:
   with recursion_manager('instantiate'):
     target_dref=stage(m,*args,**kwargs)
-    assert_no_rref_deps(store_config(target_dref))
     assert_have_realizers(m, [target_dref])
     return Closure(target_dref,list(m.builders.values()))
 
@@ -810,17 +836,15 @@ def assert_valid_refpath(refpath:RefPath)->None:
   assert len(refpath)>0, error_msg
   assert_valid_dref(refpath[0])
 
-def assert_valid_config(c:Config):
+def assert_valid_config(c:Config)->Config:
   assert c is not None, "Expected `Config` object, but None was passed"
   assert_valid_name(config_name(c))
   assert_valid_dict(c.__dict__, 'Config')
+  return c
 
 def assert_valid_name(s:Name)->None:
   assert re_match(f"^{PYLIGHTNIX_NAMEPAT}+$", s), \
       f"Expected a name which matches /^{PYLIGHTNIX_NAMEPAT}+$/, got '{s}'."
-
-def isrref(ref:str)->bool:
-  return len(ref)>5 and ref[:5]=='rref:'
 
 def assert_valid_rref(ref:str)->None:
   error_msg=(f'Value of {ref} is not a valid instance reference! Expected '
@@ -831,9 +855,6 @@ def assert_valid_hashpart(hp:HashPart)->None:
   assert len(hp)==32, f"HashPart should have length of 32, but len({hp})=={len(hp)}"
   for s in ['-','_','/']:
     assert s not in hp, f"Invalid symbol '{s}' found in {hp}"
-
-def isdref(ref:str)->bool:
-  return len(ref)>0 and ref[:5]=='dref:'
 
 def assert_valid_dref(ref:str)->None:
   error_msg=(f'Value of {ref} is not a valid derivation reference! Expected '
@@ -859,10 +880,15 @@ def assert_valid_closure(closure:Closure)->None:
   assert closure.dref in [d.dref for d in closure.derivations], \
       "Closure should contain target derivation"
 
-def assert_no_rref_deps(c:Config)->None:
+def warn_rref_deps(c:Config)->None:
   _,rrefs=scanref_dict(config_dict(c))
-  assert len(rrefs)==0, (
-      f"RRef dependencies are forbidden, but config {config_dict(c)} containes {rrefs}")
+  if len(rrefs)>0:
+    print(f"Warning: RRef dependencies were found in config {config_dict(c)}:\n{rrefs}")
+
+# def assert_no_rref_deps(c:Config)->None:
+#   _,rrefs=scanref_dict(config_dict(c))
+#   assert len(rrefs)==0, (
+#       f"RRef dependencies are forbidden, but config {config_dict(c)} containes {rrefs}")
 
 def assert_have_realizers(m:Manager, drefs:List[DRef])->None:
   have_drefs=set(m.builders.keys())

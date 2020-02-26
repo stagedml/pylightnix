@@ -8,7 +8,8 @@ from pylightnix import ( Config, instantiate, DRef, RRef, Path, mklogdir,
     store_drefs, store_rrefs, store_rrefs_, build_wrapper, recursion_manager,
     build_cattrs, build_name, match_best, tryread, trywrite,
     assert_recursion_manager_empty, match, latest, best, exact, Key,
-    match_latest, match_all, match_some, match_n, realizeMany, build_outpaths )
+    match_latest, match_all, match_some, match_n, realizeMany, build_outpaths,
+    scanref_dict, config_dict, mkpromise )
 
 from tests.imports import ( given, Any, Callable, join, Optional, islink,
     isfile, List, randint, sleep, rmtree, system, S_IWRITE, S_IREAD, S_IEXEC,
@@ -73,17 +74,12 @@ def test_realize_dependencies()->None:
     assert store_deepdeps([n2,n3]) == set([n1])
     assert store_deepdeps([toplevel]) == set([n1,n2,n3])
 
-def test_no_rref_deps()->None:
-  with setup_storage('test_no_rref_deps'):
-    try:
-      rref=realize(instantiate(mktestnode,{'a':1}))
-      clo=instantiate(mktestnode,{'a':1,'maman':rref})
-      raise ShouldHaveFailed('''
-        RRef deps are forbidden because otherwise we can't see the whole plan
-        of realization before attemptung to evaluate it.
-        ''')
-    except AssertionError:
-      pass
+def test_detect_rref_deps()->None:
+  with setup_storage('test_detect_rref_deps'):
+    rref=realize(instantiate(mktestnode,{'a':1}))
+    clo=instantiate(mktestnode,{'a':1,'maman':rref})
+    _,rrefs=scanref_dict(config_dict(store_config(clo.dref)))
+    assert len(rrefs)>0
 
 def test_no_dref_deps_without_realizers()->None:
   with setup_storage('test_no_dref_deps_without_realizers'):
@@ -547,6 +543,27 @@ def test_gc():
     assert rm_drefs=={rref2dref(r) for r in [r3]}
     assert rm_rrefs=={x for x in [r3]}
 
+def test_promise():
+  with setup_storage('test_promise'):
+    def _setting(m:Manager)->DRef:
+      n1=mktestnode(m, {'name':'1', 'promise':mkpromise(['artifact'])})
+
+      def _realize(b:Build):
+        o=build_outpath(b)
+        c=build_cattrs(b)
+        assert b.dref in c.promise
+        assert n1 in store_cattrs(c.maman).promise
+        assert build_path(b,c.promise)==join(o,'artifact')
+        assert build_path(b,store_cattrs(c.maman).promise)==build_path(b,c.maman_promise)
+
+      return mkdrv(m, mkconfig({'name':'2', 'maman':n1,
+                                'promise':mkpromise(['artifact']),
+                                'maman_promise':[n1,'artifact']}),
+                      matcher=match_only(),
+                      realizer=build_wrapper(_realize))
+
+    rref=realize(instantiate(_setting))
+    assert_valid_rref(rref)
 
 
 

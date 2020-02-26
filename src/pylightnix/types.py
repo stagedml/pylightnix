@@ -115,6 +115,7 @@ class Name(str):
 #: instantiation, but delay the access to it until the realization.
 RefPath = List[Any]
 
+PromisePath = List[Any]
 
 #: Context type is an alias for Python dict which maps
 #: [DRefs](#pylightnix.types.DRef) into one or many
@@ -190,6 +191,9 @@ class Config:
   """
   def __init__(self, d:dict):
     self.__dict__=deepcopy(d)
+
+  def __repr__(self)->str:
+    return self.__dict__.__repr__()
 
 class ConfigAttrs:
   """ `ConfigAttrs` is a helper object allowing to access

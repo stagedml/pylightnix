@@ -5,11 +5,11 @@ from os.path import (basename, join, isfile, isdir, islink, relpath, abspath,
 from shutil import rmtree
 from tempfile import gettempdir
 
-from hypothesis import given, assume, example, note, settings, event
+from hypothesis import given, assume, example, note, settings, event, HealthCheck
 from hypothesis.strategies import ( text, decimals, integers, characters,
                                     from_regex, dictionaries, one_of, lists,
                                     recursive, none, booleans, floats,
-                                    composite, binary )
+                                    composite, binary, just )
 from string import printable
 from distutils.spawn import find_executable
 
