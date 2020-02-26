@@ -473,10 +473,10 @@ def build_deref(b:Build, dref:DRef)->RRef:
   return rrefs[0]
 
 def build_paths(b:Build, refpath:RefPath)->List[Path]:
-  """ Convert a given [RefPath](#pylightnix.types.RefPath) (including
+  """ Convert given [RefPath](#pylightnix.types.RefPath) (which may be an
   ex-[PromisePath](#pylightnix.types.PromisePath)) into a set of filesystem
-  paths.  Conversion takes into account the
-  [Context](#pylightnix.types.Context) of the derivation being realized. """
+  paths. Conversion refers to the [Context](#pylightnix.types.Context) of the
+  realization, as specified by the `b` helper.  """
   assert_valid_refpath(refpath)
   if refpath[0]==b.dref:
     assert len(b.outpaths), (

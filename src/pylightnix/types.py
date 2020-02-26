@@ -98,19 +98,21 @@ class Name(str):
 
 #: RefPath is an alias for Python list (of strings). The first item of
 #: `RefPath` is a [derivation reference](#pylightnix.types.DRef). Other
-#: elements represent path (names of folders and optionally a filename).
+#: elements are to represent parts of file path.
 #: RefPath is designed to be used in a stage config where they typically refer
-#: to artifacts of the stage's dependencies. To refer to future artifacts of
+#: to artifacts of already existing dependencies. To refer to future artifacts of
 #: the derivation being configured, use
 #: [PromisePaths](#pylightnix.types.PromisePath).
 #:
-#: To convert `RefPath` into [system path](#pylightnix.types.Path), one
-#: generally have to perform the following basic actions: 1. Dereference it's
-#: first item to obtain the realization. See
-#: [store_deref](#pylightnix.core.store_deref) or
-#: [build_deref](#pylightnix.core.build_deref).  2. Convert the realization
-#: reference into system path with [rref2path](#pylightnix.core.rref2path) 3.
-#: Join the system path with `[1:]` part of RefPath to get the real filename.
+#: To convert `RefPath` into a [system path](#pylightnix.types.Path), one
+#: generally have to perform the following basic actions:
+#:
+#: 1. Dereference it's first item to obtain the realization. See
+#:    [store_deref](#pylightnix.core.store_deref) or
+#:    [build_deref](#pylightnix.core.build_deref).
+#: 2. Convert the realization reference into system path with
+#:    [rref2path](#pylightnix.core.rref2path)
+#: 3.  Join the system path with `[1:]` part of RefPath to get the real filename.
 #:
 #: The algorithm described above is implemented as
 #: [build_path](#pylightnix.core.build_path) helper function.
