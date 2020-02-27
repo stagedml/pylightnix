@@ -119,15 +119,15 @@ class Name(str):
 RefPath = List[Any]
 
 #: *Do not change!*
-#: A tag to mark [Promise RefPaths](#pylightnix.types.RefPath).
+#: A tag to mark the start of [PromisePaths](#pylightnix.types.PromisePath).
 PYLIGHTNIX_PROMISE_TAG = "__promise__"
 
 #: PromisePath is an alias for Python list of strings. The first item is a
-#: special tag and the subsequent items should represent a file or directory
-#: path parts. PromisePaths are to be used in
-#: [Configs](#pylightnix.types.Config). They typically represent paths to the
-#: artifacts which we promise will be created by the derivation being
-#: configured.
+#: special tag (the [promise](#pylightnix.core.promise)) and the subsequent
+#: items should represent a file or directory path parts. PromisePaths are to
+#: be used in [Configs](#pylightnix.types.Config). They typically represent
+#: paths to the artifacts which we promise will be created by the derivation
+#: being currently configured.
 #:
 #: PromisePaths do exist only at the time of instantiation. Pylightnix converts
 #: them into [RefPath](#pylightnix.types.RefPath) before the realization
@@ -180,9 +180,13 @@ Realizer = Callable[[DRef,Context],List[Path]]
 #: storage), partly in memory in form of Python code.
 Derivation = NamedTuple('Derivation', [('dref',DRef), ('matcher',Matcher), ('realizer',Realizer) ])
 
-#: Closure is a named tuple, encoding a reference to derivation and a whole list
-#: of it's dependencies, plus maybe some additional derivations. So the closure
-#: is complete but not necessary minimal.
+#: Closure is a named tuple, encoding a reference to derivation, the list of
+#: it's dependencies, plus maybe some additional derivations. So the closure is
+#: complete set of dependencies but not necessary minimal.
+#:
+#: Closure is typically obtained as a result of the call to
+#: [instantiate](#pylightnix.core.instantiate) and is typically consumed by the
+#: call to [realizeMany](#pylightnix.core.realizeMany) or it's analogs.
 Closure = NamedTuple('Closure', [('dref',DRef),('derivations',List[Derivation])])
 
 class Config:
@@ -195,14 +199,31 @@ class Config:
   other dicts. No bytes, `numpy.float32` or lambdas are allowed. Tuples are also
   forbidden because they are not preserved (decoded into lists).
 
-  A typical usage pattern is:
+  Some fields of a config have a special meaning for Pylightnix:
+
+  * The field named `name` should be a short readable name. It is used to name
+    the Derivation. See `assert_valid_name`.
+  * Fields of type [RefPath](#pylightnix.types.RefPath) represent the paths to
+    the dependency' artifacts
+  * Fields of type [PromisePath](#pylightnix.types.PromisePath) represent
+    future paths which are to be produced during the current stage's realization.
+  * Values of type [DRef](#pylightnix.types.DRef) encode dependencies.
+    Pylightnix scans configs to collect such values and plan the order of
+    realizaitons.
+  * Values of type [RRef](#pylightnix.types.RRef) lead to warning. Placing such
+    values into a config is probably an error: Pylightnix can't know how to
+    produce exactly this reference and so it can't produce a continuous
+    realization plan.
+
+  Example:
   ```python
-  def somenode(m:Manager)->Dref
+  def mystage(m:Manager)->Dref:
     def _config():
+      name = 'mystage'
       nepoches = 4
       learning_rate = 1e-5
       hidden_size = 128
-      return Config(locals())
+      return mkconfig(locals())
     return mkdrv(_config(),...)
   ```
   """
@@ -227,13 +248,16 @@ class Build:
   """Build is a helper object which tracks the process of stage's
   [realization](#pylightnix.core.realize).
 
-  Associated functions are:
+  We encode typical build operations in the following associated functions:
 
-  - [build_wrapper](#pylightnix.core.build_wrapper)
-  - [build_config](#pylightnix.core.build_config)
-  - [build_deref](#pylightnix.core.build_deref)
-  - [build_path](#pylightnix.core.build_path)
-  - [build_outpath](#pylightnix.core.build_outpath)
+  - [build_config](#pylightnix.core.build_config) - Obtain the Config object of
+    the current stage
+  - [build_cattrs](#pylightnix.core.build_cattrs) - Obtain the ConfigAttrs helper
+  - [build_path](#pylightnix.core.build_path) - Convert a RefPath or a PromisePath
+    into a system file path
+  - [build_outpath](#pylightnix.core.build_outpath) - Create and return the output path.
+  - [build_deref](#pylightnix.core.build_deref) - Convert a dependency DRef
+    into a realization reference.
   """
 
   def __init__(self, ba:BuildArgs)->None:
@@ -245,6 +269,16 @@ class Build:
     self.outpaths:List[Path]=[]
 
 class Manager:
+  """ The derivation manager is a mutable storage where we store derivations
+  before combining them into a [Closure](#pylightnix.types.Closure).
+
+  Manager doesn't have any associated user-level operations. It is typically a
+  first argument of stage functions which should be passed downstream without
+  modifications.
+
+  The [inplace module](#pylightnix.inplace) defines it's own [global derivation
+  manager](#pylightnix.inplace.PYLIGHTNIX_MANAGER) to simplify the usage even
+  more.  """
   def __init__(self):
     self.builders:Dict[DRef,Derivation]=OrderedDict()
 

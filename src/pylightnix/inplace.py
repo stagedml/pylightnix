@@ -21,7 +21,8 @@ from pylightnix.types import ( Any, DRef, Stage, Manager, Derivation, List,
 from pylightnix.core import ( instantiate_, realize )
 
 
-#: Global Derivation manager used for Inplace mode of operation
+#: The Global [Derivation manager](#pylightnix.types.Manager) used by
+#: `instantiate_inplace` and `realize_inplace` functions.
 PYLIGHTNIX_MANAGER = Manager()
 
 

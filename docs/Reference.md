@@ -265,7 +265,7 @@ PYLIGHTNIX_PROMISE_TAG = "__promise__"
 ```
 
 *Do not change!*
-A tag to mark [Promise RefPaths](#pylightnix.types.RefPath).
+A tag to mark the start of [PromisePaths](#pylightnix.types.PromisePath).
 
 <a name="pylightnix.types.PromisePath"></a>
 ## `PromisePath`
@@ -275,11 +275,11 @@ PromisePath = List[Any]
 ```
 
 PromisePath is an alias for Python list of strings. The first item is a
-special tag and the subsequent items should represent a file or directory
-path parts. PromisePaths are to be used in
-[Configs](#pylightnix.types.Config). They typically represent paths to the
-artifacts which we promise will be created by the derivation being
-configured.
+special tag (the [promise](#pylightnix.core.promise)) and the subsequent
+items should represent a file or directory path parts. PromisePaths are to
+be used in [Configs](#pylightnix.types.Config). They typically represent
+paths to the artifacts which we promise will be created by the derivation
+being currently configured.
 
 PromisePaths do exist only at the time of instantiation. Pylightnix converts
 them into [RefPath](#pylightnix.types.RefPath) before the realization
@@ -362,9 +362,13 @@ storage), partly in memory in form of Python code.
 Closure = NamedTuple('Closure', [('dref',DRef),('derivations',List[Derivation])])
 ```
 
-Closure is a named tuple, encoding a reference to derivation and a whole list
-of it's dependencies, plus maybe some additional derivations. So the closure
-is complete but not necessary minimal.
+Closure is a named tuple, encoding a reference to derivation, the list of
+it's dependencies, plus maybe some additional derivations. So the closure is
+complete set of dependencies but not necessary minimal.
+
+Closure is typically obtained as a result of the call to
+[instantiate](#pylightnix.core.instantiate) and is typically consumed by the
+call to [realizeMany](#pylightnix.core.realizeMany) or it's analogs.
 
 <a name="pylightnix.types.Config"></a>
 ## `Config` Objects
@@ -382,14 +386,31 @@ aliases such as [DRefs](#pylightnix.types.DRef), bools, ints, floats, lists or
 other dicts. No bytes, `numpy.float32` or lambdas are allowed. Tuples are also
 forbidden because they are not preserved (decoded into lists).
 
-A typical usage pattern is:
+Some fields of a config have a special meaning for Pylightnix:
+
+* The field named `name` should be a short readable name. It is used to name
+  the Derivation. See `assert_valid_name`.
+* Fields of type [RefPath](#pylightnix.types.RefPath) represent the paths to
+  the dependency' artifacts
+* Fields of type [PromisePath](#pylightnix.types.PromisePath) represent
+  future paths which are to be produced during the current stage's realization.
+* Values of type [DRef](#pylightnix.types.DRef) encode dependencies.
+  Pylightnix scans configs to collect such values and plan the order of
+  realizaitons.
+* Values of type [RRef](#pylightnix.types.RRef) lead to warning. Placing such
+  values into a config is probably an error: Pylightnix can't know how to
+  produce exactly this reference and so it can't produce a continuous
+  realization plan.
+
+Example:
 ```python
-def somenode(m:Manager)->Dref
+def mystage(m:Manager)->Dref:
   def _config():
+    name = 'mystage'
     nepoches = 4
     learning_rate = 1e-5
     hidden_size = 128
-    return Config(locals())
+    return mkconfig(locals())
   return mkdrv(_config(),...)
 ```
 
@@ -446,13 +467,16 @@ def __init__(self, ba: BuildArgs) -> None
 Build is a helper object which tracks the process of stage's
 [realization](#pylightnix.core.realize).
 
-Associated functions are:
+We encode typical build operations in the following associated functions:
 
-- [build_wrapper](#pylightnix.core.build_wrapper)
-- [build_config](#pylightnix.core.build_config)
-- [build_deref](#pylightnix.core.build_deref)
-- [build_path](#pylightnix.core.build_path)
-- [build_outpath](#pylightnix.core.build_outpath)
+- [build_config](#pylightnix.core.build_config) - Obtain the Config object of
+  the current stage
+- [build_cattrs](#pylightnix.core.build_cattrs) - Obtain the ConfigAttrs helper
+- [build_path](#pylightnix.core.build_path) - Convert a RefPath or a PromisePath
+  into a system file path
+- [build_outpath](#pylightnix.core.build_outpath) - Create and return the output path.
+- [build_deref](#pylightnix.core.build_deref) - Convert a dependency DRef
+  into a realization reference.
 
 <a name="pylightnix.types.Build.__init__"></a>
 ### `Build.__init__()`
@@ -469,6 +493,16 @@ def __init__(self, ba: BuildArgs) -> None
 def __init__(self)
 ```
 
+The derivation manager is a mutable storage where we store derivations
+before combining them into a [Closure](#pylightnix.types.Closure).
+
+Manager doesn't have any associated user-level operations. It is typically a
+first argument of stage functions which should be passed downstream without
+modifications.
+
+The [inplace module](#pylightnix.inplace) defines it's own [global derivation
+manager](#pylightnix.inplace.PYLIGHTNIX_MANAGER) to simplify the usage even
+more.
 
 <a name="pylightnix.types.Manager.__init__"></a>
 ### `Manager.__init__()`
@@ -1025,6 +1059,30 @@ ex-[PromisePath](#pylightnix.types.PromisePath)) into a set of filesystem
 paths. Conversion refers to the [Context](#pylightnix.types.Context) of the
 realization, as specified by the `b` helper.
 
+Typically, we configure stages to match only one realization at once, so the
+returned list is often a singleton list. See
+[build_path](#pylightnix.core.build_path).
+
+Example:
+```python
+def config(dep:DRef)->Config:
+  name = 'example-stage'
+  input = [dep,"path","to","input.txt"]
+  output = [promise,"output.txt"]
+  some_param = 42
+  return mkconfig(locals())
+
+def realize(b:Build)->None:
+  c=config_cattrs(b)
+  with open(build_path(b, c.input),'r') as finp:
+    with open(build_path(b, c.output),'w') as fout:
+      fout.write(finp.read())
+
+def mystage(m:Manager)->DRef:
+  dep:DRef=otherstage(m)
+  return mkdrv(m, config(dep), match_only(), build_wrapper(realize))
+```
+
 <a name="pylightnix.core.build_path"></a>
 ## `build_path()`
 
@@ -1032,7 +1090,7 @@ realization, as specified by the `b` helper.
 def build_path(b: Build, refpath: RefPath) -> Path
 ```
 
-See [build_paths](#pylightnix.core.build_paths)
+A single-realization version of the [build_paths](#pylightnix.core.build_paths).
 
 <a name="pylightnix.core.mkcontext"></a>
 ## `mkcontext()`
@@ -1081,20 +1139,20 @@ def context_serialize(c: Context) -> str
 promise = PYLIGHTNIX_PROMISE_TAG
 ```
 
-Create [PromisePath](#pylightnix.types.PromisePath) out of path
-components. Promise paths exist only during
+Used to create [PromisePath](#pylightnix.types.PromisePath) as a start
+marker. Promise paths exist only during
 [instantiation](#pylightnix.core.instantiate). Before the realization, the
-core replaces all PromisePaths with corresponding
+core replaces all PromisePaths with the corresponding
 [RefPaths](#pylightnix.type.RefPath) automatically (see
 [store_config](#pylightnix.core.store_config)).
 
-New RefPaths may be converted into filesystem paths by
+Converted RefPaths may be converted into filesystem paths by
 [build_path](#pylightnix.core.build_path) as ususal.
 
 Example:
 ```python
 def hello_builder_config()->Config:
-promise_binary = mkpromise(['usr','bin','hello'])
+promise_binary = [promise, 'usr','bin','hello']
 return mkconfig(locals())
 dref=mkdrv(..., config=hello_builder_config(), ...)
 ```
@@ -1173,20 +1231,10 @@ def instantiate(stage: Any, args, *,, ,, kwargs) -> Closure
 ```
 
 Instantiate takes the [Stage](#pylightnix.types.Stage) function and
-produces calculates the [Closure](#pylightnix.types.Closure) of it's
-[Derivation](#pylightnix.types.Derivation).
-
-Instantiate's work is somewhat similar to the type-checking in the compiler's
-pipeline.
-
-User-defined [Instantiators](pylightnix.types.Instantiator) calculate stage
-configs during the instantiation. This calculations fall under certain
-restrictions. In particular, it shouldn't start new instantiations or
-realizations recursively, and it shouldn't access stage realizations in the
-storage.
-
-New derivations are added to the storage by moving a temporary folder inside
-the storage folder.
+calculates the [Closure](#pylightnix.types.Closure) of it's
+[Derivations](#pylightnix.types.Derivation).
+All new derivations are added to the storage.
+See also [realizeMany](#pylightnix.core.realizeMany)
 
 <a name="pylightnix.core.RealizeSeqGen"></a>
 ## `RealizeSeqGen`
@@ -1204,7 +1252,7 @@ def realize(closure: Closure, force_rebuild: Union[List[DRef],bool] = []) -> RRe
 ```
 
 A simplified version of [realizeMany](#pylightnix.core.realizeMany).
-Expects only one result.
+Expects only one output path.
 
 <a name="pylightnix.core.realizeMany"></a>
 ## `realizeMany()`
@@ -1213,24 +1261,43 @@ Expects only one result.
 def realizeMany(closure: Closure, force_rebuild: Union[List[DRef],bool] = []) -> List[RRef]
 ```
 
-Obtain one or many realizations of a stage's
+Obtain one or more realizations of a stage's
 [Closure](#pylightnix.types.Closure).
 
-If [matching](#pylightnix.types.Matcher) realizations do exist in the storage,
-and user doesn't ask for rebuild, realizeMany returns immediately.
+If [matching](#pylightnix.types.Matcher) realizations do exist in the
+storage, and if user doesn't ask to forcebly rebuild the stage, `realizeMany`
+returns the references immediately.
 
-Otherwize, it calls one or many [Realizers](#pylightnix.types.Realizer) to
-get the desiared realizations.
+Otherwize, it calls [Realizers](#pylightnix.types.Realizer) of the Closure to
+get desired realizations of the closure top-level derivation.
 
-Returned value is a list references to new
-[realizations](#pylightnix.types.RRef). Every realization may be [converted
-to system path](#pylightnix.core.rref2path) pointing to the folder which
+Returned value is a list realization references
+[realizations](#pylightnix.types.RRef). Every RRef may be [converted
+to system path](#pylightnix.core.rref2path) of the folder which
 contains build artifacts.
 
-To create each new realization, realizeMany moves it's build artifacts inside
-the storage by executing `os.replace` function which are meant to be atomic.
-`realizeMany` assumes that derivation's config is present in the storage at
-the moment of replacing (See e.g. [rmref](#pylightnix.bashlike.rmref))
+In order to create each realization, realizeMany moves it's build artifacts
+into the storage by executing `os.replace` function which are assumed to be
+atomic. `realizeMany` also assumes that derivation's config is present in the
+storage at this moment (See e.g. [rmref](#pylightnix.bashlike.rmref))
+
+Example:
+```python
+def mystage(m:Manager)->DRef:
+  ...
+  return mkdrv(m, ...)
+
+clo:Closure=instantiate(mystage)
+rrefs:List[RRef]=realizeMany(clo)
+print('Available realizations:', [rref2path(rref) for rref in rrefs])
+```
+
+`realizeMany` has the following analogs:
+
+* [realize](#pylightnix.core.realize) - A single-output version
+* [repl_realize](#pylightnix.repl.repl_realize) - A REPL-friendly version
+* [realize_inplace](#pylightnix.inplace.realize_inplace) - A simplified
+  version which uses a global derivation Manager.
 
 - FIXME: Stage's context is calculated inefficiently. Maybe one should track
   dep.tree to avoid calling `store_deepdeps` within the cycle.
@@ -1245,7 +1312,9 @@ def realizeSeq(closure: Closure, force_interrupt: List[DRef] = []) -> RealizeSeq
 ```
 
 Sequentially realize the closure by issuing steps via Python's generator
-interface
+interface. `realizeSeq` encodes low-level details of the realization
+algorithm. Consider calling [realizeMany](#pylightnix.core.realizeMany) or
+it's analogs instead.
 
 <a name="pylightnix.core.mksymlink"></a>
 ## `mksymlink()`
@@ -1268,7 +1337,7 @@ def match(keys: List[Key], rmin: Optional[int] = 1, rmax: Optional[int] = 1, exc
 Create a matcher by combining different sorting keys and selecting a
 top-n threshold.
 
-Parameters:
+Arguments:
 - `keys`: List of [Key](#pylightnix.types.Key) functions. Defaults ot
 - `rmin`: An integer selecting the minimum number of realizations to accept.
   If non-None, Realizer is expected to produce at least this number of
@@ -1481,7 +1550,8 @@ which is easier to use but has usual risks of gloabl variables.
 PYLIGHTNIX_MANAGER = Manager()
 ```
 
-Global Derivation manager used for Inplace mode of operation
+The Global [Derivation manager](#pylightnix.types.Manager) used by
+`instantiate_inplace` and `realize_inplace` functions.
 
 <a name="pylightnix.inplace.instantiate_inplace"></a>
 ## `instantiate_inplace()`

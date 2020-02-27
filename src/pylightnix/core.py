@@ -485,7 +485,32 @@ def build_paths(b:Build, refpath:RefPath)->List[Path]:
   """ Convert given [RefPath](#pylightnix.types.RefPath) (which may be an
   ex-[PromisePath](#pylightnix.types.PromisePath)) into a set of filesystem
   paths. Conversion refers to the [Context](#pylightnix.types.Context) of the
-  realization, as specified by the `b` helper.  """
+  realization, as specified by the `b` helper.
+
+  Typically, we configure stages to match only one realization at once, so the
+  returned list is often a singleton list. See
+  [build_path](#pylightnix.core.build_path).
+
+  Example:
+  ```python
+  def config(dep:DRef)->Config:
+    name = 'example-stage'
+    input = [dep,"path","to","input.txt"]
+    output = [promise,"output.txt"]
+    some_param = 42
+    return mkconfig(locals())
+
+  def realize(b:Build)->None:
+    c=config_cattrs(b)
+    with open(build_path(b, c.input),'r') as finp:
+      with open(build_path(b, c.output),'w') as fout:
+        fout.write(finp.read())
+
+  def mystage(m:Manager)->DRef:
+    dep:DRef=otherstage(m)
+    return mkdrv(m, config(dep), match_only(), build_wrapper(realize))
+  ```
+  """
   assert_valid_refpath(refpath)
   if refpath[0]==b.dref:
     assert len(b.outpaths), (
@@ -496,7 +521,7 @@ def build_paths(b:Build, refpath:RefPath)->List[Path]:
     return [Path(join(rref2path(rref), *refpath[1:])) for rref in build_deref_(b, refpath[0])]
 
 def build_path(b:Build, refpath:RefPath)->Path:
-  """ See [build_paths](#pylightnix.core.build_paths) """
+  """ A single-realization version of the [build_paths](#pylightnix.core.build_paths). """
   paths=build_paths(b,refpath)
   assert len(paths)==1
   return paths[0]
@@ -542,20 +567,20 @@ def context_serialize(c:Context)->str:
 #           |_|
 
 
-#: Create [PromisePath](#pylightnix.types.PromisePath) out of path
-#: components. Promise paths exist only during
+#: Used to create [PromisePath](#pylightnix.types.PromisePath) as a start
+#: marker. Promise paths exist only during
 #: [instantiation](#pylightnix.core.instantiate). Before the realization, the
-#: core replaces all PromisePaths with corresponding
+#: core replaces all PromisePaths with the corresponding
 #: [RefPaths](#pylightnix.type.RefPath) automatically (see
 #: [store_config](#pylightnix.core.store_config)).
 #:
-#: New RefPaths may be converted into filesystem paths by
+#: Converted RefPaths may be converted into filesystem paths by
 #: [build_path](#pylightnix.core.build_path) as ususal.
 #:
 #: Example:
 #: ```python
 #: def hello_builder_config()->Config:
-#:   promise_binary = mkpromise(['usr','bin','hello'])
+#:   promise_binary = [promise, 'usr','bin','hello']
 #:   return mkconfig(locals())
 #: dref=mkdrv(..., config=hello_builder_config(), ...)
 #: ```
@@ -659,20 +684,10 @@ def instantiate_(m:Manager, stage:Any, *args, **kwargs)->Closure:
 
 def instantiate(stage:Any, *args, **kwargs)->Closure:
   """ Instantiate takes the [Stage](#pylightnix.types.Stage) function and
-  produces calculates the [Closure](#pylightnix.types.Closure) of it's
-  [Derivation](#pylightnix.types.Derivation).
-
-  Instantiate's work is somewhat similar to the type-checking in the compiler's
-  pipeline.
-
-  User-defined [Instantiators](pylightnix.types.Instantiator) calculate stage
-  configs during the instantiation. This calculations fall under certain
-  restrictions. In particular, it shouldn't start new instantiations or
-  realizations recursively, and it shouldn't access stage realizations in the
-  storage.
-
-  New derivations are added to the storage by moving a temporary folder inside
-  the storage folder.
+  calculates the [Closure](#pylightnix.types.Closure) of it's
+  [Derivations](#pylightnix.types.Derivation).
+  All new derivations are added to the storage.
+  See also [realizeMany](#pylightnix.core.realizeMany)
   """
   return instantiate_(Manager(), stage, *args, **kwargs)
 
@@ -680,33 +695,52 @@ RealizeSeqGen = Generator[Tuple[DRef,Context,Derivation],Tuple[Optional[List[RRe
 
 def realize(closure:Closure, force_rebuild:Union[List[DRef],bool]=[])->RRef:
   """ A simplified version of [realizeMany](#pylightnix.core.realizeMany).
-  Expects only one result. """
+  Expects only one output path. """
   rrefs=realizeMany(closure, force_rebuild)
   assert len(rrefs)==1, (
-      f"realize is to be used with single-output derivations, but derivation "
+      f"`realize` is to be used with single-output derivations. Derivation "
       f"{closure.dref} has {len(rrefs)} outputs:\n{rrefs}\n"
-      f"Consider using `realizeMany`." )
+      f"Consider calling `realizeMany` with it." )
   return rrefs[0]
 
 def realizeMany(closure:Closure, force_rebuild:Union[List[DRef],bool]=[])->List[RRef]:
-  """ Obtain one or many realizations of a stage's
+  """ Obtain one or more realizations of a stage's
   [Closure](#pylightnix.types.Closure).
 
-  If [matching](#pylightnix.types.Matcher) realizations do exist in the storage,
-  and user doesn't ask for rebuild, realizeMany returns immediately.
+  If [matching](#pylightnix.types.Matcher) realizations do exist in the
+  storage, and if user doesn't ask to forcebly rebuild the stage, `realizeMany`
+  returns the references immediately.
 
-  Otherwize, it calls one or many [Realizers](#pylightnix.types.Realizer) to
-  get the desiared realizations.
+  Otherwize, it calls [Realizers](#pylightnix.types.Realizer) of the Closure to
+  get desired realizations of the closure top-level derivation.
 
-  Returned value is a list references to new
-  [realizations](#pylightnix.types.RRef). Every realization may be [converted
-  to system path](#pylightnix.core.rref2path) pointing to the folder which
+  Returned value is a list realization references
+  [realizations](#pylightnix.types.RRef). Every RRef may be [converted
+  to system path](#pylightnix.core.rref2path) of the folder which
   contains build artifacts.
 
-  To create each new realization, realizeMany moves it's build artifacts inside
-  the storage by executing `os.replace` function which are meant to be atomic.
-  `realizeMany` assumes that derivation's config is present in the storage at
-  the moment of replacing (See e.g. [rmref](#pylightnix.bashlike.rmref))
+  In order to create each realization, realizeMany moves it's build artifacts
+  into the storage by executing `os.replace` function which are assumed to be
+  atomic. `realizeMany` also assumes that derivation's config is present in the
+  storage at this moment (See e.g. [rmref](#pylightnix.bashlike.rmref))
+
+  Example:
+  ```python
+  def mystage(m:Manager)->DRef:
+    ...
+    return mkdrv(m, ...)
+
+  clo:Closure=instantiate(mystage)
+  rrefs:List[RRef]=realizeMany(clo)
+  print('Available realizations:', [rref2path(rref) for rref in rrefs])
+  ```
+
+  `realizeMany` has the following analogs:
+
+  * [realize](#pylightnix.core.realize) - A single-output version
+  * [repl_realize](#pylightnix.repl.repl_realize) - A REPL-friendly version
+  * [realize_inplace](#pylightnix.inplace.realize_inplace) - A simplified
+    version which uses a global derivation Manager.
 
   - FIXME: Stage's context is calculated inefficiently. Maybe one should track
     dep.tree to avoid calling `store_deepdeps` within the cycle.
@@ -732,7 +766,9 @@ def realizeMany(closure:Closure, force_rebuild:Union[List[DRef],bool]=[])->List[
 
 def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[])->RealizeSeqGen:
   """ Sequentially realize the closure by issuing steps via Python's generator
-  interface """
+  interface. `realizeSeq` encodes low-level details of the realization
+  algorithm. Consider calling [realizeMany](#pylightnix.core.realizeMany) or
+  it's analogs instead.  """
   assert_valid_closure(closure)
   force_interrupt_:Set[DRef]=set(force_interrupt)
   with recursion_manager('realize'):
@@ -801,7 +837,7 @@ def match(keys:List[Key],
   """ Create a matcher by combining different sorting keys and selecting a
   top-n threshold.
 
-  Parameters:
+  Arguments:
   - `keys`: List of [Key](#pylightnix.types.Key) functions. Defaults ot
   - `rmin`: An integer selecting the minimum number of realizations to accept.
     If non-None, Realizer is expected to produce at least this number of
