@@ -116,12 +116,13 @@ some errors early, which may become a big time-saver.
 
 
 ```python
-from pylightnix import Config, RefPath, mkconfig
+from pylightnix import Config, RefPath, PromisePath, mkconfig, promise
 
 def mnist_config()->Config:
-  dataset:RefPath = [mnist_dataset, 'mnist.npz']
   learning_rate = 1e-3
   num_epoches = 1
+  dataset:RefPath = [mnist_dataset, 'mnist.npz']
+  accuracy:PromisePath = [promise, 'accuracy.txt']
   return mkconfig(locals())
 ```
 
@@ -132,13 +133,19 @@ marker object by calling `mkconfig` helper on the result of `locals` python
 builtin magic function. `locals` collects local variables and `mkconfig` makes
 some checks, including the check on JSON-serializability.
 
-Note how do we use `mnist_dataset` reference, obtained from the previous stage.
-We have added the **stage dependency**, by including it into Config. Pylightnix
-will scan thought dependencies to call stage realizers in the appropriate order.
+Some fileds of the configuration have a special meaning for Pylightnix:
 
-Note also the list `[mnist_dataset, 'mnist.npz']`. It is a so-called
-**RefPath** expression. Pylightnix has a helper function `build_path` which
-translates such lists into real system Paths at the time of realization.
+* Note how do we use `mnist_dataset` reference, obtained from the previous
+  stage.  We have added the **stage dependency**, just by including it into
+  Config.  Pylightnix will handle dependencies and call stage realizers in the
+  appropriate order.
+* Note the list `[mnist_dataset, 'mnist.npz']`. It is a so-called **RefPath**
+  expression. Pylightnix has a helper function `build_path` which translates
+  lists of this kind into real system Paths at the time of realization.
+* Accuracy attribute encodes a so called PromisePath. PromisePaths refer to
+  not-yet-existing files or folders which we promise will be created by the
+  current stage. PromisePaths may be converted by the same `build_path` function
+  into writable system paths.
 
 #### Matcher
 
@@ -230,7 +237,7 @@ def mnist_build(b:Build)->None:
   model.fit(x_train, y_train, batch_size = 32, epochs = c.num_epoches, verbose = 0)
   accuracy = model.evaluate(x_test, y_test, verbose = 0)[-1]
   model.save_weights(join(o, 'weights.h5'), save_format='h5')
-  with open(join(o,'accuracy.txt'),'w') as f:
+  with open(build_path(b,c.accuracy),'w') as f:
     f.write(str(accuracy))
 ```
 
@@ -257,7 +264,7 @@ print(mnist_model)
 ```
 
 ```
-dref:5cd9248aabb529c207a20b8b9fc576ce-unnamed
+dref:62bf4c470bd346d4b4431438958999eb-unnamed
 ```
 
 
@@ -279,7 +286,7 @@ print(mnist1)
 x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
-rref:e74bd97d1646fe8d0dea8fa83d9feb65-5cd9248aabb529c207a20b8b9fc576ce-unnamed
+rref:603265c11db3cb4ccd41c3ca2224b81c-62bf4c470bd346d4b4431438958999eb-unnamed
 ```
 
 
@@ -305,7 +312,7 @@ print(mnist2)
 x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
-rref:24b091e56f7f46869928cd30c2a67363-5cd9248aabb529c207a20b8b9fc576ce-unnamed
+rref:4e8a74fe9b9383e541f455c7e6ca0aff-62bf4c470bd346d4b4431438958999eb-unnamed
 ```
 
 
@@ -338,7 +345,7 @@ catref(mnist1,['accuracy.txt'])
 ```
 
 ```
-['0.9814']
+['0.9842']
 ```
 
 
@@ -347,7 +354,7 @@ catref(mnist2,['accuracy.txt'])
 ```
 
 ```
-['0.985']
+['0.9849']
 ```
 
 
@@ -371,8 +378,8 @@ mnist_best = realize_inplace(instantiate_inplace(model_best))
 ```
 
 ```
-Overwriting matcher or realizer of derivation dref:5cd9248aabb529c207a20b8b9fc576ce-unnamed, configured as:
-{'num_epoches': 1, 'learning_rate': 0.001, 'dataset': ['dref:90531e2f6d210ae159c0100d59f50b2c-mnist', 'mnist.npz']}
+Overwriting matcher or realizer of derivation dref:62bf4c470bd346d4b4431438958999eb-unnamed, configured as:
+{'accuracy': ['dref:62bf4c470bd346d4b4431438958999eb-unnamed', 'accuracy.txt'], 'dataset': ['dref:90531e2f6d210ae159c0100d59f50b2c-mnist', 'mnist.npz'], 'num_epoches': 1, 'learning_rate': 0.001}
 ```
 
 
@@ -381,7 +388,7 @@ catref(mnist_best,['accuracy.txt'])
 ```
 
 ```
-['0.985']
+['0.9849']
 ```
 
 

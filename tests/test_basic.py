@@ -133,7 +133,7 @@ def test_dirhash3(d)->None:
 @given(d=dicts())
 def test_traverse(d)->None:
   replacements=0
-  def _mutator(x):
+  def _mutator(k,x):
     nonlocal replacements
     if isinstance(x,str):
       replacements+=1

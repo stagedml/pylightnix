@@ -187,7 +187,7 @@ x_train shape: (60000, 28, 28, 1)
 
 Epoch 00001: val_accuracy improved from -inf to 0.98183, saving model
 to
-/workspace/_pylightnix/tmp/200222-21:58:00:292880+0300_d20f6e78_6diod1co/checkpoint.ckpt
+/workspace/_pylightnix/tmp/200227-12:50:25:923807+0300_d20f6e78_3dtp_0gi/checkpoint.ckpt
 ```
 
 ```
@@ -198,36 +198,43 @@ Traceback (most recent call last)<ipython-input-1-9b8c69999b87> in
 Spoiler: will fail
 ~/3rdparty/pylightnix/src/pylightnix/core.py in realize(closure,
 force_rebuild)
-    577   """ A simplified version of
+    682   """ A simplified version of
 [realizeMany](#pylightnix.core.realizeMany).
-    578   Expects only one result. """
---> 579   rrefs=realizeMany(closure, force_rebuild)
-    580   assert len(rrefs)==1, (
-    581       f"realize is to be used with single-output derivations,
+    683   Expects only one result. """
+--> 684   rrefs=realizeMany(closure, force_rebuild)
+    685   assert len(rrefs)==1, (
+    686       f"realize is to be used with single-output derivations,
 but derivation "
 ~/3rdparty/pylightnix/src/pylightnix/core.py in realizeMany(closure,
 force_rebuild)
-    621     next(gen)
-    622     while True:
---> 623       gen.send((None,False)) # Ask for default action
-    624   except StopIteration as e:
-    625     res=e.value
+    726     next(gen)
+    727     while True:
+--> 728       gen.send((None,False)) # Ask for default action
+    729   except StopIteration as e:
+    730     res=e.value
 ~/3rdparty/pylightnix/src/pylightnix/core.py in realizeSeq(closure,
 force_interrupt)
-    648           rrefs=drv.matcher(dref,dref_context)
-    649         if rrefs is None:
---> 650           paths=drv.realizer(dref,dref_context)
-    651           rrefs_built=[store_realize(dref,dref_context,path)
+    753           rrefs=drv.matcher(dref,dref_context)
+    754         if rrefs is None:
+--> 755           paths=drv.realizer(dref,dref_context)
+    756           rrefs_built=[store_realize(dref,dref_context,path)
 for path in paths]
-    652           rrefs_matched=drv.matcher(dref,dref_context)
+    757           rrefs_matched=drv.matcher(dref,dref_context)
+~/3rdparty/pylightnix/src/pylightnix/core.py in _matcher(dref, ctx)
+    604   def _promise_aware(realizer)->Realizer:
+    605     def _matcher(dref:DRef,ctx:Context)->List[Path]:
+--> 606       outpaths=realizer(dref,ctx)
+    607       for key,refpath in
+config_promises(store_config(dref),dref):
+    608         for o in outpaths:
 ~/3rdparty/pylightnix/src/pylightnix/core.py in _wrapper(dref,
 context)
-    390     buildtime:bool=True)->Realizer:
-    391   def _wrapper(dref,context)->List[Path]:
---> 392     b=ctr(mkbuildargs(dref,context,buildtime)); f(b); return
+    421     buildtime:bool=True)->Realizer:
+    422   def _wrapper(dref,context)->List[Path]:
+--> 423     b=ctr(mkbuildargs(dref,context,buildtime)); f(b); return
 list(getattr(b,'outpaths'))
-    393   return _wrapper
-    394
+    424   return _wrapper
+    425
 <ipython-input-1-f38c6dead39e> in mnist_realize(b)
      77 def mnist_realize(b:Model):
      78   mnist_train(b)
@@ -295,7 +302,7 @@ repl_realize(instantiate(convnn_mnist))
 ```
 
 ```
-<pylightnix.repl.ReplHelper at 0x7f4214d940f0>
+<pylightnix.repl.ReplHelper at 0x7fb518847f60>
 ```
 
 
@@ -324,7 +331,7 @@ x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
 
-Epoch 00001: val_accuracy improved from -inf to 0.98158, saving model to /workspace/_pylightnix/tmp/200222-21:58:07:467797+0300_d20f6e78_p7_1h1um/checkpoint.ckpt
+Epoch 00001: val_accuracy improved from -inf to 0.98442, saving model to /workspace/_pylightnix/tmp/200227-12:50:32:912845+0300_d20f6e78_81ieouxt/checkpoint.ckpt
 ```
 
 
@@ -333,7 +340,7 @@ mnist_eval_correct(b)
 ```
 
 ```
-0.9823
+0.984
 ```
 
 
@@ -350,7 +357,7 @@ print(rref)
 ```
 
 ```
-rref:ba9cb2399c103a955b983f4cd586b05d-d20f6e78a3801f50d5df4872ca0c79b4-convnn_mnist
+rref:72ed8b20c121425e30072e577bcea9de-d20f6e78a3801f50d5df4872ca0c79b4-convnn_mnist
 ```
 
 

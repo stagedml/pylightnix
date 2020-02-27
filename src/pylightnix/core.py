@@ -20,15 +20,15 @@ from pylightnix.imports import ( sha256, deepcopy, isdir, makedirs, join,
     json_dump, json_load, json_dumps, json_loads, isfile, relpath, listdir,
     rmtree, mkdtemp, replace, environ, split, re_match, ENOTEMPTY, get_ident,
     contextmanager, OrderedDict, lstat, maxsize )
-from pylightnix.utils import (
-    dirhash, assert_serializable, assert_valid_dict, dicthash, scanref_dict,
-    scanref_list, forcelink, timestring, parsetime, datahash, readjson,
-    tryread, encode, dirchmod, dirrm, filero, isrref, isdref, traverse_dict )
+from pylightnix.utils import ( dirhash, assert_serializable, assert_valid_dict,
+    dicthash, scanref_dict, scanref_list, forcelink, timestring, parsetime,
+    datahash, readjson, tryread, encode, dirchmod, dirrm, filero, isrref,
+    isdref, traverse_dict, ispromise )
 from pylightnix.types import (
     Dict, List, Any, Tuple, Union, Optional, Iterable, IO, Path, Hash, DRef,
     RRef, RefPath, PromisePath, HashPart, Callable, Context, Name, NamedTuple,
     Build, Config, ConfigAttrs, Derivation, Stage, Manager, Matcher, Realizer,
-    Set, Closure, Generator, Key, TypeVar, BuildArgs )
+    Set, Closure, Generator, Key, TypeVar, BuildArgs, PYLIGHTNIX_PROMISE_TAG )
 
 #: *Do not change!*
 #: Tracks the version of pylightnix storage
@@ -54,10 +54,6 @@ PYLIGHTNIX_STORE = join(PYLIGHTNIX_ROOT, f'store-v{PYLIGHTNIX_STORE_VERSION}')
 
 #: Set the regular expression pattern for valid name characters.
 PYLIGHTNIX_NAMEPAT = "[a-zA-Z0-9_-]"
-
-#: *Do not change!*
-#: A tag to mark [Promise RefPaths](#pylightnix.types.RefPath).
-PYLIGHTNIX_PROMISE_TAG = "__promise__"
 
 #  ____       __
 # |  _ \ ___ / _|___
@@ -131,14 +127,27 @@ def config_deps(c:Config)->Set[DRef]:
   drefs,_=scanref_dict(config_dict(c))
   return set(drefs)
 
-def config_replaceSelf(c:Config, r:DRef)->Config:
+def config_substitutePromises(c:Config, r:DRef)->Config:
+  """ Replace all Promise tags with DRef `r`. In particular, all PromisePaths
+  are converted into RefPaths. """
   d=config_dict(c)
-  def _mut(x:Any):
-    if isinstance(x,str) and x==PYLIGHTNIX_PROMISE_TAG:
+  def _mut(k:Any,val:Any):
+    if isinstance(val,str) and val==PYLIGHTNIX_PROMISE_TAG:
       return DRef(r)
-    return x
+    else:
+      return val
   traverse_dict(d,_mut)
   return Config(d)
+
+def config_promises(c:Config, r:DRef)->List[Tuple[str,RefPath]]:
+  promises=[]
+  def _mut(key:Any, val:Any):
+    nonlocal promises
+    if ispromise(val,r):
+      promises.append((str(key),val))
+    return val
+  traverse_dict(config_dict(c),_mut)
+  return promises
 
 #  ____  _
 # / ___|| |_ ___  _ __ ___
@@ -217,7 +226,7 @@ def store_config(r:Union[DRef,RRef])->Config:
     dref=rref2dref(RRef(r))
   else:
     dref=DRef(r)
-  return config_replaceSelf(store_config_(dref),dref)
+  return config_substitutePromises(store_config_(dref),dref)
 
 def store_context(r:RRef)->Context:
   assert_valid_rref(r)
@@ -532,26 +541,78 @@ def context_serialize(c:Context)->str:
 #   |_|\___/| .__/|_|\___| \_/ \___|_|
 #           |_|
 
-def mkpromise(pathparts:List[str])->PromisePath:
-  """ Create [PromisePath](#pylightnix.types.PromisePath) out of path
-  components. Promise paths exist only during
-  [instantiation](#pylightnix.core.instantiate). Before the realization, the
-  core replaces all PromisePaths with corresponding
-  [RefPaths](#pylightnix.type.RefPath) automatically (see
-  [store_config](#pylightnix.core.store_config)).
 
-  New RefPaths may be converted into filesystem paths by
-  [build_path](#pylightnix.core.build_path) as ususal.
+#: Create [PromisePath](#pylightnix.types.PromisePath) out of path
+#: components. Promise paths exist only during
+#: [instantiation](#pylightnix.core.instantiate). Before the realization, the
+#: core replaces all PromisePaths with corresponding
+#: [RefPaths](#pylightnix.type.RefPath) automatically (see
+#: [store_config](#pylightnix.core.store_config)).
+#:
+#: New RefPaths may be converted into filesystem paths by
+#: [build_path](#pylightnix.core.build_path) as ususal.
+#:
+#: Example:
+#: ```python
+#: def hello_builder_config()->Config:
+#:   promise_binary = mkpromise(['usr','bin','hello'])
+#:   return mkconfig(locals())
+#: dref=mkdrv(..., config=hello_builder_config(), ...)
+#: ```
+promise = PYLIGHTNIX_PROMISE_TAG
+
+def assert_promise_fulfilled(k:str, p:RefPath, o:Path)->None:
+  ppath=join(o,*p[1:])
+  assert isfile(ppath) or isdir(ppath), (
+      f"Promise '{k}' of {p[0]}'s realization is not fullfiled. "
+      f"{ppath} is expected to be a file or a directory.")
+
+
+def mkdrv(m:Manager,
+          config:Config,
+          matcher:Matcher,
+          realizer:Realizer,
+          check_promises:bool=True)->DRef:
+  """ Run the instantiation of a particular stage. Create a
+  [Derivation](#pylightnix.types.Derivation) object of out of three main
+  components: the Derivation reference, the Matcher and the Realizer. Register
+  the derivation in a [Manager](#pylightnix.types.Manager) to aid dependency
+  resolution. Return [Derivation reference](#pylightnix.types.DRef) of the
+  derivation produced.
+
+  Arguments:
+  - `check_promises:bool=True`: Make sure that all
+    [PromisePath](#pylightnix.types.PromisePaths) of stage's configuration
+    correspond to existing files or firectories.
+
+  Example:
+  ```python
+  def somestage(m:Manager)->DRef:
+    def _realizer(b:Build):
+      with open(join(build_outpath(b),'artifact'),'w') as f:
+        f.write(...)
+    return mkdrv(m,mkconfig({'name':'mystage'}), match_only(), build_wrapper(_realizer))
+
+  rref:RRef=realize(instantiate(somestage))
+  ```
   """
-  return [PYLIGHTNIX_PROMISE_TAG]+pathparts
-
-def mkdrv(m:Manager, config:Config, matcher:Matcher, realizer:Realizer)->DRef:
-  assert_valid_config(config)
   dref=store_instantiate(config)
   if dref in m.builders:
     print(f"Overwriting matcher or realizer of derivation {dref}, configured "
           f"as:\n{config_dict(store_config(dref))}")
-  m.builders[dref]=Derivation(dref,matcher,realizer)
+
+  def _promise_aware(realizer)->Realizer:
+    def _matcher(dref:DRef,ctx:Context)->List[Path]:
+      outpaths=realizer(dref,ctx)
+      for key,refpath in config_promises(store_config(dref),dref):
+        for o in outpaths:
+          assert_promise_fulfilled(key,refpath,o)
+      return outpaths
+    return _matcher
+
+  m.builders[dref]=Derivation(dref=dref,
+                              matcher=matcher,
+                              realizer=_promise_aware(realizer) if check_promises else realizer)
   return dref
 
 #: `PYLIGHTNIX_RECURSION` encodes the state of [recursion

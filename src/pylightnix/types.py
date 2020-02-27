@@ -118,6 +118,10 @@ class Name(str):
 #: [build_path](#pylightnix.core.build_path) helper function.
 RefPath = List[Any]
 
+#: *Do not change!*
+#: A tag to mark [Promise RefPaths](#pylightnix.types.RefPath).
+PYLIGHTNIX_PROMISE_TAG = "__promise__"
+
 #: PromisePath is an alias for Python list of strings. The first item is a
 #: special tag and the subsequent items should represent a file or directory
 #: path parts. PromisePaths are to be used in

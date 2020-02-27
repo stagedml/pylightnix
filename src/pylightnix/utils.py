@@ -24,7 +24,7 @@ from pylightnix.imports import ( datetime, gmtime, timegm, join, makedirs,
     S_IWGRP, S_IWOTH, rmtree, rename, getsize )
 
 from pylightnix.types import ( Hash, Path, List, Any, Optional, Iterable, IO,
-    DRef, RRef, Tuple, Callable )
+    DRef, RRef, Tuple, Callable, PYLIGHTNIX_PROMISE_TAG )
 
 from pylightnix.tz import tzlocal
 
@@ -180,34 +180,42 @@ def isrref(ref:str)->bool:
 def isdref(ref:str)->bool:
   return isinstance(ref,str) and len(ref)>5 and ref[:5]=='dref:'
 
+def ispromisepath(p:Any)->bool:
+  return isinstance(p,list) and len(p)>0 and all([isinstance(x,str) for x in p]) and \
+         p[0]==PYLIGHTNIX_PROMISE_TAG
 
-Mutator=Callable[[Any],Any]
+def isrefpath(p:Any)->bool:
+  return isinstance(p,list) and len(p)>0 and isdref(p[0]) and all([isinstance(x,str) for x in p])
+
+def ispromise(val:Any,owner:DRef)->bool:
+  promise_val=isrefpath(val) and val[0]==owner
+  return promise_val
+
+Mutator=Callable[[Any,Any],Any]
 
 def traverse_list(l:list,mut:Mutator)->None:
   """ Traverse an arbitrary Python list. """
   assert isinstance(l,list)
   for i in range(len(l)):
+    l[i]=mut(i,l[i])
     if isinstance(l[i],list):
       traverse_list(l[i],mut)
     elif isinstance(l[i],dict):
       traverse_dict(l[i],mut)
-    else:
-      l[i]=mut(l[i])
 
 def traverse_dict(d:dict, mut:Mutator)->None:
   """ Traverse an arbitrary Python dict. """
   assert isinstance(d,dict)
   for k in d.keys():
+    d[k]=mut(k,d[k])
     if isinstance(d[k],list):
       traverse_list(d[k],mut)
     elif isinstance(d[k],dict):
       traverse_dict(d[k],mut)
-    else:
-      d[k]=mut(d[k])
 
 def scanref_list(l:list)->Tuple[List[DRef],List[RRef]]:
   drefs=[];rrefs=[]
-  def _mutator(val):
+  def _mutator(key,val):
     nonlocal drefs,rrefs
     if isrref(val):
       rrefs.append(RRef(val))

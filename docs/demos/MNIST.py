@@ -15,12 +15,13 @@ mnist_dataset:DRef = \
 
 print(mnist_dataset)
 
-from pylightnix import Config, RefPath, mkconfig
+from pylightnix import Config, RefPath, PromisePath, mkconfig, promise
 
 def mnist_config()->Config:
-  dataset:RefPath = [mnist_dataset, 'mnist.npz']
   learning_rate = 1e-3
   num_epoches = 1
+  dataset:RefPath = [mnist_dataset, 'mnist.npz']
+  accuracy:PromisePath = [promise, 'accuracy.txt']
   return mkconfig(locals())
 
 from pylightnix import match_latest
@@ -70,7 +71,7 @@ def mnist_build(b:Build)->None:
   model.fit(x_train, y_train, batch_size = 32, epochs = c.num_epoches, verbose = 0)
   accuracy = model.evaluate(x_test, y_test, verbose = 0)[-1]
   model.save_weights(join(o, 'weights.h5'), save_format='h5')
-  with open(join(o,'accuracy.txt'),'w') as f:
+  with open(build_path(b,c.accuracy),'w') as f:
     f.write(str(accuracy))
 
 

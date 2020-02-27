@@ -9,7 +9,7 @@ from pylightnix import ( Config, instantiate, DRef, RRef, Path, mklogdir,
     build_cattrs, build_name, match_best, tryread, trywrite,
     assert_recursion_manager_empty, match, latest, best, exact, Key,
     match_latest, match_all, match_some, match_n, realizeMany, build_outpaths,
-    scanref_dict, config_dict, mkpromise )
+    scanref_dict, config_dict, promise )
 
 from tests.imports import ( given, Any, Callable, join, Optional, islink,
     isfile, List, randint, sleep, rmtree, system, S_IWRITE, S_IREAD, S_IEXEC,
@@ -545,8 +545,8 @@ def test_gc():
 
 def test_promise():
   with setup_storage('test_promise'):
-    def _setting(m:Manager)->DRef:
-      n1=mktestnode(m, {'name':'1', 'promise':mkpromise(['artifact'])})
+    def _setting(m:Manager, fullfill:bool)->DRef:
+      n1=mktestnode(m, {'name':'1', 'promise':[promise,'artifact']})
 
       def _realize(b:Build):
         o=build_outpath(b)
@@ -555,14 +555,22 @@ def test_promise():
         assert n1 in store_cattrs(c.maman).promise
         assert build_path(b,c.promise)==join(o,'artifact')
         assert build_path(b,store_cattrs(c.maman).promise)==build_path(b,c.maman_promise)
+        if fullfill:
+          with open(build_path(b,c.promise),'w') as f:
+            f.write('chickenpoop')
 
       return mkdrv(m, mkconfig({'name':'2', 'maman':n1,
-                                'promise':mkpromise(['artifact']),
+                                'promise':[promise,'artifact'],
                                 'maman_promise':[n1,'artifact']}),
                       matcher=match_only(),
                       realizer=build_wrapper(_realize))
 
-    rref=realize(instantiate(_setting))
+    try:
+      rref=realize(instantiate(_setting,False))
+      raise ShouldHaveFailed('Promise trigger')
+    except AssertionError:
+      pass
+    rref=realize(instantiate(_setting,True))
     assert_valid_rref(rref)
 
 
