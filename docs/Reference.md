@@ -8,6 +8,7 @@
     * [RRef](#pylightnix.types.RRef)
     * [Name](#pylightnix.types.Name)
     * [RefPath](#pylightnix.types.RefPath)
+    * [PYLIGHTNIX\_PROMISE\_TAG](#pylightnix.types.PYLIGHTNIX_PROMISE_TAG)
     * [PromisePath](#pylightnix.types.PromisePath)
     * [Context](#pylightnix.types.Context)
     * [Matcher](#pylightnix.types.Matcher)
@@ -27,7 +28,6 @@
     * [PYLIGHTNIX\_TMP](#pylightnix.core.PYLIGHTNIX_TMP)
     * [PYLIGHTNIX\_STORE](#pylightnix.core.PYLIGHTNIX_STORE)
     * [PYLIGHTNIX\_NAMEPAT](#pylightnix.core.PYLIGHTNIX_NAMEPAT)
-    * [PYLIGHTNIX\_PROMISE\_TAG](#pylightnix.core.PYLIGHTNIX_PROMISE_TAG)
     * [trimhash](#pylightnix.core.trimhash)
     * [mkdref](#pylightnix.core.mkdref)
     * [rref2dref](#pylightnix.core.rref2dref)
@@ -42,7 +42,8 @@
     * [config\_hash](#pylightnix.core.config_hash)
     * [config\_name](#pylightnix.core.config_name)
     * [config\_deps](#pylightnix.core.config_deps)
-    * [config\_replaceSelf](#pylightnix.core.config_replaceSelf)
+    * [config\_substitutePromises](#pylightnix.core.config_substitutePromises)
+    * [config\_promises](#pylightnix.core.config_promises)
     * [assert\_store\_initialized](#pylightnix.core.assert_store_initialized)
     * [store\_initialize](#pylightnix.core.store_initialize)
     * [store\_dref2path](#pylightnix.core.store_dref2path)
@@ -83,7 +84,8 @@
     * [context\_add](#pylightnix.core.context_add)
     * [context\_deref](#pylightnix.core.context_deref)
     * [context\_serialize](#pylightnix.core.context_serialize)
-    * [mkpromise](#pylightnix.core.mkpromise)
+    * [promise](#pylightnix.core.promise)
+    * [assert\_promise\_fulfilled](#pylightnix.core.assert_promise_fulfilled)
     * [mkdrv](#pylightnix.core.mkdrv)
     * [recursion\_manager](#pylightnix.core.recursion_manager)
     * [instantiate\_](#pylightnix.core.instantiate_)
@@ -254,6 +256,16 @@ generally have to perform the following basic actions:
 
 The algorithm described above is implemented as
 [build_path](#pylightnix.core.build_path) helper function.
+
+<a name="pylightnix.types.PYLIGHTNIX_PROMISE_TAG"></a>
+## `PYLIGHTNIX_PROMISE_TAG`
+
+```python
+PYLIGHTNIX_PROMISE_TAG = "__promise__"
+```
+
+*Do not change!*
+A tag to mark [Promise RefPaths](#pylightnix.types.RefPath).
 
 <a name="pylightnix.types.PromisePath"></a>
 ## `PromisePath`
@@ -541,16 +553,6 @@ PYLIGHTNIX_NAMEPAT = "[a-zA-Z0-9_-]"
 
 Set the regular expression pattern for valid name characters.
 
-<a name="pylightnix.core.PYLIGHTNIX_PROMISE_TAG"></a>
-## `PYLIGHTNIX_PROMISE_TAG`
-
-```python
-PYLIGHTNIX_PROMISE_TAG = "__promise__"
-```
-
-*Do not change!*
-A tag to mark [Promise RefPaths](#pylightnix.types.RefPath).
-
 <a name="pylightnix.core.trimhash"></a>
 ## `trimhash()`
 
@@ -665,11 +667,21 @@ def config_deps(c: Config) -> Set[DRef]
 ```
 
 
-<a name="pylightnix.core.config_replaceSelf"></a>
-## `config_replaceSelf()`
+<a name="pylightnix.core.config_substitutePromises"></a>
+## `config_substitutePromises()`
 
 ```python
-def config_replaceSelf(c: Config, r: DRef) -> Config
+def config_substitutePromises(c: Config, r: DRef) -> Config
+```
+
+Replace all Promise tags with DRef `r`. In particular, all PromisePaths
+are converted into RefPaths.
+
+<a name="pylightnix.core.config_promises"></a>
+## `config_promises()`
+
+```python
+def config_promises(c: Config, r: DRef) -> List[Tuple[str,RefPath]]
 ```
 
 
@@ -1062,11 +1074,11 @@ def context_serialize(c: Context) -> str
 ```
 
 
-<a name="pylightnix.core.mkpromise"></a>
-## `mkpromise()`
+<a name="pylightnix.core.promise"></a>
+## `promise`
 
 ```python
-def mkpromise(pathparts: List[str]) -> PromisePath
+promise = PYLIGHTNIX_PROMISE_TAG
 ```
 
 Create [PromisePath](#pylightnix.types.PromisePath) out of path
@@ -1079,13 +1091,51 @@ core replaces all PromisePaths with corresponding
 New RefPaths may be converted into filesystem paths by
 [build_path](#pylightnix.core.build_path) as ususal.
 
+Example:
+```python
+def hello_builder_config()->Config:
+promise_binary = mkpromise(['usr','bin','hello'])
+return mkconfig(locals())
+dref=mkdrv(..., config=hello_builder_config(), ...)
+```
+
+<a name="pylightnix.core.assert_promise_fulfilled"></a>
+## `assert_promise_fulfilled()`
+
+```python
+def assert_promise_fulfilled(k: str, p: RefPath, o: Path) -> None
+```
+
+
 <a name="pylightnix.core.mkdrv"></a>
 ## `mkdrv()`
 
 ```python
-def mkdrv(m: Manager, config: Config, matcher: Matcher, realizer: Realizer) -> DRef
+def mkdrv(m: Manager, config: Config, matcher: Matcher, realizer: Realizer, check_promises: bool = True) -> DRef
 ```
 
+Run the instantiation of a particular stage. Create a
+[Derivation](#pylightnix.types.Derivation) object of out of three main
+components: the Derivation reference, the Matcher and the Realizer. Register
+the derivation in a [Manager](#pylightnix.types.Manager) to aid dependency
+resolution. Return [Derivation reference](#pylightnix.types.DRef) of the
+derivation produced.
+
+Arguments:
+- `check_promises:bool=True`: Make sure that all
+  [PromisePath](#pylightnix.types.PromisePaths) of stage's configuration
+  correspond to existing files or firectories.
+
+Example:
+```python
+def somestage(m:Manager)->DRef:
+  def _realizer(b:Build):
+    with open(join(build_outpath(b),'artifact'),'w') as f:
+      f.write(...)
+  return mkdrv(m,mkconfig({'name':'mystage'}), match_only(), build_wrapper(_realizer))
+
+rref:RRef=realize(instantiate(somestage))
+```
 
 <a name="pylightnix.core.recursion_manager"></a>
 ## `recursion_manager()`
