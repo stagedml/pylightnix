@@ -14,11 +14,15 @@
 
 """ Trivial builtin stages """
 
-from pylightnix.imports import ( join, deepcopy )
+from pylightnix.imports import ( join, deepcopy, dirname, makedirs, isfile,
+    isdir, defaultdict )
 from pylightnix.core import ( mkdrv, mkconfig, mkbuild, match_only,
-    assert_valid_name, build_outpath, datahash )
-from pylightnix.types import ( Manager, Config, Context, Build, Name, DRef,
-    RRef, Any, Optional, Dict, Hash, Path, List )
+    assert_valid_name, build_outpath, datahash, config_dict, store_config,
+    build_outpaths, match_some, assert_valid_refpath, build_paths, rref2path,
+    build_deref_, build_cattrs, build_wrapper )
+from pylightnix.types import ( RefPath, Manager, Config, Context, Build, Name,
+    DRef, RRef, Any, Optional, Dict, Hash, Path, List )
+from pylightnix.utils import ( forcelink, isrefpath, traverse_dict )
 
 
 def mknode(m:Manager, sources:dict, artifacts:Dict[Name,bytes]={})->DRef:
@@ -39,4 +43,48 @@ def mknode(m:Manager, sources:dict, artifacts:Dict[Name,bytes]={})->DRef:
 def mkfile(m:Manager, name:Name, contents:bytes, filename:Optional[Name]=None)->DRef:
   filename_:Name=filename if filename is not None else name
   return mknode(m, sources={name:name}, artifacts={filename_:contents})
+
+
+def checkpaths(m:Manager, promises:dict, name:str="checkpaths")->DRef:
+  def _promises()->Dict[DRef,List[RefPath]]:
+    refpaths:Dict[DRef,List[RefPath]]=defaultdict(list)
+    def _mut(k,v):
+      nonlocal refpaths
+      if isrefpath(v):
+        refpaths[v[0]].append(v)
+      return v
+    traverse_dict(promises,_mut)
+    return refpaths
+
+  def _config()->Config:
+    assert len(promises.keys())>0
+    d:Dict[str,Any]={'name':name}
+    for dref,rpaths in _promises().items():
+      for rp in rpaths:
+        assert_valid_refpath(rp)
+      d[str(dref)]=config_dict(store_config(dref))
+    d.update(promises)
+    return mkconfig(d)
+
+  def _realize(b:Build)->None:
+    c=build_cattrs(b)
+    promises=_promises()
+    rrefs={dref:build_deref_(b,dref) for dref in promises.keys()}
+    os=build_outpaths(b, sum([len(v) for v in rrefs.values()]))
+    index=0
+    for dref,refpaths in promises.items():
+      for rref in rrefs[dref]:
+        for refpath in refpaths:
+          o=os[index]
+          assert refpath[0]==dref
+          path=Path(join(rref2path(rref),*refpath[1:]))
+          assert isdir(path) or isfile(path), \
+            f"promise failed: {path} doesn't exist"
+          opath=Path(join(o,*refpath[1:]))
+          forcelink(path,opath)
+          index+=1
+  return mkdrv(m, _config(), match_some(), build_wrapper(_realize))
+
+
+
 
