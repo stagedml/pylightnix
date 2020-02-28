@@ -120,7 +120,8 @@ def repl_cancel(rh:Optional[ReplHelper]=None)->None:
   assert rh is not None, ERR_INVALID_RH
   try:
     assert rh.gen is not None
-    rh.gen.send((None,True))
+    while True:
+      rh.gen.send((None,True))
   except StopIteration as e:
     rh.gen=None
 

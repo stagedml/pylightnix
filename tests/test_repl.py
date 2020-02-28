@@ -3,7 +3,7 @@ from pylightnix import ( Manager, DRef, RRef, Path, mklogdir, dirhash, mknode,
     realize, instantiate_inplace, realize_inplace, assert_valid_rref,
     store_rrefs_, store_drefs, assert_valid_dref, repl_realize, repl_cancel,
     repl_continue, repl_rref, repl_build, ReplHelper, build_outpath,
-    store_deref, tryread, repl_continueBuild )
+    store_deref, tryread, repl_continueBuild, isrref )
 
 from tests.imports import (
     given, assume, example, note, settings, text, decimals, integers, rmtree,
@@ -136,6 +136,8 @@ def test_repl_globalCancel():
     assert repl_rref(rh) is None
     repl_cancel()
     assert rh.gen is None
+    rref=realize(instantiate(_setting))
+    assert isrref(rref)
 
 
 def test_repl_realizeInval():

@@ -89,7 +89,7 @@ package manager).
 
 
 ```python
-from pylightnix import DRef, instantiate_inplace, fetchurl
+from pylightnix import DRef, instantiate_inplace, fetchurl, promise
 
 hello_version = '2.10'
 
@@ -98,7 +98,8 @@ hello_src:DRef = \
     fetchurl,
     name='hello-src',
     url=f'http://ftp.gnu.org/gnu/hello/hello-{hello_version}.tar.gz',
-    sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b')
+    sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b',
+    src=[promise, f'hello-{hello_version}'])
 ```
 
 
@@ -128,9 +129,9 @@ print(hello_rref)
 ```
 
 ```
-Unpacking /tmp/200227-12:50:01:432104+0300_2f56e6f9_zafh4_bf/hello-2.10.tar.gz..
-Removing /tmp/200227-12:50:01:432104+0300_2f56e6f9_zafh4_bf/hello-2.10.tar.gz..
-rref:3fce7614ca738e68d6ad5b8a2057c488-2f56e6f987a1da0271915894ca19e28f-hello-src
+Unpacking /tmp/200228-14:47:44:652138+0300_5ba7196c_wdg2d53d/hello-2.10.tar.gz..
+Removing /tmp/200228-14:47:44:652138+0300_5ba7196c_wdg2d53d/hello-2.10.tar.gz..
+rref:3fce7614ca738e68d6ad5b8a2057c488-ff665a238aa45b818710fba821b26258-hello-src
 ```
 
 
@@ -152,7 +153,7 @@ print(rref2path(hello_rref))
 ```
 
 ```
-/tmp/pylightnix_hello_demo/2f56e6f987a1da0271915894ca19e28f-hello-
+/tmp/pylightnix_hello_demo/ff665a238aa45b818710fba821b26258-hello-
 src/3fce7614ca738e68d6ad5b8a2057c488
 ```
 
@@ -198,11 +199,11 @@ Let's deal with other two components. We start by defining a configuration:
 
 
 ```python
-from pylightnix import Config, mkconfig
+from pylightnix import Config, mkconfig, store_cattrs
 
 def hello_config()->Config:
   name = 'hello-bin'
-  src = [hello_src, f'hello-{hello_version}']
+  src = store_cattrs(hello_src).src
   return mkconfig(locals())
 ```
 
@@ -279,7 +280,7 @@ print(hello)
 ```
 
 ```
-dref:53ccb94819ad4c9f55acb61460ec97ed-hello-bin
+dref:e6e4f681aa7a78becc745cee408f3a8b-hello-bin
 ```
 
 
@@ -296,7 +297,7 @@ print(rref)
 ```
 
 ```
-rref:76f2aca23d3f642ee0834b8715e60348-53ccb94819ad4c9f55acb61460ec97ed-hello-bin
+rref:8b0dc2fab4cb4049e54b09b1037547da-e6e4f681aa7a78becc745cee408f3a8b-hello-bin
 ```
 
 

@@ -17,9 +17,9 @@
 from pylightnix.imports import (sha256 as sha256sum, urlparse, Popen, remove,
     basename, join, rename, isfile )
 from pylightnix.types import ( DRef, Manager, Config, Build, Context, Name,
-    Path, Optional)
+    Path, Optional, List )
 from pylightnix.core import ( mkconfig, mkbuild, build_cattrs, build_outpath,
-    mkdrv, match_only, build_wrapper )
+    mkdrv, match_only, build_wrapper, promise )
 from pylightnix.utils import ( try_executable, makedirs )
 
 
@@ -33,7 +33,8 @@ def fetchurl(m:Manager,
              mode:str='unpack,remove',
              name:Optional[str]=None,
              filename:Optional[str]=None,
-             force_download:bool=False)->DRef:
+             force_download:bool=False,
+             **kwargs)->DRef:
   """ Download and unpack an URL addess.
 
   Downloading is done by calling `wget` application. Optional unpacking is
@@ -43,17 +44,31 @@ def fetchurl(m:Manager,
   package, adding 'remove' instructs it to remove the archive after unpacking.
 
   Agruments:
-  - `m:Manager` the dependency resolving manager of Pylightnix. Provided by
-    `instantiate`
+  - `m:Manager` the dependency resolution [Manager](#pylightnix.types.Manager).
   - `url:str` URL to download from. Should point to a single file.
   - `sha256:str` SHA-256 hash sum of the file.
-  - `model:str` Additional options. Format: `[unpack[,remove]]`.
+  - `model:str='unpack,remove'` Additional options. Format: `[unpack[,remove]]`.
   - `name:Optional[str]`: Name of the Derivation. The stage will attempt to
     deduce the name if not specified.
-  - `filename:Optional[str]` Name of the filename on disk after downloading.
+  - `filename:Optional[str]=None` Name of the filename on disk after downloading.
     Stage will attempt to deduced it if not specified.
-  - `force_download:bool` If False (the default), resume the last download if
+  - `force_download:bool=False` If False, resume the last download if
     possible.
+
+
+  Example:
+  ```python
+  def hello_src(m:Manager)->DRef:
+    hello_version = '2.10'
+    return fetchurl(
+      m,
+      name='hello-src',
+      url=f'http://ftp.gnu.org/gnu/hello/hello-{hello_version}.tar.gz',
+      sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b')
+
+  rref:RRef=realize(instantiate(hello_src))
+  print(rref2path(rref))
+  ```
   """
 
   import pylightnix.core
@@ -63,10 +78,11 @@ def fetchurl(m:Manager,
     assert WGET() is not None
     assert AUNPACK() is not None
     makedirs(tmpfetchdir, exist_ok=True)
-    return mkconfig({'name':name or 'fetchurl',
-                     'url':url,
-                     'sha256':sha256,
-                     'mode':mode})
+    kwargs.update({'name':name or 'fetchurl',
+                   'url':url,
+                   'sha256':sha256,
+                   'mode':mode})
+    return mkconfig(kwargs)
 
   def _realize(b:Build)->None:
     c=build_cattrs(b)

@@ -589,7 +589,7 @@ promise = PYLIGHTNIX_PROMISE_TAG
 def assert_promise_fulfilled(k:str, p:RefPath, o:Path)->None:
   ppath=join(o,*p[1:])
   assert isfile(ppath) or isdir(ppath), (
-      f"Promise '{k}' of {p[0]}'s realization is not fullfiled. "
+      f"Promise '{k}' of {p[0]} is not fulfilled. "
       f"{ppath} is expected to be a file or a directory.")
 
 

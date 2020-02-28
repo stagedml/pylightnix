@@ -78,7 +78,7 @@ builtin stage `fetchurl` (which is an analog of `fetchurl` expression of Nix
 package manager).
 
 ```python
-from pylightnix import DRef, instantiate_inplace, fetchurl
+from pylightnix import DRef, instantiate_inplace, fetchurl, promise
 
 hello_version = '2.10'
 
@@ -87,12 +87,16 @@ hello_src:DRef = \
     fetchurl,
     name='hello-src',
     url=f'http://ftp.gnu.org/gnu/hello/hello-{hello_version}.tar.gz',
-    sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b')
+    sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b',
+    src=[promise, f'hello-{hello_version}'])
 ```
 
 By this definition we created `hello_src` variable of type
 [DRef](../Reference.md#pylightnix.types.DRef) which holds a reference to a
-**Derivation** of fetchurl stage.
+**Derivation** of fetchurl stage. By specifying **PromisePath** src, we promise
+that realizations of this derivation will contain named file or folder. In this
+case we expect that 'hello-2.10' folder will exist. Pylightnix will check this
+promise and raise the exception if it is not fulfilled.
 
 Having a derivation reference means several things:
 
@@ -160,11 +164,11 @@ build result.
 Let's deal with other two components. We start by defining a configuration:
 
 ```python, complete=True, wrap=False
-from pylightnix import Config, mkconfig
+from pylightnix import Config, mkconfig, store_cattrs
 
 def hello_config()->Config:
   name = 'hello-bin'
-  src = [hello_src, f'hello-{hello_version}']
+  src = store_cattrs(hello_src).src
   return mkconfig(locals())
 ```
 
