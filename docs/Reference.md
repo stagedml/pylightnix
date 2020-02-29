@@ -1543,9 +1543,10 @@ def assert_recursion_manager_empty()
 <a name="pylightnix.inplace"></a>
 # `pylightnix.inplace`
 
-This module defines inplace variants of `instantiate` and `realize`.
-Inplace functions use a single global [Manager](#pylightnix.types.Manager)
-which is easier to use but has usual risks of gloabl variables.
+This module defines inplace variants of `instantiate` and `realize`
+functions. Inplace functions store closures in their own global dependency
+resolution [Manager](#pylightnix.types.Manager) and thus offer a simpler API,
+but add usual risks of using gloabl variables.
 
 <a name="pylightnix.inplace.PYLIGHTNIX_MANAGER"></a>
 ## `PYLIGHTNIX_MANAGER`
@@ -1555,7 +1556,7 @@ PYLIGHTNIX_MANAGER = Manager()
 ```
 
 The Global [Derivation manager](#pylightnix.types.Manager) used by
-`instantiate_inplace` and `realize_inplace` functions.
+`instantiate_inplace` and `realize_inplace` functions of this module.
 
 <a name="pylightnix.inplace.instantiate_inplace"></a>
 ## `instantiate_inplace()`
@@ -1564,6 +1565,8 @@ The Global [Derivation manager](#pylightnix.types.Manager) used by
 def instantiate_inplace(stage: Any, args, *,, ,, kwargs) -> DRef
 ```
 
+Instantiate a `stage`, use `PYLIGHTNIX_MANAGER` for storing derivations.
+Return derivation reference of the top-level stage.
 
 <a name="pylightnix.inplace.realize_inplace"></a>
 ## `realize_inplace()`
@@ -1572,6 +1575,9 @@ def instantiate_inplace(stage: Any, args, *,, ,, kwargs) -> DRef
 def realize_inplace(dref: DRef, force_rebuild: List[DRef] = []) -> RRef
 ```
 
+Realize the derivation pointed by `dref` by constructing it's
+[Closure](#pylightnix.types.Closure) based on the contents of the global
+dependency manager and [realizing](#pylightnix.core.realizeMany) this closure.
 
 <a name="pylightnix.stages"></a>
 # `pylightnix.stages`
