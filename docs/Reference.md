@@ -311,19 +311,35 @@ Matcher = Callable[[DRef,Context],Optional[List[RRef]]]
 ```
 
 Matcher is a type of user-defined functions which select required
-realizations from the set of all available. Matchers also may ask the caller
-to build new realizations by returning None.
+realizations from the set of all realizations available.
 
-There are certain rules for matchers:
+Matchers take the derivation reference and the context. They may easily
+determine the set of existing realizations (see
+[store_rrefs](#pylightnix.core.store_rrefs) and should return the subset of
+this set or None which is a request to Pylightnix to produce more
+realizations.
+
+Matchers should follow the below rules:
 
 - Matchers should be **pure**. It's output should depend only on the existing
 build artifacts of available realizations.
-- Matchers should be **satisfiable** by the their realizaitons. If
-matcher returns None, the core calls realizer and re-run the matcher only
-once.
+- Matchers should be **satisfiable** by realizers of their stages. If matcher
+returns None, the core calls realizer and re-run the matcher only once.
 
-Matchers may return an empty list instructs Pylightnix to leave it's
+Matchers may return an empty list and by that instruct Pylightnix to leave it's
 derivation without realizations.
+
+Pylightnix provides a set of built-in matchers:
+
+- [match](#pylightnix.core.match) is a generic matcher with rich sorting and
+filtering API.
+- [match_n](#pylightnix.core.match_n) is it's version for fixed number of matches
+- [match_best](#pylightnix.core.match_best) decision is made based on a named
+build artifact
+- [match_all](#pylightnix.core.match_all) matches any number of realizations, including zero.
+- [match_some](#pylightnix.core.match_some) matches any existing realizations
+- [match_only](#pylightnix.core.match_only) matches exactly one existing
+realization (asserts if there are more than one realizations)
 
 <a name="pylightnix.types.Realizer"></a>
 ## `Realizer`
@@ -332,19 +348,44 @@ derivation without realizations.
 Realizer = Callable[[DRef,Context],List[Path]]
 ```
 
-Realizer is a type of user-defined functions implementing the
-[realization](#pylightnix.core.realize) of derivation in a given
-[context](#pylightnix.types.Context).
+Realizer is a type of callback functions which are defined by the user.
+Realizers should implement the stage-specific
+[realization](#pylightnix.core.realize) algorithm.
 
 Realizer accepts the following arguments:
-- Derivation reference to build the realizations of
-- A Context encoding the result of dependency resolution.
 
-Realizer should return one or many system paths of output folders containing
-realization artifacts. Those folders will be destroyed (moved) by the core at
-the final stage of realization. [Build](#pylightnix.types.Build) helper
-objects may be used for simplified output path management and dependency
-access.
+- [Reference to a Derivation](#pylightnix.types.DRef) being build
+- [Context](#pylightnix.types.Context) encoding the results of dependency
+resolution.
+
+`DRef` and `Context` allows programmer to access
+[Configs](#pylightnix.types.Config) of the current derivation and all it's
+dependencies.
+
+Realizers have to return one or many folder paths of realization artifacts
+(files and folders containing stage-specific data). Those folders will be
+added to the pool of Realizations of the current derivation.
+[Matcher](#pylightnix.types.Matcher) will be called to pick some subset of
+existing realizations. The chosen subset will eventually appear in the
+Contexts of downstream derivations.
+
+Most of the stages defined in Pylightnix use simplified realizer's API
+provided by the [Build](#pylightnix.types.Build) helper class. The
+[build_wrapper](#pylightnix.core.build_wrapper) function converts realizers
+back to standard format.
+
+Example:
+
+```python
+def mystage(m:Manager)->DRef:
+def _realize(dref:DRef, context:Context)->List[Path]:
+b=mkbuild(dref, context, buildtime=buildtime)
+with open(join(build_outpath(b),'artifact'),'w') as f:
+f.write('chickenpoop\n')
+return [build_outpath(b)]
+...
+return mkdrv(m, ...,  _realize)
+```
 
 <a name="pylightnix.types.Derivation"></a>
 ## `Derivation`
@@ -355,9 +396,13 @@ Derivation = NamedTuple('Derivation', [('dref',DRef), ('matcher',Matcher), ('rea
 
 Derivation is the core type of Pylightnix. It keeps all the information about
 a stage: it's [configuration](#pylightnix.types.Config), how to
-[realize](#pylightnix.core.realize) it and how to make a selection among
-multiple realizations. Information is stored partly on disk (in the
-storage), partly in memory in form of Python code.
+[realize](#pylightnix.core.realize) it and how to make a
+[selection](#pylightnix.types.Matcher) among multiple realizations.
+Information is stored partly on disk (in the Pylightnix storage), partly in
+memory in form of Python code.
+
+Derivations normally appear as a result of [mkdrv](#pylightnix.core.mkdrv)
+call.
 
 <a name="pylightnix.types.Closure"></a>
 ## `Closure`
@@ -971,6 +1016,9 @@ def build_wrapper_(f: Callable[[B],None], ctr: Callable[[BuildArgs],B], buildtim
 def build_wrapper(f: Callable[[Build],None], buildtime: bool = True)
 ```
 
+Build Adapter which convers user-defined realizers which use
+[Build](#pylightnix.types.Build) API into a low-level
+[Realizer](#pylightnix.types.Realizer)
 
 <a name="pylightnix.core.build_config"></a>
 ## `build_config()`
@@ -1177,7 +1225,7 @@ def mkdrv(m: Manager, config: Config, matcher: Matcher, realizer: Realizer, chec
 ```
 
 Run the instantiation of a particular stage. Create a
-[Derivation](#pylightnix.types.Derivation) object of out of three main
+[Derivation](#pylightnix.types.Derivation) object out of three main
 components: the Derivation reference, the Matcher and the Realizer. Register
 the derivation in a [Manager](#pylightnix.types.Manager) to aid dependency
 resolution. Return [Derivation reference](#pylightnix.types.DRef) of the
