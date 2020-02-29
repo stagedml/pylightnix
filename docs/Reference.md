@@ -126,6 +126,7 @@
   * [pylightnix.stages.trivial](#pylightnix.stages.trivial)
     * [mknode](#pylightnix.stages.trivial.mknode)
     * [mkfile](#pylightnix.stages.trivial.mkfile)
+    * [checkpaths](#pylightnix.stages.trivial.checkpaths)
   * [pylightnix.stages.fetch](#pylightnix.stages.fetch)
     * [WGET](#pylightnix.stages.fetch.WGET)
     * [AUNPACK](#pylightnix.stages.fetch.AUNPACK)
@@ -141,6 +142,9 @@
     * [shellref](#pylightnix.bashlike.shellref)
     * [shell](#pylightnix.bashlike.shell)
     * [du](#pylightnix.bashlike.du)
+  * [pylightnix.lens](#pylightnix.lens)
+    * [Lens](#pylightnix.lens.Lens)
+    * [mklens](#pylightnix.lens.mklens)
 
 <a name="pylightnix.types"></a>
 # `pylightnix.types`
@@ -1594,6 +1598,14 @@ def mkfile(m: Manager, name: Name, contents: bytes, filename: Optional[Name] = N
 ```
 
 
+<a name="pylightnix.stages.trivial.checkpaths"></a>
+## `checkpaths()`
+
+```python
+def checkpaths(m: Manager, promises: dict, name: str = "checkpaths") -> DRef
+```
+
+
 <a name="pylightnix.stages.fetch"></a>
 # `pylightnix.stages.fetch`
 
@@ -1619,7 +1631,7 @@ AUNPACK = try_executable('aunpack', 'Please install `apack` tool from `atool` pa
 ## `fetchurl()`
 
 ```python
-def fetchurl(m: Manager, url: str, sha256: str, mode: str = 'unpack,remove', name: Optional[str] = None, filename: Optional[str] = None, force_download: bool = False) -> DRef
+def fetchurl(m: Manager, url: str, sha256: str, mode: str = 'unpack,remove', name: Optional[str] = None, filename: Optional[str] = None, force_download: bool = False, kwargs) -> DRef
 ```
 
 Download and unpack an URL addess.
@@ -1631,17 +1643,31 @@ stage's behavior: adding word 'unpack' instructs fetchurl to unpack the
 package, adding 'remove' instructs it to remove the archive after unpacking.
 
 Agruments:
-- `m:Manager` the dependency resolving manager of Pylightnix. Provided by
-  `instantiate`
+- `m:Manager` the dependency resolution [Manager](#pylightnix.types.Manager).
 - `url:str` URL to download from. Should point to a single file.
 - `sha256:str` SHA-256 hash sum of the file.
-- `model:str` Additional options. Format: `[unpack[,remove]]`.
+- `model:str='unpack,remove'` Additional options. Format: `[unpack[,remove]]`.
 - `name:Optional[str]`: Name of the Derivation. The stage will attempt to
   deduce the name if not specified.
-- `filename:Optional[str]` Name of the filename on disk after downloading.
+- `filename:Optional[str]=None` Name of the filename on disk after downloading.
   Stage will attempt to deduced it if not specified.
-- `force_download:bool` If False (the default), resume the last download if
+- `force_download:bool=False` If False, resume the last download if
   possible.
+
+
+Example:
+```python
+def hello_src(m:Manager)->DRef:
+  hello_version = '2.10'
+  return fetchurl(
+    m,
+    name='hello-src',
+    url=f'http://ftp.gnu.org/gnu/hello/hello-{hello_version}.tar.gz',
+    sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b')
+
+rref:RRef=realize(instantiate(hello_src))
+print(rref2path(rref))
+```
 
 <a name="pylightnix.bashlike"></a>
 # `pylightnix.bashlike`
@@ -1744,4 +1770,130 @@ def du() -> Dict[DRef,Tuple[int,Dict[RRef,int]]]
 Calculates the disk usage, in bytes. For every derivation, return it's
 total disk usage and disk usages per realizations. Note, that total disk usage
 of a derivation is slightly bigger than sum of it's realization's usages.
+
+<a name="pylightnix.lens"></a>
+# `pylightnix.lens`
+
+Lens module defines the `Lens` helper class, which offers quick navigation
+through the dependent configurations
+
+<a name="pylightnix.lens.Lens"></a>
+## `Lens` Objects
+
+```python
+def __init__(self, ctx: Tuple[Optional[Build],Optional[RRef]], v: Any) -> None
+```
+
+Lens objects provide quick access to the parameters of stage
+configurations by navigating through different kinds of Pylightnix entities
+like DRefs, RRefs, Configs and RefPaths.
+
+Lens lifecycle consists of three stages:
+1. Creation on the basis of existing objects. Lens may be created out of
+   any Python value, but the meaningful operations (besides getting this value
+   back) are supported for the Pylightnix types which could be casted to
+   Python dictionaries. Those types are:
+   - `Build` helper class
+   - `DRef` references
+   - `RRef` references
+   - `Config` configuration wrappers
+   - Regular Python dictionaries
+2. Navigation through the nested configurations. Lenses access configuration
+   attributes, automatically dereference Pylightnix references and produce other
+   Lenses, which are 'focused' on new locations.
+3. Access to the raw value which could no longer be converted into a Lens. In
+   this case the raw value is returned.
+
+<a name="pylightnix.lens.Lens.__init__"></a>
+### `Lens.__init__()`
+
+```python
+def __init__(self, ctx: Tuple[Optional[Build],Optional[RRef]], v: Any) -> None
+```
+
+
+<a name="pylightnix.lens.Lens.__getattr__"></a>
+### `Lens.__getattr__()`
+
+```python
+def __getattr__(self, key) -> Any
+```
+
+
+<a name="pylightnix.lens.Lens.get"></a>
+### `Lens.get()`
+
+```python
+def get(self, key) -> Any
+```
+
+
+<a name="pylightnix.lens.Lens.val"></a>
+### `Lens.val()`
+
+```python
+@property
+def val(self) -> Any
+```
+
+
+<a name="pylightnix.lens.Lens.refpath"></a>
+### `Lens.refpath()`
+
+```python
+@property
+def refpath(self) -> RefPath
+```
+
+
+<a name="pylightnix.lens.Lens.syspath"></a>
+### `Lens.syspath()`
+
+```python
+@property
+def syspath(self) -> Path
+```
+
+
+<a name="pylightnix.lens.Lens.dref"></a>
+### `Lens.dref()`
+
+```python
+@property
+def dref(self) -> DRef
+```
+
+
+<a name="pylightnix.lens.Lens.rref"></a>
+### `Lens.rref()`
+
+```python
+@property
+def rref(self) -> RRef
+```
+
+
+<a name="pylightnix.lens.Lens.resolve"></a>
+### `Lens.resolve()`
+
+```python
+def resolve(self) -> Any
+```
+
+
+<a name="pylightnix.lens.Lens.as_dict"></a>
+### `Lens.as_dict()`
+
+```python
+def as_dict(self) -> dict
+```
+
+
+<a name="pylightnix.lens.mklens"></a>
+## `mklens()`
+
+```python
+def mklens(x: Any, b: Optional[Build] = None, rref: Optional[RRef] = None) -> Lens
+```
+
 
