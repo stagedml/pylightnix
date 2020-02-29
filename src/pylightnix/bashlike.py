@@ -15,7 +15,7 @@
 """ Simple functions imitating unix shell tools.  """
 
 from pylightnix.types import ( Iterable, List, Union, Optional, DRef, RRef,
-    Dict, Tuple, Path )
+    Dict, Tuple, Path, Build )
 from pylightnix.imports import ( isfile, isdir, listdir, join, rmtree, environ,
     Popen, rename, getsize )
 from pylightnix.core import ( store_dref2path, rref2path, isrref, isdref,
@@ -76,14 +76,14 @@ def rmref(r:Union[RRef,DRef])->None:
     assert False, f"Invalid reference {r}"
 
 def shellref(r:Union[RRef,DRef,None]=None)->None:
-  """ Alias for [shell](#pylightnix.bashlike.shell) """
+  """ Alias for [shell](#pylightnix.bashlike.shell). Deprecated. """
   shell(r)
 
-def shell(r:Union[RRef,DRef,Path,str,None]=None)->None:
+def shell(r:Union[Build,RRef,DRef,Path,str,None]=None)->None:
   """ Open the directory corresponding to `r` in Unix Shell for inspection. The
   path to shell executable is read from the `SHELL` environment variable,
   defaulting to `/bin/sh`. If `r` is None, open the shell in the root of the
-  storage. """
+  Pylightnix storage. """
   cwd:str
   if r is None:
     import pylightnix.core
@@ -92,6 +92,10 @@ def shell(r:Union[RRef,DRef,Path,str,None]=None)->None:
     cwd=rref2path(RRef(r))
   elif isdref(r):
     cwd=store_dref2path(DRef(r))
+  elif isinstance(r,Build):
+    assert len(r.outpaths)>0, (
+      "Shell function requires at least one build output path to be defined" )
+    cwd=r.outpaths[0]
   elif isdir(r):
     cwd=str(r)
   else:

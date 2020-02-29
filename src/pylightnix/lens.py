@@ -112,5 +112,7 @@ class Lens:
 def mklens(x:Any, b:Optional[Build]=None, rref:Optional[RRef]=None)->Lens:
   if isinstance(x,Build) and b is None:
     b=x
+  elif isrref(x):
+    rref=RRef(x)
   return Lens((b,rref),x)
 

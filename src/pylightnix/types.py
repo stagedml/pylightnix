@@ -256,8 +256,8 @@ class Config:
     Pylightnix scans configs to collect such values and plan the order of
     realizaitons.
   * Values of type [RRef](#pylightnix.types.RRef) lead to warning. Placing such
-    values into a config is probably an error: Pylightnix can't know how to
-    produce exactly this reference and so it can't produce a continuous
+    values into a config is probably an error: Pylightnix doesn't have a chance to
+    know how to produce exactly this reference so it can't produce a continuous
     realization plan.
 
   Example:
@@ -313,10 +313,10 @@ class Build:
   Build class may be subclassed by applications in order to define
   application-specific build-state.  Underscoped
   [build_wrapper_](#pylightnix.core.build_wrapper_) accepts additional parameter
-  to tell the core which subclass to create.
+  which informs the core what subclass to create. Note that derived classes
+  should have the same constructor `def __init__(self, ba:BuildArgs)->None`.
 
   Example:
-
   ```python
   class TensorFlowModel(Build):
     model:tf.keras.Model

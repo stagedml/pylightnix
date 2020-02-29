@@ -21,7 +21,7 @@ from pylightnix.imports import ( datetime, gmtime, timegm, join, makedirs,
     json_dumps, json_loads, makedirs, replace, dirname, walk, abspath,
     normalize, re_sub, split, json_load, find_executable, chmod, S_IWRITE,
     S_IREAD, S_IRGRP, S_IROTH, S_IXUSR, S_IXGRP, S_IXOTH, stat, ST_MODE,
-    S_IWGRP, S_IWOTH, rmtree, rename, getsize )
+    S_IWGRP, S_IWOTH, rmtree, rename, getsize, readlink )
 
 from pylightnix.types import ( Hash, Path, List, Any, Optional, Iterable, IO,
     DRef, RRef, Tuple, Callable, PYLIGHTNIX_PROMISE_TAG )
@@ -100,9 +100,11 @@ def datahash(data:Iterable[bytes])->Hash:
 
 def dirhash(path:Path)->Hash:
   """ Calculate recursive SHA256 hash of a directory. Ignore files with names
-  starting with underscope ('_').
+  starting with underscope ('_'). For symbolic links, hash the result of
+  `readlink(link)`.
 
-  FIXME: Include file/directory names into hash data
+  FIXME: Include file/directory names into hash data.
+  FIXME: Figure out how does sha265sum handle symlinks and do the same thing.
   """
   assert isdir(path), f"dirhash(path) expects directory path, not '{path}'"
 
@@ -110,7 +112,10 @@ def dirhash(path:Path)->Hash:
     for root, dirs, filenames in walk(abspath(path), topdown=True):
       for filename in filenames:
         if len(filename)>0 and filename[0] != '_':
-          with open(abspath(join(root, filename)),'rb') as f:
+          localpath=abspath(join(root, filename))
+          if islink(localpath):
+            yield encode(readlink(localpath))
+          with open(localpath,'rb') as f:
             yield f.read()
 
   return datahash(_iter())
