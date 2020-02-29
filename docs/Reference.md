@@ -514,7 +514,10 @@ def __init__(self, ba: BuildArgs) -> None
 ```
 
 Build is a helper object which tracks the process of stage's
-[realization](#pylightnix.core.realize).
+[realization](#pylightnix.core.realize). It allows users to define
+[Realizers](#pylightnix.types.Realizer) with a simple one-argument signature.
+[build_wrapper](#pylightnix.core.build_wrapper) function converts
+Build-realizers into regular ones.
 
 We encode typical build operations in the following associated functions:
 
@@ -526,6 +529,30 @@ We encode typical build operations in the following associated functions:
 - [build_outpath](#pylightnix.core.build_outpath) - Create and return the output path.
 - [build_deref](#pylightnix.core.build_deref) - Convert a dependency DRef
   into a realization reference.
+
+[Lenses](#pylightnix.lens.Lens) accept `Build` objects as a source of
+configuration of derivations being realized.
+
+Build class may be subclassed by applications in order to define
+application-specific build-state.  Underscoped
+[build_wrapper_](#pylightnix.core.build_wrapper_) accepts additional parameter
+to tell the core which subclass to create.
+
+Example:
+
+```python
+class TensorFlowModel(Build):
+  model:tf.keras.Model
+
+def train(m:TensorFlowModel)->None:
+  o = build_outpath(m)
+  m.model = create_model(...)
+  ...
+  ...
+
+def mymodel(m:Manager)->DRef:
+  return mkdrv(m, ..., build_wrapper_(TensorFlowModel, train))
+```
 
 <a name="pylightnix.types.Build.__init__"></a>
 ### `Build.__init__()`
