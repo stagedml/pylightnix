@@ -35,11 +35,11 @@ from pylightnix import lsref
 
 print(lsref(hello_rref))
 
-from pylightnix import Config, mkconfig, store_cattrs
+from pylightnix import Config, mkconfig, mklens
 
 def hello_config()->Config:
   name = 'hello-bin'
-  src = store_cattrs(hello_src).src
+  src = mklens(hello_src).src.refpath
   return mkconfig(locals())
 
 from pylightnix import ( Path, Build, build_cattrs, build_outpath, build_path, dirrw )
@@ -48,7 +48,7 @@ def hello_realize(b:Build)->None:
   c:Any = build_cattrs(b)
   o:Path = build_outpath(b)
   with TemporaryDirectory() as tmp:
-    copytree(build_path(b,c.src),join(tmp,'src'))
+    copytree(mklens(b).src.syspath,join(tmp,'src'))
     dirrw(Path(join(tmp,'src')))
     cwd = getcwd()
     try:

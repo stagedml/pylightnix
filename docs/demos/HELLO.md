@@ -106,14 +106,20 @@ hello_src:DRef = \
 
 By this definition we created `hello_src` variable of type
 [DRef](../Reference.md#pylightnix.types.DRef) which holds a reference to a
-**Derivation** of fetchurl stage.
+**Derivation** of fetchurl stage. By specifying **PromisePath** src, we promise
+that realizations of this derivation will contain named file or folder. In this
+case we expect that 'hello-2.10' folder will exist. Pylightnix will check this
+promise and raise the exception if it is not fulfilled.
 
-Having a derivation reference means several things:
+Having a `hello_src` derivation reference means several things:
 
 * (a) Configuration of the corresponding stage has passed certain checks and
   does exist in the storage as a JSON object.
 * (b) Pylighnix knows how to **Realize** this stage, i.e. it has a Python function
   to produce some data (files) to put them in storage.
+* (c) Pylightnix noted the [promise](#pylightnix.types.PromisePath) made by
+  `hello_src`. After it's realization, it will check that `hello-2.10` folder
+  appears among build artifacts.
 
 For [fetchurl](../Reference.md#pylightnix.stages.fetchurl.fetchurl), the
 output data will contain the contents of URL, after downloading and
@@ -129,8 +135,8 @@ print(hello_rref)
 ```
 
 ```
-Unpacking /tmp/200228-14:47:44:652138+0300_5ba7196c_wdg2d53d/hello-2.10.tar.gz..
-Removing /tmp/200228-14:47:44:652138+0300_5ba7196c_wdg2d53d/hello-2.10.tar.gz..
+Unpacking /tmp/200229-16:31:02:245931+0300_5ba7196c_odoya4pb/hello-2.10.tar.gz..
+Removing /tmp/200229-16:31:02:245931+0300_5ba7196c_odoya4pb/hello-2.10.tar.gz..
 rref:3fce7614ca738e68d6ad5b8a2057c488-ff665a238aa45b818710fba821b26258-hello-src
 ```
 
@@ -199,20 +205,22 @@ Let's deal with other two components. We start by defining a configuration:
 
 
 ```python
-from pylightnix import Config, mkconfig, store_cattrs
+from pylightnix import Config, mkconfig, mklens
 
 def hello_config()->Config:
   name = 'hello-bin'
-  src = store_cattrs(hello_src).src
+  src = mklens(hello_src).src.refpath
   return mkconfig(locals())
 ```
 
 
 
-Here, we specify a name and a
+Here, we specify two configuration attributes: a name and a
 [RefPath](../Reference.md#pylightnix.types.RefPath) which links our new stage
-with some realization of the previous stage. We will access files of
-our dependencies by dereferencing RefPaths, as we will see soon.
+with some realization of the previous stage. RefPath is normally a Python list
+`[hello_src, 'hello-2.10']`, but the [Lens](#pylightnix.lens.Lens) helper
+gets this value for us based on a promise made by this dependency.  We will
+convert it into a system path at the time of realization, as we will see soon.
 
 As a side note, `locals()` is a Python builtin function which returns a `dict`
 of current function's local variables.
@@ -233,7 +241,7 @@ def hello_realize(b:Build)->None:
   c:Any = build_cattrs(b)
   o:Path = build_outpath(b)
   with TemporaryDirectory() as tmp:
-    copytree(build_path(b,c.src),join(tmp,'src'))
+    copytree(mklens(b).src.syspath,join(tmp,'src'))
     dirrw(Path(join(tmp,'src')))
     cwd = getcwd()
     try:
@@ -297,7 +305,7 @@ print(rref)
 ```
 
 ```
-rref:8b0dc2fab4cb4049e54b09b1037547da-e6e4f681aa7a78becc745cee408f3a8b-hello-bin
+rref:8a1c0d599295a4173ee31847cd886fd5-e6e4f681aa7a78becc745cee408f3a8b-hello-bin
 ```
 
 
