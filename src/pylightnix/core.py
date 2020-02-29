@@ -424,6 +424,9 @@ def build_wrapper_(
   return _wrapper
 
 def build_wrapper(f:Callable[[Build],None], buildtime:bool=True):
+  """ Build Adapter which convers user-defined realizers which use
+  [Build](#pylightnix.types.Build) API into a low-level
+  [Realizer](#pylightnix.types.Realizer) """
   return build_wrapper_(f,Build,buildtime)
 
 def build_config(b:Build)->Config:
@@ -599,7 +602,7 @@ def mkdrv(m:Manager,
           realizer:Realizer,
           check_promises:bool=True)->DRef:
   """ Run the instantiation of a particular stage. Create a
-  [Derivation](#pylightnix.types.Derivation) object of out of three main
+  [Derivation](#pylightnix.types.Derivation) object out of three main
   components: the Derivation reference, the Matcher and the Realizer. Register
   the derivation in a [Manager](#pylightnix.types.Manager) to aid dependency
   resolution. Return [Derivation reference](#pylightnix.types.DRef) of the

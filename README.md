@@ -8,6 +8,7 @@ immutable data objects, inspired by the [Nix](https://nixos.org) package
 manager.
 
 Pylightnix provides a generic Python API, allowing programmers to:
+
 * Define linked immutable data objects by specifying how to create them
   and how to operate on them.
 * Actually create (build) such objects in a filesystem-based storage, access
@@ -274,7 +275,8 @@ Rational
   published. By importing functions explicitly, users will notice such changes
   quickly. b) Typical class-based APIs of Python often let users think that they
   could extend it by sub-classing. Here we don't want to misinform users. c)
-  Class-based wrapper API may be created as a standalone module.
+  Class-based wrapper API may be created as a standalone module, see
+  [Lens](./docs/Reference.md#pylightnix.lens.Lens).
 
 
 ( TODO )
