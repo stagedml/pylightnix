@@ -38,7 +38,8 @@ ERR_INACTIVE_RH="REPL session is not paused or was already unpaused"
 
 PYLIGHTNIX_REPL_HELPER:Optional[ReplHelper]=None
 
-def repl_continueMany(out_paths:Optional[List[Path]],
+def repl_continueMany(out_paths:Optional[List[Path]]=None,
+                      out_rrefs:Optional[List[RRef]]=None,
                       rh:Optional[ReplHelper]=None)->Optional[List[RRef]]:
   global PYLIGHTNIX_REPL_HELPER
   if rh is None:
@@ -51,7 +52,11 @@ def repl_continueMany(out_paths:Optional[List[Path]],
   try:
     rrefs:Optional[List[RRef]]
     if out_paths is not None:
+      assert out_rrefs is None
       rrefs=[store_realize(rh.dref,rh.context,out_path) for out_path in out_paths]
+    elif out_rrefs is not None:
+      assert out_paths is None
+      rrefs=out_rrefs
     else:
       rrefs=None
     rh.dref,rh.context,rh.drv=rh.gen.send((rrefs,False))
@@ -61,8 +66,9 @@ def repl_continueMany(out_paths:Optional[List[Path]],
   return rh.rrefs
 
 def repl_continue(out_paths:Optional[List[Path]]=None,
+                  out_rrefs:Optional[List[RRef]]=None,
                   rh:Optional[ReplHelper]=None)->Optional[RRef]:
-  rrefs=repl_continueMany(out_paths,rh)
+  rrefs=repl_continueMany(out_paths,out_rrefs,rh)
   if rrefs is None:
     return None
   assert len(rrefs)==1, f"Acturally {len(rrefs)}"
