@@ -102,11 +102,12 @@ Having a `hello_src` derivation reference means several things:
 
 * (a) Configuration of the corresponding stage has passed certain checks and
   does exist in the storage as a JSON object.
-* (b) Pylighnix knows how to **Realize** this stage, i.e. it has a Python function
-  to produce some data (files) to put them in storage.
-* (c) Pylightnix noted the [promise](#pylightnix.types.PromisePath) made by
-  `hello_src`. After it's realization, it will check that `hello-2.10` folder
-  appears among build artifacts.
+* (b) Pylighnix knows how to **Realize** this stage, i.e. it has a Python
+  function to produce some data (files) to put them in storage.
+* (c) Pylightnix noted the
+  [promise](../Reference.md#pylightnix.types.PromisePath) made by `hello_src`.
+  After it's realization, it will check that `hello-2.10` folder appears among
+  build artifacts.
 
 For [fetchurl](../Reference.md#pylightnix.stages.fetchurl.fetchurl), the
 output data will contain the contents of URL, after downloading and
@@ -178,9 +179,10 @@ def hello_config()->Config:
 Here, we specify two configuration attributes: a name and a
 [RefPath](../Reference.md#pylightnix.types.RefPath) which links our new stage
 with some realization of the previous stage. RefPath is normally a Python list
-`[hello_src, 'hello-2.10']`, but the [Lens](#pylightnix.lens.Lens) helper
-gets this value for us based on a promise made by this dependency.  We will
-convert it into a system path at the time of realization, as we will see soon.
+`[hello_src, 'hello-2.10']`, but the
+[Lens](../Reference.md#pylightnix.lens.Lens) helper gets this value for us based
+on a promise made by this dependency.  We will convert it into a system path at
+the time of realization, as we will see soon.
 
 As a side note, `locals()` is a Python builtin function which returns a `dict`
 of current function's local variables.
