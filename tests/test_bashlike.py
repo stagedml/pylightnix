@@ -1,5 +1,6 @@
 from pylightnix import ( DRef, RRef, lsref, catref, instantiate, realize,
-    unrref, rmref, store_dref2path, rref2path, shellref, shell, rref2dref, du )
+    unrref, rmref, store_dref2path, rref2path, shellref, shell, rref2dref, du,
+    repl_realize, repl_cancelBuild, repl_build, build_outpath )
 
 from tests.setup import ( ShouldHaveFailed, setup_testpath, setup_storage,
     mktestnode, mktestnode_nondetermenistic )
@@ -65,6 +66,11 @@ def test_shellref():
       shellref(rref2dref(rref))
       shellref()
       shell(rref2path(rref))
+      repl_realize(instantiate(mktestnode, {'n':1}), force_interrupt=True)
+      b=repl_build()
+      o=build_outpath(b)
+      shell(b)
+      repl_cancelBuild(b)
       try:
         shellref('foo') # type:ignore
         raise ShouldHaveFailed('shellref should reject garbage')

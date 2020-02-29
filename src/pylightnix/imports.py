@@ -21,7 +21,7 @@ from calendar import timegm
 from errno import EEXIST
 from os import (
     mkdir, makedirs, replace, listdir, rmdir, symlink, rename, remove, environ,
-    walk, lstat, chmod, stat )
+    walk, lstat, chmod, stat, readlink )
 from os.path import (
     basename, join, isfile, isdir, islink, relpath, abspath, dirname, split,
     getsize )

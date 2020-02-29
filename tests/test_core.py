@@ -9,7 +9,7 @@ from pylightnix import ( Config, instantiate, DRef, RRef, Path, mklogdir,
     build_cattrs, build_name, match_best, tryread, trywrite,
     assert_recursion_manager_empty, match, latest, best, exact, Key,
     match_latest, match_all, match_some, match_n, realizeMany, build_outpaths,
-    scanref_dict, config_dict, promise )
+    scanref_dict, config_dict, promise, checkpaths, mklens, isrref )
 
 from tests.imports import ( given, Any, Callable, join, Optional, islink,
     isfile, List, randint, sleep, rmtree, system, S_IWRITE, S_IREAD, S_IEXEC,
@@ -573,5 +573,18 @@ def test_promise():
     rref=realize(instantiate(_setting,True))
     assert_valid_rref(rref)
 
+
+def test_checkfiles():
+  with setup_storage('test_checkfiles'):
+
+    def _setting(m:Manager)->DRef:
+      n1=mktestnode(m, {'name':'1', 'promise':[promise,'artifact']})
+      n2=mktestnode(m, {'name':'2', 'promise':[promise,'artifact']})
+      n3=checkpaths(m, {'f1':mklens(n1).promise.refpath,
+                        'f2':mklens(n2).promise.refpath})
+      return n3
+
+    rrefs=realizeMany(instantiate(_setting))
+    assert len(rrefs)==2
 
 
