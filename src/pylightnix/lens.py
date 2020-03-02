@@ -53,7 +53,8 @@ class Lens:
     return self.get(key)
 
   def get(self, key)->Any:
-    return Lens(self.ctx, self.as_dict()[key])
+    d=self.as_dict()
+    return Lens(self.ctx, d[key] if key in d else None)
 
   @property
   def val(self)->Any:
