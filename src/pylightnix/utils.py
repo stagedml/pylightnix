@@ -34,7 +34,12 @@ PYLIGHTNIX_TIME="%y%m%d-%H:%M:%S:%f%z"
 
 def timestring(sec:Optional[float]=None)->str:
   """ Return a time string, representing the local time, with a timezone
-  suffix. Resolution is subsecond, platform-dependent. """
+  suffix. Resolution is subsecond, platform-dependent.
+
+  Arguments:
+  - `sec:Optional[float]=None` Number of seconds since Epoch to convert to
+    a timestring. If none, take the current time.
+  """
   if sec is None:
     dt=datetime.now(tzlocal())
   else:

@@ -15,7 +15,7 @@
 """ Builtin stages for fetching things from the Internet """
 
 from pylightnix.imports import (sha256 as sha256sum, urlparse, Popen, remove,
-    basename, join, rename, isfile )
+    basename, join, rename, isfile, copyfile )
 from pylightnix.types import ( DRef, Manager, Config, Build, Context, Name,
     Path, Optional, List )
 from pylightnix.core import ( mkconfig, mkbuild, build_cattrs, build_outpath,
@@ -25,6 +25,16 @@ from pylightnix.utils import ( try_executable, makedirs )
 
 WGET=try_executable('wget', 'Please install `wget` pacakge.')
 AUNPACK=try_executable('aunpack', 'Please install `apack` tool from `atool` package.')
+
+
+def _unpack(o:str, fullpath:str, remove_file:bool):
+  print(f"Unpacking {fullpath}..")
+  p=Popen([AUNPACK(), fullpath], cwd=o)
+  p.wait()
+  assert p.returncode == 0, f"Unpack failed, errcode '{p.returncode}'"
+  if remove_file:
+    print(f"Removing {fullpath}..")
+    remove(fullpath)
 
 
 def fetchurl(m:Manager,
@@ -111,13 +121,7 @@ def fetchurl(m:Manager,
       rename(partpath, fullpath)
 
       if 'unpack' in c.mode:
-        print(f"Unpacking {fullpath}..")
-        p=Popen([AUNPACK(), fullpath], cwd=o)
-        p.wait()
-        assert p.returncode == 0, f"Unpack failed, errcode '{p.returncode}'"
-        if 'remove' in c.mode:
-          print(f"Removing {fullpath}..")
-          remove(fullpath)
+        _unpack(o, fullpath, 'remove' in c.mode)
 
     except Exception as e:
       print(f"Download failed:",e)
@@ -127,4 +131,58 @@ def fetchurl(m:Manager,
   return mkdrv(m, _instantiate(), match_only(), build_wrapper(_realize))
 
 
+
+def fetchlocal(m:Manager,
+             filename:str,
+             sha256:str,
+             mode:str='unpack,remove',
+             name:Optional[str]=None,
+             output_filename:Optional[str]=None,
+             **kwargs)->DRef:
+  """ Copy local file into Pylightnix storage. This function is typically
+  intended to register application-specific files which are distributed with a
+  source repository.
+
+
+  FIXME: Switch regular `fetchurl` to `curl` and call it with `file://` URLs.
+
+  """
+
+  def _instantiate()->Config:
+    assert AUNPACK() is not None
+    kwargs.update({'name':name or 'fetchlocal',
+                   'filename':filename,
+                   'sha256':sha256,
+                   'mode':mode})
+    return mkconfig(kwargs)
+
+  def _realize(b:Build)->None:
+    c=build_cattrs(b)
+    o=build_outpath(b)
+
+    try:
+      fname=output_filename or basename(filename)
+      assert len(fname)>0, ("Destination filename shouldn't be empty. "
+                            "Try specifying a valid `output_filename` argument")
+      partpath=join(o,fname+'.tmp')
+      copyfile(c.filename, partpath)
+      assert isfile(partpath), f"Can't find output file '{partpath}'"
+
+      with open(partpath,"rb") as f:
+        realhash=sha256sum(f.read()).hexdigest();
+        assert realhash==c.sha256, (f"Expected sha256 checksum '{c.sha256}', "
+                                    f"but got '{realhash}'")
+
+      fullpath=join(o,fname)
+      rename(partpath, fullpath)
+
+      if 'unpack' in c.mode:
+        _unpack(o, fullpath, 'remove' in c.mode)
+
+    except Exception as e:
+      print(f"Copying failed:",e)
+      print(f"Temp folder {o}")
+      raise
+
+  return mkdrv(m, _instantiate(), match_only(), build_wrapper(_realize))
 
