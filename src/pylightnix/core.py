@@ -809,6 +809,31 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[])->RealizeSeqGen:
     assert rrefs is not None
     return rrefs
 
+
+def overwrite(m:Manager, dref:DRef,
+    new_config:Callable[[Config],Config],
+    new_matcher:Optional[Matcher]=None,
+    new_realizer:Optional[Realizer]=None,
+    check_promises:bool=True)->DRef:
+  new_config_=new_config(store_config_(dref))
+  new_matcher_=new_matcher if new_matcher is not None else m.builders[dref].matcher
+  new_realizer_=new_realizer if new_realizer is not None else m.builders[dref].realizer
+  return mkdrv(m, new_config_, new_matcher_, new_realizer_, check_promises=check_promises)
+
+def realized(stage:Any, **kwargs)->Stage:
+  def _stage(m:Manager)->DRef:
+    dref=stage(m,**kwargs)
+    def _no_realizer(dref:DRef,context:Context)->List[Path]:
+      assert False, (
+          f"Stage '{dref}' was assumed to be already realized. "
+          f"In reality, it's matcher instructed the core to call realizer. "
+          f"Configuration:\n{store_config(dref)}\n"
+          f"Context:\n{context}")
+    return overwrite(m, dref,
+        new_config=lambda c:c, new_matcher=None, new_realizer=_no_realizer)
+  return _stage
+
+
 def mksymlink(rref:RRef, tgtpath:Path, name:str, withtime=True)->Path:
   """ Create a symlink pointing to realization `rref`. Other arguments define
   symlink name and location. Informally,
