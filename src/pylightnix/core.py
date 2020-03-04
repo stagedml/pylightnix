@@ -626,8 +626,8 @@ def mkdrv(m:Manager,
   """
   dref=store_instantiate(config)
   if dref in m.builders:
-    print(f"Overwriting matcher or realizer of derivation {dref}, configured "
-          f"as:\n{config_dict(store_config(dref))}")
+    print((f"Overwriting either the matcher or the realizer of '{dref}'. "
+           f"Config:\n{config_dict(store_config_(dref))}"))
 
   def _promise_aware(realizer)->Realizer:
     def _matcher(dref:DRef,ctx:Context)->List[Path]:
