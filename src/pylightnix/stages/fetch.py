@@ -133,11 +133,11 @@ def fetchurl(m:Manager,
 
 
 def fetchlocal(m:Manager,
-             filename:str,
+             path:str,
              sha256:str,
              mode:str='unpack,remove',
              name:Optional[str]=None,
-             output_filename:Optional[str]=None,
+             filename:Optional[str]=None,
              **kwargs)->DRef:
   """ Copy local file into Pylightnix storage. This function is typically
   intended to register application-specific files which are distributed with a
@@ -151,7 +151,7 @@ def fetchlocal(m:Manager,
   def _instantiate()->Config:
     assert AUNPACK() is not None
     kwargs.update({'name':name or 'fetchlocal',
-                   'filename':filename,
+                   'path':path,
                    'sha256':sha256,
                    'mode':mode})
     return mkconfig(kwargs)
@@ -161,11 +161,11 @@ def fetchlocal(m:Manager,
     o=build_outpath(b)
 
     try:
-      fname=output_filename or basename(filename)
+      fname=filename or basename(path)
       assert len(fname)>0, ("Destination filename shouldn't be empty. "
-                            "Try specifying a valid `output_filename` argument")
+                            "Try specifying a valid `filename` argument")
       partpath=join(o,fname+'.tmp')
-      copyfile(c.filename, partpath)
+      copyfile(c.path, partpath)
       assert isfile(partpath), f"Can't find output file '{partpath}'"
 
       with open(partpath,"rb") as f:

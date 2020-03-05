@@ -1,7 +1,7 @@
-from pylightnix import (
-    Manager, DRef, RRef, Path, mklogdir, dirhash, mknode, store_deps,
-    store_deepdeps, rref2path, Manager, mkcontext, instantiate, realize,
-    mkfile, Name )
+from pylightnix import ( Manager, DRef, RRef, Path, mklogdir, dirhash, mknode,
+    store_deps, store_deepdeps, rref2path, Manager, mkcontext, instantiate,
+    realize, mkfile, Name, realized, build_wrapper, Build, mkconfig, match_only,
+    mkdrv, build_outpath )
 
 from tests.imports import (
     given, assume, example, note, settings, text, decimals, integers, rmtree,
@@ -13,7 +13,7 @@ from tests.generators import (
     configs, dicts, artifacts )
 
 from tests.setup import (
-    setup_testpath, setup_storage )
+    setup_testpath, setup_storage, ShouldHaveFailed )
 
 
 
@@ -65,4 +65,29 @@ def test_mkfile()->None:
       baz=f.read()
     assert baz=='baz'
     assert rref1!=rref2
+
+
+def test_realized()->None:
+  with setup_storage('test_realized'):
+
+    def _setting(m:Manager, assume_realized:bool)->DRef:
+      def _realize(b:Build):
+        if assume_realized:
+          raise ShouldHaveFailed('Should not call the real realizer')
+        return build_outpath(b)
+      return mkdrv(m, mkconfig({'name':'1'}), match_only(), build_wrapper(_realize))
+
+    dref=instantiate(realized(_setting, assume_realized=True))
+    try:
+      rref=realize(dref)
+      raise ShouldHaveFailed('Should not be realized')
+    except AssertionError:
+      pass
+
+    rref=realize(instantiate(_setting, assume_realized=False))
+    rref2=realize(instantiate(realized(_setting, assume_realized=True)))
+    assert rref==rref2
+
+
+
 

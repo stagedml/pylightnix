@@ -1,5 +1,5 @@
 from pylightnix import ( DRef, RRef, lsref, catref, instantiate, realize,
-    unrref, fetchurl )
+    unrref, fetchurl, fetchlocal, isrref, rref2path, isfile )
 
 from tests.imports import ( TemporaryDirectory, join, stat, chmod, S_IEXEC,
     system, Popen, PIPE, get_executable )
@@ -37,5 +37,22 @@ def test_fetchurl():
         rref=realize(clo)
       finally:
         pylightnix.stages.fetch.WGET=oldwget
+
+
+def test_fetchlocal():
+  with setup_storage('test_fetclocal') as tmp:
+    mockdata=join(tmp,'mockdata')
+    with open(mockdata,'w') as f:
+      f.write('dogfood')
+    system(f"tar -C '{tmp}' -zcvf {tmp}/mockdata.tar.gz mockdata")
+
+    wanted_sha256=Popen([SHA256SUM, f"mockdata.tar.gz"], stdout=PIPE, cwd=tmp).stdout.read().split()[0]
+
+    rref=realize(instantiate(fetchlocal,
+          path=mockdata+'.tar.gz',
+          filename='validname.tar.gz',
+          sha256=wanted_sha256.decode()))
+    assert isrref(rref)
+    assert isfile(join(rref2path(rref),'mockdata'))
 
 
