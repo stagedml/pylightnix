@@ -696,17 +696,19 @@ def instantiate(stage:Any, *args, **kwargs)->Closure:
 
 RealizeSeqGen = Generator[Tuple[DRef,Context,Derivation],Tuple[Optional[List[RRef]],bool],List[RRef]]
 
-def realize(closure:Closure, force_rebuild:Union[List[DRef],bool]=[])->RRef:
+def realize(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
+                             assert_realized:List[DRef]=[])->RRef:
   """ A simplified version of [realizeMany](#pylightnix.core.realizeMany).
   Expects only one output path. """
-  rrefs=realizeMany(closure, force_rebuild)
+  rrefs=realizeMany(closure, force_rebuild, assert_realized)
   assert len(rrefs)==1, (
       f"`realize` is to be used with single-output derivations. Derivation "
       f"{closure.dref} has {len(rrefs)} outputs:\n{rrefs}\n"
       f"Consider calling `realizeMany` with it." )
   return rrefs[0]
 
-def realizeMany(closure:Closure, force_rebuild:Union[List[DRef],bool]=[])->List[RRef]:
+def realizeMany(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
+                                 assert_realized:List[DRef]=[])->List[RRef]:
   """ Obtain one or more realizations of a stage's
   [Closure](#pylightnix.types.Closure).
 
@@ -759,7 +761,8 @@ def realizeMany(closure:Closure, force_rebuild:Union[List[DRef],bool]=[])->List[
   else:
     assert False, "Ivalid type of `force_rebuild` argument"
   try:
-    gen=realizeSeq(closure,force_interrupt=force_interrupt)
+    gen=realizeSeq(closure,force_interrupt=force_interrupt,
+                           assert_realized=assert_realized)
     next(gen)
     while True:
       gen.send((None,False)) # Ask for default action
@@ -767,7 +770,8 @@ def realizeMany(closure:Closure, force_rebuild:Union[List[DRef],bool]=[])->List[
     res=e.value
   return res
 
-def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[])->RealizeSeqGen:
+def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
+                                assert_realized:List[DRef]=[])->RealizeSeqGen:
   """ Sequentially realize the closure by issuing steps via Python's generator
   interface. `realizeSeq` encodes low-level details of the realization
   algorithm. Consider calling [realizeMany](#pylightnix.core.realizeMany) or
@@ -791,6 +795,10 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[])->RealizeSeqGen:
         else:
           rrefs=drv.matcher(dref,dref_context)
         if rrefs is None:
+          assert dref not in require_realized, (
+            f"Stage '{dref}' was required to be already realized. "
+            f"Unfortunately, it is not the case."
+            )
           paths=drv.realizer(dref,dref_context)
           rrefs_built=[store_realize(dref,dref_context,path) for path in paths]
           rrefs_matched=drv.matcher(dref,dref_context)
