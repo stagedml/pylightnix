@@ -126,7 +126,7 @@ def dirhash(path:Path)->Hash:
   return datahash(_iter())
 
 def filerw(f:Path)->None:
-  assert isfile(f)
+  assert isfile(f) or islink(f), f"{f} is not a file"
   chmod(f, stat(f)[ST_MODE] | (S_IWRITE) )
 
 def filero(f:Path)->None:
