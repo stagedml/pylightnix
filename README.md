@@ -69,7 +69,7 @@ Related work
 Install
 -------
 
-#### Using Pip
+#### Install with Pip
 
 Pylightnix is not yet released on Pypi, the only way to install it with pip
 is to use the git link:
