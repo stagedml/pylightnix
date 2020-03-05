@@ -114,11 +114,11 @@ def redefine(m:Manager, dref:DRef,
 
 
 def realized(stage:Any, **kwargs)->Stage:
-  """ [Re-define](#pylightnix.core.redefine) stage's realizer by replacing it
-  with a dummy realizer triggering an assertion. As a result, the call to
-  [realize](#pylightnix.core.realizeMany) will only succeed if no realization is
-  actually required. Designed to make users sure that some stage's realize
-  will return immediately.
+  """ [Re-define](#pylightnix.stages.trivial.redefine) stage's realizer by
+  replacing it with a dummy realizer triggering an assertion. As a result, the
+  call to [realize](#pylightnix.core.realizeMany) will only succeed if no
+  realization is actually required. Designed to make users sure that some
+  stage's realize will return immediately.
 
   Example:
   ```python

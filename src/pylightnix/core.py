@@ -813,7 +813,9 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[])->RealizeSeqGen:
 def mksymlink(rref:RRef, tgtpath:Path, name:str, withtime=True)->Path:
   """ Create a symlink pointing to realization `rref`. Other arguments define
   symlink name and location. Informally,
-  `{tgtpath}/{timeprefix}{name} --> $PYLIGHTNIX_STORE/{rref2dref(rref)}/{rref}` """
+  `{tgtpath}/{timeprefix}{name} --> $PYLIGHTNIX_STORE/{rref2dref(rref)}/{rref}`.
+  Overwrite existing symlinks.
+  """
   assert_valid_rref(rref)
   assert isdir(tgtpath), f"store_link(): `tgt` dir '{tgtpath}' doesn't exist"
   ts:Optional[str]
