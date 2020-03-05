@@ -304,16 +304,16 @@ def store_deref(context_holder:RRef, dref:DRef)->RRef:
   assert len(rrefs)==1
   return rrefs[0]
 
-def store_gc(keep_drefs_:List[DRef], keep_rrefs_:List[RRef])->Tuple[Set[DRef],Set[RRef]]:
+def store_gc(keep_drefs:List[DRef], keep_rrefs:List[RRef])->Tuple[Set[DRef],Set[RRef]]:
   """ Take roots which are in use and should not be removed. Return roots which
   are not used and may be removed. Actual removing is to be done by the user.
 
   See also [rmref](#pylightnix.bashlike.rmref)"""
   assert_store_initialized()
-  keep_rrefs=set(keep_rrefs_)
-  keep_drefs=set(keep_drefs_)
-  closure_rrefs=store_deepdepRrefs(keep_rrefs) | keep_rrefs
-  closure_drefs=store_deepdeps(keep_drefs) | keep_drefs | {rref2dref(rref) for rref in closure_rrefs}
+  keep_rrefs_=set(keep_rrefs)
+  keep_drefs_=set(keep_drefs)
+  closure_rrefs=store_deepdepRrefs(keep_rrefs_) | keep_rrefs_
+  closure_drefs=store_deepdeps(keep_drefs_) | keep_drefs_ | {rref2dref(rref) for rref in closure_rrefs}
   remove_drefs=set()
   remove_rrefs=set()
   for dref in store_drefs():
