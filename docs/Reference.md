@@ -127,10 +127,14 @@
     * [mknode](#pylightnix.stages.trivial.mknode)
     * [mkfile](#pylightnix.stages.trivial.mkfile)
     * [checkpaths](#pylightnix.stages.trivial.checkpaths)
+    * [redefine](#pylightnix.stages.trivial.redefine)
+    * [realized](#pylightnix.stages.trivial.realized)
   * [pylightnix.stages.fetch](#pylightnix.stages.fetch)
     * [WGET](#pylightnix.stages.fetch.WGET)
     * [AUNPACK](#pylightnix.stages.fetch.AUNPACK)
+    * [\_unpack](#pylightnix.stages.fetch._unpack)
     * [fetchurl](#pylightnix.stages.fetch.fetchurl)
+    * [fetchlocal](#pylightnix.stages.fetch.fetchlocal)
   * [pylightnix.bashlike](#pylightnix.bashlike)
     * [lsdref\_](#pylightnix.bashlike.lsdref_)
     * [lsrref\_](#pylightnix.bashlike.lsrref_)
@@ -447,8 +451,8 @@ Some fields of a config have a special meaning for Pylightnix:
   Pylightnix scans configs to collect such values and plan the order of
   realizaitons.
 * Values of type [RRef](#pylightnix.types.RRef) lead to warning. Placing such
-  values into a config is probably an error: Pylightnix can't know how to
-  produce exactly this reference and so it can't produce a continuous
+  values into a config is probably an error: Pylightnix doesn't have a chance to
+  know how to produce exactly this reference so it can't produce a continuous
   realization plan.
 
 Example:
@@ -536,10 +540,10 @@ configuration of derivations being realized.
 Build class may be subclassed by applications in order to define
 application-specific build-state.  Underscoped
 [build_wrapper_](#pylightnix.core.build_wrapper_) accepts additional parameter
-to tell the core which subclass to create.
+which informs the core what subclass to create. Note that derived classes
+should have the same constructor `def __init__(self, ba:BuildArgs)->None`.
 
 Example:
-
 ```python
 class TensorFlowModel(Build):
   model:tf.keras.Model
@@ -1404,7 +1408,8 @@ def mksymlink(rref: RRef, tgtpath: Path, name: str, withtime=True) -> Path
 
 Create a symlink pointing to realization `rref`. Other arguments define
 symlink name and location. Informally,
-`{tgtpath}/{timeprefix}{name} --> $PYLIGHTNIX_STORE/{rref2dref(rref)}/{rref}`
+`{tgtpath}/{timeprefix}{name} --> $PYLIGHTNIX_STORE/{rref2dref(rref)}/{rref}`.
+Overwrite existing symlinks.
 
 <a name="pylightnix.core.match"></a>
 ## `match()`
@@ -1687,6 +1692,44 @@ def checkpaths(m: Manager, promises: dict, name: str = "checkpaths") -> DRef
 ```
 
 
+<a name="pylightnix.stages.trivial.redefine"></a>
+## `redefine()`
+
+```python
+def redefine(m: Manager, dref: DRef, new_config: Callable[[Config],Config], new_matcher: Optional[Matcher] = None, new_realizer: Optional[Realizer] = None, check_promises: bool = True) -> DRef
+```
+
+Define a new Derivation based on the existing one, by updating it's
+config, optionally re-writing it's matcher, or it's realizer.
+
+Arguments:
+- `m:Manager` Pylightnix manager object
+- `dref:DRef` Reference to the Derivation to redefine
+- `new_config:Callable[[Config],Config]` A function to update the `dref`'s config.
+- `new_matcher:Optional[Matcher]=None` Optional new matcher (defaults to the
+  existing matcher)
+- `new_realizer:Optional[Realizer]=None` Optional new realizer (defaults to
+  the existing realizer)
+
+<a name="pylightnix.stages.trivial.realized"></a>
+## `realized()`
+
+```python
+def realized(stage: Any, kwargs) -> Stage
+```
+
+[Re-define](#pylightnix.stages.trivial.redefine) stage's realizer by
+replacing it with a dummy realizer triggering an assertion. As a result, the
+call to [realize](#pylightnix.core.realizeMany) will only succeed if no
+realization is actually required. Designed to make users sure that some
+stage's realize will return immediately.
+
+Example:
+```python
+rref:RRef=realize(instantiate(realized(my_long_running_stage, arg="bla")))
+# ^^^ Fail if `my_long_running_stage` is not yet realized.
+```
+
 <a name="pylightnix.stages.fetch"></a>
 # `pylightnix.stages.fetch`
 
@@ -1705,6 +1748,14 @@ WGET = try_executable('wget', 'Please install `wget` pacakge.')
 
 ```python
 AUNPACK = try_executable('aunpack', 'Please install `apack` tool from `atool` package.')
+```
+
+
+<a name="pylightnix.stages.fetch._unpack"></a>
+## `_unpack()`
+
+```python
+def _unpack(o: str, fullpath: str, remove_file: bool)
 ```
 
 
@@ -1749,6 +1800,20 @@ def hello_src(m:Manager)->DRef:
 rref:RRef=realize(instantiate(hello_src))
 print(rref2path(rref))
 ```
+
+<a name="pylightnix.stages.fetch.fetchlocal"></a>
+## `fetchlocal()`
+
+```python
+def fetchlocal(m: Manager, path: str, sha256: str, mode: str = 'unpack,remove', name: Optional[str] = None, filename: Optional[str] = None, kwargs) -> DRef
+```
+
+Copy local file into Pylightnix storage. This function is typically
+intended to register application-specific files which are distributed with a
+source repository.
+
+
+FIXME: Switch regular `fetchurl` to `curl` and call it with `file://` URLs.
 
 <a name="pylightnix.bashlike"></a>
 # `pylightnix.bashlike`
@@ -1827,19 +1892,19 @@ care of possible race conditions.
 def shellref(r: Union[RRef,DRef,None] = None) -> None
 ```
 
-Alias for [shell](#pylightnix.bashlike.shell)
+Alias for [shell](#pylightnix.bashlike.shell). Deprecated.
 
 <a name="pylightnix.bashlike.shell"></a>
 ## `shell()`
 
 ```python
-def shell(r: Union[RRef,DRef,Path,str,None] = None) -> None
+def shell(r: Union[Build,RRef,DRef,Path,str,None] = None) -> None
 ```
 
 Open the directory corresponding to `r` in Unix Shell for inspection. The
 path to shell executable is read from the `SHELL` environment variable,
 defaulting to `/bin/sh`. If `r` is None, open the shell in the root of the
-storage.
+Pylightnix storage.
 
 <a name="pylightnix.bashlike.du"></a>
 ## `du()`
