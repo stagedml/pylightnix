@@ -22,12 +22,12 @@ from pylightnix.core import ( mkdrv, mkconfig, mkbuild, match_only,
     build_deref_, build_cattrs, build_wrapper, store_config_ )
 from pylightnix.types import ( RefPath, Manager, Config, Context, Build, Name,
     DRef, RRef, Any, Optional, Dict, Hash, Path, List, Callable, Matcher,
-    Realizer, Stage )
+    Realizer, Stage, ConfigWithPromises )
 from pylightnix.utils import ( forcelink, isrefpath, traverse_dict )
 
 
 def mknode(m:Manager, sources:dict, artifacts:Dict[Name,bytes]={})->DRef:
-  def _instantiate()->Config:
+  def _instantiate()->ConfigWithPromises:
     d=deepcopy(sources)
     assert '__artifacts__' not in d, "config shouldn't contain reserved field '__artifacts__'"
     d.update({'__artifacts__':{an:Hash(datahash([av])) for (an,av) in artifacts.items()}})
@@ -57,7 +57,7 @@ def checkpaths(m:Manager, promises:dict, name:str="checkpaths")->DRef:
     traverse_dict(promises,_mut)
     return refpaths
 
-  def _config()->Config:
+  def _config()->ConfigWithPromises:
     assert len(promises.keys())>0
     d:Dict[str,Any]={'name':name}
     for dref,rpaths in _promises().items():
@@ -89,7 +89,7 @@ def checkpaths(m:Manager, promises:dict, name:str="checkpaths")->DRef:
 
 def redefine(
     stage:Stage,
-    new_config:Callable[[Config],Config]=lambda c:c,
+    new_config:Callable[[ConfigWithPromises],ConfigWithPromises]=lambda c:c,
     new_matcher:Optional[Matcher]=None,
     new_realizer:Optional[Realizer]=None,
     check_promises:bool=True)->Stage:

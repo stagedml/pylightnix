@@ -17,7 +17,7 @@
 from pylightnix.imports import (sha256 as sha256sum, urlparse, Popen, remove,
     basename, join, rename, isfile, copyfile )
 from pylightnix.types import ( DRef, Manager, Config, Build, Context, Name,
-    Path, Optional, List )
+    Path, Optional, List, ConfigWithPromises )
 from pylightnix.core import ( mkconfig, mkbuild, build_cattrs, build_outpath,
     mkdrv, match_only, build_wrapper, promise )
 from pylightnix.utils import ( try_executable, makedirs )
@@ -44,6 +44,7 @@ def fetchurl(m:Manager,
              name:Optional[str]=None,
              filename:Optional[str]=None,
              force_download:bool=False,
+             check_promises:bool=True,
              **kwargs)->DRef:
   """ Download and unpack an URL addess.
 
@@ -64,7 +65,7 @@ def fetchurl(m:Manager,
     Stage will attempt to deduced it if not specified.
   - `force_download:bool=False` If False, resume the last download if
     possible.
-
+  - `check_promises:bool=True` Passed to `mkdrv` as-is.
 
   Example:
   ```python
@@ -84,7 +85,7 @@ def fetchurl(m:Manager,
   import pylightnix.core
   tmpfetchdir=join(pylightnix.core.PYLIGHTNIX_TMP,'fetchurl')
 
-  def _instantiate()->Config:
+  def _instantiate()->ConfigWithPromises:
     assert WGET() is not None
     assert AUNPACK() is not None
     makedirs(tmpfetchdir, exist_ok=True)
@@ -128,7 +129,8 @@ def fetchurl(m:Manager,
       print(f"Temp folder {o}")
       raise
 
-  return mkdrv(m, _instantiate(), match_only(), build_wrapper(_realize))
+  return mkdrv(m, _instantiate(), match_only(), build_wrapper(_realize),
+                  check_promises=check_promises)
 
 
 
@@ -148,7 +150,7 @@ def fetchlocal(m:Manager,
 
   """
 
-  def _instantiate()->Config:
+  def _instantiate()->ConfigWithPromises:
     assert AUNPACK() is not None
     kwargs.update({'name':name or 'fetchlocal',
                    'path':path,

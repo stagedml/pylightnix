@@ -122,6 +122,11 @@ RefPath = List[Any]
 #: A tag to mark the start of [PromisePaths](#pylightnix.types.PromisePath).
 PYLIGHTNIX_PROMISE_TAG = "__promise__"
 
+#: *Do not change!*
+#: A tag to mark the start of [PromisePaths](#pylightnix.types.PromisePath). In
+#: contrast to promises, Pylightnix doesn't check the claims
+PYLIGHTNIX_CLAIM_TAG = "__claim__"
+
 #: PromisePath is an alias for Python list of strings. The first item is a
 #: special tag (the [promise](#pylightnix.core.promise)) and the subsequent
 #: items should represent a file or directory path parts. PromisePaths are to
@@ -288,6 +293,9 @@ class Config:
 
   def __repr__(self)->str:
     return self.__dict__.__repr__()
+
+ConfigWithPromises=NamedTuple('ConfigWithPromises',[('body',dict)])
+
 
 class ConfigAttrs:
   """ `ConfigAttrs` is a helper object allowing to access

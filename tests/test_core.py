@@ -9,7 +9,8 @@ from pylightnix import ( Config, instantiate, DRef, RRef, Path, mklogdir,
     build_cattrs, build_name, match_best, tryread, trywrite,
     assert_recursion_manager_empty, match, latest, best, exact, Key,
     match_latest, match_all, match_some, match_n, realizeMany, build_outpaths,
-    scanref_dict, config_dict, promise, checkpaths, mklens, isrref )
+    scanref_dict, config_dict, promise, checkpaths, mklens, isrref,
+    pconfig_cattrs, ConfigWithPromises )
 
 from tests.imports import ( given, Any, Callable, join, Optional, islink,
     isfile, List, randint, sleep, rmtree, system, S_IWRITE, S_IREAD, S_IEXEC,
@@ -133,7 +134,8 @@ def test_realize_readonly()->None:
       with open(join(build_outpath(b),'exe'),'w') as f:
         f.write('#!/bin/sh\necho "Fooo"')
       chmod(join(build_outpath(b),'exe'), S_IWRITE|S_IREAD|S_IEXEC)
-    rref2=realize(instantiate(mkdrv, Config({}), match_only(), build_wrapper(_realize)))
+    rref2=realize(instantiate(mkdrv, ConfigWithPromises({}),
+                              match_only(), build_wrapper(_realize)))
     assert Popen([join(rref2path(rref2),'exe')],
         stdout=PIPE).stdout.read()=='Fooo\n'.encode('utf-8'), \
         "Did we lost exec permission?"
@@ -229,7 +231,7 @@ def test_recursion_manager()->None:
 def test_config_ro():
   d={'a':1,'b':33}
   c=mkconfig(d)
-  cro=config_cattrs(c)
+  cro=pconfig_cattrs(c)
   for k in d.keys():
     assert getattr(cro,k) == d[k]
 
@@ -272,7 +274,7 @@ def test_build_deref()->None:
   with setup_storage('test_build_deref'):
 
     def _depuser(m:Manager, sources:dict)->DRef:
-      def _instantiate()->Config:
+      def _instantiate()->ConfigWithPromises:
         return mkconfig(sources)
       def _realize(b)->None:
         o = build_outpath(b)
@@ -297,7 +299,7 @@ def test_build_deref()->None:
 def test_build_cattrs():
   with setup_storage('test_build_cattrs'):
     def _setting(m:Manager)->DRef:
-      def _instantiate()->Config:
+      def _instantiate()->ConfigWithPromises:
         return mkconfig({'a':1,'b':2})
       def _realize(b)->None:
         c = build_cattrs(b)
@@ -317,7 +319,7 @@ def test_build_name()->None:
   with setup_storage('test_build_name'):
     n:str = ""
     def _setting(m:Manager)->DRef:
-      def _instantiate()->Config:
+      def _instantiate()->ConfigWithPromises:
         return mkconfig({'name':'foobar'})
       def _realize(b)->None:
         nonlocal n
@@ -373,7 +375,7 @@ def test_match_only()->None:
 
     build:int = 0
     def _setting(m:Manager)->DRef:
-      def _instantiate()->Config:
+      def _instantiate()->ConfigWithPromises:
         return mkconfig({'a':1})
       def _realize(b:Build)->None:
         nonlocal build
@@ -400,7 +402,7 @@ def test_match_best()->None:
     fname:str='score'
     score:str='0'
     def _mklrg(m, cfg, matcher):
-      def _instantiate()->Config:
+      def _instantiate()->ConfigWithPromises:
         return mkconfig(cfg)
       def _realize(b:Build)->None:
         nonlocal score, fname, matcher
@@ -448,7 +450,8 @@ def test_match_latest():
     def _realize(b:Build)->None:
       for i,out in enumerate(build_outpaths(b, nouts=nouts)):
         assert trywrite(Path(join(out,'artifact')),str(data)+'_'+str(i))
-    return mkdrv(m, Config(cfg), matcher, build_wrapper(_realize, buildtime=buildtime))
+    return mkdrv(m, ConfigWithPromises(cfg), matcher,
+                    build_wrapper(_realize, buildtime=buildtime))
 
   with setup_storage('test_match_latest'):
     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=1)
@@ -489,7 +492,7 @@ def test_match_all():
     def _realize(b:Build)->None:
       for i,out in enumerate(build_outpaths(b, nouts=nouts)):
         assert trywrite(Path(join(out,'artifact')),str(nouts+i))
-    return mkdrv(m, Config(cfg), matcher, build_wrapper(_realize))
+    return mkdrv(m, ConfigWithPromises(cfg), matcher, build_wrapper(_realize))
 
   with setup_storage('test_match_all_empty'):
     clo=instantiate(_mknode, {'a':1}, match_all(), 5)
@@ -509,11 +512,11 @@ def test_match_all():
 
 def test_match_some():
   with setup_storage('test_match_some'):
-    def _mknode(m,cfg, nouts:int, top:int):
+    def _mknode(m, cfg, nouts:int, top:int):
       def _realize(b:Build)->None:
         for i,out in enumerate(build_outpaths(b, nouts=nouts)):
           assert trywrite(Path(join(out,'artifact')),str(nouts+i))
-      return mkdrv(m, Config(cfg), match_some(n=top), build_wrapper(_realize))
+      return mkdrv(m, mkconfig(cfg), match_some(n=top), build_wrapper(_realize))
 
     for i in range(10):
       nouts=randint(1,10)
@@ -547,20 +550,19 @@ def test_promise():
   with setup_storage('test_promise'):
     def _setting(m:Manager, fullfill:bool)->DRef:
       n1=mktestnode(m, {'name':'1', 'promise':[promise,'artifact']})
-
       def _realize(b:Build):
         o=build_outpath(b)
         c=build_cattrs(b)
         assert b.dref in c.promise
         assert n1 in store_cattrs(c.maman).promise
-        assert build_path(b,c.promise)==join(o,'artifact')
+        assert build_path(b,c.promise)==join(o,'uber-artifact')
         assert build_path(b,store_cattrs(c.maman).promise)==build_path(b,c.maman_promise)
         if fullfill:
           with open(build_path(b,c.promise),'w') as f:
             f.write('chickenpoop')
 
       return mkdrv(m, mkconfig({'name':'2', 'maman':n1,
-                                'promise':[promise,'artifact'],
+                                'promise':[promise,'uber-artifact'],
                                 'maman_promise':[n1,'artifact']}),
                       matcher=match_only(),
                       realizer=build_wrapper(_realize))
