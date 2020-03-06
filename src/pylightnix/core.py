@@ -795,8 +795,8 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
         else:
           rrefs=drv.matcher(dref,dref_context)
         if rrefs is None:
-          assert dref not in require_realized, (
-            f"Stage '{dref}' was required to be already realized. "
+          assert dref not in assert_realized, (
+            f"Stage '{dref}' was assumed to be already realized. "
             f"Unfortunately, it is not the case."
             )
           paths=drv.realizer(dref,dref_context)
