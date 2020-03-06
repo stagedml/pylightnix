@@ -4,38 +4,36 @@ REPL Demo
 [Complete source of this demo](./REPL.py)
 
 This demonstration re-uses the setting of [MNIST demo](./MNIST.md). Here we show
-how to use the collection of `repl_` functions to simplify debug sessions.
+how to use the collection of `repl_` functions to debug arbitrary stages of
+Pylightnix.
 
-Consider the following chain of stages `Stage1 -> Stage2 -> Stage3`. Pylightnix
-effectively caches the results of Stages 1 and 2 so if Stage 3 require debugging
-(which is a fix-and-rerun loop), it will not trigger their re-calculation.
+Consider the chain of subsequent stages `Stage1 -> Stage2 -> Stage3 -> Stage 4`.
+Pylightnix effectively caches the results of Stages 1 and 2 so if Stage 3
+require debugging, we could realize `Stage2` and then manually call the
+constructor of Stage3 several times to find out the problem. But if our Stage3
+is a long-running job, and the problem appears near to it's end, we may face
+several difficulties:
+- We need to run and wait the stage to reach the problem place. We can't benefit
+  from it's possible internal modularity.
+- We can't use powerful tools such as IPython shell to inspect the Python
+  interpreter state during the run because all the computation is done inside
+  the `realize`.
 
-But if Stage 3 is a long-running job, and the problem appears near to it's final
-part, we may want some way to re-use some of it's internal results. Naturally,
-Pylightnix can't see what is inside the stage, but nevetheless the process of
-debugging may be simplified by pausing the computation as close to the point of
-interest as possible.
+To aid the situation, Pylightnix offers `repl_` version of `realize` function.
+`repl_realize` is expected to be called from REPL shells like IPython or Jupyter
+notebook. This new function could be programmed to return while keeping the
+computation state in a special Python object waiting to be resumed or canceled.
 
-Inserting calls to python debuggers like `ipdb` is one possible way to pause the
-computation, but they typically offer a limited debugging shell and may not
-provide full access to the Python environment.
+Users may inspect the state during the pause, execute arbitrary Python functions
+and finally call `repl_continue` or `repl_cancel` to either continue or cancel
+the normal realization process. The whole procedure resembles the one we see in
+`git rebase --continue` workflow.
 
-In Pylightnix we offer a more generic solution which 'drops' user into normal
-IPython shell while the main computation state is stored in a single Puthon
-object waiting to be resumed.
-
-Pylightnix supports build interrupts which involves triggering core's internal
-Python generators. The generic functions like `realize` and `realizeMany` all
-hide the communication details, but the `repl_realize` of [pylightnix.repl
-module](./../../src/pylightnix/repl.py) does allow us the direct access to this
-machinery. In particular, it allows us to pause the computation by returning
-earlier than it is complete. During the pause, Pylightnix' state is kept in a
-`ReplHelper` object, either global or specifically chosen by the user.
-
-`repl_realize` is expected to be called from REPL shells like IPython. There
-user may inspect the Python state during the pause, execute arbitrary functions
-and finally resume the computation by calling `repl_continue` or
-`repl_continueBuild` or cancel it by calling `repl_cancel`.
+At the lower level, Pylightnix programs realization interrupts which
+involve triggering core's internal Python generators. The generic functions like
+`realize` and `realizeMany` do hide the communication details, but the
+`repl_realize` of [pylightnix.repl module](./../../src/pylightnix/repl.py) does
+allow us a closer access to this machinery.
 
 
 Defining MNIST stages

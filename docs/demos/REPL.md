@@ -4,38 +4,36 @@ REPL Demo
 [Complete source of this demo](./REPL.py)
 
 This demonstration re-uses the setting of [MNIST demo](./MNIST.md). Here we show
-how to use the collection of `repl_` functions to simplify debug sessions.
+how to use the collection of `repl_` functions to debug arbitrary stages of
+Pylightnix.
 
-Consider the following chain of stages `Stage1 -> Stage2 -> Stage3`. Pylightnix
-effectively caches the results of Stages 1 and 2 so if Stage 3 require debugging
-(which is a fix-and-rerun loop), it will not trigger their re-calculation.
+Consider the chain of subsequent stages `Stage1 -> Stage2 -> Stage3 -> Stage 4`.
+Pylightnix effectively caches the results of Stages 1 and 2 so if Stage 3
+require debugging, we could realize `Stage2` and then manually call the
+constructor of Stage3 several times to find out the problem. But if our Stage3
+is a long-running job, and the problem appears near to it's end, we may face
+several difficulties:
+- We need to run and wait the stage to reach the problem place. We can't benefit
+  from it's possible internal modularity.
+- We can't use powerful tools such as IPython shell to inspect the Python
+  interpreter state during the run because all the computation is done inside
+  the `realize`.
 
-But if Stage 3 is a long-running job, and the problem appears near to it's final
-part, we may want some way to re-use some of it's internal results. Naturally,
-Pylightnix can't see what is inside the stage, but nevetheless the process of
-debugging may be simplified by pausing the computation as close to the point of
-interest as possible.
+To aid the situation, Pylightnix offers `repl_` version of `realize` function.
+`repl_realize` is expected to be called from REPL shells like IPython or Jupyter
+notebook. This new function could be programmed to return while keeping the
+computation state in a special Python object waiting to be resumed or canceled.
 
-Inserting calls to python debuggers like `ipdb` is one possible way to pause the
-computation, but they typically offer a limited debugging shell and may not
-provide full access to the Python environment.
+Users may inspect the state during the pause, execute arbitrary Python functions
+and finally call `repl_continue` or `repl_cancel` to either continue or cancel
+the normal realization process. The whole procedure resembles the one we see in
+`git rebase --continue` workflow.
 
-In Pylightnix we offer a more generic solution which 'drops' user into normal
-IPython shell while the main computation state is stored in a single Puthon
-object waiting to be resumed.
-
-Pylightnix supports build interrupts which involves triggering core's internal
-Python generators. The generic functions like `realize` and `realizeMany` all
-hide the communication details, but the `repl_realize` of [pylightnix.repl
-module](./../../src/pylightnix/repl.py) does allow us the direct access to this
-machinery. In particular, it allows us to pause the computation by returning
-earlier than it is complete. During the pause, Pylightnix' state is kept in a
-`ReplHelper` object, either global or specifically chosen by the user.
-
-`repl_realize` is expected to be called from REPL shells like IPython. There
-user may inspect the Python state during the pause, execute arbitrary functions
-and finally resume the computation by calling `repl_continue` or
-`repl_continueBuild` or cancel it by calling `repl_cancel`.
+At the lower level, Pylightnix programs realization interrupts which
+involve triggering core's internal Python generators. The generic functions like
+`realize` and `realizeMany` do hide the communication details, but the
+`repl_realize` of [pylightnix.repl module](./../../src/pylightnix/repl.py) does
+allow us a closer access to this machinery.
 
 
 Defining MNIST stages
@@ -185,9 +183,9 @@ x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
 
-Epoch 00001: val_accuracy improved from -inf to 0.98183, saving model
+Epoch 00001: val_accuracy improved from -inf to 0.98358, saving model
 to
-/workspace/_pylightnix/tmp/200227-12:50:25:923807+0300_d20f6e78_3dtp_0gi/checkpoint.ckpt
+/workspace/_pylightnix/tmp/200306-15:05:52:219989+0300_d20f6e78_ak4gxjzi/checkpoint.ckpt
 ```
 
 ```
@@ -197,36 +195,36 @@ Traceback (most recent call last)<ipython-input-1-9b8c69999b87> in
 ----> 1 realize(instantiate(convnn_mnist), force_rebuild=True)   #
 Spoiler: will fail
 ~/3rdparty/pylightnix/src/pylightnix/core.py in realize(closure,
-force_rebuild)
-    682   """ A simplified version of
+force_rebuild, assert_realized)
+    694   """ A simplified version of
 [realizeMany](#pylightnix.core.realizeMany).
-    683   Expects only one result. """
---> 684   rrefs=realizeMany(closure, force_rebuild)
-    685   assert len(rrefs)==1, (
-    686       f"realize is to be used with single-output derivations,
-but derivation "
+    695   Expects only one output path. """
+--> 696   rrefs=realizeMany(closure, force_rebuild, assert_realized)
+    697   assert len(rrefs)==1, (
+    698       f"`realize` is to be used with single-output
+derivations. Derivation "
 ~/3rdparty/pylightnix/src/pylightnix/core.py in realizeMany(closure,
-force_rebuild)
-    726     next(gen)
-    727     while True:
---> 728       gen.send((None,False)) # Ask for default action
-    729   except StopIteration as e:
-    730     res=e.value
+force_rebuild, assert_realized)
+    759     next(gen)
+    760     while True:
+--> 761       gen.send((None,False)) # Ask for default action
+    762   except StopIteration as e:
+    763     res=e.value
 ~/3rdparty/pylightnix/src/pylightnix/core.py in realizeSeq(closure,
-force_interrupt)
-    753           rrefs=drv.matcher(dref,dref_context)
-    754         if rrefs is None:
---> 755           paths=drv.realizer(dref,dref_context)
-    756           rrefs_built=[store_realize(dref,dref_context,path)
+force_interrupt, assert_realized)
+    793             f"Unfortunately, it is not the case."
+    794             )
+--> 795           paths=drv.realizer(dref,dref_context)
+    796           rrefs_built=[store_realize(dref,dref_context,path)
 for path in paths]
-    757           rrefs_matched=drv.matcher(dref,dref_context)
+    797           rrefs_matched=drv.matcher(dref,dref_context)
 ~/3rdparty/pylightnix/src/pylightnix/core.py in _matcher(dref, ctx)
-    604   def _promise_aware(realizer)->Realizer:
-    605     def _matcher(dref:DRef,ctx:Context)->List[Path]:
---> 606       outpaths=realizer(dref,ctx)
-    607       for key,refpath in
+    625   def _promise_aware(realizer)->Realizer:
+    626     def _matcher(dref:DRef,ctx:Context)->List[Path]:
+--> 627       outpaths=realizer(dref,ctx)
+    628       for key,refpath in
 config_promises(store_config(dref),dref):
-    608         for o in outpaths:
+    629         for o in outpaths:
 ~/3rdparty/pylightnix/src/pylightnix/core.py in _wrapper(dref,
 context)
     421     buildtime:bool=True)->Realizer:
@@ -302,7 +300,7 @@ repl_realize(instantiate(convnn_mnist))
 ```
 
 ```
-<pylightnix.repl.ReplHelper at 0x7fb518847f60>
+<pylightnix.repl.ReplHelper at 0x7fd42932fc50>
 ```
 
 
@@ -331,7 +329,7 @@ x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
 
-Epoch 00001: val_accuracy improved from -inf to 0.98442, saving model to /workspace/_pylightnix/tmp/200227-12:50:32:912845+0300_d20f6e78_81ieouxt/checkpoint.ckpt
+Epoch 00001: val_accuracy improved from -inf to 0.98242, saving model to /workspace/_pylightnix/tmp/200306-15:05:59:645616+0300_d20f6e78_04c33i_z/checkpoint.ckpt
 ```
 
 
@@ -340,7 +338,7 @@ mnist_eval_correct(b)
 ```
 
 ```
-0.984
+0.9816
 ```
 
 
@@ -357,7 +355,7 @@ print(rref)
 ```
 
 ```
-rref:72ed8b20c121425e30072e577bcea9de-d20f6e78a3801f50d5df4872ca0c79b4-convnn_mnist
+rref:6f9c73119de4c7bba767ecd10038827f-d20f6e78a3801f50d5df4872ca0c79b4-convnn_mnist
 ```
 
 
