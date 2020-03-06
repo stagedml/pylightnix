@@ -75,8 +75,8 @@ def checkpaths(m:Manager, promises:dict, name:str="checkpaths")->DRef:
     index=0
     for dref,refpaths in promises.items():
       for rref in rrefs[dref]:
+        o=os[index]
         for refpath in refpaths:
-          o=os[index]
           assert refpath[0]==dref
           path=Path(join(rref2path(rref),*refpath[1:]))
           assert isdir(path) or isfile(path), \
@@ -107,7 +107,6 @@ def redefine(
     the existing realizer)
   """
   def _new_stage(m:Manager,*args,**kwargs)->DRef:
-    print('args',*args,'kwargs',**kwargs)
     dref=stage(m,*args,**kwargs) # type:ignore
     new_config_=new_config(store_config_(dref))
     new_matcher_=new_matcher if new_matcher is not None else m.builders[dref].matcher
