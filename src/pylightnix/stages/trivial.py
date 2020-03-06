@@ -87,33 +87,36 @@ def checkpaths(m:Manager, promises:dict, name:str="checkpaths")->DRef:
   return mkdrv(m, _config(), match_some(), build_wrapper(_realize))
 
 
-
-
-
-def redefine(m:Manager, dref:DRef,
-    new_config:Callable[[Config],Config],
+def redefine(
+    stage:Stage,
+    new_config:Callable[[Config],Config]=lambda c:c,
     new_matcher:Optional[Matcher]=None,
     new_realizer:Optional[Realizer]=None,
-    check_promises:bool=True)->DRef:
+    check_promises:bool=True)->Stage:
   """ Define a new Derivation based on the existing one, by updating it's
   config, optionally re-writing it's matcher, or it's realizer.
 
   Arguments:
   - `m:Manager` Pylightnix manager object
-  - `dref:DRef` Reference to the Derivation to redefine
-  - `new_config:Callable[[Config],Config]` A function to update the `dref`'s config.
+  - `stage:Stage` Stage to re-define
+  - `new_config:Callable[[Config],Config]` A function to update the `dref`'s
+    config. Defaults to identity function.
   - `new_matcher:Optional[Matcher]=None` Optional new matcher (defaults to the
     existing matcher)
   - `new_realizer:Optional[Realizer]=None` Optional new realizer (defaults to
     the existing realizer)
   """
-  new_config_=new_config(store_config_(dref))
-  new_matcher_=new_matcher if new_matcher is not None else m.builders[dref].matcher
-  new_realizer_=new_realizer if new_realizer is not None else m.builders[dref].realizer
-  return mkdrv(m, new_config_, new_matcher_, new_realizer_, check_promises=check_promises)
+  def _new_stage(m:Manager,*args,**kwargs)->DRef:
+    print('args',*args,'kwargs',**kwargs)
+    dref=stage(m,*args,**kwargs) # type:ignore
+    new_config_=new_config(store_config_(dref))
+    new_matcher_=new_matcher if new_matcher is not None else m.builders[dref].matcher
+    new_realizer_=new_realizer if new_realizer is not None else m.builders[dref].realizer
+    return mkdrv(m, new_config_, new_matcher_, new_realizer_, check_promises=check_promises)
+  return _new_stage
 
 
-def realized(stage:Any, **kwargs)->Stage:
+def realized(stage:Any)->Stage:
   """ [Re-define](#pylightnix.stages.trivial.redefine) stage's realizer by
   replacing it with a dummy realizer triggering an assertion. As a result, the
   call to [realize](#pylightnix.core.realizeMany) will only succeed if no
@@ -126,17 +129,13 @@ def realized(stage:Any, **kwargs)->Stage:
   # ^^^ Fail if `my_long_running_stage` is not yet realized.
   ```
   """
-  def _stage(m:Manager)->DRef:
-    dref=stage(m,**kwargs)
-    def _no_realizer(dref:DRef,context:Context)->List[Path]:
-      assert False, (
-          f"Stage '{dref}' was assumed to be already realized. "
-          f"Unfortunately, it seens to be not the case because it's matcher "
-          f"has just instructed the core to call the realizer.\n"
-          f"Configuration:\n{store_config(dref)}\n"
-          f"Context:\n{context}")
-    return redefine(m, dref,
-        new_config=lambda c:c, new_matcher=None, new_realizer=_no_realizer)
-  return _stage
+  def _no_realizer(dref:DRef,context:Context)->List[Path]:
+    assert False, (
+        f"Stage '{dref}' was assumed to be already realized. "
+        f"Unfortunately, it seens to be not the case because it's matcher "
+        f"has just instructed the core to call the realizer.\n"
+        f"Configuration:\n{store_config(dref)}\n"
+        f"Context:\n{context}")
+  return redefine(stage, new_realizer=_no_realizer)
 
 

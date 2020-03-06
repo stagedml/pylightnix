@@ -361,9 +361,18 @@ class Manager:
 #: reference](#pylightnix.types.DRef) which is a proof that the derivation was
 #: introduced sucessfully.
 #:
-#: Some built-in stages are: - [mknode](#pylightnix.stages.trivial.mknode) -
-#: [mkfile](#pylightnix.stages.trivial.mkfile) -
-#: [fetchurl](#pylightnix.stages.fetchurl.fetchurl)
+#: Some built-in stages are:
+#: - [mknode](#pylightnix.stages.trivial.mknode)
+#: - [mkfile](#pylightnix.stages.trivial.mkfile)
+#: - [fetchurl](#pylightnix.stages.fetchurl.fetchurl)
+#:
+#: Note: Real stages often accept additional custom arguments which AFAIK
+#: couldn't be handled by the standard Python typesystem. In extended MyPy the
+#: definition would be:
+#: ```
+#: Stage = Callable[[Manager,VarArg(Any),KwArg(Any)],DRef]
+#: ```
+#: We use `type:ignore` pragmas when we need to pass `**kwargs`.
 Stage = Callable[[Manager],DRef]
 
 

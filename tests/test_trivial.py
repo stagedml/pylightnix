@@ -77,7 +77,7 @@ def test_realized()->None:
         return build_outpath(b)
       return mkdrv(m, mkconfig({'name':'1'}), match_only(), build_wrapper(_realize))
 
-    dref=instantiate(realized(_setting, assume_realized=True))
+    dref=instantiate(realized(_setting), assume_realized=True)
     try:
       rref=realize(dref)
       raise ShouldHaveFailed('Should not be realized')
@@ -85,7 +85,7 @@ def test_realized()->None:
       pass
 
     rref=realize(instantiate(_setting, assume_realized=False))
-    rref2=realize(instantiate(realized(_setting, assume_realized=True)))
+    rref2=realize(instantiate(realized(_setting), assume_realized=True))
     assert rref==rref2
 
 
