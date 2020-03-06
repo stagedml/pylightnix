@@ -122,6 +122,20 @@
     * [PYLIGHTNIX\_MANAGER](#pylightnix.inplace.PYLIGHTNIX_MANAGER)
     * [instantiate\_inplace](#pylightnix.inplace.instantiate_inplace)
     * [realize\_inplace](#pylightnix.inplace.realize_inplace)
+  * [pylightnix.repl](#pylightnix.repl)
+    * [ReplHelper](#pylightnix.repl.ReplHelper)
+    * [ERR\_INVALID\_RH](#pylightnix.repl.ERR_INVALID_RH)
+    * [ERR\_INACTIVE\_RH](#pylightnix.repl.ERR_INACTIVE_RH)
+    * [repl\_continueMany](#pylightnix.repl.repl_continueMany)
+    * [repl\_continue](#pylightnix.repl.repl_continue)
+    * [repl\_continueBuild](#pylightnix.repl.repl_continueBuild)
+    * [repl\_realize](#pylightnix.repl.repl_realize)
+    * [repl\_rrefs](#pylightnix.repl.repl_rrefs)
+    * [repl\_rref](#pylightnix.repl.repl_rref)
+    * [repl\_buildargs](#pylightnix.repl.repl_buildargs)
+    * [repl\_build](#pylightnix.repl.repl_build)
+    * [repl\_cancel](#pylightnix.repl.repl_cancel)
+    * [repl\_cancelBuild](#pylightnix.repl.repl_cancelBuild)
   * [pylightnix.stages](#pylightnix.stages)
   * [pylightnix.stages.trivial](#pylightnix.stages.trivial)
     * [mknode](#pylightnix.stages.trivial.mknode)
@@ -292,6 +306,17 @@ being currently configured.
 PromisePaths do exist only at the time of instantiation. Pylightnix converts
 them into [RefPath](#pylightnix.types.RefPath) before the realization
 starts.
+
+Example:
+```python
+from pylightnix import mkconfig, mkdrv, promise
+def myconfig()->Config:
+name = "config-of-some-stage"
+promise_binary = [promise, 'usr','bin','hello']
+other_params = 42
+return mkconfig(locals())
+dref=mkdrv(..., config=myconfig(), ...)
+```
 
 <a name="pylightnix.types.Context"></a>
 ## `Context`
@@ -979,7 +1004,7 @@ See also [build_deref](#pylightnix.core.build_deref)
 ## `store_gc()`
 
 ```python
-def store_gc(keep_drefs_: List[DRef], keep_rrefs_: List[RRef]) -> Tuple[Set[DRef],Set[RRef]]
+def store_gc(keep_drefs: List[DRef], keep_rrefs: List[RRef]) -> Tuple[Set[DRef],Set[RRef]]
 ```
 
 Take roots which are in use and should not be removed. Return roots which
@@ -1222,23 +1247,16 @@ def context_serialize(c: Context) -> str
 promise = PYLIGHTNIX_PROMISE_TAG
 ```
 
-Used to create [PromisePath](#pylightnix.types.PromisePath) as a start
-marker. Promise paths exist only during
-[instantiation](#pylightnix.core.instantiate). Before the realization, the
-core replaces all PromisePaths with the corresponding
+A magic constant which is required to create
+[PromisePath](#pylightnix.types.PromisePath), where it is used as a start
+marker. Promise paths do exist only during
+[instantiation](#pylightnix.core.instantiate) pass. Before the realization
+pass, the core replaces all PromisePaths with the corresponding
 [RefPaths](#pylightnix.type.RefPath) automatically (see
 [store_config](#pylightnix.core.store_config)).
 
-Converted RefPaths may be converted into filesystem paths by
+Ex-PromisePaths may be converted into filesystem paths by
 [build_path](#pylightnix.core.build_path) as ususal.
-
-Example:
-```python
-def hello_builder_config()->Config:
-promise_binary = [promise, 'usr','bin','hello']
-return mkconfig(locals())
-dref=mkdrv(..., config=hello_builder_config(), ...)
-```
 
 <a name="pylightnix.core.assert_promise_fulfilled"></a>
 ## `assert_promise_fulfilled()`
@@ -1331,7 +1349,7 @@ RealizeSeqGen = Generator[Tuple[DRef,Context,Derivation],Tuple[Optional[List[RRe
 ## `realize()`
 
 ```python
-def realize(closure: Closure, force_rebuild: Union[List[DRef],bool] = []) -> RRef
+def realize(closure: Closure, force_rebuild: Union[List[DRef],bool] = [], assert_realized: List[DRef] = []) -> RRef
 ```
 
 A simplified version of [realizeMany](#pylightnix.core.realizeMany).
@@ -1341,7 +1359,7 @@ Expects only one output path.
 ## `realizeMany()`
 
 ```python
-def realizeMany(closure: Closure, force_rebuild: Union[List[DRef],bool] = []) -> List[RRef]
+def realizeMany(closure: Closure, force_rebuild: Union[List[DRef],bool] = [], assert_realized: List[DRef] = []) -> List[RRef]
 ```
 
 Obtain one or more realizations of a stage's
@@ -1391,7 +1409,7 @@ print('Available realizations:', [rref2path(rref) for rref in rrefs])
 ## `realizeSeq()`
 
 ```python
-def realizeSeq(closure: Closure, force_interrupt: List[DRef] = []) -> RealizeSeqGen
+def realizeSeq(closure: Closure, force_interrupt: List[DRef] = [], assert_realized: List[DRef] = []) -> RealizeSeqGen
 ```
 
 Sequentially realize the closure by issuing steps via Python's generator
@@ -1659,6 +1677,145 @@ Realize the derivation pointed by `dref` by constructing it's
 [Closure](#pylightnix.types.Closure) based on the contents of the global
 dependency manager and [realizing](#pylightnix.core.realizeMany) this closure.
 
+<a name="pylightnix.repl"></a>
+# `pylightnix.repl`
+
+This module defines variants of `instantiate` and `realize` functions, which
+are suitable for REPL shells. Repl-friendly wrappers (see `repl_realize`) could
+pause the computation, save the Pylightnix state into a variable and return to
+the REPL's main loop. At this point user could alter the state of the whole
+system.  Finally, `repl_continue` or `repl_cancel` could be called to either
+continue or cancel the realization.
+
+<a name="pylightnix.repl.ReplHelper"></a>
+## `ReplHelper` Objects
+
+```python
+def __init__(self, gen: RealizeSeqGen) -> None
+```
+
+
+<a name="pylightnix.repl.ReplHelper.__init__"></a>
+### `ReplHelper.__init__()`
+
+```python
+def __init__(self, gen: RealizeSeqGen) -> None
+```
+
+
+<a name="pylightnix.repl.ERR_INVALID_RH"></a>
+## `ERR_INVALID_RH`
+
+```python
+ERR_INVALID_RH = "Neither global, nor user-defined ReplHelper is valid"
+```
+
+
+<a name="pylightnix.repl.ERR_INACTIVE_RH"></a>
+## `ERR_INACTIVE_RH`
+
+```python
+ERR_INACTIVE_RH = "REPL session is not paused or was already unpaused"
+```
+
+
+<a name="pylightnix.repl.repl_continueMany"></a>
+## `repl_continueMany()`
+
+```python
+def repl_continueMany(out_paths: Optional[List[Path]] = None, out_rrefs: Optional[List[RRef]] = None, rh: Optional[ReplHelper] = None) -> Optional[List[RRef]]
+```
+
+
+<a name="pylightnix.repl.repl_continue"></a>
+## `repl_continue()`
+
+```python
+def repl_continue(out_paths: Optional[List[Path]] = None, out_rrefs: Optional[List[RRef]] = None, rh: Optional[ReplHelper] = None) -> Optional[RRef]
+```
+
+
+<a name="pylightnix.repl.repl_continueBuild"></a>
+## `repl_continueBuild()`
+
+```python
+def repl_continueBuild(b: Build, rh: Optional[ReplHelper] = None) -> Optional[RRef]
+```
+
+
+<a name="pylightnix.repl.repl_realize"></a>
+## `repl_realize()`
+
+```python
+def repl_realize(closure: Closure, force_interrupt: Union[List[DRef],bool] = True) -> ReplHelper
+```
+
+TODO
+
+Example:
+```python
+rh=repl_realize(instantiate(mystage), force_interrupt=True)
+# ^^^ `repl_realize` returnes the `ReplHelper` object which holds the state of
+# incomplete realization
+b:Build=repl_build()
+# ^^^ Access it's build object. Now we may think that we are inside the
+# realization function. Lets do some hacks.
+with open(join(build_outpath(b),'artifact.txt'), 'w') as f:
+  f.write("Fooo")
+repl_continueBuild(b)
+rref=repl_rref(rh)
+# ^^^ Since we didn't program any other pasues, we should get the usual RRef
+# holding the result of our hacks.
+```
+
+<a name="pylightnix.repl.repl_rrefs"></a>
+## `repl_rrefs()`
+
+```python
+def repl_rrefs(rh: ReplHelper) -> Optional[List[RRef]]
+```
+
+
+<a name="pylightnix.repl.repl_rref"></a>
+## `repl_rref()`
+
+```python
+def repl_rref(rh: ReplHelper) -> Optional[RRef]
+```
+
+
+<a name="pylightnix.repl.repl_buildargs"></a>
+## `repl_buildargs()`
+
+```python
+def repl_buildargs(rh: Optional[ReplHelper] = None, buildtime: bool = True) -> BuildArgs
+```
+
+
+<a name="pylightnix.repl.repl_build"></a>
+## `repl_build()`
+
+```python
+def repl_build(rh: Optional[ReplHelper] = None, buildtime: bool = True) -> Build
+```
+
+
+<a name="pylightnix.repl.repl_cancel"></a>
+## `repl_cancel()`
+
+```python
+def repl_cancel(rh: Optional[ReplHelper] = None) -> None
+```
+
+
+<a name="pylightnix.repl.repl_cancelBuild"></a>
+## `repl_cancelBuild()`
+
+```python
+def repl_cancelBuild(b: Build, rh: Optional[ReplHelper] = None) -> None
+```
+
+
 <a name="pylightnix.stages"></a>
 # `pylightnix.stages`
 
@@ -1696,16 +1853,16 @@ def checkpaths(m: Manager, promises: dict, name: str = "checkpaths") -> DRef
 ## `redefine()`
 
 ```python
-def redefine(m: Manager, dref: DRef, new_config: Callable[[Config],Config], new_matcher: Optional[Matcher] = None, new_realizer: Optional[Realizer] = None, check_promises: bool = True) -> DRef
+def redefine(stage: Stage, new_config: Callable[[Config],Config] = lambda c:c, new_matcher: Optional[Matcher] = None, new_realizer: Optional[Realizer] = None, check_promises: bool = True) -> Stage
 ```
 
 Define a new Derivation based on the existing one, by updating it's
 config, optionally re-writing it's matcher, or it's realizer.
 
 Arguments:
-- `m:Manager` Pylightnix manager object
-- `dref:DRef` Reference to the Derivation to redefine
-- `new_config:Callable[[Config],Config]` A function to update the `dref`'s config.
+- `stage:Stage` Stage to re-define
+- `new_config:Callable[[Config],Config]` A function to update the `dref`'s
+  config. Defaults to identity function.
 - `new_matcher:Optional[Matcher]=None` Optional new matcher (defaults to the
   existing matcher)
 - `new_realizer:Optional[Realizer]=None` Optional new realizer (defaults to
@@ -1715,7 +1872,7 @@ Arguments:
 ## `realized()`
 
 ```python
-def realized(stage: Any, kwargs) -> Stage
+def realized(stage: Any) -> Stage
 ```
 
 [Re-define](#pylightnix.stages.trivial.redefine) stage's realizer by
