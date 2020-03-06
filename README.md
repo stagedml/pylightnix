@@ -33,16 +33,22 @@ Contents
 Features
 --------
 
-Functions:
+Logic:
 
-* Two-staged build process allows users to check the build plan before executing
-  it.
-* Focused on non-deterministic build processes, formalizing comparison and selection
-  of build results.
-* Clean and compact implementation:
-  - Suitable for Data science / Machine learning experiments
-  - Match applications which fit into
-    [blackboard design pattern](https://en.wikipedia.org/wiki/Blackboard_design_pattern).
+* Pylightnix allows us to Create, query and maintain linked objects, called here
+  **stages**.
+* Creation of stages includes two passes: At the **instantiation** pass we check
+  configurations of the whole graph of linked objects. At the **realization**
+  pass we decide whether to take existing realization or to run the constructors
+  to get new ones.
+* Pylightnix is focused on non-deterministic build processes such as machine
+  learning. We formalize comparison and selection of competing results of such
+  processes.
+* The possible applications of Pylightnix include:
+  - Data science / Machine learning experiments (see [StagedML](https://github.com/stagedml/stagedml))
+  - Domain-specific package managers
+  - Other applications which fit into blackboard design pattern
+    ([wiki](https://en.wikipedia.org/wiki/Blackboard_design_pattern)).
 
 Implementation:
 
@@ -52,9 +58,13 @@ Implementation:
 * No non-standard Python dependencies. We do require
   [wget](https://www.gnu.org/software/wget/) and
   [atool](https://www.nongnu.org/atool/) system packages.
-* Alas, Pylightnix is not a production-ready yet! Nor parallelism, neither network
-  synchronization are supported. Also, we didn't check it on any operating system
-  besides Linux.
+* Alas, Pylightnix is not a production-ready yet! Nor parallelism, neither
+  network synchronization are supported out of the box. Also, we didn't check it
+  on any operating system besides Linux.
+  - We tried our best to make base Pylightnix operations atomic. This
+    allows running several instances of the library on a single storage.
+  - As a consequence, stage synchronization of different machines should be
+    possible by exclusively running `rsync` tool on their storages.
 
 
 Related work

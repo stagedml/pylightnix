@@ -97,7 +97,6 @@ def redefine(
   config, optionally re-writing it's matcher, or it's realizer.
 
   Arguments:
-  - `m:Manager` Pylightnix manager object
   - `stage:Stage` Stage to re-define
   - `new_config:Callable[[Config],Config]` A function to update the `dref`'s
     config. Defaults to identity function.
