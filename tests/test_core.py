@@ -1,4 +1,4 @@
-from pylightnix import ( Config, instantiate, DRef, RRef, Path, mklogdir,
+from pylightnix import ( instantiate, DRef, RRef, Path, mklogdir,
     dirhash, assert_valid_dref, assert_valid_rref, store_deps, store_deepdeps,
     store_gc, assert_valid_hash, assert_valid_config, Manager, mkcontext,
     store_realize, store_rrefs, mkdref, mkrref, unrref, undref, realize,
@@ -10,7 +10,7 @@ from pylightnix import ( Config, instantiate, DRef, RRef, Path, mklogdir,
     assert_recursion_manager_empty, match, latest, best, exact, Key,
     match_latest, match_all, match_some, match_n, realizeMany, build_outpaths,
     scanref_dict, config_dict, promise, checkpaths, mklens, isrref,
-    pconfig_cattrs, ConfigWithPromises )
+    pconfig_cattrs, Config )
 
 from tests.imports import ( given, Any, Callable, join, Optional, islink,
     isfile, List, randint, sleep, rmtree, system, S_IWRITE, S_IREAD, S_IEXEC,
@@ -134,7 +134,7 @@ def test_realize_readonly()->None:
       with open(join(build_outpath(b),'exe'),'w') as f:
         f.write('#!/bin/sh\necho "Fooo"')
       chmod(join(build_outpath(b),'exe'), S_IWRITE|S_IREAD|S_IEXEC)
-    rref2=realize(instantiate(mkdrv, ConfigWithPromises({}),
+    rref2=realize(instantiate(mkdrv, Config({}),
                               match_only(), build_wrapper(_realize)))
     assert Popen([join(rref2path(rref2),'exe')],
         stdout=PIPE).stdout.read()=='Fooo\n'.encode('utf-8'), \
@@ -274,7 +274,7 @@ def test_build_deref()->None:
   with setup_storage('test_build_deref'):
 
     def _depuser(m:Manager, sources:dict)->DRef:
-      def _instantiate()->ConfigWithPromises:
+      def _instantiate()->Config:
         return mkconfig(sources)
       def _realize(b)->None:
         o = build_outpath(b)
@@ -299,7 +299,7 @@ def test_build_deref()->None:
 def test_build_cattrs():
   with setup_storage('test_build_cattrs'):
     def _setting(m:Manager)->DRef:
-      def _instantiate()->ConfigWithPromises:
+      def _instantiate()->Config:
         return mkconfig({'a':1,'b':2})
       def _realize(b)->None:
         c = build_cattrs(b)
@@ -319,7 +319,7 @@ def test_build_name()->None:
   with setup_storage('test_build_name'):
     n:str = ""
     def _setting(m:Manager)->DRef:
-      def _instantiate()->ConfigWithPromises:
+      def _instantiate()->Config:
         return mkconfig({'name':'foobar'})
       def _realize(b)->None:
         nonlocal n
@@ -375,7 +375,7 @@ def test_match_only()->None:
 
     build:int = 0
     def _setting(m:Manager)->DRef:
-      def _instantiate()->ConfigWithPromises:
+      def _instantiate()->Config:
         return mkconfig({'a':1})
       def _realize(b:Build)->None:
         nonlocal build
@@ -402,7 +402,7 @@ def test_match_best()->None:
     fname:str='score'
     score:str='0'
     def _mklrg(m, cfg, matcher):
-      def _instantiate()->ConfigWithPromises:
+      def _instantiate()->Config:
         return mkconfig(cfg)
       def _realize(b:Build)->None:
         nonlocal score, fname, matcher
@@ -450,7 +450,7 @@ def test_match_latest():
     def _realize(b:Build)->None:
       for i,out in enumerate(build_outpaths(b, nouts=nouts)):
         assert trywrite(Path(join(out,'artifact')),str(data)+'_'+str(i))
-    return mkdrv(m, ConfigWithPromises(cfg), matcher,
+    return mkdrv(m, Config(cfg), matcher,
                     build_wrapper(_realize, buildtime=buildtime))
 
   with setup_storage('test_match_latest'):
@@ -492,7 +492,7 @@ def test_match_all():
     def _realize(b:Build)->None:
       for i,out in enumerate(build_outpaths(b, nouts=nouts)):
         assert trywrite(Path(join(out,'artifact')),str(nouts+i))
-    return mkdrv(m, ConfigWithPromises(cfg), matcher, build_wrapper(_realize))
+    return mkdrv(m, Config(cfg), matcher, build_wrapper(_realize))
 
   with setup_storage('test_match_all_empty'):
     clo=instantiate(_mknode, {'a':1}, match_all(), 5)

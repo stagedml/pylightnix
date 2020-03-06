@@ -20,14 +20,14 @@ from pylightnix.core import ( mkdrv, mkconfig, mkbuild, match_only,
     assert_valid_name, build_outpath, datahash, config_dict, store_config,
     build_outpaths, match_some, assert_valid_refpath, build_paths, rref2path,
     build_deref_, build_cattrs, build_wrapper, store_config_ )
-from pylightnix.types import ( RefPath, Manager, Config, Context, Build, Name,
+from pylightnix.types import ( RefPath, Manager, Context, Build, Name,
     DRef, RRef, Any, Optional, Dict, Hash, Path, List, Callable, Matcher,
-    Realizer, Stage, ConfigWithPromises )
+    Realizer, Stage, Config )
 from pylightnix.utils import ( forcelink, isrefpath, traverse_dict )
 
 
 def mknode(m:Manager, sources:dict, artifacts:Dict[Name,bytes]={})->DRef:
-  def _instantiate()->ConfigWithPromises:
+  def _instantiate()->Config:
     d=deepcopy(sources)
     assert '__artifacts__' not in d, "config shouldn't contain reserved field '__artifacts__'"
     d.update({'__artifacts__':{an:Hash(datahash([av])) for (an,av) in artifacts.items()}})
@@ -57,7 +57,7 @@ def checkpaths(m:Manager, promises:dict, name:str="checkpaths")->DRef:
     traverse_dict(promises,_mut)
     return refpaths
 
-  def _config()->ConfigWithPromises:
+  def _config()->Config:
     assert len(promises.keys())>0
     d:Dict[str,Any]={'name':name}
     for dref,rpaths in _promises().items():
@@ -89,7 +89,7 @@ def checkpaths(m:Manager, promises:dict, name:str="checkpaths")->DRef:
 
 def redefine(
     stage:Stage,
-    new_config:Callable[[ConfigWithPromises],ConfigWithPromises]=lambda c:c,
+    new_config:Callable[[Config],Config]=lambda c:c,
     new_matcher:Optional[Matcher]=None,
     new_realizer:Optional[Realizer]=None,
     check_promises:bool=True)->Stage:
@@ -98,7 +98,7 @@ def redefine(
 
   Arguments:
   - `stage:Stage` Stage to re-define
-  - `new_config:Callable[[Config],Config]` A function to update the `dref`'s
+  - `new_config:Callable[[RConfig],RConfig]` A function to update the `dref`'s
     config. Defaults to identity function.
   - `new_matcher:Optional[Matcher]=None` Optional new matcher (defaults to the
     existing matcher)

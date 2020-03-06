@@ -46,7 +46,7 @@ def test_config(cfg):
 def test_config2()->None:
   try:
     c = mkconfig({'a':(3,1)})
-    raise ShouldHaveFailed(f'Config {c} is surprizingly valid')
+    raise ShouldHaveFailed(f'RConfig {c} is surprizingly valid')
   except AssertionError:
     pass
 

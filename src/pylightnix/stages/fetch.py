@@ -16,8 +16,8 @@
 
 from pylightnix.imports import (sha256 as sha256sum, urlparse, Popen, remove,
     basename, join, rename, isfile, copyfile )
-from pylightnix.types import ( DRef, Manager, Config, Build, Context, Name,
-    Path, Optional, List, ConfigWithPromises )
+from pylightnix.types import ( DRef, Manager, Build, Context, Name,
+    Path, Optional, List, Config )
 from pylightnix.core import ( mkconfig, mkbuild, build_cattrs, build_outpath,
     mkdrv, match_only, build_wrapper, promise )
 from pylightnix.utils import ( try_executable, makedirs )
@@ -85,7 +85,7 @@ def fetchurl(m:Manager,
   import pylightnix.core
   tmpfetchdir=join(pylightnix.core.PYLIGHTNIX_TMP,'fetchurl')
 
-  def _instantiate()->ConfigWithPromises:
+  def _instantiate()->Config:
     assert WGET() is not None
     assert AUNPACK() is not None
     makedirs(tmpfetchdir, exist_ok=True)
@@ -150,7 +150,7 @@ def fetchlocal(m:Manager,
 
   """
 
-  def _instantiate()->ConfigWithPromises:
+  def _instantiate()->Config:
     assert AUNPACK() is not None
     kwargs.update({'name':name or 'fetchlocal',
                    'path':path,

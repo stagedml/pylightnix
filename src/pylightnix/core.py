@@ -27,9 +27,9 @@ from pylightnix.utils import ( dirhash, assert_serializable, assert_valid_dict,
 from pylightnix.types import (
     Dict, List, Any, Tuple, Union, Optional, Iterable, IO, Path, Hash, DRef,
     RRef, RefPath, PromisePath, HashPart, Callable, Context, Name, NamedTuple,
-    Build, Config, ConfigAttrs, Derivation, Stage, Manager, Matcher, Realizer,
+    Build, RConfig, ConfigAttrs, Derivation, Stage, Manager, Matcher, Realizer,
     Set, Closure, Generator, Key, TypeVar, BuildArgs, PYLIGHTNIX_PROMISE_TAG,
-    PYLIGHTNIX_CLAIM_TAG, ConfigWithPromises )
+    PYLIGHTNIX_CLAIM_TAG, Config )
 
 #: *Do not change!*
 #: Tracks the version of pylightnix storage
@@ -105,19 +105,19 @@ def mkname(s:str)->Name:
 #                         |___/
 
 
-def mkconfig(d:dict)->ConfigWithPromises:
-  return ConfigWithPromises(assert_valid_dict(d,'dict'))
+def mkconfig(d:dict)->Config:
+  return Config(assert_valid_dict(d,'dict'))
 
-def config_dict(c:Config)->dict:
+def config_dict(c:RConfig)->dict:
   return deepcopy(c.__dict__)
 
-def pconfig_dict(cp:ConfigWithPromises)->dict:
+def pconfig_dict(cp:Config)->dict:
   return deepcopy(cp.body)
 
-def config_cattrs(c:Config)->Any:
+def config_cattrs(c:RConfig)->Any:
   return ConfigAttrs(config_dict(c))
 
-def pconfig_cattrs(cp:ConfigWithPromises)->Any:
+def pconfig_cattrs(cp:Config)->Any:
   return ConfigAttrs(pconfig_dict(cp))
 
 def dict_serialize(d:dict)->str:
@@ -126,21 +126,21 @@ def dict_serialize(d:dict)->str:
 def dict_hash(d:dict)->Hash:
   return datahash([encode(dict_serialize(d))])
 
-def config_hash(c:Config)->Hash:
+def config_hash(c:RConfig)->Hash:
   return dict_hash(config_dict(c))
 
 def dict_name(d:dict)->Name:
   """ Return short human-readable name of a config """
   return mkname(d.get('name','unnamed'))
 
-def config_name(c:Config)->Name:
+def config_name(c:RConfig)->Name:
   return dict_name(config_dict(c))
 
-def config_deps(c:Config)->Set[DRef]:
+def config_deps(c:RConfig)->Set[DRef]:
   drefs,_=scanref_dict(config_dict(c))
   return set(drefs)
 
-def config_substitutePromises(cp:ConfigWithPromises, r:DRef)->Config:
+def config_substitutePromises(cp:Config, r:DRef)->RConfig:
   """ Replace all Promise tags with DRef `r`. In particular, all PromisePaths
   are converted into RefPaths. """
   d=deepcopy(cp.body)
@@ -150,9 +150,9 @@ def config_substitutePromises(cp:ConfigWithPromises, r:DRef)->Config:
     else:
       return val
   traverse_dict(d,_mut)
-  return Config(d)
+  return RConfig(d)
 
-def config_promises(cp:ConfigWithPromises, r:DRef)->List[Tuple[str,PromisePath]]:
+def config_promises(cp:Config, r:DRef)->List[Tuple[str,PromisePath]]:
   promises=[]
   def _mut(key:Any, val:Any):
     nonlocal promises
@@ -228,12 +228,12 @@ def mkrefpath(r:DRef, items:List[str]=[])->RefPath:
   assert_valid_dref(r)
   return [str(r)]+items
 
-def store_config_(r:DRef)->ConfigWithPromises:
-  return assert_valid_configpromises(ConfigWithPromises(
+def store_config_(r:DRef)->Config:
+  return assert_valid_configpromises(Config(
     readjson(join(store_dref2path(r),'config.json'))))
 
-def store_config(r:Union[DRef,RRef])->Config:
-  """ Read the [Config](#pylightnix.types.Config) of the derivatoin referenced by `r`. """
+def store_config(r:Union[DRef,RRef])->RConfig:
+  """ Read the [RConfig](#pylightnix.types.RConfig) of the derivatoin referenced by `r`. """
   assert isrref(r) or isdref(r), (
       f"Invalid reference {r}. Expected either RRef or DRef." )
   if isrref(r):
@@ -339,7 +339,7 @@ def store_gc(keep_drefs:List[DRef], keep_rrefs:List[RRef])->Tuple[Set[DRef],Set[
   return remove_drefs,remove_rrefs
 
 
-def store_instantiate(cp:ConfigWithPromises)->DRef:
+def store_instantiate(cp:Config)->DRef:
   """ Place new instantiation into the storage. We attempt to do it atomically
   by moving the directory right into it's place.
 
@@ -444,8 +444,8 @@ def build_wrapper(f:Callable[[Build],None], buildtime:bool=True):
   [Realizer](#pylightnix.types.Realizer) """
   return build_wrapper_(f,Build,buildtime)
 
-def build_config(b:Build)->Config:
-  """ Return the [Config](#pylightnix.types.Config) object of the realization
+def build_config(b:Build)->RConfig:
+  """ Return the [RConfig](#pylightnix.types.RConfig) object of the realization
   being built. """
   return store_config(b.dref)
 
@@ -511,7 +511,7 @@ def build_paths(b:Build, refpath:RefPath)->List[Path]:
 
   Example:
   ```python
-  def config(dep:DRef)->Config:
+  def config(dep:DRef)->RConfig:
     name = 'example-stage'
     input = [dep,"path","to","input.txt"]
     output = [promise,"output.txt"]
@@ -607,7 +607,7 @@ def assert_promise_fulfilled(k:str, p:PromisePath, o:Path)->None:
 
 
 def mkdrv(m:Manager,
-          config:ConfigWithPromises,
+          config:Config,
           matcher:Matcher,
           realizer:Realizer,
           check_promises:bool=True)->DRef:
@@ -637,7 +637,7 @@ def mkdrv(m:Manager,
   dref=store_instantiate(config)
   if dref in m.builders:
     print((f"Overwriting either the matcher or the realizer of '{dref}'. "
-           f"Config:\n{store_config_(dref).body}"))
+           f"RConfig:\n{store_config_(dref).body}"))
 
   def _promise_aware(realizer)->Realizer:
     def _matcher(dref:DRef,ctx:Context)->List[Path]:
@@ -971,13 +971,13 @@ def assert_valid_refpath(refpath:RefPath)->None:
   assert len(refpath)>0, error_msg
   assert_valid_dref(refpath[0])
 
-def assert_valid_config(c:Config)->Config:
-  assert c is not None, "Expected `Config` object, but None was passed"
+def assert_valid_config(c:RConfig)->RConfig:
+  assert c is not None, "Expected `RConfig` object, but None was passed"
   assert_valid_name(config_name(c))
-  assert_valid_dict(c.__dict__, 'Config')
+  assert_valid_dict(c.__dict__, 'RConfig')
   return c
 
-def assert_valid_configpromises(cp:ConfigWithPromises)->ConfigWithPromises:
+def assert_valid_configpromises(cp:Config)->Config:
   assert_valid_name(dict_name(cp.body))
   assert_valid_dict(cp.body, 'Config')
   return cp
@@ -1020,12 +1020,12 @@ def assert_valid_closure(closure:Closure)->None:
   assert closure.dref in [d.dref for d in closure.derivations], \
       "Closure should contain target derivation"
 
-def warn_rref_deps(cp:ConfigWithPromises)->None:
+def warn_rref_deps(cp:Config)->None:
   _,rrefs=scanref_dict(cp.body)
   if len(rrefs)>0:
     print(f"Warning: RRef dependencies were found in config {cp.body}:\n{rrefs}")
 
-# def assert_no_rref_deps(c:Config)->None:
+# def assert_no_rref_deps(c:RConfig)->None:
 #   _,rrefs=scanref_dict(config_dict(c))
 #   assert len(rrefs)==0, (
 #       f"RRef dependencies are forbidden, but config {config_dict(c)} containes {rrefs}")

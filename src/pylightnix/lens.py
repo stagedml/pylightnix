@@ -36,7 +36,7 @@ class Lens:
      - `Build` helper class
      - `DRef` references
      - `RRef` references
-     - `Config` configuration wrappers
+     - `RConfig` configuration wrappers
      - Regular Python dictionaries
   2. Navigation through the nested configurations. Lenses access configuration
      attributes, automatically dereference Pylightnix references and produce other
