@@ -61,10 +61,11 @@ Implementation:
 * Alas, Pylightnix is not a production-ready yet! Nor parallelism, neither
   network synchronization are supported out of the box. Also, we didn't check it
   on any operating system besides Linux.
-  - We tried our best to make base Pylightnix operations atomic. This
-    allows running several instances of the library on a single storage.
-  - As a consequence, stage synchronization of different machines should be
-    possible by exclusively running `rsync` tool on their storages.
+  - We tried our best to make Pylightnix' operations on storage atomic. Among
+    other benefits, this design allows running multiple instances of the library
+    on a single storage at once.
+  - Synchronization of different machines should be possible by exclusively
+    running `rsync` tool on their storages.
 
 
 Related work
