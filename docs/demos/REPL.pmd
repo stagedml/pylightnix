@@ -231,7 +231,7 @@ mnist_train(b)
 mnist_eval_correct(b)
 ```
 
-When we are done (it turns out that we don't have any errors), we could call
+When we are done (it turns out that we don't have other errors), we could call
 `repl_continue` or it's simpler equivalent `repl_continueBuild` to take the
 Pylightnix state out of the ReplHelper and continue it's normal execution
 
