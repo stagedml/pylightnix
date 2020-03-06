@@ -1680,7 +1680,7 @@ dependency manager and [realizing](#pylightnix.core.realizeMany) this closure.
 <a name="pylightnix.repl"></a>
 # `pylightnix.repl`
 
-This module defines variants of `instantiate` and `realize` functions, which
+Repl module defines variants of `instantiate` and `realize` functions, which
 are suitable for REPL shells. Repl-friendly wrappers (see `repl_realize`) could
 pause the computation, save the Pylightnix state into a variable and return to
 the REPL's main loop. At this point user could alter the state of the whole

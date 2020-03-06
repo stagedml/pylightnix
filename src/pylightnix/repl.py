@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-""" This module defines variants of `instantiate` and `realize`, suitable for
-REPL shells. They could pause the computation, save the Pylightnix state into a
-variable and return to the REPL's main loop. Good for debugging.
+""" Repl module defines variants of `instantiate` and `realize` functions, which
+are suitable for REPL shells. Repl-friendly wrappers (see `repl_realize`) could
+pause the computation, save the Pylightnix state into a variable and return to
+the REPL's main loop. At this point user could alter the state of the whole
+system.  Finally, `repl_continue` or `repl_cancel` could be called to either
+continue or cancel the realization.
 """
 
 from pylightnix.utils import ( dirrm )
@@ -78,6 +81,25 @@ def repl_continueBuild(b:Build, rh:Optional[ReplHelper]=None)->Optional[RRef]:
   return repl_continue(out_paths=b.outpaths, rh=rh)
 
 def repl_realize(closure:Closure, force_interrupt:Union[List[DRef],bool]=True)->ReplHelper:
+  """
+  TODO
+
+  Example:
+  ```python
+  rh=repl_realize(instantiate(mystage), force_interrupt=True)
+  # ^^^ `repl_realize` returnes the `ReplHelper` object which holds the state of
+  # incomplete realization
+  b:Build=repl_build()
+  # ^^^ Access it's build object. Now we may think that we are inside the
+  # realization function. Lets do some hacks.
+  with open(join(build_outpath(b),'artifact.txt'), 'w') as f:
+    f.write("Fooo")
+  repl_continueBuild(b)
+  rref=repl_rref(rh)
+  # ^^^ Since we didn't program any other pasues, we should get the usual RRef
+  # holding the result of our hacks.
+  ```
+  """
   global PYLIGHTNIX_REPL_HELPER
   force_interrupt_:List[DRef]=[]
   if isinstance(force_interrupt,bool):

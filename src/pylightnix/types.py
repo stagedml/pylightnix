@@ -132,6 +132,17 @@ PYLIGHTNIX_PROMISE_TAG = "__promise__"
 #: PromisePaths do exist only at the time of instantiation. Pylightnix converts
 #: them into [RefPath](#pylightnix.types.RefPath) before the realization
 #: starts.
+#:
+#: Example:
+#: ```python
+#: from pylightnix import mkconfig, mkdrv, promise
+#: def myconfig()->Config:
+#:   name = "config-of-some-stage"
+#:   promise_binary = [promise, 'usr','bin','hello']
+#:   other_params = 42
+#:   return mkconfig(locals())
+#: dref=mkdrv(..., config=myconfig(), ...)
+#: ```
 PromisePath = List[Any]
 
 #: Context type is an alias for Python dict which maps

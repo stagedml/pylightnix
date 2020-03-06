@@ -570,23 +570,16 @@ def context_serialize(c:Context)->str:
 #           |_|
 
 
-#: Used to create [PromisePath](#pylightnix.types.PromisePath) as a start
-#: marker. Promise paths exist only during
-#: [instantiation](#pylightnix.core.instantiate). Before the realization, the
-#: core replaces all PromisePaths with the corresponding
+#: A magic constant which is required to create
+#: [PromisePath](#pylightnix.types.PromisePath), where it is used as a start
+#: marker. Promise paths do exist only during
+#: [instantiation](#pylightnix.core.instantiate) pass. Before the realization
+#: pass, the core replaces all PromisePaths with the corresponding
 #: [RefPaths](#pylightnix.type.RefPath) automatically (see
 #: [store_config](#pylightnix.core.store_config)).
 #:
-#: Converted RefPaths may be converted into filesystem paths by
+#: Ex-PromisePaths may be converted into filesystem paths by
 #: [build_path](#pylightnix.core.build_path) as ususal.
-#:
-#: Example:
-#: ```python
-#: def hello_builder_config()->Config:
-#:   promise_binary = [promise, 'usr','bin','hello']
-#:   return mkconfig(locals())
-#: dref=mkdrv(..., config=hello_builder_config(), ...)
-#: ```
 promise = PYLIGHTNIX_PROMISE_TAG
 
 def assert_promise_fulfilled(k:str, p:RefPath, o:Path)->None:
