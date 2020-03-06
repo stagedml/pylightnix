@@ -286,7 +286,7 @@ print(mnist1)
 x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
-rref:603265c11db3cb4ccd41c3ca2224b81c-62bf4c470bd346d4b4431438958999eb-unnamed
+rref:a40871536aad231af64a99b1b9cf153f-62bf4c470bd346d4b4431438958999eb-unnamed
 ```
 
 
@@ -312,7 +312,7 @@ print(mnist2)
 x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
-rref:4e8a74fe9b9383e541f455c7e6ca0aff-62bf4c470bd346d4b4431438958999eb-unnamed
+rref:911aea3045dd817856386f9572a50d07-62bf4c470bd346d4b4431438958999eb-unnamed
 ```
 
 
@@ -345,7 +345,7 @@ catref(mnist1,['accuracy.txt'])
 ```
 
 ```
-['0.9842']
+['0.9836']
 ```
 
 
@@ -354,7 +354,7 @@ catref(mnist2,['accuracy.txt'])
 ```
 
 ```
-['0.9849']
+['0.9844']
 ```
 
 
@@ -378,8 +378,8 @@ mnist_best = realize_inplace(instantiate_inplace(model_best))
 ```
 
 ```
-Overwriting matcher or realizer of derivation dref:62bf4c470bd346d4b4431438958999eb-unnamed, configured as:
-{'accuracy': ['dref:62bf4c470bd346d4b4431438958999eb-unnamed', 'accuracy.txt'], 'dataset': ['dref:90531e2f6d210ae159c0100d59f50b2c-mnist', 'mnist.npz'], 'num_epoches': 1, 'learning_rate': 0.001}
+Overwriting either the matcher or the realizer of 'dref:62bf4c470bd346d4b4431438958999eb-unnamed'. RConfig:
+Config({'accuracy': ['__promise__', 'accuracy.txt'], 'dataset': ['dref:90531e2f6d210ae159c0100d59f50b2c-mnist', 'mnist.npz'], 'num_epoches': 1, 'learning_rate': 0.001})
 ```
 
 
@@ -388,7 +388,7 @@ catref(mnist_best,['accuracy.txt'])
 ```
 
 ```
-['0.9849']
+['0.9844']
 ```
 
 
