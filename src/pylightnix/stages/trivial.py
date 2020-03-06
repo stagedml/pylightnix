@@ -20,9 +20,9 @@ from pylightnix.core import ( mkdrv, mkconfig, mkbuild, match_only,
     assert_valid_name, build_outpath, datahash, config_dict, store_config,
     build_outpaths, match_some, assert_valid_refpath, build_paths, rref2path,
     build_deref_, build_cattrs, build_wrapper, store_config_ )
-from pylightnix.types import ( RefPath, Manager, Config, Context, Build, Name,
+from pylightnix.types import ( RefPath, Manager, Context, Build, Name,
     DRef, RRef, Any, Optional, Dict, Hash, Path, List, Callable, Matcher,
-    Realizer, Stage )
+    Realizer, Stage, Config )
 from pylightnix.utils import ( forcelink, isrefpath, traverse_dict )
 
 
@@ -98,7 +98,7 @@ def redefine(
 
   Arguments:
   - `stage:Stage` Stage to re-define
-  - `new_config:Callable[[Config],Config]` A function to update the `dref`'s
+  - `new_config:Callable[[RConfig],RConfig]` A function to update the `dref`'s
     config. Defaults to identity function.
   - `new_matcher:Optional[Matcher]=None` Optional new matcher (defaults to the
     existing matcher)

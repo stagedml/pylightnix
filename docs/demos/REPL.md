@@ -183,9 +183,9 @@ x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
 
-Epoch 00001: val_accuracy improved from -inf to 0.98358, saving model
+Epoch 00001: val_accuracy improved from -inf to 0.98300, saving model
 to
-/workspace/_pylightnix/tmp/200306-15:05:52:219989+0300_d20f6e78_ak4gxjzi/checkpoint.ckpt
+/workspace/_pylightnix/tmp/200306-21:37:51:833853+0300_d20f6e78_8070gvlb/checkpoint.ckpt
 ```
 
 ```
@@ -196,43 +196,43 @@ Traceback (most recent call last)<ipython-input-1-9b8c69999b87> in
 Spoiler: will fail
 ~/3rdparty/pylightnix/src/pylightnix/core.py in realize(closure,
 force_rebuild, assert_realized)
-    694   """ A simplified version of
+    701   """ A simplified version of
 [realizeMany](#pylightnix.core.realizeMany).
-    695   Expects only one output path. """
---> 696   rrefs=realizeMany(closure, force_rebuild, assert_realized)
-    697   assert len(rrefs)==1, (
-    698       f"`realize` is to be used with single-output
+    702   Expects only one output path. """
+--> 703   rrefs=realizeMany(closure, force_rebuild, assert_realized)
+    704   assert len(rrefs)==1, (
+    705       f"`realize` is to be used with single-output
 derivations. Derivation "
 ~/3rdparty/pylightnix/src/pylightnix/core.py in realizeMany(closure,
 force_rebuild, assert_realized)
-    759     next(gen)
-    760     while True:
---> 761       gen.send((None,False)) # Ask for default action
-    762   except StopIteration as e:
-    763     res=e.value
+    766     next(gen)
+    767     while True:
+--> 768       gen.send((None,False)) # Ask for default action
+    769   except StopIteration as e:
+    770     res=e.value
 ~/3rdparty/pylightnix/src/pylightnix/core.py in realizeSeq(closure,
 force_interrupt, assert_realized)
-    793             f"Unfortunately, it is not the case."
-    794             )
---> 795           paths=drv.realizer(dref,dref_context)
-    796           rrefs_built=[store_realize(dref,dref_context,path)
+    800             f"Unfortunately, it is not the case."
+    801             )
+--> 802           paths=drv.realizer(dref,dref_context)
+    803           rrefs_built=[store_realize(dref,dref_context,path)
 for path in paths]
-    797           rrefs_matched=drv.matcher(dref,dref_context)
+    804           rrefs_matched=drv.matcher(dref,dref_context)
 ~/3rdparty/pylightnix/src/pylightnix/core.py in _matcher(dref, ctx)
-    625   def _promise_aware(realizer)->Realizer:
-    626     def _matcher(dref:DRef,ctx:Context)->List[Path]:
---> 627       outpaths=realizer(dref,ctx)
-    628       for key,refpath in
-config_promises(store_config(dref),dref):
-    629         for o in outpaths:
+    632   def _promise_aware(realizer)->Realizer:
+    633     def _matcher(dref:DRef,ctx:Context)->List[Path]:
+--> 634       outpaths=realizer(dref,ctx)
+    635       for key,refpath in
+config_promises(store_config_(dref),dref):
+    636         for o in outpaths:
 ~/3rdparty/pylightnix/src/pylightnix/core.py in _wrapper(dref,
 context)
-    421     buildtime:bool=True)->Realizer:
-    422   def _wrapper(dref,context)->List[Path]:
---> 423     b=ctr(mkbuildargs(dref,context,buildtime)); f(b); return
+    426     buildtime:bool=True)->Realizer:
+    427   def _wrapper(dref,context)->List[Path]:
+--> 428     b=ctr(mkbuildargs(dref,context,buildtime)); f(b); return
 list(getattr(b,'outpaths'))
-    424   return _wrapper
-    425
+    429   return _wrapper
+    430
 <ipython-input-1-f38c6dead39e> in mnist_realize(b)
      77 def mnist_realize(b:Model):
      78   mnist_train(b)
@@ -300,7 +300,7 @@ repl_realize(instantiate(convnn_mnist))
 ```
 
 ```
-<pylightnix.repl.ReplHelper at 0x7fd42932fc50>
+<pylightnix.repl.ReplHelper at 0x7f2a34b37c88>
 ```
 
 
@@ -329,7 +329,7 @@ x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
 
-Epoch 00001: val_accuracy improved from -inf to 0.98242, saving model to /workspace/_pylightnix/tmp/200306-15:05:59:645616+0300_d20f6e78_04c33i_z/checkpoint.ckpt
+Epoch 00001: val_accuracy improved from -inf to 0.98317, saving model to /workspace/_pylightnix/tmp/200306-21:37:59:086883+0300_d20f6e78_ohv_xh2g/checkpoint.ckpt
 ```
 
 
@@ -338,7 +338,7 @@ mnist_eval_correct(b)
 ```
 
 ```
-0.9816
+0.9825
 ```
 
 
@@ -355,7 +355,7 @@ print(rref)
 ```
 
 ```
-rref:6f9c73119de4c7bba767ecd10038827f-d20f6e78a3801f50d5df4872ca0c79b4-convnn_mnist
+rref:ed2f736c8cd71fe839d1e3f1a5581e8a-d20f6e78a3801f50d5df4872ca0c79b4-convnn_mnist
 ```
 
 

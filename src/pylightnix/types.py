@@ -40,7 +40,7 @@ class DRef(str):
   typechecker that a given string refers to some derivation.
 
   The format of *derivation reference* is `<HashPart>-<Name>`, where:
-  - `<HashPart>` contains first 32 characters of derivation `Config`'s sha256
+  - `<HashPart>` contains first 32 characters of derivation `RConfig`'s sha256
     hash digest.
   - `<Name>` object contains the name of derivation.
 
@@ -122,16 +122,23 @@ RefPath = List[Any]
 #: A tag to mark the start of [PromisePaths](#pylightnix.types.PromisePath).
 PYLIGHTNIX_PROMISE_TAG = "__promise__"
 
+#: *Do not change!*
+#: A tag to mark the start of [PromisePaths](#pylightnix.types.PromisePath). In
+#: contrast to promises, Pylightnix doesn't check the claims
+PYLIGHTNIX_CLAIM_TAG = "__claim__"
+
 #: PromisePath is an alias for Python list of strings. The first item is a
-#: special tag (the [promise](#pylightnix.core.promise)) and the subsequent
-#: items should represent a file or directory path parts. PromisePaths are to
-#: be used in [Configs](#pylightnix.types.Config). They typically represent
+#: special tag (the [promise](#pylightnix.core.promise) or the
+#: [claim](#pylightnix.core.claim)) and the subsequent
+#: items should represent a file or directory path parts. PromisePaths are
+#: typically fields of [Configs](#pylightnix.types.Config). They represent
 #: paths to the artifacts which we promise will be created by the derivation
 #: being currently configured.
 #:
 #: PromisePaths do exist only at the time of instantiation. Pylightnix converts
 #: them into [RefPath](#pylightnix.types.RefPath) before the realization
-#: starts.
+#: starts. Converted configs change their type to
+#: [RConfig](#pylightnix.type.RConfig)
 #:
 #: Example:
 #: ```python
@@ -249,11 +256,11 @@ class Config:
   """ Config is a JSON-serializable set of user-defined attributes of Pylightnix
   node. Typically, configs should determine node's realization process.
 
-  `Config` should match the requirements of `assert_valid_config`. Typically,
-  it's `__dict__` should contain JSON-serializable types only: strings, string
-  aliases such as [DRefs](#pylightnix.types.DRef), bools, ints, floats, lists or
-  other dicts. No bytes, `numpy.float32` or lambdas are allowed. Tuples are also
-  forbidden because they are not preserved (decoded into lists).
+  Configs should match the requirements of `assert_valid_config`. Typically,
+  it's `val` dictionary should contain JSON-serializable types only: strings,
+  string aliases such as [DRefs](#pylightnix.types.DRef), bools, ints, floats,
+  lists or other dicts. No bytes, `numpy.float32` or lambdas are allowed. Tuples
+  are also forbidden because they are not preserved (decoded into lists).
 
   Some fields of a config have a special meaning for Pylightnix:
 
@@ -274,7 +281,7 @@ class Config:
   Example:
   ```python
   def mystage(m:Manager)->Dref:
-    def _config():
+    def _config()->Config:
       name = 'mystage'
       nepoches = 4
       learning_rate = 1e-5
@@ -284,17 +291,29 @@ class Config:
   ```
   """
   def __init__(self, d:dict):
-    self.__dict__=deepcopy(d)
+    self.val=deepcopy(d)
 
   def __repr__(self)->str:
-    return self.__dict__.__repr__()
+    return 'Config('+self.val.__repr__()+')'
+
+
+class RConfig(Config):
+  """ RConfig is a [Config](#pylightnix.types.Config) where all claims and
+  promises are resolved."""
+  pass
+
 
 class ConfigAttrs:
   """ `ConfigAttrs` is a helper object allowing to access
-  [Config](#pylightnix.types.Config) fields as Python object attributes """
+  [RConfig](#pylightnix.types.RConfig) fields as Python object attributes.
+
+  DEPRECATED in favour of [Lenses](#pylightnix.lens.Lens).
+  """
   def __init__(self, d:dict):
     for k,v in d.items():
       setattr(self,k,v)
+
+
 
 BuildArgs = NamedTuple('BuildArgs', [('dref',DRef), ('cattrs',ConfigAttrs),
                                      ('context',Context), ('timeprefix',str),
@@ -309,7 +328,7 @@ class Build:
 
   We encode typical build operations in the following associated functions:
 
-  - [build_config](#pylightnix.core.build_config) - Obtain the Config object of
+  - [build_config](#pylightnix.core.build_config) - Obtain the RConfig object of
     the current stage
   - [build_cattrs](#pylightnix.core.build_cattrs) - Obtain the ConfigAttrs helper
   - [build_path](#pylightnix.core.build_path) - Convert a RefPath or a PromisePath

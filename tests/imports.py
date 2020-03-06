@@ -34,8 +34,4 @@ def get_executable(name:str, not_found_message:str)->str:
   assert e is not None, not_found_message
   return e
 
-# from pylightnix import (
-#     Config, Model, model_outpath, model_save, store_initialize, mknode,
-#     store_deps, store_deepdeps, store_gc )
-# from pylightnix import ( assert_valid_ref, assert_store_initialized )
 

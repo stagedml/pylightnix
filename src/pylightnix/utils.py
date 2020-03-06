@@ -24,7 +24,7 @@ from pylightnix.imports import ( datetime, gmtime, timegm, join, makedirs,
     S_IWGRP, S_IWOTH, rmtree, rename, getsize, readlink )
 
 from pylightnix.types import ( Hash, Path, List, Any, Optional, Iterable, IO,
-    DRef, RRef, Tuple, Callable, PYLIGHTNIX_PROMISE_TAG )
+    DRef, RRef, Tuple, Callable, PYLIGHTNIX_PROMISE_TAG, PYLIGHTNIX_CLAIM_TAG )
 
 from pylightnix.tz import tzlocal
 
@@ -197,9 +197,15 @@ def ispromisepath(p:Any)->bool:
 def isrefpath(p:Any)->bool:
   return isinstance(p,list) and len(p)>0 and isdref(p[0]) and all([isinstance(x,str) for x in p])
 
-def ispromise(val:Any,owner:DRef)->bool:
-  promise_val=isrefpath(val) and val[0]==owner
-  return promise_val
+def ispromiselike(p:Any, ptag:str):
+  return isinstance(p,list) and len(p)>0 and (p[0]==ptag) and \
+         all([isinstance(x,str) for x in p])
+
+def ispromise(p:Any)->bool:
+  return ispromiselike(p,PYLIGHTNIX_PROMISE_TAG)
+
+def isclaim(p:Any)->bool:
+  return ispromiselike(p,PYLIGHTNIX_CLAIM_TAG)
 
 Mutator=Callable[[Any,Any],Any]
 
@@ -259,12 +265,13 @@ def assert_serializable(d:Any, argname:str='dict')->Any:
   assert str(d)==str(d2), error_msg
   return d2
 
-def assert_valid_dict(d:dict, argname:str)->None:
+def assert_valid_dict(d:dict, argname:str)->dict:
   assert isinstance(d,dict)
   d2=assert_serializable(d, argname)
   h1=dicthash(d)
   h2=dicthash(d2)
   assert h1==h2
+  return d
 
 def readjson(json_path:str)->Any:
   with open((json_path), "r") as f:

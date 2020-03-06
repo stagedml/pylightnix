@@ -136,8 +136,8 @@ print(hello_rref)
 ```
 
 ```
-Unpacking /tmp/200229-16:35:45:458086+0300_5ba7196c_6_ez5yvk/hello-2.10.tar.gz..
-Removing /tmp/200229-16:35:45:458086+0300_5ba7196c_6_ez5yvk/hello-2.10.tar.gz..
+Unpacking /tmp/200306-21:37:03:030903+0300_5ba7196c_aqic_mi9/hello-2.10.tar.gz..
+Removing /tmp/200306-21:37:03:030903+0300_5ba7196c_aqic_mi9/hello-2.10.tar.gz..
 rref:3fce7614ca738e68d6ad5b8a2057c488-ff665a238aa45b818710fba821b26258-hello-src
 ```
 
@@ -307,7 +307,7 @@ print(rref)
 ```
 
 ```
-rref:cd3c92bbea45670d841243dcbc0e5c0d-e6e4f681aa7a78becc745cee408f3a8b-hello-bin
+rref:336da7444c7358a3d66a02a184e36e1d-e6e4f681aa7a78becc745cee408f3a8b-hello-bin
 ```
 
 

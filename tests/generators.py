@@ -1,4 +1,4 @@
-from pylightnix import ( Config, datahash, PYLIGHTNIX_NAMEPAT, mkdref, mkrref,
+from pylightnix import ( RConfig, datahash, PYLIGHTNIX_NAMEPAT, mkdref, mkrref,
     trimhash, encode )
 
 from tests.imports import (
@@ -44,7 +44,7 @@ def configs(draw):
   name=draw(one_of(none(), names()))
   if name is not None:
     d.update({'name':name})
-  return Config(d)
+  return RConfig(d)
 
 def names():
   return from_regex(re_compile(f'^{PYLIGHTNIX_NAMEPAT}+$'))

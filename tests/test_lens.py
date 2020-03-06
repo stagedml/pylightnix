@@ -14,7 +14,7 @@
 
 """ Simple functions imitating unix shell tools.  """
 
-from pylightnix import ( Config, instantiate, DRef, RRef, Path,
+from pylightnix import ( instantiate, DRef, RRef, Path,
     Build, Manager, mklens, mkdrv, promise, match_only, build_wrapper,
     instantiate, realize, isrref, isdref, store_cattrs, build_cattrs,
     build_outpath, build_path, mkconfig, assert_valid_rref, isrefpath )

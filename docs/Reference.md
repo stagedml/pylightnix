@@ -9,6 +9,7 @@
     * [Name](#pylightnix.types.Name)
     * [RefPath](#pylightnix.types.RefPath)
     * [PYLIGHTNIX\_PROMISE\_TAG](#pylightnix.types.PYLIGHTNIX_PROMISE_TAG)
+    * [PYLIGHTNIX\_CLAIM\_TAG](#pylightnix.types.PYLIGHTNIX_CLAIM_TAG)
     * [PromisePath](#pylightnix.types.PromisePath)
     * [Context](#pylightnix.types.Context)
     * [Matcher](#pylightnix.types.Matcher)
@@ -16,6 +17,7 @@
     * [Derivation](#pylightnix.types.Derivation)
     * [Closure](#pylightnix.types.Closure)
     * [Config](#pylightnix.types.Config)
+    * [RConfig](#pylightnix.types.RConfig)
     * [ConfigAttrs](#pylightnix.types.ConfigAttrs)
     * [BuildArgs](#pylightnix.types.BuildArgs)
     * [Build](#pylightnix.types.Build)
@@ -85,6 +87,7 @@
     * [context\_deref](#pylightnix.core.context_deref)
     * [context\_serialize](#pylightnix.core.context_serialize)
     * [promise](#pylightnix.core.promise)
+    * [claim](#pylightnix.core.claim)
     * [assert\_promise\_fulfilled](#pylightnix.core.assert_promise_fulfilled)
     * [mkdrv](#pylightnix.core.mkdrv)
     * [recursion\_manager](#pylightnix.core.recursion_manager)
@@ -195,7 +198,7 @@ sha256 hash digest.
 typechecker that a given string refers to some derivation.
 
 The format of *derivation reference* is `<HashPart>-<Name>`, where:
-- `<HashPart>` contains first 32 characters of derivation `Config`'s sha256
+- `<HashPart>` contains first 32 characters of derivation `RConfig`'s sha256
   hash digest.
 - `<Name>` object contains the name of derivation.
 
@@ -289,6 +292,17 @@ PYLIGHTNIX_PROMISE_TAG = "__promise__"
 *Do not change!*
 A tag to mark the start of [PromisePaths](#pylightnix.types.PromisePath).
 
+<a name="pylightnix.types.PYLIGHTNIX_CLAIM_TAG"></a>
+## `PYLIGHTNIX_CLAIM_TAG`
+
+```python
+PYLIGHTNIX_CLAIM_TAG = "__claim__"
+```
+
+*Do not change!*
+A tag to mark the start of [PromisePaths](#pylightnix.types.PromisePath). In
+contrast to promises, Pylightnix doesn't check the claims
+
 <a name="pylightnix.types.PromisePath"></a>
 ## `PromisePath`
 
@@ -297,15 +311,17 @@ PromisePath = List[Any]
 ```
 
 PromisePath is an alias for Python list of strings. The first item is a
-special tag (the [promise](#pylightnix.core.promise)) and the subsequent
-items should represent a file or directory path parts. PromisePaths are to
-be used in [Configs](#pylightnix.types.Config). They typically represent
+special tag (the [promise](#pylightnix.core.promise) or the
+[claim](#pylightnix.core.claim)) and the subsequent
+items should represent a file or directory path parts. PromisePaths are
+typically fields of [Configs](#pylightnix.types.Config). They represent
 paths to the artifacts which we promise will be created by the derivation
 being currently configured.
 
 PromisePaths do exist only at the time of instantiation. Pylightnix converts
 them into [RefPath](#pylightnix.types.RefPath) before the realization
-starts.
+starts. Converted configs change their type to
+[RConfig](#pylightnix.type.RConfig)
 
 Example:
 ```python
@@ -458,11 +474,11 @@ def __init__(self, d: dict)
 Config is a JSON-serializable set of user-defined attributes of Pylightnix
 node. Typically, configs should determine node's realization process.
 
-`Config` should match the requirements of `assert_valid_config`. Typically,
-it's `__dict__` should contain JSON-serializable types only: strings, string
-aliases such as [DRefs](#pylightnix.types.DRef), bools, ints, floats, lists or
-other dicts. No bytes, `numpy.float32` or lambdas are allowed. Tuples are also
-forbidden because they are not preserved (decoded into lists).
+Configs should match the requirements of `assert_valid_config`. Typically,
+it's `val` dictionary should contain JSON-serializable types only: strings,
+string aliases such as [DRefs](#pylightnix.types.DRef), bools, ints, floats,
+lists or other dicts. No bytes, `numpy.float32` or lambdas are allowed. Tuples
+are also forbidden because they are not preserved (decoded into lists).
 
 Some fields of a config have a special meaning for Pylightnix:
 
@@ -483,7 +499,7 @@ Some fields of a config have a special meaning for Pylightnix:
 Example:
 ```python
 def mystage(m:Manager)->Dref:
-  def _config():
+  def _config()->Config:
     name = 'mystage'
     nepoches = 4
     learning_rate = 1e-5
@@ -508,6 +524,12 @@ def __repr__(self) -> str
 ```
 
 
+<a name="pylightnix.types.RConfig"></a>
+## `RConfig` Objects
+
+RConfig is a [Config](#pylightnix.types.Config) where all claims and
+promises are resolved.
+
 <a name="pylightnix.types.ConfigAttrs"></a>
 ## `ConfigAttrs` Objects
 
@@ -516,7 +538,9 @@ def __init__(self, d: dict)
 ```
 
 `ConfigAttrs` is a helper object allowing to access
-[Config](#pylightnix.types.Config) fields as Python object attributes
+[RConfig](#pylightnix.types.RConfig) fields as Python object attributes.
+
+DEPRECATED in favour of [Lenses](#pylightnix.lens.Lens).
 
 <a name="pylightnix.types.ConfigAttrs.__init__"></a>
 ### `ConfigAttrs.__init__()`
@@ -550,7 +574,7 @@ Build-realizers into regular ones.
 
 We encode typical build operations in the following associated functions:
 
-- [build_config](#pylightnix.core.build_config) - Obtain the Config object of
+- [build_config](#pylightnix.core.build_config) - Obtain the RConfig object of
   the current stage
 - [build_cattrs](#pylightnix.core.build_cattrs) - Obtain the ConfigAttrs helper
 - [build_path](#pylightnix.core.build_path) - Convert a RefPath or a PromisePath
@@ -761,7 +785,7 @@ def mkconfig(d: dict) -> Config
 ## `config_dict()`
 
 ```python
-def config_dict(c: Config) -> dict
+def config_dict(cp: Config) -> dict
 ```
 
 
@@ -769,7 +793,7 @@ def config_dict(c: Config) -> dict
 ## `config_cattrs()`
 
 ```python
-def config_cattrs(c: Config) -> Any
+def config_cattrs(c: RConfig) -> Any
 ```
 
 
@@ -802,7 +826,7 @@ Return short human-readable name of a config
 ## `config_deps()`
 
 ```python
-def config_deps(c: Config) -> Set[DRef]
+def config_deps(c: RConfig) -> Set[DRef]
 ```
 
 
@@ -810,7 +834,7 @@ def config_deps(c: Config) -> Set[DRef]
 ## `config_substitutePromises()`
 
 ```python
-def config_substitutePromises(c: Config, r: DRef) -> Config
+def config_substitutePromises(c: Config, r: DRef) -> RConfig
 ```
 
 Replace all Promise tags with DRef `r`. In particular, all PromisePaths
@@ -820,7 +844,7 @@ are converted into RefPaths.
 ## `config_promises()`
 
 ```python
-def config_promises(c: Config, r: DRef) -> List[Tuple[str,RefPath]]
+def config_promises(c: Config, r: DRef) -> List[Tuple[str,PromisePath]]
 ```
 
 
@@ -897,10 +921,12 @@ def store_config_(r: DRef) -> Config
 ## `store_config()`
 
 ```python
-def store_config(r: Union[DRef,RRef]) -> Config
+def store_config(r: Union[DRef,RRef]) -> RConfig
 ```
 
-Read the [Config](#pylightnix.types.Config) of the derivatoin referenced by `r`.
+Read the [Config](#pylightnix.types.Config) of the derivation and
+[resolve](#pylightnix.core.config_substitutePromises) it from promises and
+claims.
 
 <a name="pylightnix.core.store_context"></a>
 ## `store_context()`
@@ -1080,10 +1106,10 @@ Build Adapter which convers user-defined realizers which use
 ## `build_config()`
 
 ```python
-def build_config(b: Build) -> Config
+def build_config(b: Build) -> RConfig
 ```
 
-Return the [Config](#pylightnix.types.Config) object of the realization
+Return the [RConfig](#pylightnix.types.RConfig) object of the realization
 being built.
 
 <a name="pylightnix.core.build_context"></a>
@@ -1173,7 +1199,7 @@ returned list is often a singleton list. See
 
 Example:
 ```python
-def config(dep:DRef)->Config:
+def config(dep:DRef)->RConfig:
   name = 'example-stage'
   input = [dep,"path","to","input.txt"]
   output = [promise,"output.txt"]
@@ -1258,11 +1284,19 @@ pass, the core replaces all PromisePaths with the corresponding
 Ex-PromisePaths may be converted into filesystem paths by
 [build_path](#pylightnix.core.build_path) as ususal.
 
+<a name="pylightnix.core.claim"></a>
+## `claim`
+
+```python
+claim = PYLIGHTNIX_CLAIM_TAG
+```
+
+
 <a name="pylightnix.core.assert_promise_fulfilled"></a>
 ## `assert_promise_fulfilled()`
 
 ```python
-def assert_promise_fulfilled(k: str, p: RefPath, o: Path) -> None
+def assert_promise_fulfilled(k: str, p: PromisePath, o: Path) -> None
 ```
 
 
@@ -1861,7 +1895,7 @@ config, optionally re-writing it's matcher, or it's realizer.
 
 Arguments:
 - `stage:Stage` Stage to re-define
-- `new_config:Callable[[Config],Config]` A function to update the `dref`'s
+- `new_config:Callable[[RConfig],RConfig]` A function to update the `dref`'s
   config. Defaults to identity function.
 - `new_matcher:Optional[Matcher]=None` Optional new matcher (defaults to the
   existing matcher)
@@ -1920,7 +1954,7 @@ def _unpack(o: str, fullpath: str, remove_file: bool)
 ## `fetchurl()`
 
 ```python
-def fetchurl(m: Manager, url: str, sha256: str, mode: str = 'unpack,remove', name: Optional[str] = None, filename: Optional[str] = None, force_download: bool = False, kwargs) -> DRef
+def fetchurl(m: Manager, url: str, sha256: str, mode: str = 'unpack,remove', name: Optional[str] = None, filename: Optional[str] = None, force_download: bool = False, check_promises: bool = True, kwargs) -> DRef
 ```
 
 Download and unpack an URL addess.
@@ -1942,7 +1976,7 @@ Agruments:
   Stage will attempt to deduced it if not specified.
 - `force_download:bool=False` If False, resume the last download if
   possible.
-
+- `check_promises:bool=True` Passed to `mkdrv` as-is.
 
 Example:
 ```python
@@ -2099,7 +2133,7 @@ Lens lifecycle consists of three stages:
    - `Build` helper class
    - `DRef` references
    - `RRef` references
-   - `Config` configuration wrappers
+   - `RConfig` configuration wrappers
    - Regular Python dictionaries
 2. Navigation through the nested configurations. Lenses access configuration
    attributes, automatically dereference Pylightnix references and produce other
