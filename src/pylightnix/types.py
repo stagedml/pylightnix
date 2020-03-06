@@ -128,20 +128,22 @@ PYLIGHTNIX_PROMISE_TAG = "__promise__"
 PYLIGHTNIX_CLAIM_TAG = "__claim__"
 
 #: PromisePath is an alias for Python list of strings. The first item is a
-#: special tag (the [promise](#pylightnix.core.promise)) and the subsequent
-#: items should represent a file or directory path parts. PromisePaths are to
-#: be used in [Configs](#pylightnix.types.RConfig). They typically represent
+#: special tag (the [promise](#pylightnix.core.promise) or the
+#: [claim](#pylightnix.core.claim)) and the subsequent
+#: items should represent a file or directory path parts. PromisePaths are
+#: typically fields of [Configs](#pylightnix.types.Config). They represent
 #: paths to the artifacts which we promise will be created by the derivation
 #: being currently configured.
 #:
 #: PromisePaths do exist only at the time of instantiation. Pylightnix converts
 #: them into [RefPath](#pylightnix.types.RefPath) before the realization
-#: starts.
+#: starts. Converted configs change their type to
+#: [RConfig](#pylightnix.type.RConfig)
 #:
 #: Example:
 #: ```python
 #: from pylightnix import mkconfig, mkdrv, promise
-#: def myconfig()->RConfig:
+#: def myconfig()->Config:
 #:   name = "config-of-some-stage"
 #:   promise_binary = [promise, 'usr','bin','hello']
 #:   other_params = 42
@@ -201,7 +203,7 @@ Matcher = Callable[[DRef,Context],Optional[List[RRef]]]
 #:   resolution.
 #:
 #: `DRef` and `Context` allows programmer to access
-#: [Configs](#pylightnix.types.RConfig) of the current derivation and all it's
+#: [Configs](#pylightnix.types.Config) of the current derivation and all it's
 #: dependencies.
 #:
 #: Realizers have to return one or many folder paths of realization artifacts
@@ -231,7 +233,7 @@ Matcher = Callable[[DRef,Context],Optional[List[RRef]]]
 Realizer = Callable[[DRef,Context],List[Path]]
 
 #: Derivation is the core type of Pylightnix. It keeps all the information about
-#: a stage: it's [configuration](#pylightnix.types.RConfig), how to
+#: a stage: it's [configuration](#pylightnix.types.Config), how to
 #: [realize](#pylightnix.core.realize) it and how to make a
 #: [selection](#pylightnix.types.Matcher) among multiple realizations.
 #: Information is stored partly on disk (in the Pylightnix storage), partly in
@@ -250,15 +252,15 @@ Derivation = NamedTuple('Derivation', [('dref',DRef), ('matcher',Matcher), ('rea
 #: call to [realizeMany](#pylightnix.core.realizeMany) or it's analogs.
 Closure = NamedTuple('Closure', [('dref',DRef),('derivations',List[Derivation])])
 
-class RConfig:
-  """ RConfig is a JSON-serializable set of user-defined attributes of Pylightnix
+class Config:
+  """ Config is a JSON-serializable set of user-defined attributes of Pylightnix
   node. Typically, configs should determine node's realization process.
 
-  `RConfig` should match the requirements of `assert_valid_config`. Typically,
-  it's `__dict__` should contain JSON-serializable types only: strings, string
-  aliases such as [DRefs](#pylightnix.types.DRef), bools, ints, floats, lists or
-  other dicts. No bytes, `numpy.float32` or lambdas are allowed. Tuples are also
-  forbidden because they are not preserved (decoded into lists).
+  Configs should match the requirements of `assert_valid_config`. Typically,
+  it's `val` dictionary should contain JSON-serializable types only: strings,
+  string aliases such as [DRefs](#pylightnix.types.DRef), bools, ints, floats,
+  lists or other dicts. No bytes, `numpy.float32` or lambdas are allowed. Tuples
+  are also forbidden because they are not preserved (decoded into lists).
 
   Some fields of a config have a special meaning for Pylightnix:
 
@@ -279,7 +281,7 @@ class RConfig:
   Example:
   ```python
   def mystage(m:Manager)->Dref:
-    def _config()->RConfig:
+    def _config()->Config:
       name = 'mystage'
       nepoches = 4
       learning_rate = 1e-5
@@ -289,21 +291,27 @@ class RConfig:
   ```
   """
   def __init__(self, d:dict):
-    self.__dict__=deepcopy(d)
+    self.val=deepcopy(d)
 
   def __repr__(self)->str:
-    return self.__dict__.__repr__()
+    return 'Config('+self.val.__repr__()+')'
 
-Config=NamedTuple('Config',[('body',dict)])
+
+class RConfig(Config):
+  """ RConfig is a [Config](#pylightnix.types.Config) where all claims and
+  promises are resolved."""
+  pass
 
 
 class ConfigAttrs:
   """ `ConfigAttrs` is a helper object allowing to access
-  [RConfig](#pylightnix.types.RConfig) fields as Python object attributes """
+  [RConfig](#pylightnix.types.RConfig) fields as Python object attributes.
+
+  DEPRECATED in favour of [Lenses](#pylightnix.lens.Lens).
+  """
   def __init__(self, d:dict):
     for k,v in d.items():
       setattr(self,k,v)
-
 
 
 

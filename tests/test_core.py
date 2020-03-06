@@ -9,8 +9,8 @@ from pylightnix import ( instantiate, DRef, RRef, Path, mklogdir,
     build_cattrs, build_name, match_best, tryread, trywrite,
     assert_recursion_manager_empty, match, latest, best, exact, Key,
     match_latest, match_all, match_some, match_n, realizeMany, build_outpaths,
-    scanref_dict, config_dict, promise, checkpaths, mklens, isrref,
-    pconfig_cattrs, Config )
+    scanref_dict, config_dict, promise, checkpaths, mklens, isrref, Config,
+    RConfig )
 
 from tests.imports import ( given, Any, Callable, join, Optional, islink,
     isfile, List, randint, sleep, rmtree, system, S_IWRITE, S_IREAD, S_IEXEC,
@@ -231,7 +231,7 @@ def test_recursion_manager()->None:
 def test_config_ro():
   d={'a':1,'b':33}
   c=mkconfig(d)
-  cro=pconfig_cattrs(c)
+  cro=config_cattrs(RConfig(config_dict(c))) # We sure we don't have promises here
   for k in d.keys():
     assert getattr(cro,k) == d[k]
 

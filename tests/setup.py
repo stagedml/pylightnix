@@ -51,7 +51,7 @@ def mktestnode_nondetermenistic(m:Manager, sources:dict,
   different values from build to build """
   def _instantiate()->Config:
     c=mkconfig(sources)
-    c.body['promise_artifact']=[promise,'artifact']
+    c.val['promise_artifact']=[promise,'artifact']
     return c
   def _realize(dref:DRef, context:Context)->List[Path]:
     b=mkbuild(dref, context, buildtime=buildtime)
