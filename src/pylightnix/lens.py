@@ -17,10 +17,11 @@ through the dependent configurations """
 
 from pylightnix.imports import ( join )
 from pylightnix.types import ( Any, Dict, List, Build, DRef, RRef, Optional,
-    RefPath, Tuple, Union, Path )
+    RefPath, Tuple, Union, Path, Context )
 from pylightnix.utils import ( isrefpath, isdref, isrref )
 from pylightnix.core import ( build_path, store_deref, store_config, rref2dref,
-    rref2path, config_dict, build_config, store_dref2path )
+    rref2path, config_dict, build_config, store_dref2path, store_context,
+    context_deref )
 
 
 class Lens:
@@ -44,8 +45,9 @@ class Lens:
   3. Access to the raw value which could no longer be converted into a Lens. In
      this case the raw value is returned.
 
+  FIXME: Do not accept `Build`. Accept optional `build_outpath:Path` instead.
   """
-  def __init__(self, ctx:Tuple[Optional[Build],Optional[RRef]], v:Any)->None:
+  def __init__(self, ctx:Tuple[Optional[Build],Optional[Context]], v:Any)->None:
     self.ctx=ctx
     self.v=v
 
@@ -91,7 +93,9 @@ class Lens:
       if self.ctx[0] is not None:
         return build_path(self.ctx[0], refpath)
       elif self.ctx[1] is not None:
-        return Path(join(rref2path(store_deref(self.ctx[1], refpath[0])), *refpath[1:]))
+        rrefs=context_deref(self.ctx[1], refpath[0])
+        assert len(rrefs)==1, "Lens doesn't support multirealization dependencies"
+        return Path(join(rref2path(rrefs[0]), *refpath[1:]))
       else:
         assert False, f"Lens couldn't resolve '{refpath}' without a context"
     else:
@@ -110,10 +114,12 @@ class Lens:
       assert False, f"Can't get dict representation of {self.val}"
 
 
-def mklens(x:Any, b:Optional[Build]=None, rref:Optional[RRef]=None)->Lens:
-  if isinstance(x,Build) and b is None:
+def mklens(x:Any, b:Optional[Build]=None, rref:Optional[RRef]=None, ctx:Optional[Context]=None)->Lens:
+  if ctx is None and rref is not None:
+    ctx=store_context(rref)
+  if ctx is None and isrref(x):
+    ctx=store_context(RRef(x))
+  if b is None and isinstance(x,Build):
     b=x
-  elif isrref(x):
-    rref=RRef(x)
-  return Lens((b,rref),x)
+  return Lens((b,ctx),x)
 
