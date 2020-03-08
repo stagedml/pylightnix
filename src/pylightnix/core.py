@@ -424,8 +424,7 @@ def store_realize(dref:DRef, l:Context, o:Path)->RRef:
 def mkbuildargs(dref:DRef, context:Context, buildtime:bool=True)->BuildArgs:
   assert_valid_config(store_config(dref))
   timeprefix=timestring()
-  cattrs=store_cattrs(dref)
-  return BuildArgs(dref, cattrs, context, timeprefix, buildtime)
+  return BuildArgs(dref, context, timeprefix, buildtime)
 
 def mkbuild(dref:DRef, context:Context, buildtime:bool=True)->Build:
   return Build(mkbuildargs(dref,context,buildtime))
@@ -457,7 +456,7 @@ def build_context(b:Build)->Context:
   return b.context
 
 def build_cattrs(b:Build)->Any:
-  return b.cattrs
+  return config_cattrs(build_config(b))
 
 def build_outpaths(b:Build, nouts:int=1)->List[Path]:
   if len(b.outpaths)==0:
