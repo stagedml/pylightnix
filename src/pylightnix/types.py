@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-""" Main types used in Pylightnix are defined here. """
+""" All main types which we use in Pylightnix are defined here. """
 
 
 from pylightnix.imports import ( deepcopy, OrderedDict )

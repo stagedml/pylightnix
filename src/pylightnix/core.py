@@ -490,14 +490,15 @@ def build_deref(b:Build, dref:DRef)->RRef:
   return rrefs[0]
 
 def build_paths(b:Build, refpath:RefPath)->List[Path]:
-  """ Convert given [RefPath](#pylightnix.types.RefPath) (which may be an
-  ex-[PromisePath](#pylightnix.types.PromisePath)) into a set of filesystem
-  paths. Conversion refers to the [Context](#pylightnix.types.Context) of the
-  realization, as specified by the `b` helper.
+  """ Convert given [RefPath](#pylightnix.types.RefPath) (which may be either a
+  regular RefPath or an ex-[PromisePath](#pylightnix.types.PromisePath)) into
+  one or many filesystem paths. Conversion refers to the
+  [Context](#pylightnix.types.Context) of the current realization process by
+  accessing it's [build_context](#pylightnix.core.build_context).
 
   Typically, we configure stages to match only one realization at once, so the
-  returned list is often a singleton list. See
-  [build_path](#pylightnix.core.build_path).
+  returned list often has only one entry. Consider using
+  [build_path](#pylightnix.core.build_path) if this fact is known in advance.
 
   Example:
   ```python
@@ -575,18 +576,23 @@ def context_serialize(c:Context)->str:
 #           |_|
 
 
-#: A magic constant which is required to create
+#: Promise is a magic constant required to create
 #: [PromisePath](#pylightnix.types.PromisePath), where it is used as a start
 #: marker. Promise paths do exist only during
-#: [instantiation](#pylightnix.core.instantiate) pass. Before the realization
-#: pass, the core replaces all PromisePaths with the corresponding
-#: [RefPaths](#pylightnix.type.RefPath) automatically (see
+#: [instantiation](#pylightnix.core.instantiate) pass. The core replaces all
+#: PromisePaths with corresponding [RefPaths](#pylightnix.type.RefPath)
+#: automatically before it starts the realization pass (see
 #: [store_config](#pylightnix.core.store_config)).
 #:
-#: Ex-PromisePaths may be converted into filesystem paths by
-#: [build_path](#pylightnix.core.build_path) as ususal.
+#: Ex-PromisePaths may be later converted into filesystem paths by
+#: [build_path](#pylightnix.core.build_path) or by
+#: [Lenses](#pylightnix.lens.Lens) as usual.
 promise = PYLIGHTNIX_PROMISE_TAG
 
+#: Claim is a [promise](#pylightnix.core.promise) which is not checked by the
+#: Pylightnix. All other properties of promises are valid for claims.  All
+#: PromisPaths which start from `claim` are substituted with corresponding
+#: RefPaths by Pylightnix and may be later converted into system paths.
 claim = PYLIGHTNIX_CLAIM_TAG
 
 def assert_promise_fulfilled(k:str, p:PromisePath, o:Path)->None:
@@ -849,8 +855,8 @@ def match(keys:List[Key],
           rmin:Optional[int]=1,
           rmax:Optional[int]=1,
           exclusive:bool=False)->Matcher:
-  """ Create a matcher by combining different sorting keys and selecting a
-  top-n threshold.
+  """ Create a [Matcher](#pylightnix.types.Matcher) by combining different
+  sorting keys and selecting a top-n threshold.
 
   Arguments:
   - `keys`: List of [Key](#pylightnix.types.Key) functions. Defaults ot
