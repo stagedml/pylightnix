@@ -85,7 +85,7 @@ def mklogdir(
   return Path(logpath)
 
 def forcelink(src:Path,dst:Path,**kwargs)->None:
-  """ Create a `dst` symlink poinitnig to `src`. Overwrites existing files, if any """
+  """ Create a `dst` symlink poinitnig to `src`. Overwrite existing files, if any """
   makedirs(dirname(dst),exist_ok=True)
   symlink(src,dst+'__',**kwargs)
   replace(dst+'__',dst)
@@ -126,12 +126,12 @@ def dirhash(path:Path)->Hash:
   return datahash(_iter())
 
 def filerw(f:Path)->None:
-  assert isfile(f) or islink(f), f"{f} is not a file"
-  chmod(f, stat(f)[ST_MODE] | (S_IWRITE) )
+  assert isfile(f), f"'{f}' is not a file"
+  chmod(f, stat(f)[ST_MODE] | (S_IWRITE))
 
 def filero(f:Path)->None:
-  assert isfile(f)
-  chmod(f, stat(f)[ST_MODE] & ~(S_IWRITE | S_IWGRP | S_IWOTH) )
+  assert isfile(f), f"'{f}' is not a file"
+  chmod(f, stat(f)[ST_MODE] & ~(S_IWRITE | S_IWGRP | S_IWOTH))
 
 def dirro(o:Path)->None:
   for root, dirs, files in walk(o):
@@ -139,7 +139,11 @@ def dirro(o:Path)->None:
       mode=stat(join(root, d))[ST_MODE]
       chmod(join(root, d), mode & ~(S_IWRITE | S_IWGRP | S_IWOTH) )
     for f in files:
-      filero(Path(join(root, f)))
+      if isfile(f):
+        filero(Path(join(root, f)))
+      if islink(f):
+        print('Warning: we discourage using symlinks in Pylightnix.',
+              f"Seen: '{f}'")
   chmod(o, stat(o)[ST_MODE] & ~(S_IWRITE | S_IWGRP | S_IWOTH) )
 
 def dirrw(o:Path)->None:
@@ -148,7 +152,11 @@ def dirrw(o:Path)->None:
       mode=stat(join(root, d))[ST_MODE]
       chmod(join(root, d), mode | (S_IWRITE) )
     for f in files:
-      filerw(Path(join(root, f)))
+      if isfile(f):
+        filerw(Path(join(root, f)))
+      if islink(f):
+        print('Warning: we discourage using symlinks in Pylightnix.',
+              f"Seen: '{f}'")
   chmod(o, stat(o)[ST_MODE] | (S_IWRITE | S_IWGRP | S_IWOTH) )
 
 
