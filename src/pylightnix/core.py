@@ -216,9 +216,11 @@ def mkrefpath(r:DRef, items:List[str]=[])->RefPath:
   assert_valid_dref(r)
   return [str(r)]+items
 
+def store_cfgpath(r:DRef)->Path:
+  return Path(join(store_dref2path(r),'config.json'))
+
 def store_config_(r:DRef)->Config:
-  return assert_valid_config(Config(
-    readjson(join(store_dref2path(r),'config.json'))))
+  return assert_valid_config(Config(readjson(store_cfgpath(r))))
 
 def store_config(r:Union[DRef,RRef])->RConfig:
   """ Read the [Config](#pylightnix.types.Config) of the derivation and
@@ -307,6 +309,17 @@ def store_deref(context_holder:RRef, dref:DRef)->RRef:
   rrefs=store_deref_(context_holder, dref)
   assert len(rrefs)==1
   return rrefs[0]
+
+def store_buildtime(rref:RRef)->Optional[str]:
+  """ Return the buildtime of the current RRef in a format specified by the
+  [PYLIGHTNIX_TIME](#pylightnix.utils.PYLIGHTNIX_TIME) constant.
+
+  [parsetime](#pylightnix.utils.parsetime) may be used to parse stings into
+  UNIX-Epoch seconds.
+
+  Buildtime is the time when the realization process has started. Some
+  realizations may not provide this information. """
+  return tryread(Path(join(rref2path(rref),'__buildtime__.txt')))
 
 def store_gc(keep_drefs:List[DRef], keep_rrefs:List[RRef])->Tuple[Set[DRef],Set[RRef]]:
   """ Take roots which are in use and should not be removed. Return roots which
@@ -409,8 +422,7 @@ def store_realize(dref:DRef, l:Context, o:Path)->RRef:
 # |____/ \__,_|_|_|\__,_|
 
 def mkbuildargs(dref:DRef, context:Context, buildtime:bool=True)->BuildArgs:
-  c=store_config(dref)
-  assert_valid_config(c)
+  assert_valid_config(store_config(dref))
   timeprefix=timestring()
   cattrs=store_cattrs(dref)
   return BuildArgs(dref, cattrs, context, timeprefix, buildtime)
@@ -428,7 +440,7 @@ def build_wrapper_(
     b=ctr(mkbuildargs(dref,context,buildtime)); f(b); return list(getattr(b,'outpaths'))
   return _wrapper
 
-def build_wrapper(f:Callable[[Build],None], buildtime:bool=True):
+def build_wrapper(f:Callable[[Build],None], buildtime:bool=True)->Realizer:
   """ Build Adapter which convers user-defined realizers which use
   [Build](#pylightnix.types.Build) API into a low-level
   [Realizer](#pylightnix.types.Realizer) """
@@ -828,18 +840,14 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
 def mksymlink(rref:RRef, tgtpath:Path, name:str, withtime=True)->Path:
   """ Create a symlink pointing to realization `rref`. Other arguments define
   symlink name and location. Informally,
-  `{tgtpath}/{timeprefix}{name} --> $PYLIGHTNIX_STORE/{rref2dref(rref)}/{rref}`.
+  `{tgtpath}/{timeprefix}{name} --> $PYLIGHTNIX_STORE/{dref}/{rref}`.
   Overwrite existing symlinks.
   """
   assert_valid_rref(rref)
-  assert isdir(tgtpath), f"store_link(): `tgt` dir '{tgtpath}' doesn't exist"
-  ts:Optional[str]
-  if withtime:
-    ts=tryread(Path(join(rref2path(rref),'__buildtime__.txt')))
-  else:
-    ts=None
-  timeprefix=f'{ts}_' if ts is not None else ''
-  symlink=Path(join(tgtpath,f'{timeprefix}{name}'))
+  assert isdir(tgtpath), f"Target link directory doesn't exist: '{tgtpath}'"
+  ts:Optional[str]=store_buildtime(rref) if withtime else None
+  timetag=f'{ts}_' if ts is not None else ''
+  symlink=Path(join(tgtpath,f'{timetag}{name}'))
   forcelink(Path(relpath(rref2path(rref), tgtpath)), symlink)
   return symlink
 

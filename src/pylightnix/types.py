@@ -315,8 +315,10 @@ class ConfigAttrs:
 
 
 
-BuildArgs = NamedTuple('BuildArgs', [('dref',DRef), ('cattrs',ConfigAttrs),
-                                     ('context',Context), ('timeprefix',str),
+BuildArgs = NamedTuple('BuildArgs', [('dref',DRef),
+                                     ('cattrs',ConfigAttrs),
+                                     ('context',Context),
+                                     ('timeprefix',str),
                                      ('buildtime',bool)])
 
 class Build:
