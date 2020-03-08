@@ -26,19 +26,19 @@ from pylightnix.types import ( RefPath, Manager, Context, Build, Name,
 from pylightnix.utils import ( forcelink, isrefpath, traverse_dict )
 
 
-def mknode(m:Manager, sources:dict, artifacts:Dict[Name,bytes]={})->DRef:
-  def _instantiate()->Config:
-    d=deepcopy(sources)
-    assert '__artifacts__' not in d, "config shouldn't contain reserved field '__artifacts__'"
-    d.update({'__artifacts__':{an:Hash(datahash([av])) for (an,av) in artifacts.items()}})
-    return mkconfig(d)
+def mknode(m:Manager, sources:dict, artifacts:Dict[Name,bytes]={}, name:str='mknode')->DRef:
+  config=deepcopy(sources)
+  config['name']=name
+  assert '__artifacts__' not in config, \
+      "config shouldn't contain reserved field '__artifacts__'"
+  config.update({'__artifacts__':{an:Hash(datahash([av])) for (an,av) in artifacts.items()}})
   def _realize(dref:DRef, context:Context)->List[Path]:
     b=mkbuild(dref, context)
     for an,av in artifacts.items():
       with open(join(build_outpath(b),an),'wb') as f:
         f.write(av)
     return [build_outpath(b)]
-  return mkdrv(m, _instantiate(), match_only(), _realize)
+  return mkdrv(m, mkconfig(config), match_only(), _realize)
 
 
 def mkfile(m:Manager, name:Name, contents:bytes, filename:Optional[Name]=None)->DRef:
@@ -59,7 +59,7 @@ def checkpaths(m:Manager, promises:dict, name:str="checkpaths")->DRef:
 
   def _config()->Config:
     assert len(promises.keys())>0
-    d:Dict[str,Any]={'name':name}
+    d:Dict[str,Any]={'name':promises.get('name',name)}
     for dref,rpaths in _promises().items():
       for rp in rpaths:
         assert_valid_refpath(rp)
