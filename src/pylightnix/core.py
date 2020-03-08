@@ -458,7 +458,11 @@ def build_context(b:Build)->Context:
   return b.context
 
 def build_cattrs(b:Build)->Any:
-  return config_cattrs(build_config(b))
+  """ Cache and return `ConfigAttrs`. Cache allows realizers to update it's
+  value during the build process, e.g. to use it as a storage. """
+  if b.cattrs_cache is None:
+    b.cattrs_cache=config_cattrs(build_config(b))
+  return b.cattrs_cache
 
 def build_outpaths(b:Build, nouts:int=1)->List[Path]:
   if len(b.outpaths)==0:

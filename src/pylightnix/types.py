@@ -374,6 +374,7 @@ class Build:
     self.rarg=ba.rarg
     self.timeprefix=ba.timeprefix
     self.outpaths:List[Path]=[]
+    self.cattrs_cache:Optional[ConfigAttrs]=None
 
 class Manager:
   """ The derivation manager is a mutable storage where we store derivations
