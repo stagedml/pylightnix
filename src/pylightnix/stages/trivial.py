@@ -70,11 +70,11 @@ def checkpaths(m:Manager, promises:dict, name:str="checkpaths")->DRef:
   def _realize(b:Build)->None:
     c=build_cattrs(b)
     promises=_promises()
-    rrefs={dref:build_deref_(b,dref) for dref in promises.keys()}
-    os=build_outpaths(b, sum([len(v) for v in rrefs.values()]))
+    dref2rrefs={dref:build_deref_(b,dref) for dref in promises.keys()}
+    os=build_outpaths(b, sum([len(v) for v in dref2rrefs.values()]))
     index=0
     for dref,refpaths in promises.items():
-      for rref in rrefs[dref]:
+      for rref in dref2rrefs[dref]:
         o=os[index]
         for refpath in refpaths:
           assert refpath[0]==dref
@@ -83,7 +83,7 @@ def checkpaths(m:Manager, promises:dict, name:str="checkpaths")->DRef:
             f"promise failed: {path} doesn't exist"
           opath=Path(join(o,*refpath[1:]))
           forcelink(path,opath)
-          index+=1
+        index+=1
   return mkdrv(m, _config(), match_some(), build_wrapper(_realize))
 
 
