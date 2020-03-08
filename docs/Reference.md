@@ -13,6 +13,8 @@
     * [PromisePath](#pylightnix.types.PromisePath)
     * [Context](#pylightnix.types.Context)
     * [Matcher](#pylightnix.types.Matcher)
+    * [InstantiateArg](#pylightnix.types.InstantiateArg)
+    * [RealizeArg](#pylightnix.types.RealizeArg)
     * [Realizer](#pylightnix.types.Realizer)
     * [Derivation](#pylightnix.types.Derivation)
     * [Closure](#pylightnix.types.Closure)
@@ -51,6 +53,7 @@
     * [store\_dref2path](#pylightnix.core.store_dref2path)
     * [rref2path](#pylightnix.core.rref2path)
     * [mkrefpath](#pylightnix.core.mkrefpath)
+    * [store\_cfgpath](#pylightnix.core.store_cfgpath)
     * [store\_config\_](#pylightnix.core.store_config_)
     * [store\_config](#pylightnix.core.store_config)
     * [store\_context](#pylightnix.core.store_context)
@@ -63,6 +66,7 @@
     * [store\_rrefs](#pylightnix.core.store_rrefs)
     * [store\_deref\_](#pylightnix.core.store_deref_)
     * [store\_deref](#pylightnix.core.store_deref)
+    * [store\_buildtime](#pylightnix.core.store_buildtime)
     * [store\_gc](#pylightnix.core.store_gc)
     * [store\_instantiate](#pylightnix.core.store_instantiate)
     * [store\_realize](#pylightnix.core.store_realize)
@@ -160,9 +164,11 @@
     * [catrref\_](#pylightnix.bashlike.catrref_)
     * [catref](#pylightnix.bashlike.catref)
     * [rmref](#pylightnix.bashlike.rmref)
-    * [shellref](#pylightnix.bashlike.shellref)
     * [shell](#pylightnix.bashlike.shell)
+    * [shellref](#pylightnix.bashlike.shellref)
     * [du](#pylightnix.bashlike.du)
+    * [find](#pylightnix.bashlike.find)
+    * [diff](#pylightnix.bashlike.diff)
   * [pylightnix.lens](#pylightnix.lens)
     * [Lens](#pylightnix.lens.Lens)
     * [mklens](#pylightnix.lens.mklens)
@@ -386,11 +392,27 @@ build artifact
 - [match_only](#pylightnix.core.match_only) matches exactly one existing
 realization (asserts if there are more than one realizations)
 
+<a name="pylightnix.types.InstantiateArg"></a>
+## `InstantiateArg`
+
+```python
+InstantiateArg = Dict[str,Any]
+```
+
+
+<a name="pylightnix.types.RealizeArg"></a>
+## `RealizeArg`
+
+```python
+RealizeArg = Dict[str,Any]
+```
+
+
 <a name="pylightnix.types.Realizer"></a>
 ## `Realizer`
 
 ```python
-Realizer = Callable[[DRef,Context],List[Path]]
+Realizer = Callable[[DRef,Context,RealizeArg],List[Path]]
 ```
 
 Realizer is a type of callback functions which are defined by the user.
@@ -554,8 +576,9 @@ def __init__(self, d: dict)
 ## `BuildArgs`
 
 ```python
-BuildArgs = NamedTuple('BuildArgs', [('dref',DRef), ('cattrs',ConfigAttrs),
-                                     ...
+BuildArgs = NamedTuple('BuildArgs', [('dref',DRef),
+                                     ('context',Context),
+   ...
 ```
 
 
@@ -909,6 +932,14 @@ def mkrefpath(r: DRef, items: List[str] = []) -> RefPath
 Construct a [RefPath](#pylightnix.types.RefPath) out of a reference `ref`
 and a path within the stage's realization
 
+<a name="pylightnix.core.store_cfgpath"></a>
+## `store_cfgpath()`
+
+```python
+def store_cfgpath(r: DRef) -> Path
+```
+
+
 <a name="pylightnix.core.store_config_"></a>
 ## `store_config_()`
 
@@ -1026,6 +1057,22 @@ queries the realization reference of this dependency.
 
 See also [build_deref](#pylightnix.core.build_deref)
 
+<a name="pylightnix.core.store_buildtime"></a>
+## `store_buildtime()`
+
+```python
+def store_buildtime(rref: RRef) -> Optional[str]
+```
+
+Return the buildtime of the current RRef in a format specified by the
+[PYLIGHTNIX_TIME](#pylightnix.utils.PYLIGHTNIX_TIME) constant.
+
+[parsetime](#pylightnix.utils.parsetime) may be used to parse stings into
+UNIX-Epoch seconds.
+
+Buildtime is the time when the realization process has started. Some
+realizations may not provide this information.
+
 <a name="pylightnix.core.store_gc"></a>
 ## `store_gc()`
 
@@ -1063,7 +1110,7 @@ FIXME: Assert or handle possible but improbable hash collision (*)
 ## `mkbuildargs()`
 
 ```python
-def mkbuildargs(dref: DRef, context: Context, buildtime: bool = True) -> BuildArgs
+def mkbuildargs(dref: DRef, context: Context, timeprefix: Optional[str], iarg: InstantiateArg, rarg: RealizeArg) -> BuildArgs
 ```
 
 
@@ -1095,7 +1142,7 @@ def build_wrapper_(f: Callable[[B],None], ctr: Callable[[BuildArgs],B], buildtim
 ## `build_wrapper()`
 
 ```python
-def build_wrapper(f: Callable[[Build],None], buildtime: bool = True)
+def build_wrapper(f: Callable[[Build],None], buildtime: bool = True) -> Realizer
 ```
 
 Build Adapter which convers user-defined realizers which use
@@ -1129,6 +1176,8 @@ being built.
 def build_cattrs(b: Build) -> Any
 ```
 
+Cache and return `ConfigAttrs`. Cache allows realizers to update it's
+value during the build process, e.g. to use it as a storage.
 
 <a name="pylightnix.core.build_outpaths"></a>
 ## `build_outpaths()`
@@ -1381,7 +1430,7 @@ See also [realizeMany](#pylightnix.core.realizeMany)
 ## `RealizeSeqGen`
 
 ```python
-RealizeSeqGen = Generator[Tuple[DRef,Context,Derivation],Tuple[Optional[List[RRef]],bool],List[RRef]]
+RealizeSeqGen = Generator[Tuple[DRef,Context,Derivation,RealizeArg],Tuple[Optional[List[RRef]],bool],List[RRef]]
 ```
 
 
@@ -1399,7 +1448,7 @@ Expects only one output path.
 ## `realizeMany()`
 
 ```python
-def realizeMany(closure: Closure, force_rebuild: Union[List[DRef],bool] = [], assert_realized: List[DRef] = []) -> List[RRef]
+def realizeMany(closure: Closure, force_rebuild: Union[List[DRef],bool] = [], assert_realized: List[DRef] = [], realize_args: Dict[DRef,RealizeArg] = {}) -> List[RRef]
 ```
 
 Obtain one or more realizations of a stage's
@@ -1449,7 +1498,7 @@ print('Available realizations:', [rref2path(rref) for rref in rrefs])
 ## `realizeSeq()`
 
 ```python
-def realizeSeq(closure: Closure, force_interrupt: List[DRef] = [], assert_realized: List[DRef] = []) -> RealizeSeqGen
+def realizeSeq(closure: Closure, force_interrupt: List[DRef] = [], assert_realized: List[DRef] = [], realize_args: Dict[DRef,RealizeArg] = {}) -> RealizeSeqGen
 ```
 
 Sequentially realize the closure by issuing steps via Python's generator
@@ -1466,7 +1515,7 @@ def mksymlink(rref: RRef, tgtpath: Path, name: str, withtime=True) -> Path
 
 Create a symlink pointing to realization `rref`. Other arguments define
 symlink name and location. Informally,
-`{tgtpath}/{timeprefix}{name} --> $PYLIGHTNIX_STORE/{rref2dref(rref)}/{rref}`.
+`{tgtpath}/{timeprefix}{name} --> $PYLIGHTNIX_STORE/{dref}/{rref}`.
 Overwrite existing symlinks.
 
 <a name="pylightnix.core.match"></a>
@@ -1787,7 +1836,7 @@ def repl_continueBuild(b: Build, rh: Optional[ReplHelper] = None) -> Optional[RR
 ## `repl_realize()`
 
 ```python
-def repl_realize(closure: Closure, force_interrupt: Union[List[DRef],bool] = True) -> ReplHelper
+def repl_realize(closure: Closure, force_interrupt: Union[List[DRef],bool] = True, realize_args: Dict[DRef,RealizeArg] = {}) -> ReplHelper
 ```
 
 TODO
@@ -1893,7 +1942,7 @@ def checkpaths(m: Manager, promises: dict, name: str = "checkpaths") -> DRef
 ## `redefine()`
 
 ```python
-def redefine(stage: Stage, new_config: Callable[[Config],Config] = lambda c:c, new_matcher: Optional[Matcher] = None, new_realizer: Optional[Realizer] = None, check_promises: bool = True) -> Stage
+def redefine(stage: Stage, new_config: Callable[[dict],Config] = mkconfig, new_matcher: Optional[Matcher] = None, new_realizer: Optional[Realizer] = None, check_promises: bool = True) -> Stage
 ```
 
 Define a new Derivation based on the existing one, by updating it's
@@ -1901,12 +1950,20 @@ config, optionally re-writing it's matcher, or it's realizer.
 
 Arguments:
 - `stage:Stage` Stage to re-define
-- `new_config:Callable[[RConfig],RConfig]` A function to update the `dref`'s
-  config. Defaults to identity function.
+- `new_config:Callable[[dict],Config]=mkconfig` A function to update the `dref`'s
+  config. Defaults to `mkconfig` function (here similar to the identity).
 - `new_matcher:Optional[Matcher]=None` Optional new matcher (defaults to the
   existing matcher)
 - `new_realizer:Optional[Realizer]=None` Optional new realizer (defaults to
   the existing realizer)
+
+Example:
+```python
+def _new_config(old_config):
+  old_config['learning_rate'] = 1e-5
+  return mkconfig(old_config)
+realize(instantiate(redefine(myMLmodel, _new_config)))
+```
 
 <a name="pylightnix.stages.trivial.realized"></a>
 ## `realized()`
@@ -2082,6 +2139,20 @@ Currently Pylightnix makes no attempts to synchronize an access to the
 storage. In scenarious involving parallelization, users are expected to take
 care of possible race conditions.
 
+<a name="pylightnix.bashlike.shell"></a>
+## `shell()`
+
+```python
+def shell(r: Union[Build,RRef,DRef,Path,str,None] = None) -> None
+```
+
+Open the Unix Shell in the directory associated with the argument passed.
+Path to the shell executable is read from the `SHELL` environment variable,
+defaulting to `/bin/sh`. If `r` is None, open the shell in the root of the
+Pylightnix storage.
+
+The function is expected to be run in REPL Python shells like IPython.
+
 <a name="pylightnix.bashlike.shellref"></a>
 ## `shellref()`
 
@@ -2090,18 +2161,6 @@ def shellref(r: Union[RRef,DRef,None] = None) -> None
 ```
 
 Alias for [shell](#pylightnix.bashlike.shell). Deprecated.
-
-<a name="pylightnix.bashlike.shell"></a>
-## `shell()`
-
-```python
-def shell(r: Union[Build,RRef,DRef,Path,str,None] = None) -> None
-```
-
-Open the directory corresponding to `r` in Unix Shell for inspection. The
-path to shell executable is read from the `SHELL` environment variable,
-defaulting to `/bin/sh`. If `r` is None, open the shell in the root of the
-Pylightnix storage.
 
 <a name="pylightnix.bashlike.du"></a>
 ## `du()`
@@ -2113,6 +2172,36 @@ def du() -> Dict[DRef,Tuple[int,Dict[RRef,int]]]
 Calculates the disk usage, in bytes. For every derivation, return it's
 total disk usage and disk usages per realizations. Note, that total disk usage
 of a derivation is slightly bigger than sum of it's realization's usages.
+
+<a name="pylightnix.bashlike.find"></a>
+## `find()`
+
+```python
+def find(name: Optional[Union[Stage,str]] = None, newer: Optional[float] = None) -> List[RRef]
+```
+
+Return [RRefs](#pylightnix.types.RRef) found in Pylightnix sotrage which
+match all of the criteria provided. Without arguments return all RRefs.
+
+Arguments:
+- `name:Optional[Union[Stage,str]]=None` match RRefs which have `name` in
+  their name.  Matching is done by `fnmatch` Python function which supports
+  shell-like glob expressions with '*' and '?' symbols. If name is a
+  [Stage](#pylightnix.types.Stage) then it is instantiated and it's name is
+  taken.
+- `newer:Optional[float]=None` match RRefs which are newer than this number of
+  seconds starting from the UNIX Epoch. Zero and negative numbers count
+  backward from the current time.
+
+<a name="pylightnix.bashlike.diff"></a>
+## `diff()`
+
+```python
+def diff(stageA: Union[RRef,DRef,Stage], stageB: Union[RRef,DRef,Stage]) -> None
+```
+
+Run system's `diff` utility to print the difference between configs of 2
+stages passed.
 
 <a name="pylightnix.lens"></a>
 # `pylightnix.lens`
