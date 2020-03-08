@@ -421,13 +421,13 @@ def store_realize(dref:DRef, l:Context, o:Path)->RRef:
 # | |_) | |_| | | | (_| |
 # |____/ \__,_|_|_|\__,_|
 
-def mkbuildargs(dref:DRef, context:Context, buildtime:bool=True)->BuildArgs:
+def mkbuildargs(dref:DRef, context:Context, timeprefix:Optional[str])->BuildArgs:
   assert_valid_config(store_config(dref))
-  timeprefix=timestring()
-  return BuildArgs(dref, context, timeprefix, buildtime)
+  return BuildArgs(dref, context, timeprefix)
 
 def mkbuild(dref:DRef, context:Context, buildtime:bool=True)->Build:
-  return Build(mkbuildargs(dref,context,buildtime))
+  timeprefix=timestring() if buildtime else None
+  return Build(mkbuildargs(dref,context,timeprefix))
 
 B=TypeVar('B')
 
@@ -436,7 +436,8 @@ def build_wrapper_(
     ctr:Callable[[BuildArgs],B],
     buildtime:bool=True)->Realizer:
   def _wrapper(dref,context)->List[Path]:
-    b=ctr(mkbuildargs(dref,context,buildtime)); f(b); return list(getattr(b,'outpaths'))
+    timeprefix=timestring() if buildtime else None
+    b=ctr(mkbuildargs(dref,context,timeprefix)); f(b); return list(getattr(b,'outpaths'))
   return _wrapper
 
 def build_wrapper(f:Callable[[Build],None], buildtime:bool=True)->Realizer:
@@ -462,7 +463,7 @@ def build_outpaths(b:Build, nouts:int=1)->List[Path]:
   if len(b.outpaths)==0:
     prefix=f'{b.timeprefix}_{config_hash(build_config(b))[:8]}_'
     outpaths=[Path(mkdtemp(prefix=prefix, dir=PYLIGHTNIX_TMP)) for _ in range(nouts)]
-    if b.buildtime:
+    if b.timeprefix is not None:
       for outpath in outpaths:
         with open(join(outpath,'__buildtime__.txt'), 'w') as f:
           f.write(b.timeprefix)

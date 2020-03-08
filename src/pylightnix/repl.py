@@ -20,7 +20,7 @@ system.  Finally, `repl_continue` or `repl_cancel` could be called to either
 continue or cancel the realization.
 """
 
-from pylightnix.utils import ( dirrm )
+from pylightnix.utils import ( dirrm, timestring )
 
 from pylightnix.types import ( Closure, Context, Derivation, RRef, DRef, List,
     Tuple, Optional, Generator, Path, Build, Union, Any, BuildArgs  )
@@ -136,7 +136,8 @@ def repl_buildargs(rh:Optional[ReplHelper]=None, buildtime:bool=True)->BuildArgs
   assert rh is not None, ERR_INVALID_RH
   assert rh.context is not None, ERR_INACTIVE_RH
   assert rh.dref is not None, ERR_INACTIVE_RH
-  return mkbuildargs(rh.dref, rh.context, buildtime)
+  timeprefix=timestring() if buildtime else None
+  return mkbuildargs(rh.dref, rh.context, timeprefix)
 
 def repl_build(rh:Optional[ReplHelper]=None, buildtime:bool=True)->Build:
   return Build(repl_buildargs(rh, buildtime))

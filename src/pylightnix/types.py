@@ -317,8 +317,7 @@ class ConfigAttrs:
 
 BuildArgs = NamedTuple('BuildArgs', [('dref',DRef),
                                      ('context',Context),
-                                     ('timeprefix',str),
-                                     ('buildtime',bool)])
+                                     ('timeprefix',Optional[str])])
 
 class Build:
   """Build is a helper object which tracks the process of stage's
@@ -367,7 +366,6 @@ class Build:
     self.dref=ba.dref
     self.context=ba.context
     self.timeprefix=ba.timeprefix
-    self.buildtime=ba.buildtime
     self.outpaths:List[Path]=[]
 
 class Manager:
