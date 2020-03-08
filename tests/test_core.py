@@ -308,7 +308,8 @@ def test_build_cattrs():
         assert hasattr(c,'b')
         assert not hasattr(c,'c')
         c.c = 'foo'
-        assert hasattr(c,'c')
+        c2 = build_cattrs(b) # Should use the cache
+        assert hasattr(c2,'c')
         return
       return mkdrv(m, _instantiate(), match_only(), build_wrapper(_realize))
 
