@@ -16,10 +16,10 @@
 Core Pylightnix definitions
 """
 
-from pylightnix.imports import ( sha256, deepcopy, isdir, makedirs, join,
-    json_dump, json_load, json_dumps, json_loads, isfile, relpath, listdir,
-    rmtree, mkdtemp, replace, environ, split, re_match, ENOTEMPTY, get_ident,
-    contextmanager, OrderedDict, lstat, maxsize )
+from pylightnix.imports import ( sha256, deepcopy, isdir, islink, makedirs,
+    join, json_dump, json_load, json_dumps, json_loads, isfile, relpath,
+    listdir, rmtree, mkdtemp, replace, environ, split, re_match, ENOTEMPTY,
+    get_ident, contextmanager, OrderedDict, lstat, maxsize )
 from pylightnix.utils import ( dirhash, assert_serializable, assert_valid_dict,
     dicthash, scanref_dict, scanref_list, forcelink, timestring, parsetime,
     datahash, readjson, tryread, encode, dirchmod, dirrm, filero, isrref,
@@ -591,7 +591,7 @@ claim = PYLIGHTNIX_CLAIM_TAG
 
 def assert_promise_fulfilled(k:str, p:PromisePath, o:Path)->None:
   ppath=join(o,*p[1:])
-  assert isfile(ppath) or isdir(ppath), (
+  assert isfile(ppath) or isdir(ppath) or islink(ppath), (
       f"Promise '{k}' of {p[0]} is not fulfilled. "
       f"{ppath} is expected to be a file or a directory.")
 
