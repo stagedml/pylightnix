@@ -170,7 +170,7 @@
 <a name="pylightnix.types"></a>
 # `pylightnix.types`
 
-Main types used in Pylightnix are defined here.
+All main types which we use in Pylightnix are defined here.
 
 <a name="pylightnix.types.Path"></a>
 ## `Path` Objects
@@ -1188,14 +1188,15 @@ def build_deref(b: Build, dref: DRef) -> RRef
 def build_paths(b: Build, refpath: RefPath) -> List[Path]
 ```
 
-Convert given [RefPath](#pylightnix.types.RefPath) (which may be an
-ex-[PromisePath](#pylightnix.types.PromisePath)) into a set of filesystem
-paths. Conversion refers to the [Context](#pylightnix.types.Context) of the
-realization, as specified by the `b` helper.
+Convert given [RefPath](#pylightnix.types.RefPath) (which may be either a
+regular RefPath or an ex-[PromisePath](#pylightnix.types.PromisePath)) into
+one or many filesystem paths. Conversion refers to the
+[Context](#pylightnix.types.Context) of the current realization process by
+accessing it's [build_context](#pylightnix.core.build_context).
 
 Typically, we configure stages to match only one realization at once, so the
-returned list is often a singleton list. See
-[build_path](#pylightnix.core.build_path).
+returned list often has only one entry. Consider using
+[build_path](#pylightnix.core.build_path) if this fact is known in advance.
 
 Example:
 ```python
@@ -1273,16 +1274,17 @@ def context_serialize(c: Context) -> str
 promise = PYLIGHTNIX_PROMISE_TAG
 ```
 
-A magic constant which is required to create
+Promise is a magic constant required to create
 [PromisePath](#pylightnix.types.PromisePath), where it is used as a start
 marker. Promise paths do exist only during
-[instantiation](#pylightnix.core.instantiate) pass. Before the realization
-pass, the core replaces all PromisePaths with the corresponding
-[RefPaths](#pylightnix.type.RefPath) automatically (see
+[instantiation](#pylightnix.core.instantiate) pass. The core replaces all
+PromisePaths with corresponding [RefPaths](#pylightnix.type.RefPath)
+automatically before it starts the realization pass (see
 [store_config](#pylightnix.core.store_config)).
 
-Ex-PromisePaths may be converted into filesystem paths by
-[build_path](#pylightnix.core.build_path) as ususal.
+Ex-PromisePaths may be later converted into filesystem paths by
+[build_path](#pylightnix.core.build_path) or by
+[Lenses](#pylightnix.lens.Lens) as usual.
 
 <a name="pylightnix.core.claim"></a>
 ## `claim`
@@ -1291,6 +1293,10 @@ Ex-PromisePaths may be converted into filesystem paths by
 claim = PYLIGHTNIX_CLAIM_TAG
 ```
 
+Claim is a [promise](#pylightnix.core.promise) which is not checked by the
+Pylightnix. All other properties of promises are valid for claims.  All
+PromisPaths which start from `claim` are substituted with corresponding
+RefPaths by Pylightnix and may be later converted into system paths.
 
 <a name="pylightnix.core.assert_promise_fulfilled"></a>
 ## `assert_promise_fulfilled()`
@@ -1470,8 +1476,8 @@ Overwrite existing symlinks.
 def match(keys: List[Key], rmin: Optional[int] = 1, rmax: Optional[int] = 1, exclusive: bool = False) -> Matcher
 ```
 
-Create a matcher by combining different sorting keys and selecting a
-top-n threshold.
+Create a [Matcher](#pylightnix.types.Matcher) by combining different
+sorting keys and selecting a top-n threshold.
 
 Arguments:
 - `keys`: List of [Key](#pylightnix.types.Key) functions. Defaults ot
@@ -1863,7 +1869,7 @@ Trivial builtin stages
 ## `mknode()`
 
 ```python
-def mknode(m: Manager, sources: dict, artifacts: Dict[Name,bytes] = {}) -> DRef
+def mknode(m: Manager, sources: dict, artifacts: Dict[Name,bytes] = {}, name: str = 'mknode') -> DRef
 ```
 
 
@@ -2118,7 +2124,7 @@ through the dependent configurations
 ## `Lens` Objects
 
 ```python
-def __init__(self, ctx: Tuple[Optional[Build],Optional[RRef]], v: Any) -> None
+def __init__(self, ctx: Tuple[Optional[Build],Optional[Context]], v: Any) -> None
 ```
 
 Lens objects provide quick access to the parameters of stage
@@ -2129,23 +2135,25 @@ Lens lifecycle consists of three stages:
 1. Creation on the basis of existing objects. Lens may be created out of
    any Python value, but the meaningful operations (besides getting this value
    back) are supported for the Pylightnix types which could be casted to
-   Python dictionaries. Those types are:
-   - `Build` helper class
-   - `DRef` references
-   - `RRef` references
-   - `RConfig` configuration wrappers
-   - Regular Python dictionaries
+   Python dictionaries. See [mklens](#pylightnix.lens.mklens) for the list of
+   supported source objects.
 2. Navigation through the nested configurations. Lenses access configuration
    attributes, automatically dereference Pylightnix references and produce other
    Lenses, which are 'focused' on new locations.
 3. Access to the raw value which could no longer be converted into a Lens. In
    this case the raw value is returned.
 
+To create Lenses, use `mklens` function rather than creating it directly
+because it encodes a number of supported ways of deducing `ctx` of Lens.
+
+FIXME: Do not accept `Build` at this level. Accept optional
+`build_outpath:Path` to increase the applicability.
+
 <a name="pylightnix.lens.Lens.__init__"></a>
 ### `Lens.__init__()`
 
 ```python
-def __init__(self, ctx: Tuple[Optional[Build],Optional[RRef]], v: Any) -> None
+def __init__(self, ctx: Tuple[Optional[Build],Optional[Context]], v: Any) -> None
 ```
 
 
@@ -2153,17 +2161,19 @@ def __init__(self, ctx: Tuple[Optional[Build],Optional[RRef]], v: Any) -> None
 ### `Lens.__getattr__()`
 
 ```python
-def __getattr__(self, key) -> Any
+def __getattr__(self, key) -> "Lens"
 ```
 
+Sugar for `Lens.get`
 
 <a name="pylightnix.lens.Lens.get"></a>
 ### `Lens.get()`
 
 ```python
-def get(self, key) -> Any
+def get(self, key) -> "Lens"
 ```
 
+Return a new Lens out of the `key` attribute of the current Lens
 
 <a name="pylightnix.lens.Lens.val"></a>
 ### `Lens.val()`
@@ -2173,6 +2183,7 @@ def get(self, key) -> Any
 def val(self) -> Any
 ```
 
+Return th current value of Lens as-is
 
 <a name="pylightnix.lens.Lens.refpath"></a>
 ### `Lens.refpath()`
@@ -2182,6 +2193,7 @@ def val(self) -> Any
 def refpath(self) -> RefPath
 ```
 
+Check that the current value of Lens is a `RefPath` and return it
 
 <a name="pylightnix.lens.Lens.syspath"></a>
 ### `Lens.syspath()`
@@ -2191,6 +2203,7 @@ def refpath(self) -> RefPath
 def syspath(self) -> Path
 ```
 
+Check that the current value of Lens is a `Path` and return it
 
 <a name="pylightnix.lens.Lens.dref"></a>
 ### `Lens.dref()`
@@ -2200,6 +2213,7 @@ def syspath(self) -> Path
 def dref(self) -> DRef
 ```
 
+Check that the current value of Lens is a `DRef` and return it
 
 <a name="pylightnix.lens.Lens.rref"></a>
 ### `Lens.rref()`
@@ -2209,14 +2223,17 @@ def dref(self) -> DRef
 def rref(self) -> RRef
 ```
 
+Check that the current value of Lens is an `RRef` and return it
 
 <a name="pylightnix.lens.Lens.resolve"></a>
 ### `Lens.resolve()`
 
 ```python
-def resolve(self) -> Any
+def resolve(self) -> Path
 ```
 
+Resolve the current value of Lens into system path. Assert if it is not
+possible or if the result is associated with multiple paths.
 
 <a name="pylightnix.lens.Lens.as_dict"></a>
 ### `Lens.as_dict()`
@@ -2225,12 +2242,32 @@ def resolve(self) -> Any
 def as_dict(self) -> dict
 ```
 
+Return the `dict` representation of the Lens, asserting that it is possible.
 
 <a name="pylightnix.lens.mklens"></a>
 ## `mklens()`
 
 ```python
-def mklens(x: Any, b: Optional[Build] = None, rref: Optional[RRef] = None) -> Lens
+def mklens(x: Any, b: Optional[Build] = None, rref: Optional[RRef] = None, ctx: Optional[Context] = None) -> Lens
 ```
 
+Mklens creates [Lenses](#pylightnix.lens.Lens) from various user objects.
+
+Arguments:
+- `x:Any` The object to create the Lens from. Supported source object types
+  are:
+  * `RRefs`
+  * `DRefs`
+  * `Build`
+  * `RefPath`
+  * `dict`
+- `b:Optional[Build]=None` Optional `Build` context of the Lens. Passing this
+  object would allow Lens to resolve RRefs using the Context of the current
+  realization. Also it would allow the Lens to use
+  [build_path](#pylightnix.core.build_path) function to
+  resolve Build paths.
+- `rref:Optional[RRef]=None` Optional `RRef` link. Passing this object will
+  allow Lens to resolve other RRefs using the Context of the given RRef.
+- `ctx:Optional[Context]=None` Passing optional Context would allow Lens to
+  resolve RRefs.
 
