@@ -102,7 +102,7 @@ $(WHEEL): $(SRC) $(TESTS)
 
 .PHONY: wheels
 wheels: $(WHEEL)
-	@echo "To install, run \n> sudo pip3 install --force $@"
+	@echo "To install, run \n> sudo pip3 install --force $(WHEEL)"
 
 .PHONY: all
 all: wheels coverage demos docs
