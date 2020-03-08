@@ -87,7 +87,7 @@ def checkpaths(m:Manager, promises:dict, name:str="checkpaths")->DRef:
 
 def redefine(
     stage:Stage,
-    new_config:Callable[[Config],Config]=lambda c:c,
+    new_config:Callable[[dict],Config]=mkconfig,
     new_matcher:Optional[Matcher]=None,
     new_realizer:Optional[Realizer]=None,
     check_promises:bool=True)->Stage:
@@ -96,16 +96,24 @@ def redefine(
 
   Arguments:
   - `stage:Stage` Stage to re-define
-  - `new_config:Callable[[RConfig],RConfig]` A function to update the `dref`'s
-    config. Defaults to identity function.
+  - `new_config:Callable[[dict],Config]=mkconfig` A function to update the `dref`'s
+    config. Defaults to `mkconfig` function (here similar to the identity).
   - `new_matcher:Optional[Matcher]=None` Optional new matcher (defaults to the
     existing matcher)
   - `new_realizer:Optional[Realizer]=None` Optional new realizer (defaults to
     the existing realizer)
+
+  Example:
+  ```python
+  def _new_config(old_config):
+    old_config['learning_rate'] = 1e-5
+    return mkconfig(old_config)
+  realize(instantiate(redefine(myMLmodel, _new_config)))
+  ```
   """
   def _new_stage(m:Manager,*args,**kwargs)->DRef:
     dref=stage(m,*args,**kwargs) # type:ignore
-    new_config_=new_config(store_config_(dref))
+    new_config_=new_config(config_dict(store_config_(dref)))
     new_matcher_=new_matcher if new_matcher is not None else m.builders[dref].matcher
     new_realizer_=new_realizer if new_realizer is not None else m.builders[dref].realizer
     return mkdrv(m, new_config_, new_matcher_, new_realizer_, check_promises=check_promises)
