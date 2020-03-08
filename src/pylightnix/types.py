@@ -192,6 +192,9 @@ Context=Dict[DRef,List[RRef]]
 #:   realization (asserts if there are more than one realizations)
 Matcher = Callable[[DRef,Context],Optional[List[RRef]]]
 
+InstantiateArg=Dict[str,Any]
+RealizeArg=Dict[str,Any]
+
 #: Realizer is a type of callback functions which are defined by the user.
 #: Realizers should implement the stage-specific
 #: [realization](#pylightnix.core.realize) algorithm.
@@ -230,7 +233,7 @@ Matcher = Callable[[DRef,Context],Optional[List[RRef]]]
 #:   ...
 #:   return mkdrv(m, ...,  _realize)
 #: ```
-Realizer = Callable[[DRef,Context],List[Path]]
+Realizer = Callable[[DRef,Context,RealizeArg],List[Path]]
 
 #: Derivation is the core type of Pylightnix. It keeps all the information about
 #: a stage: it's [configuration](#pylightnix.types.Config), how to
@@ -317,7 +320,9 @@ class ConfigAttrs:
 
 BuildArgs = NamedTuple('BuildArgs', [('dref',DRef),
                                      ('context',Context),
-                                     ('timeprefix',Optional[str])])
+                                     ('timeprefix',Optional[str]),
+                                     ('iarg',InstantiateArg),
+                                     ('rarg',RealizeArg)])
 
 class Build:
   """Build is a helper object which tracks the process of stage's
@@ -365,6 +370,8 @@ class Build:
   def __init__(self, ba:BuildArgs)->None:
     self.dref=ba.dref
     self.context=ba.context
+    self.iarg=ba.iarg
+    self.rarg=ba.rarg
     self.timeprefix=ba.timeprefix
     self.outpaths:List[Path]=[]
 

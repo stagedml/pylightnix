@@ -22,7 +22,7 @@ from pylightnix.core import ( mkdrv, mkconfig, mkbuild, match_only,
     build_deref_, build_cattrs, build_wrapper, store_config_ )
 from pylightnix.types import ( RefPath, Manager, Context, Build, Name,
     DRef, RRef, Any, Optional, Dict, Hash, Path, List, Callable, Matcher,
-    Realizer, Stage, Config )
+    Realizer, Stage, Config, RealizeArg )
 from pylightnix.utils import ( forcelink, isrefpath, traverse_dict )
 
 
@@ -32,13 +32,11 @@ def mknode(m:Manager, sources:dict, artifacts:Dict[Name,bytes]={}, name:str='mkn
   assert '__artifacts__' not in config, \
       "config shouldn't contain reserved field '__artifacts__'"
   config.update({'__artifacts__':{an:Hash(datahash([av])) for (an,av) in artifacts.items()}})
-  def _realize(dref:DRef, context:Context)->List[Path]:
-    b=mkbuild(dref, context)
+  def _realize(b:Build)->None:
     for an,av in artifacts.items():
       with open(join(build_outpath(b),an),'wb') as f:
         f.write(av)
-    return [build_outpath(b)]
-  return mkdrv(m, mkconfig(config), match_only(), _realize)
+  return mkdrv(m, mkconfig(config), match_only(), build_wrapper(_realize))
 
 
 def mkfile(m:Manager, name:Name, contents:bytes, filename:Optional[Name]=None)->DRef:
@@ -127,7 +125,7 @@ def realized(stage:Any)->Stage:
   # ^^^ Fail if `my_long_running_stage` is not yet realized.
   ```
   """
-  def _no_realizer(dref:DRef,context:Context)->List[Path]:
+  def _no_realizer(dref:DRef,context:Context,rarg:RealizeArg)->List[Path]:
     assert False, (
         f"Stage '{dref}' was assumed to be already realized. "
         f"Unfortunately, it seens to be not the case because it's matcher "

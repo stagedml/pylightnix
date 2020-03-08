@@ -1,6 +1,6 @@
 from pylightnix import ( Manager, Path, store_initialize, DRef, Context,
     Optional, mkbuild, build_outpath, store_rrefs, RRef, mkconfig,
-    Name, mkdrv, rref2path, dirchmod, promise, Config )
+    Name, mkdrv, rref2path, dirchmod, promise, Config, RealizeArg )
 from tests.imports import ( rmtree, join, makedirs, listdir, Callable,
     contextmanager, List)
 
@@ -53,7 +53,7 @@ def mktestnode_nondetermenistic(m:Manager, sources:dict,
     c=mkconfig(sources)
     c.val['promise_artifact']=[promise,'artifact']
     return c
-  def _realize(dref:DRef, context:Context)->List[Path]:
+  def _realize(dref:DRef, context:Context, ra:RealizeArg)->List[Path]:
     b=mkbuild(dref, context, buildtime=buildtime)
     with open(join(build_outpath(b),'artifact'),'w') as f:
       f.write(str(nondet()))

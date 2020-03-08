@@ -33,7 +33,7 @@ def test_realize(d)->None:
     assert len(list(store_rrefs(dref, mkcontext()))) == 0
     rrefs=list(m.builders.values())[-1].matcher(dref, mkcontext())
     assert rrefs is None
-    rref=store_realize(dref, mkcontext(), list(m.builders.values())[-1].realizer(dref, mkcontext())[0])
+    rref=store_realize(dref, mkcontext(), list(m.builders.values())[-1].realizer(dref, mkcontext(),{})[0])
     assert len(list(store_rrefs(dref, mkcontext()))) == 1
     assert_valid_rref(rref)
     rrefs2=list(m.builders.values())[-1].matcher(dref, mkcontext())

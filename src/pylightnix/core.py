@@ -29,7 +29,7 @@ from pylightnix.types import (
     RRef, RefPath, PromisePath, HashPart, Callable, Context, Name, NamedTuple,
     Build, RConfig, ConfigAttrs, Derivation, Stage, Manager, Matcher, Realizer,
     Set, Closure, Generator, Key, TypeVar, BuildArgs, PYLIGHTNIX_PROMISE_TAG,
-    PYLIGHTNIX_CLAIM_TAG, Config )
+    PYLIGHTNIX_CLAIM_TAG, Config, RealizeArg, InstantiateArg )
 
 #: *Do not change!*
 #: Tracks the version of pylightnix storage
@@ -421,13 +421,14 @@ def store_realize(dref:DRef, l:Context, o:Path)->RRef:
 # | |_) | |_| | | | (_| |
 # |____/ \__,_|_|_|\__,_|
 
-def mkbuildargs(dref:DRef, context:Context, timeprefix:Optional[str])->BuildArgs:
+def mkbuildargs(dref:DRef, context:Context, timeprefix:Optional[str],
+    iarg:InstantiateArg, rarg:RealizeArg)->BuildArgs:
   assert_valid_config(store_config(dref))
-  return BuildArgs(dref, context, timeprefix)
+  return BuildArgs(dref, context, timeprefix, iarg, rarg)
 
 def mkbuild(dref:DRef, context:Context, buildtime:bool=True)->Build:
   timeprefix=timestring() if buildtime else None
-  return Build(mkbuildargs(dref,context,timeprefix))
+  return Build(mkbuildargs(dref,context,timeprefix,{},{}))
 
 B=TypeVar('B')
 
@@ -435,9 +436,9 @@ def build_wrapper_(
     f:Callable[[B],None],
     ctr:Callable[[BuildArgs],B],
     buildtime:bool=True)->Realizer:
-  def _wrapper(dref,context)->List[Path]:
+  def _wrapper(dref,context,rarg)->List[Path]:
     timeprefix=timestring() if buildtime else None
-    b=ctr(mkbuildargs(dref,context,timeprefix)); f(b); return list(getattr(b,'outpaths'))
+    b=ctr(mkbuildargs(dref,context,timeprefix,{},rarg)); f(b); return list(getattr(b,'outpaths'))
   return _wrapper
 
 def build_wrapper(f:Callable[[Build],None], buildtime:bool=True)->Realizer:
@@ -648,13 +649,13 @@ def mkdrv(m:Manager,
            f"RConfig:\n{store_config_(dref)}"))
 
   def _promise_aware(realizer)->Realizer:
-    def _matcher(dref:DRef,ctx:Context)->List[Path]:
-      outpaths=realizer(dref,ctx)
+    def _realizer(dref:DRef,ctx:Context,rarg:RealizeArg)->List[Path]:
+      outpaths=realizer(dref,ctx,rarg)
       for key,refpath in config_promises(store_config_(dref),dref):
         for o in outpaths:
           assert_promise_fulfilled(key,refpath,o)
       return outpaths
-    return _matcher
+    return _realizer
 
   m.builders[dref]=Derivation(dref=dref,
                               matcher=matcher,
@@ -712,7 +713,7 @@ def instantiate(stage:Any, *args, **kwargs)->Closure:
   """
   return instantiate_(Manager(), stage, *args, **kwargs)
 
-RealizeSeqGen = Generator[Tuple[DRef,Context,Derivation],Tuple[Optional[List[RRef]],bool],List[RRef]]
+RealizeSeqGen = Generator[Tuple[DRef,Context,Derivation,RealizeArg],Tuple[Optional[List[RRef]],bool],List[RRef]]
 
 def realize(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
                              assert_realized:List[DRef]=[])->RRef:
@@ -726,7 +727,8 @@ def realize(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
   return rrefs[0]
 
 def realizeMany(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
-                                 assert_realized:List[DRef]=[])->List[RRef]:
+                                 assert_realized:List[DRef]=[],
+                                 realize_args:Dict[DRef,RealizeArg]={})->List[RRef]:
   """ Obtain one or more realizations of a stage's
   [Closure](#pylightnix.types.Closure).
 
@@ -780,7 +782,8 @@ def realizeMany(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
     assert False, "Ivalid type of `force_rebuild` argument"
   try:
     gen=realizeSeq(closure,force_interrupt=force_interrupt,
-                           assert_realized=assert_realized)
+                           assert_realized=assert_realized,
+                           realize_args=realize_args)
     next(gen)
     while True:
       gen.send((None,False)) # Ask for default action
@@ -789,7 +792,8 @@ def realizeMany(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
   return res
 
 def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
-                                assert_realized:List[DRef]=[])->RealizeSeqGen:
+                                assert_realized:List[DRef]=[],
+                                realize_args:Dict[DRef,RealizeArg]={})->RealizeSeqGen:
   """ Sequentially realize the closure by issuing steps via Python's generator
   interface. `realizeSeq` encodes low-level details of the realization
   algorithm. Consider calling [realizeMany](#pylightnix.core.realizeMany) or
@@ -807,7 +811,7 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
         dref_deps=store_deepdeps([dref])
         dref_context={k:v for k,v in context_acc.items() if k in dref_deps}
         if dref in force_interrupt_:
-          rrefs,abort=yield (dref,dref_context,drv)
+          rrefs,abort=yield (dref,dref_context,drv,realize_args.get(dref,{}))
           if abort:
             return []
         else:
@@ -818,7 +822,7 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
             f"Unfortunately, it is not the case. Config:\n"
             f"{store_config(dref)}"
             )
-          paths=drv.realizer(dref,dref_context)
+          paths=drv.realizer(dref,dref_context,realize_args.get(dref,{}))
           rrefs_built=[store_realize(dref,dref_context,path) for path in paths]
           rrefs_matched=drv.matcher(dref,dref_context)
           assert rrefs_matched is not None, (
