@@ -801,7 +801,10 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
   """ Sequentially realize the closure by issuing steps via Python's generator
   interface. `realizeSeq` encodes low-level details of the realization
   algorithm. Consider calling [realizeMany](#pylightnix.core.realizeMany) or
-  it's analogs instead.  """
+  it's analogs instead.
+
+  FIXME: `assert_realized` may probably be a implemented by calling `redefine`
+  with appropriate failing realizer on every Derivation. """
   assert_valid_closure(closure)
   force_interrupt_:Set[DRef]=set(force_interrupt)
   with recursion_manager('realize'):

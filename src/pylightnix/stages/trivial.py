@@ -110,6 +110,10 @@ def redefine(
     return mkconfig(old_config)
   realize(instantiate(redefine(myMLmodel, _new_config)))
   ```
+
+  FIXME: Current version will may either update realizer of an existing config,
+  or create a completely new derivation, depending on whether we change modify
+  the config or not. One should define the behaviour more clearly.
   """
   def _new_stage(m:Manager,*args,**kwargs)->DRef:
     dref=stage(m,*args,**kwargs) # type:ignore
