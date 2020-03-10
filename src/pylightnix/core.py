@@ -19,7 +19,7 @@ Core Pylightnix definitions
 from pylightnix.imports import ( sha256, deepcopy, isdir, islink, makedirs,
     join, json_dump, json_load, json_dumps, json_loads, isfile, relpath,
     listdir, rmtree, mkdtemp, replace, environ, split, re_match, ENOTEMPTY,
-    get_ident, contextmanager, OrderedDict, lstat, maxsize )
+    get_ident, contextmanager, OrderedDict, lstat, maxsize, readlink )
 from pylightnix.utils import ( dirhash, assert_serializable, assert_valid_dict,
     dicthash, scanref_dict, scanref_list, forcelink, timestring, parsetime,
     datahash, readjson, tryread, encode, dirchmod, dirrm, filero, isrref,
@@ -78,8 +78,6 @@ def undref(r:DRef)->Tuple[HashPart, Name]:
   assert_valid_dref(r)
   return (HashPart(r[5:5+32]), Name(r[5+32+1:]))
 
-
-
 def mkrref(rhash:HashPart, dhash:HashPart, refname:Name)->RRef:
   assert_valid_name(refname)
   assert_valid_hashpart(rhash)
@@ -90,11 +88,17 @@ def unrref(r:RRef)->Tuple[HashPart, HashPart, Name]:
   assert_valid_rref(r)
   return (HashPart(r[5:5+32]), HashPart(r[5+32+1:5+32+1+32]), Name(r[5+32+1+32+1:]))
 
-
 def mkname(s:str)->Name:
   assert_valid_name(Name(s))
   return Name(s)
 
+def path2rref(p:Path)->RRef:
+  if islink(p):
+    p=Path(readlink(p))
+  head,h1=split(p)
+  _,dref=split(head)
+  h2,nm=undref(DRef('dref:'+dref))
+  return mkrref(HashPart(h1),HashPart(h2),mkname(nm))
 
 
 #   ____             __ _
@@ -1009,7 +1013,7 @@ def assert_valid_hashpart(hp:HashPart)->None:
 
 def assert_valid_dref(ref:str)->None:
   error_msg=(f'Value "{ref}" is not a valid derivation reference! Expected '
-             f'a string of form \'dref:HASH_HASH-name\'')
+             f'a string of form \'dref:HASH-name\'')
   assert isdref(ref), error_msg
 
 def assert_valid_hash(h:Hash)->None:
