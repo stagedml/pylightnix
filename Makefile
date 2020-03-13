@@ -105,10 +105,16 @@ wheels: $(WHEEL)
 	@echo "To install, run \`sudo -H make install\` or"
 	@echo "> sudo -H pip3 install --force $(WHEEL)"
 
-
 .PHONY: install
-install: $(WHEEL)
+install: # To be run by root
+	test -f $(WHEEL) || ( echo 'run `make wheels` first'; exit 1; )
 	pip3 install --force $(WHEEL)
+	pip3 hash $(WHEEL) > .install-stamp
+
+.PHONY: check
+check: $(WHEEL)
+	pip3 hash $(WHEEL) > .check-stamp
+	diff .check-stamp .install-stamp
 
 .PHONY: all
 all: wheels coverage demos docs
