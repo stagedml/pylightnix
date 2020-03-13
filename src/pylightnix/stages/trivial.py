@@ -18,7 +18,7 @@ from pylightnix.imports import ( join, deepcopy, dirname, makedirs, isfile,
     isdir, defaultdict )
 from pylightnix.core import ( mkdrv, mkconfig, mkbuild, match_only,
     assert_valid_name, build_outpath, datahash, config_dict, store_config,
-    build_outpaths, match_some, assert_valid_refpath, build_paths, rref2path,
+    build_setoutpaths, match_some, assert_valid_refpath, build_paths, rref2path,
     build_deref_, build_cattrs, build_wrapper, store_config_ )
 from pylightnix.types import ( RefPath, Manager, Context, Build, Name,
     DRef, RRef, Any, Optional, Dict, Hash, Path, List, Callable, Matcher,
@@ -33,8 +33,9 @@ def mknode(m:Manager, sources:dict, artifacts:Dict[Name,bytes]={}, name:str='mkn
       "config shouldn't contain reserved field '__artifacts__'"
   config.update({'__artifacts__':{an:Hash(datahash([av])) for (an,av) in artifacts.items()}})
   def _realize(b:Build)->None:
+    o=build_outpath(b)
     for an,av in artifacts.items():
-      with open(join(build_outpath(b),an),'wb') as f:
+      with open(join(o,an),'wb') as f:
         f.write(av)
   return mkdrv(m, mkconfig(config), match_only(), build_wrapper(_realize))
 
@@ -69,7 +70,7 @@ def checkpaths(m:Manager, promises:dict, name:str="checkpaths")->DRef:
     c=build_cattrs(b)
     promises=_promises()
     dref2rrefs={dref:build_deref_(b,dref) for dref in promises.keys()}
-    os=build_outpaths(b, sum([len(v) for v in dref2rrefs.values()]))
+    os=build_setoutpaths(b, sum([len(v) for v in dref2rrefs.values()]))
     index=0
     for dref,refpaths in promises.items():
       for rref in dref2rrefs[dref]:

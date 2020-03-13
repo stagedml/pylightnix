@@ -10,7 +10,7 @@ from pylightnix import ( instantiate, DRef, RRef, Path, mklogdir,
     assert_recursion_manager_empty, match, latest, best, exact, Key,
     match_latest, match_all, match_some, match_n, realizeMany, build_outpaths,
     scanref_dict, config_dict, promise, checkpaths, mklens, isrref, Config,
-    RConfig )
+    RConfig, build_setoutpaths )
 
 from tests.imports import ( given, Any, Callable, join, Optional, islink,
     isfile, List, randint, sleep, rmtree, system, S_IWRITE, S_IREAD, S_IEXEC,
@@ -449,7 +449,8 @@ def test_match_best()->None:
 def test_match_latest():
   def _mknode(m, cfg, matcher, nouts:int, data=0, buildtime=True):
     def _realize(b:Build)->None:
-      for i,out in enumerate(build_outpaths(b, nouts=nouts)):
+      build_setoutpaths(b,nouts)
+      for i,out in enumerate(build_outpaths(b)):
         assert trywrite(Path(join(out,'artifact')),str(data)+'_'+str(i))
     return mkdrv(m, Config(cfg), matcher,
                     build_wrapper(_realize, buildtime=buildtime))
@@ -491,7 +492,8 @@ def test_match_all():
   """ match_all() should match all the references """
   def _mknode(m,cfg, matcher, nouts:int):
     def _realize(b:Build)->None:
-      for i,out in enumerate(build_outpaths(b, nouts=nouts)):
+      build_setoutpaths(b,nouts)
+      for i,out in enumerate(build_outpaths(b)):
         assert trywrite(Path(join(out,'artifact')),str(nouts+i))
     return mkdrv(m, Config(cfg), matcher, build_wrapper(_realize))
 
@@ -515,7 +517,8 @@ def test_match_some():
   with setup_storage('test_match_some'):
     def _mknode(m, cfg, nouts:int, top:int):
       def _realize(b:Build)->None:
-        for i,out in enumerate(build_outpaths(b, nouts=nouts)):
+        build_setoutpaths(b,nouts)
+        for i,out in enumerate(build_outpaths(b)):
           assert trywrite(Path(join(out,'artifact')),str(nouts+i))
       return mkdrv(m, mkconfig(cfg), match_some(n=top), build_wrapper(_realize))
 

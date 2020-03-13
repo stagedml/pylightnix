@@ -19,9 +19,9 @@ from pylightnix.imports import ( join )
 from pylightnix.types import ( Any, Dict, List, Build, DRef, RRef, Optional,
     RefPath, Tuple, Union, Path, Context )
 from pylightnix.utils import ( isrefpath, isdref, isrref )
-from pylightnix.core import ( build_path, store_deref, store_config, rref2dref,
-    rref2path, config_dict, build_config, store_dref2path, store_context,
-    context_deref )
+from pylightnix.core import ( store_deref, store_config, rref2dref, rref2path,
+    config_dict, build_outpath, build_config, build_context, store_dref2path,
+    store_context, context_deref )
 
 
 class Lens:
@@ -43,11 +43,8 @@ class Lens:
 
   To create Lenses, use `mklens` function rather than creating it directly
   because it encodes a number of supported ways of deducing `ctx` of Lens.
-
-  FIXME: Do not accept `Build` at this level. Accept optional
-  `build_outpath:Path` to increase the applicability.
   """
-  def __init__(self, ctx:Tuple[Optional[Build],Optional[Context]], v:Any)->None:
+  def __init__(self, ctx:Tuple[Optional[Path],Optional[Context]], v:Any)->None:
     self.ctx=ctx
     self.v=v
 
@@ -99,12 +96,18 @@ class Lens:
       return rref2path(RRef(self.v))
     elif isrefpath(self.v):
       refpath=list(self.v) # RefPath is list
-      if self.ctx[0] is not None:
-        return build_path(self.ctx[0], refpath)
-      elif self.ctx[1] is not None:
-        rrefs=context_deref(self.ctx[1], refpath[0])
-        assert len(rrefs)==1, "Lens doesn't support multirealization dependencies"
-        return Path(join(rref2path(rrefs[0]), *refpath[1:]))
+      bpath=self.ctx[0]
+      context=self.ctx[1]
+      if context is not None:
+        if refpath[0] in context:
+          rrefs=context_deref(context, refpath[0])
+          assert len(rrefs)==1, "Lens doesn't support multirealization dependencies"
+          return Path(join(rref2path(rrefs[0]), *refpath[1:]))
+        else:
+          if bpath is not None:
+            return Path(join(bpath, *refpath[1:]))
+          else:
+            assert False, f"Can't dereference refpath {refpath}"
       else:
         assert False, f"Lens couldn't resolve '{refpath}' without a context"
     else:
@@ -124,7 +127,10 @@ class Lens:
       assert False, f"Can't get dict representation of {self.val}"
 
 
-def mklens(x:Any, b:Optional[Build]=None, rref:Optional[RRef]=None, ctx:Optional[Context]=None)->Lens:
+def mklens(x:Any, o:Optional[Path]=None,
+                  b:Optional[Build]=None,
+                  rref:Optional[RRef]=None,
+                  ctx:Optional[Context]=None)->Lens:
   """ Mklens creates [Lenses](#pylightnix.lens.Lens) from various user objects.
 
   Arguments:
@@ -146,11 +152,17 @@ def mklens(x:Any, b:Optional[Build]=None, rref:Optional[RRef]=None, ctx:Optional
     resolve RRefs.
 
   """
+  if ctx is None and b is not None:
+    ctx=build_context(b)
+  if ctx is None and isinstance(x,Build):
+    ctx=build_context(x)
   if ctx is None and rref is not None:
     ctx=store_context(rref)
   if ctx is None and isrref(x):
     ctx=store_context(RRef(x))
-  if b is None and isinstance(x,Build):
-    b=x
-  return Lens((b,ctx),x)
+  if o is None and b is not None:
+    o=build_outpath(b)
+  if o is None and isinstance(x,Build):
+    o=build_outpath(x)
+  return Lens((o,ctx),x)
 

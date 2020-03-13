@@ -468,27 +468,30 @@ def build_cattrs(b:Build)->Any:
     b.cattrs_cache=config_cattrs(build_config(b))
   return b.cattrs_cache
 
-def build_outpaths(b:Build, nouts:int=1)->List[Path]:
-  if len(b.outpaths)==0:
-    prefix=f'{b.timeprefix}_{config_hash(build_config(b))[:8]}_'
-    outpaths=[Path(mkdtemp(prefix=prefix, dir=PYLIGHTNIX_TMP)) for _ in range(nouts)]
-    if b.timeprefix is not None:
-      for outpath in outpaths:
-        with open(join(outpath,'__buildtime__.txt'), 'w') as f:
-          f.write(b.timeprefix)
-    b.outpaths=outpaths
-  assert len(b.outpaths)==nouts, (
-      f"Build helper doesn't support changing the number of outputs dynamically. "
-      f"This instance has been already initialized with {len(b.outpaths)} outputs, but "
-      f"now was asked to return {nouts} outputs")
+def build_setoutpaths(b:Build, nouts:int)->List[Path]:
+  assert nouts>0, f"Attempt to set {nouts} (<=0) output paths"
+  assert len(b.outpaths)==0, f"Build outpaths were already set to {b.outpaths}"
+  prefix=f'{b.timeprefix}_{config_hash(build_config(b))[:8]}_'
+  outpaths=[Path(mkdtemp(prefix=prefix, dir=PYLIGHTNIX_TMP)) for _ in range(nouts)]
+  if b.timeprefix is not None:
+    for outpath in outpaths:
+      with open(join(outpath,'__buildtime__.txt'), 'w') as f:
+        f.write(b.timeprefix)
+  b.outpaths=outpaths
+  return b.outpaths
+
+def build_outpaths(b:Build)->List[Path]:
+  assert len(b.outpaths)>0, f"Build outpaths were not set"
   return b.outpaths
 
 def build_outpath(b:Build)->Path:
   """ Return the output path of the realization being built. Output path is a
   path to valid temporary folder where user may put various build artifacts.
   Later this folder becomes a realization. """
-  paths=build_outpaths(b, nouts=1)
-  assert len(paths)==1
+  if len(b.outpaths)==0:
+    return build_setoutpaths(b,1)[0]
+  paths=build_outpaths(b)
+  assert len(paths)==1, f"Build was set to have multiple output paths: {paths}"
   return paths[0]
 
 def build_name(b:Build)->Name:
@@ -839,7 +842,7 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
           assert rrefs_matched is not None, (
             f"Derivation {dref}: Matcher repeatedly asked the core to "
             f"realize. Probably, realizer doesn't match the matcher. "
-            f"In particulare, the follwoing just-built rrefs are "
+            f"In particular, the follwoing just-built rrefs are "
             f"unmatched: {rrefs_built}" )
           if (set(rrefs_built) & set(rrefs_matched)) == set() and \
              (set(rrefs_built) | set(rrefs_matched)) != set():
