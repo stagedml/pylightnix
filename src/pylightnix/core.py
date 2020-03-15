@@ -239,6 +239,9 @@ def store_config(r:Union[DRef,RRef])->RConfig:
   return config_substitutePromises(store_config_(dref),dref)
 
 def store_context(r:RRef)->Context:
+  """
+  FIXME: Either do `context_add(ctx, rref2dref(r), [r])` or document it's absense
+  """
   assert_valid_rref(r)
   return readjson(join(rref2path(r),'context.json'))
 
