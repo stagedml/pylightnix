@@ -445,7 +445,14 @@ def build_wrapper_(
     buildtime:bool=True)->Realizer:
   def _wrapper(dref,context,rarg)->List[Path]:
     timeprefix=timestring() if buildtime else None
-    b=ctr(mkbuildargs(dref,context,timeprefix,{},rarg)); f(b); return list(getattr(b,'outpaths'))
+    b=ctr(mkbuildargs(dref,context,timeprefix,{},rarg));
+    try:
+      f(b);
+      return list(getattr(b,'outpaths'))
+    except:
+      print(f'Build wrapper of {dref} raised an exception. Remaining '
+            f'build directories are: {getattr(b,"outpaths","<unknown>")}')
+      raise
   return _wrapper
 
 def build_wrapper(f:Callable[[Build],None], buildtime:bool=True)->Realizer:
