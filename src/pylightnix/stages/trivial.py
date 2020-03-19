@@ -87,22 +87,25 @@ def checkpaths(m:Manager, promises:dict, name:str="checkpaths")->DRef:
 
 
 def redefine(
-    stage:Stage,
+    stage:Any,
     new_config:Callable[[dict],Config]=mkconfig,
     new_matcher:Optional[Matcher]=None,
     new_realizer:Optional[Realizer]=None,
-    check_promises:bool=True)->Stage:
+    check_promises:bool=True)->Any:
   """ Define a new Derivation based on the existing one, by updating it's
   config, optionally re-writing it's matcher, or it's realizer.
 
   Arguments:
-  - `stage:Stage` Stage to re-define
+  - `stage:Any` a `Stage` function, accepting arbitrary keyword arguments
   - `new_config:Callable[[dict],Config]=mkconfig` A function to update the `dref`'s
     config. Defaults to `mkconfig` function (here similar to the identity).
   - `new_matcher:Optional[Matcher]=None` Optional new matcher (defaults to the
     existing matcher)
   - `new_realizer:Optional[Realizer]=None` Optional new realizer (defaults to
     the existing realizer)
+
+  Return:
+  A callable `Stage`, accepting pass-through arguments
 
   Example:
   ```python
