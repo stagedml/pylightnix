@@ -109,12 +109,12 @@ wheels: $(WHEEL)
 install: # To be run by root
 	test -f $(WHEEL) || ( echo 'run `make wheels` first'; exit 1; )
 	pip3 install --force $(WHEEL)
-	pip3 hash $(WHEEL) > .install-stamp
+	pip3 hash $(WHEEL) > .install-stamp-$(HOSTNAME)
 
 .PHONY: check
 check: $(WHEEL)
-	pip3 hash $(WHEEL) > .check-stamp
-	diff .check-stamp .install-stamp
+	pip3 hash $(WHEEL) > .check-stamp-$(HOSTNAME)
+	diff -u .check-stamp-$(HOSTNAME) .install-stamp-$(HOSTNAME)
 
 .PHONY: all
 all: wheels coverage demos docs
