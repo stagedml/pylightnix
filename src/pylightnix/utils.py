@@ -281,14 +281,17 @@ def assert_valid_dict(d:dict, argname:str)->dict:
   assert h1==h2
   return d
 
+def readstr(path:str)->str:
+  with open(path,'r') as f:
+    return f.read()
+
 def readjson(json_path:str)->Any:
   with open((json_path), "r") as f:
     return json_load(f)
 
 def tryread(path:Path)->Optional[str]:
   try:
-    with open(path,'r') as f:
-      return f.read()
+    return readstr(path)
   except Exception:
     return None
 
