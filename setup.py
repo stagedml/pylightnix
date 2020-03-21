@@ -18,7 +18,7 @@ setup(
   package_dir={'':'src'},
   package_data={"pylightnix": ["py.typed"]},
   zip_safe=False, # https://mypy.readthedocs.io/en/latest/installed_packages.html
-  version="0.0.2",
+  version="0.1.0",
   author="grwlf",
   author_email="grrwlf@gmail.com",
   description="A Nix-style datastore management library in Python",
