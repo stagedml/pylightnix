@@ -14,8 +14,8 @@
 
 """ Builtin stages for fetching things from the Internet """
 
-from pylightnix.imports import (sha256 as sha256sum, urlparse, Popen, remove,
-    basename, join, rename, isfile, copyfile )
+from pylightnix.imports import (sha256 as sha256sum, sha1 as sha1sum, urlparse,
+    Popen, remove, basename, join, rename, isfile, copyfile )
 from pylightnix.types import ( DRef, Manager, Build, Context, Name,
     Path, Optional, List, Config )
 from pylightnix.core import ( mkconfig, mkbuild, build_cattrs, build_outpath,
@@ -39,7 +39,8 @@ def _unpack(o:str, fullpath:str, remove_file:bool):
 
 def fetchurl(m:Manager,
              url:str,
-             sha256:str,
+             sha256:Optional[str]=None,
+             sha1:Optional[str]=None,
              mode:str='unpack,remove',
              name:Optional[str]=None,
              filename:Optional[str]=None,
@@ -88,11 +89,20 @@ def fetchurl(m:Manager,
   def _instantiate()->Config:
     assert WGET() is not None
     assert AUNPACK() is not None
+    assert (sha256 is None) or (sha1 is None)
     makedirs(tmpfetchdir, exist_ok=True)
-    kwargs.update({'name':name or 'fetchurl',
-                   'url':url,
-                   'sha256':sha256,
-                   'mode':mode})
+    if sha256 is not None:
+      kwargs.update({'name':name or 'fetchurl',
+                     'url':url,
+                     'sha256':sha256,
+                     'mode':mode})
+    elif sha1 is not None:
+      kwargs.update({'name':name or 'fetchurl',
+                     'url':url,
+                     'sha1':sha1,
+                     'mode':mode})
+    else:
+      assert False, 'Either sha256 or sha1 arguments should be set'
     return mkconfig(kwargs)
 
   def _realize(b:Build)->None:
@@ -114,9 +124,16 @@ def fetchurl(m:Manager,
       assert isfile(partpath), f"Can't find output file '{partpath}'"
 
       with open(partpath,"rb") as f:
-        realhash=sha256sum(f.read()).hexdigest();
-        assert realhash==c.sha256, (f"Expected sha256 checksum '{c.sha256}', "
-                                    f"but got '{realhash}'")
+        if sha256 is not None:
+          realhash=sha256sum(f.read()).hexdigest();
+          assert realhash==c.sha256, (f"Expected sha256 checksum '{c.sha256}', "
+                                      f"but got '{realhash}'")
+        elif sha1 is not None:
+          realhash=sha1sum(f.read()).hexdigest();
+          assert realhash==c.sha1, (f"Expected sha1 checksum '{c.sha1}', "
+                                      f"but got '{realhash}'")
+        else:
+          assert False, 'Either sha256 or sha1 arguments should be set'
 
       fullpath=join(o,fname)
       rename(partpath, fullpath)

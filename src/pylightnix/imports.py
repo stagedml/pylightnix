@@ -27,7 +27,7 @@ from os.path import (
     getsize )
 from stat import ( S_IWRITE, S_IREAD, S_IRGRP, S_IROTH, S_IXUSR, S_IXGRP,
     S_IXOTH, ST_MODE, S_IWGRP, S_IWRITE, S_IWOTH )
-from hashlib import sha256
+from hashlib import sha1, sha256
 from copy import deepcopy
 from tempfile import mkdtemp
 from shutil import rmtree, copyfile
