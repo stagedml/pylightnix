@@ -43,3 +43,5 @@ from collections import OrderedDict, defaultdict
 from sys import maxsize
 from datetime import datetime
 from fnmatch import fnmatch
+from functools import partial
+

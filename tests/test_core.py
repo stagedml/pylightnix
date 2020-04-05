@@ -108,10 +108,16 @@ def test_repeated_realize()->None:
   with setup_storage('test_repeated_realize'):
     def _setting(m:Manager)->DRef:
       return mktestnode(m, {'a':'1'})
-    rref1 = realize(instantiate(_setting))
-    rref2 = realize(instantiate(_setting))
-    rref3 = realize(instantiate(_setting), force_rebuild=[instantiate(_setting).dref])
+    dref=instantiate(_setting)
+    rref1=realize(dref)
+    rref2=realize(dref)
+    rref3=realize(dref, force_rebuild=[instantiate(_setting).dref])
     assert rref1==rref2 and rref2==rref3
+    try:
+      rref3=realize(dref, force_rebuild='Foobar') # type:ignore
+      raise ShouldHaveFailed
+    except AssertionError:
+      pass
 
 def test_realize_readonly()->None:
   with setup_storage('test_realize_readonly'):
@@ -163,9 +169,8 @@ def test_minimal_closure():
       position in the closure.
       '''
 
-
-def test_non_determenistic()->None:
-  with setup_storage('test_non_determenistic'):
+def test_realize_nondetermenistic()->None:
+  with setup_storage('test_realize_nondetermenistic'):
     DATA:int; n1:DRef; n2:DRef; n3:DRef
 
     def _gen()->int:
@@ -318,18 +323,27 @@ def test_build_cattrs():
 
 def test_build_name()->None:
   with setup_storage('test_build_name'):
-    n:str = ""
     def _setting(m:Manager)->DRef:
-      def _instantiate()->Config:
-        return mkconfig({'name':'foobar'})
       def _realize(b)->None:
-        nonlocal n
-        n = build_name(b)
-        o = build_outpath(b)
-      return mkdrv(m, _instantiate(), match_only(), build_wrapper(_realize))
-
+        n=build_name(b)
+        assert n=='foobar'
+        o=build_outpath(b)
+      return mkdrv(m, mkconfig({'name':'foobar'}), match_only(), build_wrapper(_realize))
     rref=realize(instantiate(_setting))
-    assert n=='foobar'
+    assert isrref(rref)
+    assert 'foobar' in rref
+
+def test_build_exception()->None:
+  with setup_storage('test_build_name'):
+    def _setting(m:Manager)->DRef:
+      def _realize(b)->None:
+        raise ValueError('Oops')
+      return mkdrv(m, mkconfig({}), match_only(), build_wrapper(_realize))
+    try:
+      rref=realize(instantiate(_setting))
+      raise ShouldHaveFailed()
+    except ValueError as e:
+      assert 'Oops' in str(e)
 
 def test_ignored_stage()->None:
   with setup_storage('test_ignored_stage'):

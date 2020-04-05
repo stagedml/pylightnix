@@ -1,12 +1,13 @@
 from pylightnix import ( DRef, RRef, lsref, catref, instantiate, realize,
     unrref, rmref, store_dref2path, rref2path, shellref, shell, rref2dref, du,
-    repl_realize, repl_cancelBuild, repl_build, build_outpath )
+    repl_realize, repl_cancelBuild, repl_build, build_outpath, find, partial,
+    diff, timestring, parsetime )
 
 from tests.setup import ( ShouldHaveFailed, setup_testpath, setup_storage,
     mktestnode, mktestnode_nondetermenistic )
 
 from tests.imports import ( isdir, environ, chmod, stat, TemporaryDirectory,
-    join, S_IEXEC )
+    join, S_IEXEC, sleep )
 
 
 def test_bashlike():
@@ -92,4 +93,31 @@ def test_du():
     assert rref in usage[clo.dref][1]
     assert usage[clo.dref][1][rref]>0
 
+def test_find():
+  with setup_storage('test_find') as s:
+    s1=partial(mktestnode_nondetermenistic, sources={'name':'1'}, nondet=lambda:42)
+    s2=partial(mktestnode_nondetermenistic, sources={'name':'2'}, nondet=lambda:33)
+    rref1=realize(instantiate(s1))
+    sleep(0.1)
+    now=parsetime(timestring())
+    rref2=realize(instantiate(s2))
+    rrefs=find()
+    assert set(rrefs)==set([rref1,rref2])
+    rrefs=find(name='1')
+    assert rrefs==[rref1]
+    rrefs=find(name=s2)
+    assert rrefs==[rref2]
+    rrefs=find(newer=-10)
+    assert len(rrefs)==2
+    rrefs=find(newer=now)
+    assert rrefs==[rref2]
+
+def test_diff():
+  with setup_storage('test_find') as s:
+    s1=partial(mktestnode_nondetermenistic, sources={'name':'1'}, nondet=lambda:42)
+    s2=partial(mktestnode_nondetermenistic, sources={'name':'2'}, nondet=lambda:33)
+    dref1=instantiate(s1).dref
+    rref2=realize(instantiate(s2))
+    diff(dref1, rref2)
+    diff(dref1, s2)
 

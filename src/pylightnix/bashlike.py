@@ -125,7 +125,7 @@ def du()->Dict[DRef,Tuple[int,Dict[RRef,int]]]:
 
 
 def find(name:Optional[Union[Stage,str]]=None, newer:Optional[float]=None)->List[RRef]:
-  """ Return [RRefs](#pylightnix.types.RRef) found in Pylightnix sotrage which
+  """ Find [RRefs](#pylightnix.types.RRef) in Pylightnix sotrage which
   match all of the criteria provided. Without arguments return all RRefs.
 
   Arguments:
@@ -137,6 +137,10 @@ def find(name:Optional[Union[Stage,str]]=None, newer:Optional[float]=None)->List
   - `newer:Optional[float]=None` match RRefs which are newer than this number of
     seconds starting from the UNIX Epoch. Zero and negative numbers count
     backward from the current time.
+
+  FIXME: If name is a stage, then this function instantiates this stage before
+  searching. Thus, the storage is moified, which may be a undesired
+  behaviour
   """
   rrefs=[]
   name_=None
@@ -154,11 +158,15 @@ def find(name:Optional[Union[Stage,str]]=None, newer:Optional[float]=None)->List
       if newer is not None:
         if newer<=0:
           reftime=parsetime(timestring())
+          assert reftime is not None
+          reftime-=abs(newer)
         else:
           reftime=newer
         btstr=store_buildtime(rref)
+        if btstr is None:
+          continue
         btime=parsetime(btstr) if btstr is not None else None
-        if btime is not None and reftime is not None:
+        if btime is not None:
           if btime < reftime:
             continue
       rrefs.append(rref)
@@ -166,7 +174,10 @@ def find(name:Optional[Union[Stage,str]]=None, newer:Optional[float]=None)->List
 
 def diff(stageA:Union[RRef,DRef,Stage], stageB:Union[RRef,DRef,Stage])->None:
   """ Run system's `diff` utility to print the difference between configs of 2
-  stages passed. """
+  stages passed.
+
+  Note: if argument is a Stage, it is instantiated first
+  """
   def _cfgpathof(s)->Path:
     if isrref(s):
       return store_cfgpath(rref2dref(RRef(s)))
