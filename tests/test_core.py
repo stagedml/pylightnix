@@ -390,13 +390,11 @@ def test_match_only()->None:
 
     build:int = 0
     def _setting(m:Manager)->DRef:
-      def _instantiate()->Config:
-        return mkconfig({'a':1})
       def _realize(b:Build)->None:
         nonlocal build
         with open(join(build_outpath(b),'artifact'),'w') as f: f.write(str(build))
         build+=1
-      return mkdrv(m, _instantiate(), match_only(), build_wrapper(_realize))
+      return mkdrv(m, mkconfig({'a':1}), match_only(), build_wrapper(_realize))
 
     closure = instantiate(_setting)
     assert len(list(store_rrefs_(closure.dref))) == 0
