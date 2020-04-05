@@ -137,7 +137,7 @@ def test_traverse(d)->None:
     nonlocal replacements
     if isinstance(x,str):
       replacements+=1
-      dref=DRef("dref:DUMMY")
+      dref=DRef("dref:11111111111111111111111111111111-00000000000000000000000000000000-bar")
       assert isdref(dref), 'Fix the test DRef if this fails'
       return dref
     else:

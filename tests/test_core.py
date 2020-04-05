@@ -10,7 +10,7 @@ from pylightnix import ( instantiate, DRef, RRef, Path, mklogdir,
     assert_recursion_manager_empty, match, latest, best, exact, Key,
     match_latest, match_all, match_some, match_n, realizeMany, build_outpaths,
     scanref_dict, config_dict, promise, checkpaths, mklens, isrref, Config,
-    RConfig, build_setoutpaths )
+    RConfig, build_setoutpaths, partial, path2rref )
 
 from tests.imports import ( given, Any, Callable, join, Optional, islink,
     isfile, List, randint, sleep, rmtree, system, S_IWRITE, S_IREAD, S_IEXEC,
@@ -606,5 +606,19 @@ def test_checkfiles():
 
     rrefs=realizeMany(instantiate(_setting))
     assert len(rrefs)==2
+
+def test_path2rref():
+  with setup_storage('test_path2rref') as s:
+    s1=partial(mktestnode, sources={'name':'1', 'promise':[promise,'artifact']})
+    rref1=realize(instantiate(s1))
+    rref2=path2rref(rref2path(rref1))
+    assert rref1==rref2
+    l=mksymlink(rref1, s, 'result')
+    assert path2rref(Path(l))==rref1
+    rref3=path2rref(Path("/foo/00000000000000000000000000000000-bar/11111111111111111111111111111111"))
+    assert rref3=='rref:11111111111111111111111111111111-00000000000000000000000000000000-bar'
+    for x in [path2rref(Path('')),path2rref(Path('foo'))]:
+      assert x is None
+
 
 

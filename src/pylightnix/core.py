@@ -92,12 +92,22 @@ def mkname(s:str)->Name:
   assert_valid_name(Name(s))
   return Name(s)
 
-def path2rref(p:Path)->RRef:
+def path2rref(p:Path)->Optional[RRef]:
+  """ Takes either a system path of some realization in the Pylightnix storage
+  or a symlink pointing to such path. Return `RRef` which corresponds to this
+  path.
+
+  Note: `path2rref` doesn't actually check the existance of such an object in
+  storage """
   if islink(p):
     p=Path(readlink(p))
   head,h1=split(p)
-  _,dref=split(head)
-  h2,nm=undref(DRef('dref:'+dref))
+  print(head,h1)
+  _,dref_part=split(head)
+  dref=DRef('dref:'+dref_part)
+  if not isdref(dref):
+    return None
+  h2,nm=undref(dref)
   return mkrref(HashPart(h1),HashPart(h2),mkname(nm))
 
 
