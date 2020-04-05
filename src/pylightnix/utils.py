@@ -193,10 +193,10 @@ def dirrm(path:Path, ignore_not_found:bool=True)->None:
 
 def isrref(ref:Any)->bool:
   """ FIXME: Add better detection criteia, at least like in `assert_valid_ref` """
-  return isinstance(ref,str) and len(ref)>5 and ref[:5]=='rref:'
+  return isinstance(ref,str) and len(ref)>=5+32+1+32 and ref[:5]=='rref:'
 
 def isdref(ref:Any)->bool:
-  return isinstance(ref,str) and len(ref)>5 and ref[:5]=='dref:'
+  return isinstance(ref,str) and len(ref)>=5+32 and ref[:5]=='dref:'
 
 def ispromisepath(p:Any)->bool:
   return isinstance(p,list) and len(p)>0 and all([isinstance(x,str) for x in p]) and \
