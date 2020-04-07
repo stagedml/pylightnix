@@ -102,7 +102,6 @@ def path2rref(p:Path)->Optional[RRef]:
   if islink(p):
     p=Path(readlink(p))
   head,h1=split(p)
-  print(head,h1)
   _,dref_part=split(head)
   dref=DRef('dref:'+dref_part)
   if not isdref(dref):
