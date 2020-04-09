@@ -27,9 +27,9 @@ check: .stamp_check
 ./docs/Reference.md: $(SRC) .stamp_check
 	pydoc-markdown \
 		--modules \
-			pylightnix.types pylightnix.core pylightnix.inplace \
-			pylightnix.repl pylightnix.stages pylightnix.bashlike \
-			pylightnix.lens \
+			pylightnix.types pylightnix.core pylightnix.build \
+			pylightnix.inplace pylightnix.repl pylightnix.stages \
+			pylightnix.bashlike pylightnix.lens \
 		--search-path  \
 			src /usr/lib/python3.6/ > $@
 
