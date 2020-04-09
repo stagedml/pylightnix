@@ -915,11 +915,6 @@ def warn_rref_deps(c:Config)->None:
   if len(rrefs)>0:
     print(f"Warning: RRef dependencies were found in config {config_dict(c)}:\n{rrefs}")
 
-# def assert_no_rref_deps(c:RConfig)->None:
-#   _,rrefs=scanref_dict(config_dict(c))
-#   assert len(rrefs)==0, (
-#       f"RRef dependencies are forbidden, but config {config_dict(c)} containes {rrefs}")
-
 def assert_have_realizers(m:Manager, drefs:List[DRef])->None:
   have_drefs=set(m.builders.keys())
   need_drefs=store_deepdeps(drefs)|set(drefs)
