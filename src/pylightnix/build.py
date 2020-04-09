@@ -13,8 +13,8 @@
 # limitations under the License.
 
 """
-Built-in realization wrapper providing helpful functions like temporary build
-directory management, time counting, etc.
+Built-in realization wrapper named `Build` provides helpful functions like
+temporary build directory management, time counting, etc.
 """
 
 from pylightnix.imports import ( sha256, deepcopy, isdir, islink, makedirs,
@@ -55,16 +55,23 @@ def build_wrapper_(
     f:Callable[[B],None],
     ctr:Callable[[BuildArgs],B],
     buildtime:bool=True)->Realizer:
+  """ Build Adapter which convers user-defined realizers which use
+  [Build](#pylightnix.types.Build) API into a low-level
+  [Realizer](#pylightnix.types.Realizer)
+
+  FIXME: Specify the fact that `B` should be derived from `Build` """
   def _wrapper(dref,context,rarg)->List[Path]:
     timeprefix=timestring() if buildtime else None
     b=ctr(mkbuildargs(dref,context,timeprefix,{},rarg));
     try:
       f(b);
-      return list(getattr(b,'outpaths'))
+      build_markstop(b) # type:ignore
     except:
+      build_markstop(b) # type:ignore
       print(f'Build wrapper of {dref} raised an exception. Remaining '
             f'build directories are: {getattr(b,"outpaths","<unknown>")}')
       raise
+    return list(getattr(b,'outpaths'))
   return _wrapper
 
 def build_wrapper(f:Callable[[Build],None], buildtime:bool=True)->Realizer:
@@ -103,6 +110,12 @@ def build_setoutpaths(b:Build, nouts:int)->List[Path]:
         f.write(b.timeprefix)
   b.outpaths=outpaths
   return b.outpaths
+
+def build_markstop(b:Build, buildstop:Optional[str]=None)->None:
+  buildstop_=timestring() if buildstop is None else buildstop
+  for outpath in b.outpaths:
+    with open(join(outpath,'__buildstop__.txt'), 'w') as f:
+      f.write(buildstop_)
 
 def build_outpaths(b:Build)->List[Path]:
   assert len(b.outpaths)>0, f"Build outpaths were not set"
