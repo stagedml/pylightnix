@@ -39,6 +39,7 @@
     * [mkrref](#pylightnix.core.mkrref)
     * [unrref](#pylightnix.core.unrref)
     * [mkname](#pylightnix.core.mkname)
+    * [path2rref](#pylightnix.core.path2rref)
     * [mkconfig](#pylightnix.core.mkconfig)
     * [config\_dict](#pylightnix.core.config_dict)
     * [config\_cattrs](#pylightnix.core.config_cattrs)
@@ -70,21 +71,6 @@
     * [store\_gc](#pylightnix.core.store_gc)
     * [store\_instantiate](#pylightnix.core.store_instantiate)
     * [store\_realize](#pylightnix.core.store_realize)
-    * [mkbuildargs](#pylightnix.core.mkbuildargs)
-    * [mkbuild](#pylightnix.core.mkbuild)
-    * [B](#pylightnix.core.B)
-    * [build\_wrapper\_](#pylightnix.core.build_wrapper_)
-    * [build\_wrapper](#pylightnix.core.build_wrapper)
-    * [build\_config](#pylightnix.core.build_config)
-    * [build\_context](#pylightnix.core.build_context)
-    * [build\_cattrs](#pylightnix.core.build_cattrs)
-    * [build\_outpaths](#pylightnix.core.build_outpaths)
-    * [build\_outpath](#pylightnix.core.build_outpath)
-    * [build\_name](#pylightnix.core.build_name)
-    * [build\_deref\_](#pylightnix.core.build_deref_)
-    * [build\_deref](#pylightnix.core.build_deref)
-    * [build\_paths](#pylightnix.core.build_paths)
-    * [build\_path](#pylightnix.core.build_path)
     * [mkcontext](#pylightnix.core.mkcontext)
     * [context\_eq](#pylightnix.core.context_eq)
     * [context\_add](#pylightnix.core.context_add)
@@ -125,6 +111,23 @@
     * [warn\_rref\_deps](#pylightnix.core.warn_rref_deps)
     * [assert\_have\_realizers](#pylightnix.core.assert_have_realizers)
     * [assert\_recursion\_manager\_empty](#pylightnix.core.assert_recursion_manager_empty)
+  * [pylightnix.build](#pylightnix.build)
+    * [mkbuildargs](#pylightnix.build.mkbuildargs)
+    * [mkbuild](#pylightnix.build.mkbuild)
+    * [B](#pylightnix.build.B)
+    * [build\_wrapper\_](#pylightnix.build.build_wrapper_)
+    * [build\_wrapper](#pylightnix.build.build_wrapper)
+    * [build\_config](#pylightnix.build.build_config)
+    * [build\_context](#pylightnix.build.build_context)
+    * [build\_cattrs](#pylightnix.build.build_cattrs)
+    * [build\_setoutpaths](#pylightnix.build.build_setoutpaths)
+    * [build\_outpaths](#pylightnix.build.build_outpaths)
+    * [build\_outpath](#pylightnix.build.build_outpath)
+    * [build\_name](#pylightnix.build.build_name)
+    * [build\_deref\_](#pylightnix.build.build_deref_)
+    * [build\_deref](#pylightnix.build.build_deref)
+    * [build\_paths](#pylightnix.build.build_paths)
+    * [build\_path](#pylightnix.build.build_path)
   * [pylightnix.inplace](#pylightnix.inplace)
     * [PYLIGHTNIX\_MANAGER](#pylightnix.inplace.PYLIGHTNIX_MANAGER)
     * [instantiate\_inplace](#pylightnix.inplace.instantiate_inplace)
@@ -796,6 +799,20 @@ def mkname(s: str) -> Name
 ```
 
 
+<a name="pylightnix.core.path2rref"></a>
+## `path2rref()`
+
+```python
+def path2rref(p: Path) -> Optional[RRef]
+```
+
+Takes either a system path of some realization in the Pylightnix storage
+or a symlink pointing to such path. Return `RRef` which corresponds to this
+path.
+
+Note: `path2rref` doesn't actually check the existance of such an object in
+storage
+
 <a name="pylightnix.core.mkconfig"></a>
 ## `mkconfig()`
 
@@ -966,6 +983,7 @@ claims.
 def store_context(r: RRef) -> Context
 ```
 
+FIXME: Either do `context_add(ctx, rref2dref(r), [r])` or document it's absense
 
 <a name="pylightnix.core.store_cattrs"></a>
 ## `store_cattrs()`
@@ -1105,176 +1123,6 @@ def store_realize(dref: DRef, l: Context, o: Path) -> RRef
 ```
 
 FIXME: Assert or handle possible but improbable hash collision (*)
-
-<a name="pylightnix.core.mkbuildargs"></a>
-## `mkbuildargs()`
-
-```python
-def mkbuildargs(dref: DRef, context: Context, timeprefix: Optional[str], iarg: InstantiateArg, rarg: RealizeArg) -> BuildArgs
-```
-
-
-<a name="pylightnix.core.mkbuild"></a>
-## `mkbuild()`
-
-```python
-def mkbuild(dref: DRef, context: Context, buildtime: bool = True) -> Build
-```
-
-
-<a name="pylightnix.core.B"></a>
-## `B`
-
-```python
-B = TypeVar('B')
-```
-
-
-<a name="pylightnix.core.build_wrapper_"></a>
-## `build_wrapper_()`
-
-```python
-def build_wrapper_(f: Callable[[B],None], ctr: Callable[[BuildArgs],B], buildtime: bool = True) -> Realizer
-```
-
-
-<a name="pylightnix.core.build_wrapper"></a>
-## `build_wrapper()`
-
-```python
-def build_wrapper(f: Callable[[Build],None], buildtime: bool = True) -> Realizer
-```
-
-Build Adapter which convers user-defined realizers which use
-[Build](#pylightnix.types.Build) API into a low-level
-[Realizer](#pylightnix.types.Realizer)
-
-<a name="pylightnix.core.build_config"></a>
-## `build_config()`
-
-```python
-def build_config(b: Build) -> RConfig
-```
-
-Return the [RConfig](#pylightnix.types.RConfig) object of the realization
-being built.
-
-<a name="pylightnix.core.build_context"></a>
-## `build_context()`
-
-```python
-def build_context(b: Build) -> Context
-```
-
-Return the [Context](#pylightnix.types.Context) object of the realization
-being built.
-
-<a name="pylightnix.core.build_cattrs"></a>
-## `build_cattrs()`
-
-```python
-def build_cattrs(b: Build) -> Any
-```
-
-Cache and return `ConfigAttrs`. Cache allows realizers to update it's
-value during the build process, e.g. to use it as a storage.
-
-<a name="pylightnix.core.build_outpaths"></a>
-## `build_outpaths()`
-
-```python
-def build_outpaths(b: Build, nouts: int = 1) -> List[Path]
-```
-
-
-<a name="pylightnix.core.build_outpath"></a>
-## `build_outpath()`
-
-```python
-def build_outpath(b: Build) -> Path
-```
-
-Return the output path of the realization being built. Output path is a
-path to valid temporary folder where user may put various build artifacts.
-Later this folder becomes a realization.
-
-<a name="pylightnix.core.build_name"></a>
-## `build_name()`
-
-```python
-def build_name(b: Build) -> Name
-```
-
-Return the name of a derivation being built.
-
-<a name="pylightnix.core.build_deref_"></a>
-## `build_deref_()`
-
-```python
-def build_deref_(b: Build, dref: DRef) -> List[RRef]
-```
-
-For any [realization](#pylightnix.core.realize) process described with
-it's [Build](#pylightnix.types.Build) handler, `build_deref` queries a
-realization of dependency `dref`.
-
-`build_deref` is designed to be called from
-[Realizer](#pylightnix.types.Realizer) functions. In other cases,
-[store_deref](#pylightnix.core.store_deref) should be used.
-
-<a name="pylightnix.core.build_deref"></a>
-## `build_deref()`
-
-```python
-def build_deref(b: Build, dref: DRef) -> RRef
-```
-
-
-<a name="pylightnix.core.build_paths"></a>
-## `build_paths()`
-
-```python
-def build_paths(b: Build, refpath: RefPath) -> List[Path]
-```
-
-Convert given [RefPath](#pylightnix.types.RefPath) (which may be either a
-regular RefPath or an ex-[PromisePath](#pylightnix.types.PromisePath)) into
-one or many filesystem paths. Conversion refers to the
-[Context](#pylightnix.types.Context) of the current realization process by
-accessing it's [build_context](#pylightnix.core.build_context).
-
-Typically, we configure stages to match only one realization at once, so the
-returned list often has only one entry. Consider using
-[build_path](#pylightnix.core.build_path) if this fact is known in advance.
-
-Example:
-```python
-def config(dep:DRef)->RConfig:
-  name = 'example-stage'
-  input = [dep,"path","to","input.txt"]
-  output = [promise,"output.txt"]
-  some_param = 42
-  return mkconfig(locals())
-
-def realize(b:Build)->None:
-  c=config_cattrs(b)
-  with open(build_path(b, c.input),'r') as finp:
-    with open(build_path(b, c.output),'w') as fout:
-      fout.write(finp.read())
-
-def mystage(m:Manager)->DRef:
-  dep:DRef=otherstage(m)
-  return mkdrv(m, config(dep), match_only(), build_wrapper(realize))
-```
-
-<a name="pylightnix.core.build_path"></a>
-## `build_path()`
-
-```python
-def build_path(b: Build, refpath: RefPath) -> Path
-```
-
-A single-realization version of the [build_paths](#pylightnix.core.build_paths).
 
 <a name="pylightnix.core.mkcontext"></a>
 ## `mkcontext()`
@@ -1506,6 +1354,9 @@ interface. `realizeSeq` encodes low-level details of the realization
 algorithm. Consider calling [realizeMany](#pylightnix.core.realizeMany) or
 it's analogs instead.
 
+FIXME: `assert_realized` may probably be a implemented by calling `redefine`
+with appropriate failing realizer on every Derivation.
+
 <a name="pylightnix.core.mksymlink"></a>
 ## `mksymlink()`
 
@@ -1727,6 +1578,190 @@ def assert_recursion_manager_empty()
 ```
 
 
+<a name="pylightnix.build"></a>
+# `pylightnix.build`
+
+Built-in realization wrapper providing helpful functions like temporary build
+directory management, time counting, etc.
+
+<a name="pylightnix.build.mkbuildargs"></a>
+## `mkbuildargs()`
+
+```python
+def mkbuildargs(dref: DRef, context: Context, timeprefix: Optional[str], iarg: InstantiateArg, rarg: RealizeArg) -> BuildArgs
+```
+
+
+<a name="pylightnix.build.mkbuild"></a>
+## `mkbuild()`
+
+```python
+def mkbuild(dref: DRef, context: Context, buildtime: bool = True) -> Build
+```
+
+
+<a name="pylightnix.build.B"></a>
+## `B`
+
+```python
+B = TypeVar('B')
+```
+
+
+<a name="pylightnix.build.build_wrapper_"></a>
+## `build_wrapper_()`
+
+```python
+def build_wrapper_(f: Callable[[B],None], ctr: Callable[[BuildArgs],B], buildtime: bool = True) -> Realizer
+```
+
+
+<a name="pylightnix.build.build_wrapper"></a>
+## `build_wrapper()`
+
+```python
+def build_wrapper(f: Callable[[Build],None], buildtime: bool = True) -> Realizer
+```
+
+Build Adapter which convers user-defined realizers which use
+[Build](#pylightnix.types.Build) API into a low-level
+[Realizer](#pylightnix.types.Realizer)
+
+<a name="pylightnix.build.build_config"></a>
+## `build_config()`
+
+```python
+def build_config(b: Build) -> RConfig
+```
+
+Return the [RConfig](#pylightnix.types.RConfig) object of the realization
+being built.
+
+<a name="pylightnix.build.build_context"></a>
+## `build_context()`
+
+```python
+def build_context(b: Build) -> Context
+```
+
+Return the [Context](#pylightnix.types.Context) object of the realization
+being built.
+
+<a name="pylightnix.build.build_cattrs"></a>
+## `build_cattrs()`
+
+```python
+def build_cattrs(b: Build) -> Any
+```
+
+Cache and return `ConfigAttrs`. Cache allows realizers to update it's
+value during the build process, e.g. to use it as a storage.
+
+<a name="pylightnix.build.build_setoutpaths"></a>
+## `build_setoutpaths()`
+
+```python
+def build_setoutpaths(b: Build, nouts: int) -> List[Path]
+```
+
+
+<a name="pylightnix.build.build_outpaths"></a>
+## `build_outpaths()`
+
+```python
+def build_outpaths(b: Build) -> List[Path]
+```
+
+
+<a name="pylightnix.build.build_outpath"></a>
+## `build_outpath()`
+
+```python
+def build_outpath(b: Build) -> Path
+```
+
+Return the output path of the realization being built. Output path is a
+path to valid temporary folder where user may put various build artifacts.
+Later this folder becomes a realization.
+
+<a name="pylightnix.build.build_name"></a>
+## `build_name()`
+
+```python
+def build_name(b: Build) -> Name
+```
+
+Return the name of a derivation being built.
+
+<a name="pylightnix.build.build_deref_"></a>
+## `build_deref_()`
+
+```python
+def build_deref_(b: Build, dref: DRef) -> List[RRef]
+```
+
+For any [realization](#pylightnix.core.realize) process described with
+it's [Build](#pylightnix.types.Build) handler, `build_deref` queries a
+realization of dependency `dref`.
+
+`build_deref` is designed to be called from
+[Realizer](#pylightnix.types.Realizer) functions. In other cases,
+[store_deref](#pylightnix.core.store_deref) should be used.
+
+<a name="pylightnix.build.build_deref"></a>
+## `build_deref()`
+
+```python
+def build_deref(b: Build, dref: DRef) -> RRef
+```
+
+
+<a name="pylightnix.build.build_paths"></a>
+## `build_paths()`
+
+```python
+def build_paths(b: Build, refpath: RefPath) -> List[Path]
+```
+
+Convert given [RefPath](#pylightnix.types.RefPath) (which may be either a
+regular RefPath or an ex-[PromisePath](#pylightnix.types.PromisePath)) into
+one or many filesystem paths. Conversion refers to the
+[Context](#pylightnix.types.Context) of the current realization process by
+accessing it's [build_context](#pylightnix.core.build_context).
+
+Typically, we configure stages to match only one realization at once, so the
+returned list often has only one entry. Consider using
+[build_path](#pylightnix.core.build_path) if this fact is known in advance.
+
+Example:
+```python
+def config(dep:DRef)->RConfig:
+  name = 'example-stage'
+  input = [dep,"path","to","input.txt"]
+  output = [promise,"output.txt"]
+  some_param = 42
+  return mkconfig(locals())
+
+def realize(b:Build)->None:
+  c=config_cattrs(b)
+  with open(build_path(b, c.input),'r') as finp:
+    with open(build_path(b, c.output),'w') as fout:
+      fout.write(finp.read())
+
+def mystage(m:Manager)->DRef:
+  dep:DRef=otherstage(m)
+  return mkdrv(m, config(dep), match_only(), build_wrapper(realize))
+```
+
+<a name="pylightnix.build.build_path"></a>
+## `build_path()`
+
+```python
+def build_path(b: Build, refpath: RefPath) -> Path
+```
+
+A single-realization version of the [build_paths](#pylightnix.core.build_paths).
+
 <a name="pylightnix.inplace"></a>
 # `pylightnix.inplace`
 
@@ -1942,20 +1977,23 @@ def checkpaths(m: Manager, promises: dict, name: str = "checkpaths") -> DRef
 ## `redefine()`
 
 ```python
-def redefine(stage: Stage, new_config: Callable[[dict],Config] = mkconfig, new_matcher: Optional[Matcher] = None, new_realizer: Optional[Realizer] = None, check_promises: bool = True) -> Stage
+def redefine(stage: Any, new_config: Callable[[dict],Config] = mkconfig, new_matcher: Optional[Matcher] = None, new_realizer: Optional[Realizer] = None, check_promises: bool = True) -> Any
 ```
 
 Define a new Derivation based on the existing one, by updating it's
 config, optionally re-writing it's matcher, or it's realizer.
 
 Arguments:
-- `stage:Stage` Stage to re-define
+- `stage:Any` a `Stage` function, accepting arbitrary keyword arguments
 - `new_config:Callable[[dict],Config]=mkconfig` A function to update the `dref`'s
   config. Defaults to `mkconfig` function (here similar to the identity).
 - `new_matcher:Optional[Matcher]=None` Optional new matcher (defaults to the
   existing matcher)
 - `new_realizer:Optional[Realizer]=None` Optional new realizer (defaults to
   the existing realizer)
+
+Return:
+A callable `Stage`, accepting pass-through arguments
 
 Example:
 ```python
@@ -1964,6 +2002,10 @@ def _new_config(old_config):
   return mkconfig(old_config)
 realize(instantiate(redefine(myMLmodel, _new_config)))
 ```
+
+FIXME: Current version will may either update realizer of an existing config,
+or create a completely new derivation, depending on whether we change modify
+the config or not. One should define the behaviour more clearly.
 
 <a name="pylightnix.stages.trivial.realized"></a>
 ## `realized()`
@@ -2017,7 +2059,7 @@ def _unpack(o: str, fullpath: str, remove_file: bool)
 ## `fetchurl()`
 
 ```python
-def fetchurl(m: Manager, url: str, sha256: str, mode: str = 'unpack,remove', name: Optional[str] = None, filename: Optional[str] = None, force_download: bool = False, check_promises: bool = True, kwargs) -> DRef
+def fetchurl(m: Manager, url: str, sha256: Optional[str] = None, sha1: Optional[str] = None, mode: str = 'unpack,remove', name: Optional[str] = None, filename: Optional[str] = None, force_download: bool = False, check_promises: bool = True, kwargs) -> DRef
 ```
 
 Download and unpack an URL addess.
@@ -2180,7 +2222,7 @@ of a derivation is slightly bigger than sum of it's realization's usages.
 def find(name: Optional[Union[Stage,str]] = None, newer: Optional[float] = None) -> List[RRef]
 ```
 
-Return [RRefs](#pylightnix.types.RRef) found in Pylightnix sotrage which
+Find [RRefs](#pylightnix.types.RRef) in Pylightnix sotrage which
 match all of the criteria provided. Without arguments return all RRefs.
 
 Arguments:
@@ -2193,6 +2235,10 @@ Arguments:
   seconds starting from the UNIX Epoch. Zero and negative numbers count
   backward from the current time.
 
+FIXME: If name is a stage, then this function instantiates this stage before
+searching. Thus, the storage is moified, which may be a undesired
+behaviour
+
 <a name="pylightnix.bashlike.diff"></a>
 ## `diff()`
 
@@ -2202,6 +2248,8 @@ def diff(stageA: Union[RRef,DRef,Stage], stageB: Union[RRef,DRef,Stage]) -> None
 
 Run system's `diff` utility to print the difference between configs of 2
 stages passed.
+
+Note: if argument is a Stage, it is instantiated first
 
 <a name="pylightnix.lens"></a>
 # `pylightnix.lens`
@@ -2213,7 +2261,7 @@ through the dependent configurations
 ## `Lens` Objects
 
 ```python
-def __init__(self, ctx: Tuple[Optional[Build],Optional[Context]], v: Any) -> None
+def __init__(self, ctx: Tuple[Optional[Path],Optional[Context]], v: Any) -> None
 ```
 
 Lens objects provide quick access to the parameters of stage
@@ -2235,14 +2283,11 @@ Lens lifecycle consists of three stages:
 To create Lenses, use `mklens` function rather than creating it directly
 because it encodes a number of supported ways of deducing `ctx` of Lens.
 
-FIXME: Do not accept `Build` at this level. Accept optional
-`build_outpath:Path` to increase the applicability.
-
 <a name="pylightnix.lens.Lens.__init__"></a>
 ### `Lens.__init__()`
 
 ```python
-def __init__(self, ctx: Tuple[Optional[Build],Optional[Context]], v: Any) -> None
+def __init__(self, ctx: Tuple[Optional[Path],Optional[Context]], v: Any) -> None
 ```
 
 
@@ -2337,7 +2382,7 @@ Return the `dict` representation of the Lens, asserting that it is possible.
 ## `mklens()`
 
 ```python
-def mklens(x: Any, b: Optional[Build] = None, rref: Optional[RRef] = None, ctx: Optional[Context] = None) -> Lens
+def mklens(x: Any, o: Optional[Path] = None, b: Optional[Build] = None, rref: Optional[RRef] = None, ctx: Optional[Context] = None) -> Lens
 ```
 
 Mklens creates [Lenses](#pylightnix.lens.Lens) from various user objects.
