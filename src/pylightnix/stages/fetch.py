@@ -18,8 +18,9 @@ from pylightnix.imports import (sha256 as sha256sum, sha1 as sha1sum, urlparse,
     Popen, remove, basename, join, rename, isfile, copyfile )
 from pylightnix.types import ( DRef, Manager, Build, Context, Name,
     Path, Optional, List, Config )
-from pylightnix.core import ( mkconfig, mkbuild, build_cattrs, build_outpath,
-    mkdrv, match_only, build_wrapper, promise )
+from pylightnix.core import ( mkconfig, mkdrv, match_only, promise )
+from pylightnix.build import ( mkbuild, build_outpath, build_setoutpaths,
+    build_paths, build_deref_, build_cattrs, build_wrapper, build_wrapper )
 from pylightnix.utils import ( try_executable, makedirs )
 
 

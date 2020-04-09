@@ -20,8 +20,8 @@ from pylightnix.types import ( Any, Dict, List, Build, DRef, RRef, Optional,
     RefPath, Tuple, Union, Path, Context )
 from pylightnix.utils import ( isrefpath, isdref, isrref )
 from pylightnix.core import ( store_deref, store_config, rref2dref, rref2path,
-    config_dict, build_outpath, build_config, build_context, store_dref2path,
-    store_context, context_deref, context_add )
+    config_dict, store_dref2path, store_context, context_deref, context_add )
+from pylightnix.build import ( build_outpath, build_config, build_context )
 
 
 class Lens:

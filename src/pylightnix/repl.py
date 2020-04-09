@@ -26,8 +26,8 @@ from pylightnix.types import ( Dict, Closure, Context, Derivation, RRef, DRef,
     List, Tuple, Optional, Generator, Path, Build, Union, Any, BuildArgs,
     RealizeArg  )
 
-from pylightnix.core import ( realizeSeq, store_realize, RealizeSeqGen,
-    mkbuildargs, build_outpaths )
+from pylightnix.core import ( realizeSeq, store_realize, RealizeSeqGen )
+from pylightnix.build import ( mkbuildargs, build_outpaths )
 
 class ReplHelper:
   def __init__(self, gen:RealizeSeqGen)->None:
