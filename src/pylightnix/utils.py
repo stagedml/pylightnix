@@ -289,17 +289,38 @@ def readjson(json_path:str)->Any:
   with open((json_path), "r") as f:
     return json_load(f)
 
+def tryreadjson_def(json_path:str, default:Any)->Any:
+  try:
+    with open((json_path), "r") as f:
+      return json_load(f)
+  except KeyboardInterrupt:
+    raise
+  except Exception:
+    return default
+
 def tryread(path:Path)->Optional[str]:
   try:
     return readstr(path)
+  except KeyboardInterrupt:
+    raise
   except Exception:
     return None
+
+def tryread_def(path:Path, default:str)->str:
+  try:
+    return readstr(path)
+  except KeyboardInterrupt:
+    raise
+  except Exception:
+    return default
 
 def trywrite(path:Path, data:str)->bool:
   try:
     with open(path,'w') as f:
       f.write(data)
     return True
+  except KeyboardInterrupt:
+    raise
   except Exception:
     return False
 

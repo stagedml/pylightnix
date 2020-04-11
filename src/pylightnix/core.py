@@ -23,13 +23,13 @@ from pylightnix.imports import ( sha256, deepcopy, isdir, islink, makedirs,
 from pylightnix.utils import ( dirhash, assert_serializable, assert_valid_dict,
     dicthash, scanref_dict, scanref_list, forcelink, timestring, parsetime,
     datahash, readjson, tryread, encode, dirchmod, dirrm, filero, isrref,
-    isdref, traverse_dict, ispromise, isclaim )
+    isdref, traverse_dict, ispromise, isclaim, tryread_def )
 from pylightnix.types import (
     Dict, List, Any, Tuple, Union, Optional, Iterable, IO, Path, Hash, DRef,
     RRef, RefPath, PromisePath, HashPart, Callable, Context, Name, NamedTuple,
     Build, RConfig, ConfigAttrs, Derivation, Stage, Manager, Matcher, Realizer,
     Set, Closure, Generator, Key, TypeVar, BuildArgs, PYLIGHTNIX_PROMISE_TAG,
-    PYLIGHTNIX_CLAIM_TAG, Config, RealizeArg, InstantiateArg )
+    PYLIGHTNIX_CLAIM_TAG, Config, RealizeArg, InstantiateArg, Tag, Group )
 
 #: *Do not change!*
 #: Tracks the version of pylightnix storage
@@ -55,6 +55,10 @@ PYLIGHTNIX_STORE = join(PYLIGHTNIX_ROOT, f'store-v{PYLIGHTNIX_STORE_VERSION}')
 
 #: Set the regular expression pattern for valid name characters.
 PYLIGHTNIX_NAMEPAT = "[a-zA-Z0-9_-]"
+
+#: Reserved file names which are treated specially be the core. Users should
+#: not normally create or alter files with this names.
+PYLIGHTNIX_RESERVED = ['context.json', 'tag.txt', 'group.txt']
 
 #  ____       __
 # |  _ \ ___ / _|___
@@ -109,6 +113,15 @@ def path2rref(p:Path)->Optional[RRef]:
   h2,nm=undref(dref)
   return mkrref(HashPart(h1),HashPart(h2),mkname(nm))
 
+def mktag(s:str)->Tag:
+  for c in ['\n',' ']:
+    assert c not in s
+  return Tag(s)
+
+def mkgroup(s:str)->Group:
+  for c in ['\n',' ']:
+    assert c not in s
+  return Group(s)
 
 #   ____             __ _
 #  / ___|___  _ __  / _(_) __ _
@@ -307,8 +320,8 @@ def store_rrefs_(dref:DRef)->Iterable[RRef]:
       yield mkrref(HashPart(f), dhash, nm)
 
 def store_rrefs(dref:DRef, context:Context)->Iterable[RRef]:
-  """ Iterate over realizations of a derivation `dref`, which match a
-  [context](#pylightnix.types.Context). The sort order is unspecified. """
+  """ Iterate over realizations of a derivation `dref` which match a specified
+  [context](#pylightnix.types.Context). Sorting order is unspecified. """
   for rref in store_rrefs_(dref):
     context2=store_context(rref)
     if context_eq(context,context2):
@@ -336,6 +349,17 @@ def store_buildtime(rref:RRef)->Optional[str]:
   Buildtime is the time when the realization process has started. Some
   realizations may not provide this information. """
   return tryread(Path(join(rref2path(rref),'__buildtime__.txt')))
+
+def store_tag(rref:RRef)->Tag:
+  """ Realizations may be marked with a tag. By default the tag is set to be
+  'out'. """
+  return mktag(tryread_def(Path(join(rref2path(rref),'tag.txt')),'out'))
+
+def store_group(rref:RRef)->Group:
+  """ Return group identifier of the realization """
+  gid,_,_=unrref(rref)
+  return mkgroup(tryread_def(Path(join(rref2path(rref),'group.txt')),gid))
+
 
 def store_gc(keep_drefs:List[DRef], keep_rrefs:List[RRef])->Tuple[Set[DRef],Set[RRef]]:
   """ Take roots which are in use and should not be removed. Return roots which
@@ -404,9 +428,12 @@ def store_realize(dref:DRef, l:Context, o:Path)->RRef:
   assert isdir(o), (
      f"While realizing {dref}: Outpath is expected to be a path to existing "
      f"directory, but got {o}")
-  assert not isfile(join(o,'context.json')), (
-     f"While realizing {dref}: one of build artifacts has name 'context.json'. "
-     f"This name is reserved, please rename the artifact.")
+
+  for fn in PYLIGHTNIX_RESERVED:
+    assert not isfile(join(o,fn)), (
+       f"While realizing {dref}: output folder '{o}' contains file '{fn}'. "
+       f"This name is reserved, please use another name. List of reserved "
+       f"names: {PYLIGHTNIX_RESERVED}")
   with open(join(o,'context.json'), 'w') as f:
     f.write(context_serialize(l))
 
@@ -757,6 +784,11 @@ def match(keys:List[Key],
   """ Create a [Matcher](#pylightnix.types.Matcher) by combining different
   sorting keys and selecting a top-n threshold.
 
+  Only realizations which have [tag](#pylightnix.types.Tag) 'out' (which is a
+  default tag name) participate in matching. After the matching, Pylightnix
+  adds all non-'out' realizations which share [group](#pylightnix.types.Group)
+  with at least one matched realization.
+
   Arguments:
   - `keys`: List of [Key](#pylightnix.types.Key) functions. Defaults ot
   - `rmin`: An integer selecting the minimum number of realizations to accept.
@@ -774,11 +806,14 @@ def match(keys:List[Key],
   keys=keys+[texthash()]
   def _matcher(dref:DRef, context:Context)->Optional[List[RRef]]:
     keymap={}
-    rrefs=list(store_rrefs(dref, context))
+    all_rrefs=list(store_rrefs(dref,context))
+
+    # Match only among realizations tagged as 'out'
+    rrefs=[rref for rref in all_rrefs if store_tag(rref)=='out']
     for rref in rrefs:
       keymap[rref]=[k(rref) for k in keys]
-    res=sorted(filter(lambda rref: None not in keymap[rref], rrefs),
-          key=lambda rref:keymap[rref], reverse=True)
+    res:List[RRef]=sorted(filter(lambda rref: None not in keymap[rref], rrefs),
+                          key=lambda rref:keymap[rref], reverse=True)
     if rmin is not None:
       if not rmin<=len(res):
         return None
@@ -786,7 +821,12 @@ def match(keys:List[Key],
       if not len(res)<=rmax:
         assert not exclusive
         res=res[:rmax]
-    return res
+
+    # Add realizations of the same group as the matched ones
+    res_plus_groupmates=[]
+    for g in [store_group(rref) for rref in res]:
+      res_plus_groupmates.extend([rref for rref in all_rrefs if store_group(rref)==g])
+    return res_plus_groupmates
   return _matcher
 
 
@@ -925,7 +965,7 @@ def assert_have_realizers(m:Manager, drefs:List[DRef])->None:
       f"{missing}\n"
       f"Did you pass those DRefs from another `instantiate` session ?")
 
-def assert_recursion_manager_empty():
+def assert_recursion_manager_empty()->None:
   global PYLIGHTNIX_RECURSION
   stack=PYLIGHTNIX_RECURSION.get(get_ident(),[])
   assert len(stack)==0

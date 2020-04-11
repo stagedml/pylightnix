@@ -17,7 +17,7 @@
 
 from pylightnix.imports import ( deepcopy, OrderedDict )
 from typing import ( List, Any, Tuple, Union, Optional, Iterable, IO, Callable,
-    Dict, NamedTuple, Set, Generator, TypeVar )
+    Dict, NamedTuple, Set, Generator, TypeVar, NewType )
 
 class Path(str):
   """ `Path` is an alias for string. It is used in pylightnix to
@@ -161,13 +161,15 @@ PromisePath = List[Any]
 Context=Dict[DRef,List[RRef]]
 
 #: Matcher is a type of user-defined functions which select required
-#: realizations from the set of all realizations available.
+#: realizations from the set of possible realizations.
 #:
-#: Matchers take the derivation reference and the context. They may easily
-#: determine the set of existing realizations (see
-#: [store_rrefs](#pylightnix.core.store_rrefs) and should return the subset of
-#: this set or None which is a request to Pylightnix to produce more
-#: realizations.
+#: Matchers take a derivation reference and a context. They are to determine
+#: the possible realizations (see [store_rrefs](#pylightnix.core.store_rrefs)
+#: and return either a subset of this set or None which would be a signal to
+#: Pylightnix to produce more realizations.
+#:
+#: When the matching is doen, Pylightnix updates the context with new
+#: `(DRef,List[RRef])` pair and use it to e.g. resolve downstream realizations.
 #:
 #: Matchers should follow the below rules:
 #:
@@ -414,4 +416,17 @@ Stage = Callable[[Manager],DRef]
 
 Key = Callable[[RRef],Optional[Union[int,float,str]]]
 
+#: Realization tag is a user-defined string without spaces and newline symbols.
+#: By default, realizations have tag 'out'. This can be changed by realizer
+#: e.g. to store logs, manual pages etc. separately.  The tag is supposed to be
+#: unique across the [Group](#pylightnix.types.Group).
+Tag = NewType('Tag', str)
+
+#: Realization group allows users to distinguish between
+#: [tagged](#pylightnix.types.Tag) realizations.  For example, there may be
+#: groups ['out1',log1'], ['out2','log2'] separating realizations whih describe
+#: different aspect of an experiments.
+#:
+#: By default, each realization is given its own unique group identifier
+Group = NewType('Group', str)
 

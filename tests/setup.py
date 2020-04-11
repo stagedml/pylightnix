@@ -6,21 +6,16 @@ from tests.imports import ( rmtree, join, makedirs, listdir, Callable,
 
 PYLIGHTNIX_TEST:str='/tmp/pylightnix_tests'
 
-import pylightnix.core
-
-# We reset STORE variables to prevent interaction with production store
-pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
-pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
-
-
 class ShouldHaveFailed(Exception):
   pass
 
 @contextmanager
 def setup_storage(tn:str):
-  assert pylightnix.core.PYLIGHTNIX_STORE is None
-  assert pylightnix.core.PYLIGHTNIX_TMP is None
-  storepath=f'/tmp/{tn}'
+  # We reset STORE variables to prevent interaction with production store
+  import pylightnix.core
+  pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
+  pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
+  storepath=Path(f'/tmp/{tn}')
   try:
     dirchmod(storepath, 'rw')
     rmtree(storepath)
@@ -31,6 +26,7 @@ def setup_storage(tn:str):
   try:
     yield storepath
   finally:
+    # print('Setting PYLIGHTNIX_STORE to none')
     pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
     pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
 
