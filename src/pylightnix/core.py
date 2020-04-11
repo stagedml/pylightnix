@@ -920,9 +920,9 @@ def assert_have_realizers(m:Manager, drefs:List[DRef])->None:
   need_drefs=store_deepdeps(drefs)|set(drefs)
   missing=list(need_drefs-have_drefs)
   assert len(missing)==0, (
-      f"Some derivations don't have realizers associated with them:\n"
+      f"The following derivations don't have realizers associated with them:\n"
       f"{missing}\n"
-      f"Did you take those DRefs from another manager?")
+      f"Did you pass those DRefs from another `instantiate` session ?")
 
 def assert_recursion_manager_empty():
   global PYLIGHTNIX_RECURSION

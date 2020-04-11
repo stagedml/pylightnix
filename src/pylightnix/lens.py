@@ -151,6 +151,31 @@ def mklens(x:Any, o:Optional[Path]=None,
   - `ctx:Optional[Context]=None` Passing optional Context would allow Lens to
     resolve RRefs.
 
+  Examples:
+  ```Python
+  stage=partial(fetchurl, url='http://example.com',
+                          sha256='...',
+                          output=[promise,'file.txt'],
+                          foo={'bar':42}, # Additional configuration item
+               )
+
+  dref:DRef=instantiate(stage).dref
+
+  mklens(dref).url.val  # Access raw value of 'url'
+  mklens(dref).foo             # Return another lens pointing at 'foo'
+  mklens(dref).foo.val         # Return raw value of 'foo' (a dict)
+  mklens(dref).foo.bar.val     # Return raw value of 'bar'
+  mklens(dref).foo.refpath     # Error! dict is not a path
+
+  mklens(dref).output.val      # Return raw output value
+  mklens(dref).output.refpath  # Return output as a RefPath (a list)
+  mklens(dref).output.syspath  # Error! not a realization
+
+  rref:RRef=realize(instantiate(stage))
+
+  mklens(rref).output.syspath  # Return output as a system path
+  ```
+
   """
   if ctx is None and b is not None:
     ctx=build_context(b)
