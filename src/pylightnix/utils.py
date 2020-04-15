@@ -21,10 +21,11 @@ from pylightnix.imports import ( datetime, gmtime, timegm, join, makedirs,
     json_dumps, json_loads, makedirs, replace, dirname, walk, abspath,
     normalize, re_sub, split, json_load, find_executable, chmod, S_IWRITE,
     S_IREAD, S_IRGRP, S_IROTH, S_IXUSR, S_IXGRP, S_IXOTH, stat, ST_MODE,
-    S_IWGRP, S_IWOTH, rmtree, rename, getsize, readlink )
+    S_IWGRP, S_IWOTH, rmtree, rename, getsize, readlink, partial )
 
 from pylightnix.types import ( Hash, Path, List, Any, Optional, Iterable, IO,
-    DRef, RRef, Tuple, Callable, PYLIGHTNIX_PROMISE_TAG, PYLIGHTNIX_CLAIM_TAG )
+    DRef, RRef, Tuple, Callable, PYLIGHTNIX_PROMISE_TAG, PYLIGHTNIX_CLAIM_TAG,
+    TypeVar )
 
 from pylightnix.tz import tzlocal
 
@@ -285,44 +286,37 @@ def readstr(path:str)->str:
   with open(path,'r') as f:
     return f.read()
 
+def writestr(path:str, data:str)->None:
+  with open(path,'w') as f:
+    f.write(data)
+
 def readjson(json_path:str)->Any:
-  with open((json_path), "r") as f:
+  with open(json_path, "r") as f:
     return json_load(f)
 
-def tryreadjson_def(json_path:str, default:Any)->Any:
+A=TypeVar('A')
+def trycatch(f:Callable[[],A], default:A)->A:
   try:
-    with open((json_path), "r") as f:
-      return json_load(f)
+    return f()
   except KeyboardInterrupt:
     raise
   except Exception:
     return default
+
+def tryreadjson_def(json_path:str, default:Any)->Any:
+  return trycatch(partial(readjson,json_path=json_path),default)
 
 def tryread(path:Path)->Optional[str]:
-  try:
-    return readstr(path)
-  except KeyboardInterrupt:
-    raise
-  except Exception:
-    return None
+  return trycatch(partial(readstr,path=path),None)
 
 def tryread_def(path:Path, default:str)->str:
-  try:
-    return readstr(path)
-  except KeyboardInterrupt:
-    raise
-  except Exception:
-    return default
+  return trycatch(partial(readstr,path=path),default)
 
 def trywrite(path:Path, data:str)->bool:
-  try:
-    with open(path,'w') as f:
-      f.write(data)
+  def _do():
+    writestr(path,data)
     return True
-  except KeyboardInterrupt:
-    raise
-  except Exception:
-    return False
+  return trycatch(_do,False)
 
 def try_executable(name:str, not_found_message:Optional[str]=None)->Callable[[],str]:
   e=find_executable(name)

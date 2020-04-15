@@ -28,7 +28,7 @@ from pylightnix.types import (
     Dict, List, Any, Tuple, Union, Optional, Iterable, IO, Path, Hash, DRef,
     RRef, RefPath, PromisePath, HashPart, Callable, Context, Name, NamedTuple,
     Build, RConfig, ConfigAttrs, Derivation, Stage, Manager, Matcher, Realizer,
-    Set, Closure, Generator, Key, TypeVar, BuildArgs, PYLIGHTNIX_PROMISE_TAG,
+    Set, Closure, Generator, Key, BuildArgs, PYLIGHTNIX_PROMISE_TAG,
     PYLIGHTNIX_CLAIM_TAG, Config, RealizeArg, InstantiateArg, Tag, Group )
 
 #: *Do not change!*

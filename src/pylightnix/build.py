@@ -25,11 +25,11 @@ from pylightnix.utils import ( dirhash, assert_serializable, assert_valid_dict,
     dicthash, scanref_dict, scanref_list, forcelink, timestring, parsetime,
     datahash, readjson, tryread, encode, dirchmod, dirrm, filero, isrref,
     isdref, traverse_dict, ispromise, isclaim )
-from pylightnix.types import (
-    Dict, List, Any, Tuple, Union, Optional, Iterable, IO, Path, Hash, DRef,
-    RRef, RefPath, PromisePath, HashPart, Callable, Context, Name, NamedTuple,
-    Build, RConfig, ConfigAttrs, Derivation, Stage, Manager, Matcher, Realizer,
-    Set, Closure, Generator, Key, TypeVar, BuildArgs, PYLIGHTNIX_PROMISE_TAG,
+from pylightnix.types import ( Dict, List, Any, Tuple, Union, Optional,
+    Iterable, IO, Path, Hash, DRef, RRef, RefPath, PromisePath, HashPart,
+    Callable, Context, Name, NamedTuple, Build, RConfig, ConfigAttrs,
+    Derivation, Stage, Manager, Matcher, Realizer, Set, Closure, Generator,
+    Key, TypeVar, BuildArgs, PYLIGHTNIX_PROMISE_TAG,
     PYLIGHTNIX_CLAIM_TAG, Config, RealizeArg, InstantiateArg )
 from pylightnix.core import ( assert_valid_config, store_config, config_cattrs,
     config_hash, config_name, context_deref, assert_valid_refpath, rref2path )
