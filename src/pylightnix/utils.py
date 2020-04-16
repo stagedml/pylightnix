@@ -21,7 +21,7 @@ from pylightnix.imports import ( datetime, gmtime, timegm, join, makedirs,
     json_dumps, json_loads, makedirs, replace, dirname, walk, abspath,
     normalize, re_sub, split, json_load, find_executable, chmod, S_IWRITE,
     S_IREAD, S_IRGRP, S_IROTH, S_IXUSR, S_IXGRP, S_IXOTH, stat, ST_MODE,
-    S_IWGRP, S_IWOTH, rmtree, rename, getsize, readlink, partial )
+    S_IWGRP, S_IWOTH, rmtree, rename, getsize, readlink, partial, copytree )
 
 from pylightnix.types import ( Hash, Path, List, Any, Optional, Iterable, IO,
     DRef, RRef, Tuple, Callable, PYLIGHTNIX_PROMISE_TAG, PYLIGHTNIX_CLAIM_TAG,
@@ -191,6 +191,16 @@ def dirrm(path:Path, ignore_not_found:bool=True)->None:
     if not ignore_not_found:
       raise
 
+def dircp(src:Path, dst:Path, make_rw:bool=False)->None:
+  """ Powerful folder copyier. """
+  assert isdir(src)
+  assert not isdir(dst)
+  tmppath=Path(dst+'.tmp')
+  copytree(src,tmppath)
+  if make_rw:
+    dirrw(tmppath)
+  rename(tmppath,dst)
+
 
 def isrref(ref:Any)->bool:
   """ FIXME: Add better detection criteia, at least like in `assert_valid_ref` """
@@ -302,6 +312,9 @@ def trycatch(f:Callable[[],A], default:A)->A:
     raise
   except Exception:
     return default
+
+def tryreadjson(json_path:str)->Optional[Any]:
+  return trycatch(partial(readjson,json_path=json_path),None)
 
 def tryreadjson_def(json_path:str, default:Any)->Any:
   return trycatch(partial(readjson,json_path=json_path),default)

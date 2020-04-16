@@ -84,6 +84,18 @@ class Lens:
   @property
   def rref(self)->RRef:
     """ Check that the current value of Lens is an `RRef` and return it """
+    if isdref(self.v):
+      dref=DRef(self.v)
+      context=self.ctx[1]
+      if context is not None:
+        if dref in context:
+          rrefs=context_deref(context, dref)
+          assert len(rrefs)==1, "Lens doesn't support multirealization dependencies"
+          return rrefs[0]
+        else:
+          assert False, f"Can't convert {dref} into RRef because it is not in context"
+      else:
+        assert False, f"Lens couldn't resolve '{dref}' without a context"
     assert isrref(self.v), f"Lens expected RRef, but got '{self.v}'"
     return RRef(self.v)
 

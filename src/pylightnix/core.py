@@ -812,6 +812,8 @@ def match(keys:List[Key],
     rrefs=[rref for rref in all_rrefs if store_tag(rref)=='out']
     for rref in rrefs:
       keymap[rref]=[k(rref) for k in keys]
+
+    # Apply filters and filter outputs
     res:List[RRef]=sorted(filter(lambda rref: None not in keymap[rref], rrefs),
                           key=lambda rref:keymap[rref], reverse=True)
     if rmin is not None:
