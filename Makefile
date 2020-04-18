@@ -42,6 +42,11 @@ docs: ./docs/Reference.md
 	coverage xml -o $@
 	touch $@
 
+.PHONY: typecheck tc
+typecheck:
+	pytest --mypy -m mypy
+tc: typecheck
+
 .PHONY: coverage
 coverage: .coverage.xml
 	coverage report -m
