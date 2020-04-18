@@ -511,6 +511,7 @@ def mkdrv(m:Manager,
   derivation produced.
 
   Arguments:
+  - `m:Manager`: A Manager to update with a new derivation
   - `check_promises:bool=True`: Make sure that all
     [PromisePath](#pylightnix.types.PromisePaths) of stage's configuration
     correspond to existing files or firectories.
@@ -731,7 +732,7 @@ def mksymlink(rref:RRef, tgtpath:Path, name:str, withtime=True)->Path:
   """ Create a symlink pointing to realization `rref`. Other arguments define
   symlink name and location. Informally,
   `{tgtpath}/{timeprefix}{name} --> $PYLIGHTNIX_STORE/{dref}/{rref}`.
-  Overwrite existing symlinks.
+  Overwrite existing symlinks. Folder named `tgtpath` should exist.
   """
   assert_valid_rref(rref)
   assert isdir(tgtpath), f"Target link directory doesn't exist: '{tgtpath}'"
