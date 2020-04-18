@@ -155,11 +155,11 @@ def build_paths(b:Build, refpath:RefPath)->List[Path]:
   regular RefPath or an ex-[PromisePath](#pylightnix.types.PromisePath)) into
   one or many filesystem paths. Conversion refers to the
   [Context](#pylightnix.types.Context) of the current realization process by
-  accessing it's [build_context](#pylightnix.core.build_context).
+  accessing it's [build_context](#pylightnix.build.build_context).
 
   Typically, we configure stages to match only one realization at once, so the
   returned list often has only one entry. Consider using
-  [build_path](#pylightnix.core.build_path) if this fact is known in advance.
+  [build_path](#pylightnix.build.build_path) if this fact is known in advance.
 
   Example:
   ```python
@@ -191,7 +191,7 @@ def build_paths(b:Build, refpath:RefPath)->List[Path]:
     return [Path(join(rref2path(rref), *refpath[1:])) for rref in build_deref_(b, refpath[0])]
 
 def build_path(b:Build, refpath:RefPath)->Path:
-  """ A single-realization version of the [build_paths](#pylightnix.core.build_paths). """
+  """ A single-realization version of the [build_paths](#pylightnix.build.build_paths). """
   paths=build_paths(b,refpath)
   assert len(paths)==1
   return paths[0]
