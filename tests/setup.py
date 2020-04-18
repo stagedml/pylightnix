@@ -57,12 +57,13 @@ def mktestnode_nondetermenistic(m:Manager, sources:dict,
   def _match(dref:DRef, context:Context)->Optional[List[RRef]]:
     max_i=-1
     max_rref:Optional[List[RRef]]=None
-    for rref in store_rrefs(dref, context):
-      with open(join(rref2path(rref),'artifact'),'r') as f:
-        i=int(f.read())
-        if i>max_i:
-          max_i=i
-          max_rref=[rref]
+    for gr in store_rrefs(dref, context):
+      for rref in gr.values():
+        with open(join(rref2path(rref),'artifact'),'r') as f:
+          i=int(f.read())
+          if i>max_i:
+            max_i=i
+            max_rref=[rref]
     return max_rref
   return mkdrv(m, _instantiate(), _match, _realize)
 

@@ -44,4 +44,5 @@ from sys import maxsize
 from datetime import datetime
 from fnmatch import fnmatch
 from functools import partial
+from itertools import chain
 

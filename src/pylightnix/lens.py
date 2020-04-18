@@ -17,7 +17,7 @@ through the dependent configurations """
 
 from pylightnix.imports import ( join )
 from pylightnix.types import ( Any, Dict, List, Build, DRef, RRef, Optional,
-    RefPath, Tuple, Union, Path, Context )
+    RefPath, Tuple, Union, Path, Context, Tag )
 from pylightnix.utils import ( isrefpath, isdref, isrref )
 from pylightnix.core import ( store_deref, store_config, rref2dref, rref2path,
     config_dict, store_dref2path, store_context, context_deref, context_add )
@@ -89,9 +89,9 @@ class Lens:
       context=self.ctx[1]
       if context is not None:
         if dref in context:
-          rrefs=context_deref(context, dref)
-          assert len(rrefs)==1, "Lens doesn't support multirealization dependencies"
-          return rrefs[0]
+          rgs=context_deref(context, dref)
+          assert len(rgs)==1, "Lens doesn't support multirealization dependencies"
+          return rgs[0][Tag('out')]
         else:
           assert False, f"Can't convert {dref} into RRef because it is not in context"
       else:
@@ -112,11 +112,12 @@ class Lens:
       context=self.ctx[1]
       if context is not None:
         if refpath[0] in context:
-          rrefs=context_deref(context, refpath[0])
-          assert len(rrefs)==1, "Lens doesn't support multirealization dependencies"
-          return Path(join(rref2path(rrefs[0]), *refpath[1:]))
+          rgs=context_deref(context, refpath[0])
+          assert len(rgs)==1, "Lens doesn't support multirealization dependencies"
+          return Path(join(rref2path(rgs[0][Tag('out')]), *refpath[1:]))
         else:
           if bpath is not None:
+            # FIXME: should we assert on refpath[0]==build.dref ?
             return Path(join(bpath, *refpath[1:]))
           else:
             assert False, f"Can't dereference refpath {refpath}"

@@ -3,7 +3,7 @@ from pylightnix import ( Manager, DRef, RRef, Path, mklogdir, dirhash, mknode,
     realize, instantiate_inplace, realize_inplace, assert_valid_rref,
     store_rrefs_, store_drefs, assert_valid_dref, repl_realize, repl_cancel,
     repl_continue, repl_rref, repl_build, ReplHelper, build_outpath,
-    store_deref, tryread, repl_continueBuild, isrref )
+    store_deref, tryread, repl_continueBuild, isrref, Tag, Group, RRefGroup )
 
 from tests.imports import (
     given, assume, example, note, settings, text, decimals, integers, rmtree,
@@ -96,7 +96,7 @@ def test_repl_override():
     rref=repl_rref(rh)
     assert rref is not None
 
-    rrefn1=store_deref(rref, n1)
+    rrefn1=store_deref(rref, n1)[Tag('out')]
     assert tryread(Path(join(rref2path(rrefn1),'artifact'))) == '777'
 
 

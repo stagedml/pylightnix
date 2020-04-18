@@ -422,11 +422,22 @@ Key = Callable[[RRef],Optional[Union[int,float,str]]]
 #: unique across the [Group](#pylightnix.types.Group).
 Tag = NewType('Tag', str)
 
-#: Realization group allows users to distinguish between
+#: Realization group allows users to distinguish between sets of
 #: [tagged](#pylightnix.types.Tag) realizations.  For example, there may be
-#: groups ['out1',log1'], ['out2','log2'] separating realizations whih describe
-#: different aspect of an experiments.
+#: a group containing tags ['out',log'] and another group containing
+#: realizations tagged with ['out','log','docs']. 'out' realizations are
+#: pre-defined and are subject for matching with
+#: [Matchers](#pylightnix.types.Matcher).
 #:
 #: By default, each realization is given its own unique group identifier
+#:
+#: Group invariants:
+#: - At least one RRef in every Group
+#: - All group refs have the same Context
+#: - Any RRef belongs to exactly one group
 Group = NewType('Group', str)
+
+#: A group of tagged realization references. There should always be at least one
+#: 'out' tag per group.
+RRefGroup = Dict[Tag,RRef]
 

@@ -89,5 +89,17 @@ def test_realized()->None:
     assert rref==rref2
 
 
+# def test_checkpaths()->None:
+#   with setup_storage('test_checkpaths'):
+
+#     def _setting(m:Manager)->DRef:
+#       n1=mktestnode(m, {'name':'1', 'promise':[promise,'artifact']})
+#       n2=mktestnode(m, {'name':'2', 'promise':[promise,'artifact']})
+#       n3=checkpaths(m, {'f1':mklens(n1).promise.refpath,
+#                         'f2':mklens(n2).promise.refpath})
+#       return n3
+
+#     rrefs=realizeMany(instantiate(_setting))
+#     assert len(rrefs)==2
 
 

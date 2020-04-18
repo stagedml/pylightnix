@@ -9,8 +9,8 @@ from pylightnix import ( instantiate, DRef, RRef, Path, mklogdir,
     build_cattrs, build_name, match_best, tryread, trywrite,
     assert_recursion_manager_empty, match, latest, best, exact, Key,
     match_latest, match_all, match_some, match_n, realizeMany, build_outpaths,
-    scanref_dict, config_dict, promise, checkpaths, mklens, isrref, Config,
-    RConfig, build_setoutpaths, partial, path2rref )
+    scanref_dict, config_dict, promise, mklens, isrref, Config,
+    RConfig, build_setoutpaths, partial, path2rref, Tag, Group, RRefGroup )
 
 from tests.imports import ( given, Any, Callable, join, Optional, islink,
     isfile, List, randint, sleep, rmtree, system, S_IWRITE, S_IREAD, S_IEXEC,
@@ -147,7 +147,7 @@ def test_realize_readonly()->None:
         "Did we lost exec permission?"
 
 
-def test_minimal_closure():
+def test_minimal_closure()->None:
   with setup_storage('test_minimal_closure'):
 
     def _somenode(m):
@@ -163,7 +163,7 @@ def test_minimal_closure():
 
     rref1=realize(instantiate(_somenode))
     rref=realize(instantiate(_anothernode))
-    rref2=store_deref(rref,store_cattrs(rref).papa)
+    rref2=store_deref(rref,store_cattrs(rref).papa)[Tag('out')]
     assert rref1==rref2, '''
       Nodes with no dependencies should have empty context, regardless of their
       position in the closure.
@@ -194,9 +194,9 @@ def test_realize_nondetermenistic()->None:
     assert len(list(store_rrefs_(n3))) == 2
     assert rref1 != rref2
 
-    n2_rref1 = store_deref(rref1, n2)
-    n2_rref2 = store_deref(rref2, n2)
-    assert n2_rref1 != n2_rref2
+    n2_gr1 = store_deref(rref1, n2)
+    n2_gr2 = store_deref(rref2, n2)
+    assert n2_gr1 != n2_gr2
 
 def test_no_recursive_realize()->None:
   with setup_storage('test_no_recursive_realize'):
@@ -312,7 +312,7 @@ def test_overwrite_realizer()->None:
     all_drefs = list(store_drefs())
     assert len(all_drefs)==2
 
-    rref_n3=store_deref(rref_n2, store_cattrs(rref_n2).maman)
+    rref_n3=store_deref(rref_n2, store_cattrs(rref_n2).maman)[Tag('out')]
     assert open(join(rref2path(rref_n3),'artifact'),'r').read() == '42'
 
 def test_match_only()->None:
@@ -388,7 +388,7 @@ def test_match_best()->None:
     assert tryread(Path(join(rref2path(rref1),'score')))=='1'
 
 
-def test_match_latest():
+def test_match_latest()->None:
   def _mknode(m, cfg, matcher, nouts:int, data=0, buildtime=True):
     def _realize(b:Build)->None:
       build_setoutpaths(b,nouts)
@@ -430,7 +430,7 @@ def test_match_latest():
         assert ntop>nouts
 
 
-def test_match_all():
+def test_match_all()->None:
   """ match_all() should match all the references """
   def _mknode(m,cfg, matcher, nouts:int):
     def _realize(b:Build)->None:
@@ -455,7 +455,7 @@ def test_match_all():
       rrefs_all=realizeMany(clo)
       assert len(rrefs_all)==nouts
 
-def test_match_some():
+def test_match_some()->None:
   with setup_storage('test_match_some'):
     def _mknode(m, cfg, nouts:int, top:int):
       def _realize(b:Build)->None:
@@ -475,7 +475,7 @@ def test_match_some():
         assert top>nouts
 
 
-def test_gc():
+def test_gc()->None:
   with setup_storage('test_gc'):
     def _node1(m:Manager)->DRef:
       return mktestnode(m, {'name':'1'})
@@ -492,7 +492,7 @@ def test_gc():
     assert rm_drefs=={rref2dref(r) for r in [r3]}
     assert rm_rrefs=={x for x in [r3]}
 
-def test_promise():
+def test_promise()->None:
   with setup_storage('test_promise'):
     def _setting(m:Manager, fullfill:bool)->DRef:
       n1=mktestnode(m, {'name':'1', 'promise':[promise,'artifact']})
@@ -521,21 +521,7 @@ def test_promise():
     rref=realize(instantiate(_setting,True))
     assert_valid_rref(rref)
 
-
-def test_checkfiles():
-  with setup_storage('test_checkfiles'):
-
-    def _setting(m:Manager)->DRef:
-      n1=mktestnode(m, {'name':'1', 'promise':[promise,'artifact']})
-      n2=mktestnode(m, {'name':'2', 'promise':[promise,'artifact']})
-      n3=checkpaths(m, {'f1':mklens(n1).promise.refpath,
-                        'f2':mklens(n2).promise.refpath})
-      return n3
-
-    rrefs=realizeMany(instantiate(_setting))
-    assert len(rrefs)==2
-
-def test_path2rref():
+def test_path2rref()->None:
   with setup_storage('test_path2rref') as s:
     s1=partial(mktestnode, sources={'name':'1', 'promise':[promise,'artifact']})
     rref1=realize(instantiate(s1))

@@ -1,16 +1,15 @@
-from pylightnix import ( instantiate, DRef, RRef, Path, mklogdir,
-    dirhash, assert_valid_dref, assert_valid_rref, store_deps, store_deepdeps,
-    store_gc, assert_valid_hash, assert_valid_config, Manager, mkcontext,
-    store_realize, store_rrefs, mkdref, mkrref, unrref, undref, realize,
-    rref2dref, store_config, mkconfig, Build, Context, build_outpath,
-    match_only, mkdrv, store_deref, rref2path, store_rrefs_, config_cattrs,
-    mksymlink, store_cattrs, build_deref, build_path, mkrefpath, build_config,
-    store_drefs, store_rrefs, store_rrefs_, build_wrapper, recursion_manager,
-    build_cattrs, build_name, match_best, tryread, trywrite,
-    assert_recursion_manager_empty, match, latest, best, exact, Key,
-    match_latest, match_all, match_some, match_n, realizeMany, build_outpaths,
-    scanref_dict, config_dict, promise, checkpaths, mklens, isrref, Config,
-    RConfig, build_setoutpaths, partial, path2rref )
+from pylightnix import ( instantiate, DRef, RRef, Path, mklogdir, dirhash,
+    assert_valid_dref, assert_valid_rref, store_deps, store_deepdeps, store_gc,
+    assert_valid_hash, assert_valid_config, Manager, mkcontext, store_realize,
+    store_rrefs, mkdref, mkrref, unrref, undref, realize, rref2dref,
+    store_config, mkconfig, Build, Context, build_outpath, match_only, mkdrv,
+    store_deref, rref2path, store_rrefs_, config_cattrs, mksymlink,
+    store_cattrs, build_deref, build_path, mkrefpath, build_config, store_drefs,
+    store_rrefs, store_rrefs_, build_wrapper, recursion_manager, build_cattrs,
+    build_name, match_best, tryread, trywrite, assert_recursion_manager_empty,
+    match, latest, best, exact, Key, match_latest, match_all, match_some,
+    match_n, realizeMany, build_outpaths, scanref_dict, config_dict, promise,
+    mklens, isrref, Config, RConfig, build_setoutpaths, partial, path2rref )
 
 from tests.imports import ( given, Any, Callable, join, Optional, islink,
     isfile, List, randint, sleep, rmtree, system, S_IWRITE, S_IREAD, S_IEXEC,
@@ -50,7 +49,7 @@ def test_build_deref()->None:
     rref = realize(instantiate(_setting))
     assert_valid_rref(rref)
 
-def test_build_cattrs():
+def test_build_cattrs()->None:
   with setup_storage('test_build_cattrs'):
     def _setting(m:Manager)->DRef:
       def _instantiate()->Config:

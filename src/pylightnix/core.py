@@ -19,17 +19,17 @@ Core Pylightnix definitions
 from pylightnix.imports import ( sha256, deepcopy, isdir, islink, makedirs,
     join, json_dump, json_load, json_dumps, json_loads, isfile, relpath,
     listdir, rmtree, mkdtemp, replace, environ, split, re_match, ENOTEMPTY,
-    get_ident, contextmanager, OrderedDict, lstat, maxsize, readlink )
+    get_ident, contextmanager, OrderedDict, lstat, maxsize, readlink, chain )
 from pylightnix.utils import ( dirhash, assert_serializable, assert_valid_dict,
     dicthash, scanref_dict, scanref_list, forcelink, timestring, parsetime,
     datahash, readjson, tryread, encode, dirchmod, dirrm, filero, isrref,
     isdref, traverse_dict, ispromise, isclaim, tryread_def )
-from pylightnix.types import (
-    Dict, List, Any, Tuple, Union, Optional, Iterable, IO, Path, Hash, DRef,
-    RRef, RefPath, PromisePath, HashPart, Callable, Context, Name, NamedTuple,
-    Build, RConfig, ConfigAttrs, Derivation, Stage, Manager, Matcher, Realizer,
-    Set, Closure, Generator, Key, BuildArgs, PYLIGHTNIX_PROMISE_TAG,
-    PYLIGHTNIX_CLAIM_TAG, Config, RealizeArg, InstantiateArg, Tag, Group )
+from pylightnix.types import ( Dict, List, Any, Tuple, Union, Optional,
+    Iterable, IO, Path, Hash, DRef, RRef, RefPath, PromisePath, HashPart,
+    Callable, Context, Name, NamedTuple, Build, RConfig, ConfigAttrs,
+    Derivation, Stage, Manager, Matcher, Realizer, Set, Closure, Generator,
+    Key, BuildArgs, PYLIGHTNIX_PROMISE_TAG, PYLIGHTNIX_CLAIM_TAG, Config,
+    RealizeArg, InstantiateArg, Tag, Group, RRefGroup )
 
 #: *Do not change!*
 #: Tracks the version of pylightnix storage
@@ -310,34 +310,45 @@ def store_drefs()->Iterable[DRef]:
     if dirname[-4:]!='.tmp' and isdir(join(PYLIGHTNIX_STORE,dirname)):
       yield mkdref(HashPart(dirname[:32]), Name(dirname[32+1:]))
 
-def store_rrefs_(dref:DRef)->Iterable[RRef]:
+def rrefs2groups(rrefs:List[RRef])->List[RRefGroup]:
+  return [({store_tag(rref):rref for rref in rrefs if store_group(rref)==g}) \
+      for g in sorted({store_group(rref) for rref in rrefs})]
+
+def groups2rrefs(grs:List[RRefGroup])->List[RRef]:
+  return list(chain.from_iterable([gr.values() for gr in grs]))
+
+def store_rrefs_(dref:DRef)->List[RRefGroup]:
   """ Iterate over all realizations of a derivation `dref`. The sort order is
   unspecified. """
   (dhash,nm)=undref(dref)
   drefpath=store_dref2path(dref)
+  rrefs:List[RRef]=[]
   for f in listdir(drefpath):
     if f[-4:]!='.tmp' and isdir(join(drefpath,f)):
-      yield mkrref(HashPart(f), dhash, nm)
+      rrefs.append(mkrref(HashPart(f), dhash, nm))
+  return rrefs2groups(rrefs)
 
-def store_rrefs(dref:DRef, context:Context)->Iterable[RRef]:
+def store_rrefs(dref:DRef, context:Context)->List[RRefGroup]:
   """ Iterate over realizations of a derivation `dref` which match a specified
   [context](#pylightnix.types.Context). Sorting order is unspecified. """
-  for rref in store_rrefs_(dref):
-    context2=store_context(rref)
+  rgs:List[RRefGroup]=[]
+  for rg in store_rrefs_(dref):
+    context2=store_context(list(rg.values())[0])
     if context_eq(context,context2):
-      yield rref
+      rgs.append(rg)
+  return rgs
 
-def store_deref_(context_holder:RRef, dref:DRef)->List[RRef]:
+def store_deref_(context_holder:RRef, dref:DRef)->List[RRefGroup]:
   return context_deref(store_context(context_holder), dref)
 
-def store_deref(context_holder:RRef, dref:DRef)->RRef:
+def store_deref(context_holder:RRef, dref:DRef)->RRefGroup:
   """ For any realization `context_holder` and it's dependency `dref`, `store_deref`
   queries the realization reference of this dependency.
 
   See also [build_deref](#pylightnix.core.build_deref)"""
-  rrefs=store_deref_(context_holder, dref)
-  assert len(rrefs)==1
-  return rrefs[0]
+  rgs=store_deref_(context_holder, dref)
+  assert len(rgs)==1
+  return rgs[0]
 
 def store_buildtime(rref:RRef)->Optional[str]:
   """ Return the buildtime of the current RRef in a format specified by the
@@ -360,7 +371,6 @@ def store_group(rref:RRef)->Group:
   gid,_,_=unrref(rref)
   return mkgroup(tryread_def(Path(join(rref2path(rref),'group.txt')),gid))
 
-
 def store_gc(keep_drefs:List[DRef], keep_rrefs:List[RRef])->Tuple[Set[DRef],Set[RRef]]:
   """ Take roots which are in use and should not be removed. Return roots which
   are not used and may be removed. Actual removing is to be done by the user.
@@ -376,9 +386,10 @@ def store_gc(keep_drefs:List[DRef], keep_rrefs:List[RRef])->Tuple[Set[DRef],Set[
   for dref in store_drefs():
     if dref not in closure_drefs:
       remove_drefs.add(dref)
-    for rref in store_rrefs_(dref):
-      if rref not in closure_rrefs:
-        remove_rrefs.add(rref)
+    for rg in store_rrefs_(dref):
+      for rref in rg.values():
+        if rref not in closure_rrefs:
+          remove_rrefs.add(rref)
   return remove_drefs,remove_rrefs
 
 
@@ -481,11 +492,11 @@ def context_add(context:Context, dref:DRef, rrefs:List[RRef])->Context:
   context[dref]=rrefs
   return context
 
-def context_deref(context:Context, dref:DRef)->List[RRef]:
+def context_deref(context:Context, dref:DRef)->List[RRefGroup]:
   assert dref in context, (
       f"Context {context} doesn't declare {dref} among it's dependencies so we "
       f"can't dereference it." )
-  return context[dref]
+  return rrefs2groups(context[dref])
 
 def context_serialize(c:Context)->str:
   assert_valid_context(c)
@@ -805,17 +816,16 @@ def match(keys:List[Key],
     "Specifying `exclusive` has no effect without specifying `rmax`.")
   keys=keys+[texthash()]
   def _matcher(dref:DRef, context:Context)->Optional[List[RRef]]:
-    keymap={}
-    all_rrefs=list(store_rrefs(dref,context))
+    # Find 'out' RRefs in each group
+    grefs={gr[Tag('out')]:gr for gr in store_rrefs(dref,context)}
 
     # Match only among realizations tagged as 'out'
-    rrefs=[rref for rref in all_rrefs if store_tag(rref)=='out']
-    for rref in rrefs:
-      keymap[rref]=[k(rref) for k in keys]
+    keymap={rref:[k(rref) for k in keys] for rref in grefs.keys()}
 
     # Apply filters and filter outputs
-    res:List[RRef]=sorted(filter(lambda rref: None not in keymap[rref], rrefs),
+    res:List[RRef]=sorted(filter(lambda rref: None not in keymap[rref], grefs.keys()),
                           key=lambda rref:keymap[rref], reverse=True)
+    # Filter by range
     if rmin is not None:
       if not rmin<=len(res):
         return None
@@ -824,11 +834,8 @@ def match(keys:List[Key],
         assert not exclusive
         res=res[:rmax]
 
-    # Add realizations of the same group as the matched ones
-    res_plus_groupmates=[]
-    for g in [store_group(rref) for rref in res]:
-      res_plus_groupmates.extend([rref for rref in all_rrefs if store_group(rref)==g])
-    return res_plus_groupmates
+    # Return back to groups
+    return groups2rrefs([grefs[rref] for rref in res])
   return _matcher
 
 

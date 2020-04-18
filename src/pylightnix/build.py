@@ -30,7 +30,7 @@ from pylightnix.types import ( Dict, List, Any, Tuple, Union, Optional,
     Callable, Context, Name, NamedTuple, Build, RConfig, ConfigAttrs,
     Derivation, Stage, Manager, Matcher, Realizer, Set, Closure, Generator,
     Key, TypeVar, BuildArgs, PYLIGHTNIX_PROMISE_TAG, PYLIGHTNIX_CLAIM_TAG,
-    Config, RealizeArg, InstantiateArg )
+    Config, RealizeArg, InstantiateArg, Tag, RRefGroup )
 from pylightnix.core import ( assert_valid_config, store_config, config_cattrs,
     config_hash, config_name, context_deref, assert_valid_refpath, rref2path )
 
@@ -135,7 +135,7 @@ def build_name(b:Build)->Name:
   """ Return the name of a derivation being built. """
   return Name(config_name(build_config(b)))
 
-def build_deref_(b:Build, dref:DRef)->List[RRef]:
+def build_deref_(b:Build, dref:DRef)->List[RRefGroup]:
   """ For any [realization](#pylightnix.core.realize) process described with
   it's [Build](#pylightnix.types.Build) handler, `build_deref` queries a
   realization of dependency `dref`.
@@ -145,12 +145,12 @@ def build_deref_(b:Build, dref:DRef)->List[RRef]:
   [store_deref](#pylightnix.core.store_deref) should be used.  """
   return context_deref(build_context(b), dref)
 
-def build_deref(b:Build, dref:DRef)->RRef:
-  rrefs=build_deref_(b,dref)
-  assert len(rrefs)==1
-  return rrefs[0]
+def build_deref(b:Build, dref:DRef)->RRefGroup:
+  rgs=build_deref_(b,dref)
+  assert len(rgs)==1
+  return rgs[0]
 
-def build_paths(b:Build, refpath:RefPath)->List[Path]:
+def build_paths(b:Build, refpath:RefPath, tag:Tag=Tag('out'))->List[Path]:
   """ Convert given [RefPath](#pylightnix.types.RefPath) (which may be either a
   regular RefPath or an ex-[PromisePath](#pylightnix.types.PromisePath)) into
   one or many filesystem paths. Conversion refers to the
@@ -188,11 +188,11 @@ def build_paths(b:Build, refpath:RefPath)->List[Path]:
         f"`build_outpath(b,num)` first to set their number." )
     return [Path(join(path, *refpath[1:])) for path in b.outpaths]
   else:
-    return [Path(join(rref2path(rref), *refpath[1:])) for rref in build_deref_(b, refpath[0])]
+    return [Path(join(rref2path(rg[tag]), *refpath[1:])) for rg in build_deref_(b, refpath[0])]
 
-def build_path(b:Build, refpath:RefPath)->Path:
+def build_path(b:Build, refpath:RefPath, tag:Tag=Tag('out'))->Path:
   """ A single-realization version of the [build_paths](#pylightnix.build.build_paths). """
-  paths=build_paths(b,refpath)
+  paths=build_paths(b,refpath,tag)
   assert len(paths)==1
   return paths[0]
 
