@@ -92,7 +92,7 @@ def test_repl_override():
     b=repl_build(rh)
     with open(join(build_outpath(b),'artifact'),'w') as f:
       f.write('777')
-    repl_continue(b.outpaths, rh=rh)
+    repl_continue(b.outgroups, rh=rh)
     rref=repl_rref(rh)
     assert rref is not None
 

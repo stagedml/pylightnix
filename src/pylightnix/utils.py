@@ -21,7 +21,8 @@ from pylightnix.imports import ( datetime, gmtime, timegm, join, makedirs,
     json_dumps, json_loads, makedirs, replace, dirname, walk, abspath,
     normalize, re_sub, split, json_load, find_executable, chmod, S_IWRITE,
     S_IREAD, S_IRGRP, S_IROTH, S_IXUSR, S_IXGRP, S_IXOTH, stat, ST_MODE,
-    S_IWGRP, S_IWOTH, rmtree, rename, getsize, readlink, partial, copytree )
+    S_IWGRP, S_IWOTH, rmtree, rename, getsize, readlink, partial, copytree,
+    chain )
 
 from pylightnix.types import ( Hash, Path, List, Any, Optional, Iterable, IO,
     DRef, RRef, Tuple, Callable, PYLIGHTNIX_PROMISE_TAG, PYLIGHTNIX_CLAIM_TAG,
@@ -344,4 +345,7 @@ def try_executable(name:str, not_found_message:Optional[str]=None)->Callable[[],
 def get_executable(name:str, not_found_message:str)->str:
   e=try_executable(name)
   return e()
+
+def concat(l:List[List[Any]])->List[Any]:
+  return list(chain.from_iterable(l))
 

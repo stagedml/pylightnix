@@ -20,13 +20,14 @@ system.  Finally, `repl_continue` or `repl_cancel` could be called to either
 continue or cancel the realization.
 """
 
-from pylightnix.utils import ( dirrm, timestring )
+from pylightnix.utils import ( dirrm, timestring, concat )
 
 from pylightnix.types import ( Dict, Closure, Context, Derivation, RRef, DRef,
     List, Tuple, Optional, Generator, Path, Build, Union, Any, BuildArgs,
-    RealizeArg  )
+    RealizeArg, Tag, RRefGroup )
 
-from pylightnix.core import ( realizeSeq, store_realize, RealizeSeqGen )
+from pylightnix.core import ( realizeSeq, store_realize_group, RealizeSeqGen,
+    groups2rrefs )
 from pylightnix.build import ( mkbuildargs, build_outpaths )
 
 class ReplHelper:
@@ -35,7 +36,7 @@ class ReplHelper:
     self.dref:Optional[DRef]=None
     self.context:Optional[Context]=None
     self.drv:Optional[Derivation]=None
-    self.rrefs:Optional[List[RRef]]=None
+    self.rrefgs:Optional[List[RRefGroup]]=None
     self.rarg:Optional[RealizeArg]=None
 
 ERR_INVALID_RH="Neither global, nor user-defined ReplHelper is valid"
@@ -43,8 +44,8 @@ ERR_INACTIVE_RH="REPL session is not paused or was already unpaused"
 
 PYLIGHTNIX_REPL_HELPER:Optional[ReplHelper]=None
 
-def repl_continueMany(out_paths:Optional[List[Path]]=None,
-                      out_rrefs:Optional[List[RRef]]=None,
+def repl_continueMany(out_groups:Optional[List[Dict[Tag,Path]]]=None,
+                      out_rrefgs:Optional[List[RRefGroup]]=None,
                       rh:Optional[ReplHelper]=None)->Optional[List[RRef]]:
   global PYLIGHTNIX_REPL_HELPER
   if rh is None:
@@ -55,32 +56,32 @@ def repl_continueMany(out_paths:Optional[List[Path]]=None,
   assert rh.context is not None, ERR_INACTIVE_RH
   assert rh.drv is not None, ERR_INACTIVE_RH
   try:
-    rrefs:Optional[List[RRef]]
-    if out_paths is not None:
-      assert out_rrefs is None
-      rrefs=[store_realize(rh.dref,rh.context,out_path) for out_path in out_paths]
-    elif out_rrefs is not None:
-      assert out_paths is None
-      rrefs=out_rrefs
+    rrefgs:Optional[List[RRefGroup]]
+    if out_groups is not None:
+      assert out_rrefgs is None
+      rrefgs=[store_realize_group(rh.dref,rh.context,g) for g in out_groups]
+    elif out_rrefgs is not None:
+      assert out_groups is None
+      rrefgs=out_rrefgs
     else:
-      rrefs=None
-    rh.dref,rh.context,rh.drv,rh.rarg=rh.gen.send((rrefs,False))
+      rrefgs=None
+    rh.dref,rh.context,rh.drv,rh.rarg=rh.gen.send((rrefgs,False))
   except StopIteration as e:
     rh.gen=None
-    rh.rrefs=e.value
-  return rh.rrefs
+    rh.rrefgs=e.value
+  return repl_rrefs(rh)
 
-def repl_continue(out_paths:Optional[List[Path]]=None,
-                  out_rrefs:Optional[List[RRef]]=None,
+def repl_continue(out_groups:Optional[List[Dict[Tag,Path]]]=None,
+                  out_rrefs:Optional[List[RRefGroup]]=None,
                   rh:Optional[ReplHelper]=None)->Optional[RRef]:
-  rrefs=repl_continueMany(out_paths,out_rrefs,rh)
+  rrefs=repl_continueMany(out_groups,out_rrefs,rh)
   if rrefs is None:
     return None
   assert len(rrefs)==1, f"Acturally {len(rrefs)}"
   return rrefs[0]
 
 def repl_continueBuild(b:Build, rh:Optional[ReplHelper]=None)->Optional[RRef]:
-  return repl_continue(out_paths=b.outpaths, rh=rh)
+  return repl_continue(out_groups=b.outgroups, rh=rh)
 
 def repl_realize(closure:Closure,
                  force_interrupt:Union[List[DRef],bool]=True,
@@ -120,11 +121,11 @@ def repl_realize(closure:Closure,
     rh.dref,rh.context,rh.drv,rh.rarg=next(rh.gen)
   except StopIteration as e:
     rh.gen=None
-    rh.rrefs=e.value
+    rh.rrefgs=e.value
   return rh
 
 def repl_rrefs(rh:ReplHelper)->Optional[List[RRef]]:
-  return rh.rrefs
+  return groups2rrefs(rh.rrefgs) if rh.rrefgs is not None else None
 
 def repl_rref(rh:ReplHelper)->Optional[RRef]:
   rrefs=repl_rrefs(rh)
@@ -161,6 +162,7 @@ def repl_cancel(rh:Optional[ReplHelper]=None)->None:
 
 def repl_cancelBuild(b:Build, rh:Optional[ReplHelper]=None)->None:
   repl_cancel(rh)
-  for o in b.outpaths:
-    dirrm(o)
+  for g in b.outgroups:
+    for o in g.values():
+      dirrm(o)
 

@@ -23,7 +23,7 @@ from pylightnix.imports import ( sha256, deepcopy, isdir, islink, makedirs,
 from pylightnix.utils import ( dirhash, assert_serializable, assert_valid_dict,
     dicthash, scanref_dict, scanref_list, forcelink, timestring, parsetime,
     datahash, readjson, tryread, encode, dirchmod, dirrm, filero, isrref,
-    isdref, traverse_dict, ispromise, isclaim, tryread_def )
+    isdref, traverse_dict, ispromise, isclaim, tryread_def, tryreadjson_def )
 from pylightnix.types import ( Dict, List, Any, Tuple, Union, Optional,
     Iterable, IO, Path, Hash, DRef, RRef, RefPath, PromisePath, HashPart,
     Callable, Context, Name, NamedTuple, Build, RConfig, ConfigAttrs,
@@ -58,7 +58,7 @@ PYLIGHTNIX_NAMEPAT = "[a-zA-Z0-9_-]"
 
 #: Reserved file names which are treated specially be the core. Users should
 #: not normally create or alter files with this names.
-PYLIGHTNIX_RESERVED = ['context.json', 'tag.txt', 'group.txt']
+PYLIGHTNIX_RESERVED = ['context.json','group.json']
 
 #  ____       __
 # |  _ \ ___ / _|___
@@ -364,12 +364,11 @@ def store_buildtime(rref:RRef)->Optional[str]:
 def store_tag(rref:RRef)->Tag:
   """ Realizations may be marked with a tag. By default the tag is set to be
   'out'. """
-  return mktag(tryread_def(Path(join(rref2path(rref),'tag.txt')),'out'))
+  return mktag(tryreadjson_def(Path(join(rref2path(rref),'group.json')),{}).get('tag','out'))
 
 def store_group(rref:RRef)->Group:
   """ Return group identifier of the realization """
-  gid,_,_=unrref(rref)
-  return mkgroup(tryread_def(Path(join(rref2path(rref),'group.txt')),gid))
+  return mkgroup(tryreadjson_def(Path(join(rref2path(rref),'group.json')),{}).get('group',rref))
 
 def store_gc(keep_drefs:List[DRef], keep_rrefs:List[RRef])->Tuple[Set[DRef],Set[RRef]]:
   """ Take roots which are in use and should not be removed. Return roots which
@@ -428,7 +427,7 @@ def store_instantiate(c:Config)->DRef:
       raise
   return dref
 
-def store_realize(dref:DRef, l:Context, o:Path)->RRef:
+def store_realize_tag(dref:DRef, l:Context, o:Path, leader:Optional[Tuple[Tag,RRef]]=None)->RRef:
   """
   FIXME: Assert or handle possible but improbable hash collision (*)
   """
@@ -445,8 +444,14 @@ def store_realize(dref:DRef, l:Context, o:Path)->RRef:
        f"While realizing {dref}: output folder '{o}' contains file '{fn}'. "
        f"This name is reserved, please use another name. List of reserved "
        f"names: {PYLIGHTNIX_RESERVED}")
+
   with open(join(o,'context.json'), 'w') as f:
     f.write(context_serialize(l))
+
+  if leader is not None:
+    tag,group_rref=leader
+    with open(join(o,'group.json'), 'w') as f:
+      json_dump({'tag':tag,'group':group_rref},f)
 
   rhash=dirhash(o)
   rref=mkrref(trimhash(rhash),dhash,nm)
@@ -468,6 +473,14 @@ def store_realize(dref:DRef, l:Context, o:Path)->RRef:
       replace(rreftmp,o)
       raise
   return rref
+
+def store_realize_group(dref:DRef, l:Context, og:Dict[Tag,Path])->RRefGroup:
+  rrefg={}
+  rrefg[Tag('out')]=store_realize_tag(dref, l, og[Tag('out')])
+  for tag,o in og.items():
+    if tag!=Tag('out'):
+      rrefg[tag]=store_realize_tag(dref,l,o,(tag,rrefg[Tag('out')]))
+  return rrefg
 
 #   ____            _            _
 #  / ___|___  _ __ | |_ _____  _| |_
@@ -571,12 +584,12 @@ def mkdrv(m:Manager,
            f"RConfig:\n{store_config_(dref)}"))
 
   def _promise_aware(realizer)->Realizer:
-    def _realizer(dref:DRef,ctx:Context,rarg:RealizeArg)->List[Path]:
-      outpaths=realizer(dref,ctx,rarg)
+    def _realizer(dref:DRef,ctx:Context,rarg:RealizeArg)->List[Dict[Tag,Path]]:
+      outgroups=realizer(dref,ctx,rarg)
       for key,refpath in config_promises(store_config_(dref),dref):
-        for o in outpaths:
-          assert_promise_fulfilled(key,refpath,o)
-      return outpaths
+        for g in outgroups:
+          assert_promise_fulfilled(key,refpath,g[Tag('out')])
+      return outgroups
     return _realizer
 
   m.builders[dref]=Derivation(dref=dref,
@@ -635,7 +648,9 @@ def instantiate(stage:Any, *args, **kwargs)->Closure:
   """
   return instantiate_(Manager(), stage, *args, **kwargs)
 
-RealizeSeqGen = Generator[Tuple[DRef,Context,Derivation,RealizeArg],Tuple[Optional[List[RRef]],bool],List[RRef]]
+RealizeSeqGen = Generator[Tuple[DRef,Context,Derivation,RealizeArg],
+                          Tuple[Optional[List[RRefGroup]],bool],
+                          List[RRefGroup]]
 
 def realize(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
                              assert_realized:List[DRef]=[])->RRef:
@@ -694,6 +709,7 @@ def realizeMany(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
   - FIXME: Update derivation's matcher after forced rebuilds. Matchers should
     remember and reproduce user's preferences.
   """
+  res:List[RRefGroup]
   force_interrupt:List[DRef]=[]
   if isinstance(force_rebuild,bool):
     if force_rebuild:
@@ -711,7 +727,7 @@ def realizeMany(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
       gen.send((None,False)) # Ask for default action
   except StopIteration as e:
     res=e.value
-  return res
+  return groups2rrefs(res)
 
 def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
                                 assert_realized:List[DRef]=[],
@@ -731,39 +747,40 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
     target_deps=store_deepdeps([target_dref])
     for drv in closure.derivations:
       dref=drv.dref
+      rrefgs:Optional[List[RRefGroup]]
       if dref in target_deps or dref==target_dref:
         c=store_config(dref)
         dref_deps=store_deepdeps([dref])
         dref_context={k:v for k,v in context_acc.items() if k in dref_deps}
         if dref in force_interrupt_:
-          rrefs,abort=yield (dref,dref_context,drv,realize_args.get(dref,{}))
+          rrefgs,abort=yield (dref,dref_context,drv,realize_args.get(dref,{}))
           if abort:
             return []
         else:
-          rrefs=drv.matcher(dref,dref_context)
-        if rrefs is None:
+          rrefgs=drv.matcher(dref,dref_context)
+        if rrefgs is None:
           assert dref not in assert_realized, (
             f"Stage '{dref}' was assumed to be already realized. "
             f"Unfortunately, it is not the case. Config:\n"
             f"{store_config(dref)}"
             )
-          paths=drv.realizer(dref,dref_context,realize_args.get(dref,{}))
-          rrefs_built=[store_realize(dref,dref_context,path) for path in paths]
-          rrefs_matched=drv.matcher(dref,dref_context)
-          assert rrefs_matched is not None, (
+          gpaths:List[Dict[Tag,Path]]=drv.realizer(dref,dref_context,realize_args.get(dref,{}))
+          rrefgs_built=[store_realize_group(dref,dref_context,g) for g in gpaths]
+          rrefgs_matched=drv.matcher(dref,dref_context)
+          assert rrefgs_matched is not None, (
             f"Derivation {dref}: Matcher repeatedly asked the core to "
             f"realize. Probably, realizer doesn't match the matcher. "
             f"In particular, the follwoing just-built rrefs are "
-            f"unmatched: {rrefs_built}" )
-          if (set(rrefs_built) & set(rrefs_matched)) == set() and \
-             (set(rrefs_built) | set(rrefs_matched)) != set():
+            f"unmatched: {rrefgs_built}" )
+          if (set(groups2rrefs(rrefgs_built)) & set(groups2rrefs(rrefgs_matched))) == set() and \
+             (set(groups2rrefs(rrefgs_built)) | set(groups2rrefs(rrefgs_matched))) != set():
             print(f"Warning: None of the newly obtained realizations of "
                   f"{dref} were matched by the matcher. To capture those "
                   f"realizations explicitly, try `matcher([exact(..)])`")
-          rrefs=rrefs_matched
-        context_acc=context_add(context_acc,dref,rrefs)
-    assert rrefs is not None
-    return rrefs
+          rrefgs=rrefgs_matched
+        context_acc=context_add(context_acc,dref,groups2rrefs(rrefgs))
+    assert rrefgs is not None
+    return rrefgs
 
 
 def mksymlink(rref:RRef, tgtpath:Path, name:str, withtime=True)->Path:
@@ -815,7 +832,7 @@ def match(keys:List[Key],
   assert not ((rmax is None) and exclusive), (
     "Specifying `exclusive` has no effect without specifying `rmax`.")
   keys=keys+[texthash()]
-  def _matcher(dref:DRef, context:Context)->Optional[List[RRef]]:
+  def _matcher(dref:DRef, context:Context)->Optional[List[RRefGroup]]:
     # Find 'out' RRefs in each group
     grefs={gr[Tag('out')]:gr for gr in store_rrefs(dref,context)}
 
@@ -834,8 +851,8 @@ def match(keys:List[Key],
         assert not exclusive
         res=res[:rmax]
 
-    # Return back to groups
-    return groups2rrefs([grefs[rref] for rref in res])
+    # Return matched groups
+    return [grefs[rref] for rref in res]
   return _matcher
 
 

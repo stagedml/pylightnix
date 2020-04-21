@@ -15,7 +15,7 @@
 """ Simple functions imitating unix shell tools.  """
 
 from pylightnix.types import ( Iterable, List, Union, Optional, DRef, RRef,
-    Dict, Tuple, Path, Build, Stage )
+    Dict, Tuple, Path, Build, Stage, Tag )
 from pylightnix.imports import ( isfile, isdir, listdir, join, rmtree, environ,
     Popen, rename, getsize, fnmatch )
 from pylightnix.core import ( store_dref2path, rref2path, isrref, isdref,
@@ -93,9 +93,9 @@ def shell(r:Union[Build,RRef,DRef,Path,str,None]=None)->None:
   elif isdref(r):
     cwd=store_dref2path(DRef(r))
   elif isinstance(r,Build):
-    assert len(r.outpaths)>0, (
+    assert len(r.outgroups)>0, (
       "Shell function requires at least one build output path to be defined" )
-    cwd=r.outpaths[0]
+    cwd=r.outgroups[0][Tag('out')]
   elif isdir(r):
     cwd=str(r)
   else:

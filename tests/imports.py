@@ -17,7 +17,7 @@ from subprocess import Popen, run, PIPE
 
 from re import compile as re_compile
 
-from typing import Any, List, Optional, Callable
+from typing import Any, List, Optional, Callable, Dict
 from contextlib import contextmanager
 
 from tempfile import TemporaryDirectory
