@@ -21,9 +21,6 @@ TESTS = $(shell find tests -name '*\.py')
 	fi
 	touch $@
 
-.PHONY: check
-check: .stamp_check
-
 ./docs/Reference.md: $(SRC) .stamp_check
 	pydoc-markdown \
 		--modules \
@@ -112,6 +109,7 @@ wheels: $(WHEEL)
 
 .PHONY: install
 install: # To be run by root
+	test "$(shell whoami)" = "root"
 	test -f $(WHEEL) || ( echo 'run `make wheels` first'; exit 1; )
 	pip3 install --force $(WHEEL)
 	pip3 hash $(WHEEL) > .install-stamp-$(HOSTNAME)
@@ -119,7 +117,8 @@ install: # To be run by root
 .PHONY: check
 check: $(WHEEL)
 	pip3 hash $(WHEEL) > .check-stamp-$(HOSTNAME)
-	diff -u .check-stamp-$(HOSTNAME) .install-stamp-$(HOSTNAME)
+	@diff -u .check-stamp-$(HOSTNAME) .install-stamp-$(HOSTNAME) || ( \
+		echo 'Did you install pylightnix systemwide by running `sudo -H make install` ?' ; exit 1 ; )
 
 .PHONY: all
 all: wheels coverage demos docs
