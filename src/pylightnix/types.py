@@ -365,7 +365,8 @@ class Build:
   - [build_cattrs](#pylightnix.core.build_cattrs) - Obtain the ConfigAttrs helper
   - [build_path](#pylightnix.core.build_path) - Convert a RefPath or a PromisePath
     into a system file path
-  - [build_outpath](#pylightnix.core.build_outpath) - Create and return the output path.
+  - [build_setoutgroups](#pylightnix.build.build_setoutgroups) - Initialize and
+    return groups of output folders
   - [build_deref](#pylightnix.core.build_deref) - Convert a dependency DRef
     into a realization reference.
 
