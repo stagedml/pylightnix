@@ -21,7 +21,7 @@ from pylightnix.types import ( Any, Dict, List, Build, DRef, RRef, Optional,
 from pylightnix.utils import ( isrefpath, isdref, isrref )
 from pylightnix.core import ( store_deref, store_config, rref2dref, rref2path,
     config_dict, store_dref2path, store_context, context_deref, context_add )
-from pylightnix.build import ( build_outpath, build_config, build_context )
+from pylightnix.build import ( build_outpaths, build_config, build_context )
 
 
 class Lens:
@@ -143,7 +143,8 @@ class Lens:
 def mklens(x:Any, o:Optional[Path]=None,
                   b:Optional[Build]=None,
                   rref:Optional[RRef]=None,
-                  ctx:Optional[Context]=None)->Lens:
+                  ctx:Optional[Context]=None,
+                  build_output_idx:int=0)->Lens:
   """ Mklens creates [Lenses](#pylightnix.lens.Lens) from various user objects.
 
   Arguments:
@@ -163,6 +164,8 @@ def mklens(x:Any, o:Optional[Path]=None,
     allow Lens to resolve other RRefs using the Context of the given RRef.
   - `ctx:Optional[Context]=None` Passing optional Context would allow Lens to
     resolve RRefs.
+  - `build_output_idx:int=0` For `Builds`, specify the index of output path,
+    defaulted to zero
 
   Examples:
   ```Python
@@ -199,8 +202,8 @@ def mklens(x:Any, o:Optional[Path]=None,
   if ctx is None and isrref(x):
     ctx=context_add(store_context(RRef(x)), rref2dref(RRef(x)), [RRef(x)])
   if o is None and b is not None:
-    o=build_outpath(b)
+    o=build_outpaths(b)[build_output_idx]
   if o is None and isinstance(x,Build):
-    o=build_outpath(x)
+    o=build_outpaths(x)[build_output_idx]
   return Lens((o,ctx),x)
 

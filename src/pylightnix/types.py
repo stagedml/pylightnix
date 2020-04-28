@@ -17,7 +17,7 @@
 
 from pylightnix.imports import ( deepcopy, OrderedDict )
 from typing import ( List, Any, Tuple, Union, Optional, Iterable, IO, Callable,
-    Dict, NamedTuple, Set, Generator, TypeVar, NewType )
+    Dict, NamedTuple, Set, Generator, TypeVar, NewType, SupportsAbs )
 
 class Path(str):
   """ `Path` is an alias for string. It is used in pylightnix to
@@ -418,6 +418,10 @@ class Manager:
   def __init__(self):
     self.builders:Dict[DRef,Derivation]=OrderedDict()
 
+
+#: R is a DRef or any of its derivatives
+R = TypeVar('R',bound=SupportsAbs[DRef])
+
 #: From the user's point of view, Stage is a basic building block of
 #: Pylightnix.  It is a function that 'introduces'
 #: [derivations](#pylightnix.typing.Derivation) to
@@ -437,7 +441,7 @@ class Manager:
 #: Stage = Callable[[Manager,VarArg(Any),KwArg(Any)],DRef]
 #: ```
 #: We use `type:ignore` pragmas when we need to pass `**kwargs`.
-Stage = Callable[[Manager],DRef]
+Stage = Callable[[Manager],R]
 
 
 Key = Callable[[RRef],Optional[Union[int,float,str]]]
