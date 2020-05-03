@@ -98,8 +98,9 @@ def redefine(
 
   Arguments:
   - `stage:Any` a `Stage` function, accepting arbitrary keyword arguments
-  - `new_config:Callable[[dict],Config]=mkconfig` A function to update the `dref`'s
-    config. Defaults to `mkconfig` function (here similar to the identity).
+  - `new_config:Callable[[dict],Config]=mkconfig` A function to update the
+    `dref`'s config. Defaults to `mkconfig` function (here similar to the
+    identity).
   - `new_matcher:Optional[Matcher]=None` Optional new matcher (defaults to the
     existing matcher)
   - `new_realizer:Optional[Realizer]=None` Optional new realizer (defaults to
@@ -123,11 +124,13 @@ def redefine(
   def _new_stage(m:Manager,*args,**kwargs)->DRef:
     dref=stage(m,*args,**kwargs) # type:ignore
     new_config_=new_config(config_dict(store_config_(dref)))
-    new_matcher_=new_matcher if new_matcher is not None else m.builders[dref].matcher
-    new_realizer_=new_realizer if new_realizer is not None else m.builders[dref].realizer
-    return mkdrv(m, new_config_, new_matcher_, new_realizer_, check_promises=check_promises)
+    new_matcher_=new_matcher if new_matcher is not None\
+                             else m.builders[dref].matcher
+    new_realizer_=new_realizer if new_realizer is not None\
+                               else m.builders[dref].realizer
+    return mkdrv(m, new_config_, new_matcher_, new_realizer_,
+      check_promises=check_promises)
   return _new_stage
-
 
 def realized(stage:Any)->Stage:
   """ [Re-define](#pylightnix.stages.trivial.redefine) stage's realizer by
