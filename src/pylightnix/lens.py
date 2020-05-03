@@ -60,6 +60,12 @@ class Lens:
   @property
   def val(self)->Any:
     """ Return th current value of Lens as-is """
+    assert self.v is not None
+    return self.v
+
+  @property
+  def optval(self)->Optional[Any]:
+    """ Return th current value of Lens as-is """
     return self.v
 
   @property
