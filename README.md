@@ -71,7 +71,8 @@ Implementation:
 Related work
 ------------
 
-* [Nix](https://nixos.org) ([repo](https://github.com/nixos/nix), [comparison](./docs/Comparison.md#Pylightnix-vs-Nix))
+* [Nix](https://nixos.org) ([repo](https://github.com/nixos/nix),
+  [comparison](./docs/Comparison.md#Pylightnix-vs-Nix))
 * [Spack](https://spack.io) ([repo](https://github.com/spack/spack))
 * [Popper](https://falsifiable.us) ([repo](https://github.com/systemslab/popper))
 * [CK](https://cknowledge.org) ([repo](https://github.com/ctuning/ck))
@@ -85,38 +86,38 @@ Install
 Pylightnix is not yet released on Pypi, the only way to install it with pip
 is to use the git link:
 
- ```shell
+ ```sh
  $ pip3 install git+https://github.com/stagedml/pylightnix
  ```
 
 #### Build from source
 
 1. Clone the repo
-   ```
+   ```sh
    $ git clone https://github.com/stagedml/pylightnix
    $ cd pylightnix
    ```
 2. Either
    - (a) Setup `PYTHONPATH` to point to the sources.
-     ```
+     ```sh
      export PYTHONPATH="`pwd`/src:$PYTHONPATH"
      ```
      Now you could import pylightnix from your applications.
 
    - (b) Build and install pylightnix wheel.
-     ```
+     ```sh
      $ make wheels
      $ sudo -H pip3 install --force dist/*whl
      ```
    - (c) Nix users may refer to [default.nix](./default.nix) and
      [shell.nix](./shell.nix) expressions.
 3. (Optional) Run the tests and make docs
-   ```
+   ```sh
    $ make coverage
    $ make docs
    ```
 4. (Optional) Demos require `pweave` package.
-   ```
+   ```sh
    $ make demos
    ```
 
@@ -126,10 +127,12 @@ Documentation
 Demos:
 
 * [Hello](./docs/demos/HELLO.md), building GNU Hello with a toy package manager.
-* [Ultimatum tutorial](https://github.com/grwlf/ultimatum-game/blob/master/docs/Pylightnix.md), managing experiments.
+* [Ultimatum tutorial](https://github.com/grwlf/ultimatum-game/blob/master/docs/Pylightnix.md),
+  managing experiments.
 * [MNIST demo](./docs/demos/MNIST.md) shows machine learning specifics.
-* [REPL demo](./docs/demos/REPL.md) illustrates how to debug stages
-  using Read-Eval-Print-friendly routines [(wiki)](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop).
+* [REPL demo](./docs/demos/REPL.md) illustrates how to debug stages using
+  Read-Eval-Print-friendly routines
+  [(wiki)](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop).
 
 Reference:
 
@@ -150,7 +153,7 @@ installed.
 
 1. Install the development version of pylightnix and run IPython.
 
-   ```shell
+   ```sh
    $ pip install ipython git+https://github.com/stagedml/pylightnix
    $ ipython
    ```
