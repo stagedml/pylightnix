@@ -11,6 +11,9 @@
     * [PYLIGHTNIX\_PROMISE\_TAG](#pylightnix.types.PYLIGHTNIX_PROMISE_TAG)
     * [PYLIGHTNIX\_CLAIM\_TAG](#pylightnix.types.PYLIGHTNIX_CLAIM_TAG)
     * [PromisePath](#pylightnix.types.PromisePath)
+    * [Tag](#pylightnix.types.Tag)
+    * [Group](#pylightnix.types.Group)
+    * [RRefGroup](#pylightnix.types.RRefGroup)
     * [Context](#pylightnix.types.Context)
     * [Matcher](#pylightnix.types.Matcher)
     * [InstantiateArg](#pylightnix.types.InstantiateArg)
@@ -24,6 +27,7 @@
     * [BuildArgs](#pylightnix.types.BuildArgs)
     * [Build](#pylightnix.types.Build)
     * [Manager](#pylightnix.types.Manager)
+    * [R](#pylightnix.types.R)
     * [Stage](#pylightnix.types.Stage)
     * [Key](#pylightnix.types.Key)
   * [pylightnix.core](#pylightnix.core)
@@ -32,6 +36,7 @@
     * [PYLIGHTNIX\_TMP](#pylightnix.core.PYLIGHTNIX_TMP)
     * [PYLIGHTNIX\_STORE](#pylightnix.core.PYLIGHTNIX_STORE)
     * [PYLIGHTNIX\_NAMEPAT](#pylightnix.core.PYLIGHTNIX_NAMEPAT)
+    * [PYLIGHTNIX\_RESERVED](#pylightnix.core.PYLIGHTNIX_RESERVED)
     * [trimhash](#pylightnix.core.trimhash)
     * [mkdref](#pylightnix.core.mkdref)
     * [rref2dref](#pylightnix.core.rref2dref)
@@ -40,6 +45,8 @@
     * [unrref](#pylightnix.core.unrref)
     * [mkname](#pylightnix.core.mkname)
     * [path2rref](#pylightnix.core.path2rref)
+    * [mktag](#pylightnix.core.mktag)
+    * [mkgroup](#pylightnix.core.mkgroup)
     * [mkconfig](#pylightnix.core.mkconfig)
     * [config\_dict](#pylightnix.core.config_dict)
     * [config\_cattrs](#pylightnix.core.config_cattrs)
@@ -63,14 +70,19 @@
     * [store\_deepdeps](#pylightnix.core.store_deepdeps)
     * [store\_deepdepRrefs](#pylightnix.core.store_deepdepRrefs)
     * [store\_drefs](#pylightnix.core.store_drefs)
+    * [rrefs2groups](#pylightnix.core.rrefs2groups)
+    * [groups2rrefs](#pylightnix.core.groups2rrefs)
     * [store\_rrefs\_](#pylightnix.core.store_rrefs_)
     * [store\_rrefs](#pylightnix.core.store_rrefs)
     * [store\_deref\_](#pylightnix.core.store_deref_)
     * [store\_deref](#pylightnix.core.store_deref)
     * [store\_buildtime](#pylightnix.core.store_buildtime)
+    * [store\_tag](#pylightnix.core.store_tag)
+    * [store\_group](#pylightnix.core.store_group)
     * [store\_gc](#pylightnix.core.store_gc)
     * [store\_instantiate](#pylightnix.core.store_instantiate)
-    * [store\_realize](#pylightnix.core.store_realize)
+    * [store\_realize\_tag](#pylightnix.core.store_realize_tag)
+    * [store\_realize\_group](#pylightnix.core.store_realize_group)
     * [mkcontext](#pylightnix.core.mkcontext)
     * [context\_eq](#pylightnix.core.context_eq)
     * [context\_add](#pylightnix.core.context_add)
@@ -120,7 +132,10 @@
     * [build\_config](#pylightnix.build.build_config)
     * [build\_context](#pylightnix.build.build_context)
     * [build\_cattrs](#pylightnix.build.build_cattrs)
+    * [build\_setoutgroups](#pylightnix.build.build_setoutgroups)
     * [build\_setoutpaths](#pylightnix.build.build_setoutpaths)
+    * [build\_markstop](#pylightnix.build.build_markstop)
+    * [store\_buildelta](#pylightnix.build.store_buildelta)
     * [build\_outpaths](#pylightnix.build.build_outpaths)
     * [build\_outpath](#pylightnix.build.build_outpath)
     * [build\_name](#pylightnix.build.build_name)
@@ -150,7 +165,6 @@
   * [pylightnix.stages.trivial](#pylightnix.stages.trivial)
     * [mknode](#pylightnix.stages.trivial.mknode)
     * [mkfile](#pylightnix.stages.trivial.mkfile)
-    * [checkpaths](#pylightnix.stages.trivial.checkpaths)
     * [redefine](#pylightnix.stages.trivial.redefine)
     * [realized](#pylightnix.stages.trivial.realized)
   * [pylightnix.stages.fetch](#pylightnix.stages.fetch)
@@ -343,6 +357,49 @@ return mkconfig(locals())
 dref=mkdrv(..., config=myconfig(), ...)
 ```
 
+<a name="pylightnix.types.Tag"></a>
+## `Tag`
+
+```python
+Tag = NewType('Tag', str)
+```
+
+Realization tag is a user-defined string without spaces and newline symbols.
+By default, realizations have tag 'out'. This can be changed by realizer
+e.g. to store logs, manual pages etc. separately.  The tag is supposed to be
+unique across the [Group](#pylightnix.types.Group).
+
+<a name="pylightnix.types.Group"></a>
+## `Group`
+
+```python
+Group = NewType('Group', str)
+```
+
+Realization group allows users to distinguish between sets of
+[tagged](#pylightnix.types.Tag) realizations.  For example, there may be
+a group containing tags ['out',log'] and another group containing
+realizations tagged with ['out','log','docs']. 'out' realizations are
+pre-defined and are subject for matching with
+[Matchers](#pylightnix.types.Matcher).
+
+By default, each realization is given its own unique group identifier
+
+Group invariants:
+- At least one RRef in every Group
+- All group refs have the same Context
+- Any RRef belongs to exactly one group
+
+<a name="pylightnix.types.RRefGroup"></a>
+## `RRefGroup`
+
+```python
+RRefGroup = Dict[Tag,RRef]
+```
+
+A group of tagged realization references. There should always be at least one
+'out' tag per group.
+
 <a name="pylightnix.types.Context"></a>
 ## `Context`
 
@@ -361,17 +418,19 @@ derivations to realizations.
 ## `Matcher`
 
 ```python
-Matcher = Callable[[DRef,Context],Optional[List[RRef]]]
+Matcher = Callable[[DRef,Context],Optional[List[RRefGroup]]]
 ```
 
 Matcher is a type of user-defined functions which select required
-realizations from the set of all realizations available.
+realizations from the set of possible realizations.
 
-Matchers take the derivation reference and the context. They may easily
-determine the set of existing realizations (see
-[store_rrefs](#pylightnix.core.store_rrefs) and should return the subset of
-this set or None which is a request to Pylightnix to produce more
-realizations.
+Matchers take a derivation reference and a context. They are to determine
+the possible realizations (see [store_rrefs](#pylightnix.core.store_rrefs)
+and return either a subset of this set or None which would be a signal to
+Pylightnix to produce more realizations.
+
+When the matching is doen, Pylightnix updates the context with new
+`(DRef,List[RRef])` pair and use it to e.g. resolve downstream realizations.
 
 Matchers should follow the below rules:
 
@@ -415,7 +474,7 @@ RealizeArg = Dict[str,Any]
 ## `Realizer`
 
 ```python
-Realizer = Callable[[DRef,Context,RealizeArg],List[Path]]
+Realizer = Callable[[DRef,Context,RealizeArg],List[Dict[Tag,Path]]]
 ```
 
 Realizer is a type of callback functions which are defined by the user.
@@ -605,7 +664,8 @@ We encode typical build operations in the following associated functions:
 - [build_cattrs](#pylightnix.core.build_cattrs) - Obtain the ConfigAttrs helper
 - [build_path](#pylightnix.core.build_path) - Convert a RefPath or a PromisePath
   into a system file path
-- [build_outpath](#pylightnix.core.build_outpath) - Create and return the output path.
+- [build_setoutgroups](#pylightnix.build.build_setoutgroups) - Initialize and
+  return groups of output folders
 - [build_deref](#pylightnix.core.build_deref) - Convert a dependency DRef
   into a realization reference.
 
@@ -667,13 +727,40 @@ def __init__(self)
 ```
 
 
+<a name="pylightnix.types.R"></a>
+## `R`
+
+```python
+R = TypeVar('R',bound=SupportsAbs[DRef])
+```
+
+
 <a name="pylightnix.types.Stage"></a>
 ## `Stage`
 
 ```python
-Stage = Callable[[Manager],DRef]
+Stage = Callable[[Manager],R]
 ```
 
+From the user's point of view, Stage is a basic building block of
+Pylightnix.  It is a function that 'introduces'
+[derivations](#pylightnix.typing.Derivation) to
+[Manager](#pylightnix.typing.Manager).  Return value is a [derivation
+reference](#pylightnix.types.DRef) which is a proof that the derivation was
+introduced sucessfully.
+
+Some built-in stages are:
+- [mknode](#pylightnix.stages.trivial.mknode)
+- [mkfile](#pylightnix.stages.trivial.mkfile)
+- [fetchurl](#pylightnix.stages.fetchurl.fetchurl)
+
+Note: Real stages often accept additional custom arguments which AFAIK
+couldn't be handled by the standard Python typesystem. In extended MyPy the
+definition would be:
+```
+Stage = Callable[[Manager,VarArg(Any),KwArg(Any)],DRef]
+```
+We use `type:ignore` pragmas when we need to pass `**kwargs`.
 
 <a name="pylightnix.types.Key"></a>
 ## `Key`
@@ -741,6 +828,16 @@ PYLIGHTNIX_NAMEPAT = "[a-zA-Z0-9_-]"
 ```
 
 Set the regular expression pattern for valid name characters.
+
+<a name="pylightnix.core.PYLIGHTNIX_RESERVED"></a>
+## `PYLIGHTNIX_RESERVED`
+
+```python
+PYLIGHTNIX_RESERVED = ['context.json','group.json']
+```
+
+Reserved file names which are treated specially be the core. Users should
+not normally create or alter files with this names.
 
 <a name="pylightnix.core.trimhash"></a>
 ## `trimhash()`
@@ -812,6 +909,22 @@ path.
 
 Note: `path2rref` doesn't actually check the existance of such an object in
 storage
+
+<a name="pylightnix.core.mktag"></a>
+## `mktag()`
+
+```python
+def mktag(s: str) -> Tag
+```
+
+
+<a name="pylightnix.core.mkgroup"></a>
+## `mkgroup()`
+
+```python
+def mkgroup(s: str) -> Group
+```
+
 
 <a name="pylightnix.core.mkconfig"></a>
 ## `mkconfig()`
@@ -1035,11 +1148,27 @@ def store_drefs() -> Iterable[DRef]
 
 Iterates over all derivations of the storage
 
+<a name="pylightnix.core.rrefs2groups"></a>
+## `rrefs2groups()`
+
+```python
+def rrefs2groups(rrefs: List[RRef]) -> List[RRefGroup]
+```
+
+
+<a name="pylightnix.core.groups2rrefs"></a>
+## `groups2rrefs()`
+
+```python
+def groups2rrefs(grs: List[RRefGroup]) -> List[RRef]
+```
+
+
 <a name="pylightnix.core.store_rrefs_"></a>
 ## `store_rrefs_()`
 
 ```python
-def store_rrefs_(dref: DRef) -> Iterable[RRef]
+def store_rrefs_(dref: DRef) -> List[RRefGroup]
 ```
 
 Iterate over all realizations of a derivation `dref`. The sort order is
@@ -1049,17 +1178,17 @@ unspecified.
 ## `store_rrefs()`
 
 ```python
-def store_rrefs(dref: DRef, context: Context) -> Iterable[RRef]
+def store_rrefs(dref: DRef, context: Context) -> List[RRefGroup]
 ```
 
-Iterate over realizations of a derivation `dref`, which match a
-[context](#pylightnix.types.Context). The sort order is unspecified.
+Iterate over realizations of a derivation `dref` which match a specified
+[context](#pylightnix.types.Context). Sorting order is unspecified.
 
 <a name="pylightnix.core.store_deref_"></a>
 ## `store_deref_()`
 
 ```python
-def store_deref_(context_holder: RRef, dref: DRef) -> List[RRef]
+def store_deref_(context_holder: RRef, dref: DRef) -> List[RRefGroup]
 ```
 
 
@@ -1067,7 +1196,7 @@ def store_deref_(context_holder: RRef, dref: DRef) -> List[RRef]
 ## `store_deref()`
 
 ```python
-def store_deref(context_holder: RRef, dref: DRef) -> RRef
+def store_deref(context_holder: RRef, dref: DRef) -> RRefGroup
 ```
 
 For any realization `context_holder` and it's dependency `dref`, `store_deref`
@@ -1090,6 +1219,25 @@ UNIX-Epoch seconds.
 
 Buildtime is the time when the realization process has started. Some
 realizations may not provide this information.
+
+<a name="pylightnix.core.store_tag"></a>
+## `store_tag()`
+
+```python
+def store_tag(rref: RRef) -> Tag
+```
+
+Realizations may be marked with a tag. By default the tag is set to be
+'out'.
+
+<a name="pylightnix.core.store_group"></a>
+## `store_group()`
+
+```python
+def store_group(rref: RRef) -> Group
+```
+
+Return group identifier of the realization
 
 <a name="pylightnix.core.store_gc"></a>
 ## `store_gc()`
@@ -1115,14 +1263,22 @@ by moving the directory right into it's place.
 
 FIXME: Assert or handle possible (but improbable) hash collision (*)
 
-<a name="pylightnix.core.store_realize"></a>
-## `store_realize()`
+<a name="pylightnix.core.store_realize_tag"></a>
+## `store_realize_tag()`
 
 ```python
-def store_realize(dref: DRef, l: Context, o: Path) -> RRef
+def store_realize_tag(dref: DRef, l: Context, o: Path, leader: Optional[Tuple[Tag,RRef]] = None) -> RRef
 ```
 
 FIXME: Assert or handle possible but improbable hash collision (*)
+
+<a name="pylightnix.core.store_realize_group"></a>
+## `store_realize_group()`
+
+```python
+def store_realize_group(dref: DRef, l: Context, og: Dict[Tag,Path]) -> RRefGroup
+```
+
 
 <a name="pylightnix.core.mkcontext"></a>
 ## `mkcontext()`
@@ -1152,7 +1308,7 @@ def context_add(context: Context, dref: DRef, rrefs: List[RRef]) -> Context
 ## `context_deref()`
 
 ```python
-def context_deref(context: Context, dref: DRef) -> List[RRef]
+def context_deref(context: Context, dref: DRef) -> List[RRefGroup]
 ```
 
 
@@ -1218,6 +1374,7 @@ resolution. Return [Derivation reference](#pylightnix.types.DRef) of the
 derivation produced.
 
 Arguments:
+- `m:Manager`: A Manager to update with a new derivation
 - `check_promises:bool=True`: Make sure that all
   [PromisePath](#pylightnix.types.PromisePaths) of stage's configuration
   correspond to existing files or firectories.
@@ -1278,7 +1435,8 @@ See also [realizeMany](#pylightnix.core.realizeMany)
 ## `RealizeSeqGen`
 
 ```python
-RealizeSeqGen = Generator[Tuple[DRef,Context,Derivation,RealizeArg],Tuple[Optional[List[RRef]],bool],List[RRef]]
+RealizeSeqGen = Generator[Tuple[DRef,Context,Derivation,RealizeArg],
+                          Tuple[Optional[List[R ...
 ```
 
 
@@ -1367,7 +1525,7 @@ def mksymlink(rref: RRef, tgtpath: Path, name: str, withtime=True) -> Path
 Create a symlink pointing to realization `rref`. Other arguments define
 symlink name and location. Informally,
 `{tgtpath}/{timeprefix}{name} --> $PYLIGHTNIX_STORE/{dref}/{rref}`.
-Overwrite existing symlinks.
+Overwrite existing symlinks. Folder named `tgtpath` should exist.
 
 <a name="pylightnix.core.match"></a>
 ## `match()`
@@ -1378,6 +1536,11 @@ def match(keys: List[Key], rmin: Optional[int] = 1, rmax: Optional[int] = 1, exc
 
 Create a [Matcher](#pylightnix.types.Matcher) by combining different
 sorting keys and selecting a top-n threshold.
+
+Only realizations which have [tag](#pylightnix.types.Tag) 'out' (which is a
+default tag name) participate in matching. After the matching, Pylightnix
+adds all non-'out' realizations which share [group](#pylightnix.types.Group)
+with at least one matched realization.
 
 Arguments:
 - `keys`: List of [Key](#pylightnix.types.Key) functions. Defaults ot
@@ -1574,15 +1737,15 @@ def assert_have_realizers(m: Manager, drefs: List[DRef]) -> None
 ## `assert_recursion_manager_empty()`
 
 ```python
-def assert_recursion_manager_empty()
+def assert_recursion_manager_empty() -> None
 ```
 
 
 <a name="pylightnix.build"></a>
 # `pylightnix.build`
 
-Built-in realization wrapper providing helpful functions like temporary build
-directory management, time counting, etc.
+Built-in realization wrapper named `Build` provides helpful functions like
+temporary build directory management, time counting, etc.
 
 <a name="pylightnix.build.mkbuildargs"></a>
 ## `mkbuildargs()`
@@ -1615,6 +1778,11 @@ B = TypeVar('B')
 def build_wrapper_(f: Callable[[B],None], ctr: Callable[[BuildArgs],B], buildtime: bool = True) -> Realizer
 ```
 
+Build Adapter which convers user-defined realizers which use
+[Build](#pylightnix.types.Build) API into a low-level
+[Realizer](#pylightnix.types.Realizer)
+
+FIXME: Specify the fact that `B` should be derived from `Build`
 
 <a name="pylightnix.build.build_wrapper"></a>
 ## `build_wrapper()`
@@ -1657,11 +1825,35 @@ def build_cattrs(b: Build) -> Any
 Cache and return `ConfigAttrs`. Cache allows realizers to update it's
 value during the build process, e.g. to use it as a storage.
 
+<a name="pylightnix.build.build_setoutgroups"></a>
+## `build_setoutgroups()`
+
+```python
+def build_setoutgroups(b: Build, nouts: int = 1, tags: List[Tag] = [Tag('out')]) -> List[Dict[Tag,Path]]
+```
+
+
 <a name="pylightnix.build.build_setoutpaths"></a>
 ## `build_setoutpaths()`
 
 ```python
 def build_setoutpaths(b: Build, nouts: int) -> List[Path]
+```
+
+
+<a name="pylightnix.build.build_markstop"></a>
+## `build_markstop()`
+
+```python
+def build_markstop(b: Build, buildstop: Optional[str] = None) -> None
+```
+
+
+<a name="pylightnix.build.store_buildelta"></a>
+## `store_buildelta()`
+
+```python
+def store_buildelta(rref: RRef) -> Optional[float]
 ```
 
 
@@ -1697,7 +1889,7 @@ Return the name of a derivation being built.
 ## `build_deref_()`
 
 ```python
-def build_deref_(b: Build, dref: DRef) -> List[RRef]
+def build_deref_(b: Build, dref: DRef) -> List[RRefGroup]
 ```
 
 For any [realization](#pylightnix.core.realize) process described with
@@ -1712,7 +1904,7 @@ realization of dependency `dref`.
 ## `build_deref()`
 
 ```python
-def build_deref(b: Build, dref: DRef) -> RRef
+def build_deref(b: Build, dref: DRef) -> RRefGroup
 ```
 
 
@@ -1720,18 +1912,18 @@ def build_deref(b: Build, dref: DRef) -> RRef
 ## `build_paths()`
 
 ```python
-def build_paths(b: Build, refpath: RefPath) -> List[Path]
+def build_paths(b: Build, refpath: RefPath, tag: Tag = Tag('out')) -> List[Path]
 ```
 
 Convert given [RefPath](#pylightnix.types.RefPath) (which may be either a
 regular RefPath or an ex-[PromisePath](#pylightnix.types.PromisePath)) into
 one or many filesystem paths. Conversion refers to the
 [Context](#pylightnix.types.Context) of the current realization process by
-accessing it's [build_context](#pylightnix.core.build_context).
+accessing it's [build_context](#pylightnix.build.build_context).
 
 Typically, we configure stages to match only one realization at once, so the
 returned list often has only one entry. Consider using
-[build_path](#pylightnix.core.build_path) if this fact is known in advance.
+[build_path](#pylightnix.build.build_path) if this fact is known in advance.
 
 Example:
 ```python
@@ -1757,10 +1949,10 @@ def mystage(m:Manager)->DRef:
 ## `build_path()`
 
 ```python
-def build_path(b: Build, refpath: RefPath) -> Path
+def build_path(b: Build, refpath: RefPath, tag: Tag = Tag('out')) -> Path
 ```
 
-A single-realization version of the [build_paths](#pylightnix.core.build_paths).
+A single-realization version of the [build_paths](#pylightnix.build.build_paths).
 
 <a name="pylightnix.inplace"></a>
 # `pylightnix.inplace`
@@ -1847,7 +2039,7 @@ ERR_INACTIVE_RH = "REPL session is not paused or was already unpaused"
 ## `repl_continueMany()`
 
 ```python
-def repl_continueMany(out_paths: Optional[List[Path]] = None, out_rrefs: Optional[List[RRef]] = None, rh: Optional[ReplHelper] = None) -> Optional[List[RRef]]
+def repl_continueMany(out_groups: Optional[List[Dict[Tag,Path]]] = None, out_rrefgs: Optional[List[RRefGroup]] = None, rh: Optional[ReplHelper] = None) -> Optional[List[RRef]]
 ```
 
 
@@ -1855,7 +2047,7 @@ def repl_continueMany(out_paths: Optional[List[Path]] = None, out_rrefs: Optiona
 ## `repl_continue()`
 
 ```python
-def repl_continue(out_paths: Optional[List[Path]] = None, out_rrefs: Optional[List[RRef]] = None, rh: Optional[ReplHelper] = None) -> Optional[RRef]
+def repl_continue(out_groups: Optional[List[Dict[Tag,Path]]] = None, out_rrefs: Optional[List[RRefGroup]] = None, rh: Optional[ReplHelper] = None) -> Optional[RRef]
 ```
 
 
@@ -1965,14 +2157,6 @@ def mkfile(m: Manager, name: Name, contents: bytes, filename: Optional[Name] = N
 ```
 
 
-<a name="pylightnix.stages.trivial.checkpaths"></a>
-## `checkpaths()`
-
-```python
-def checkpaths(m: Manager, promises: dict, name: str = "checkpaths") -> DRef
-```
-
-
 <a name="pylightnix.stages.trivial.redefine"></a>
 ## `redefine()`
 
@@ -1985,8 +2169,9 @@ config, optionally re-writing it's matcher, or it's realizer.
 
 Arguments:
 - `stage:Any` a `Stage` function, accepting arbitrary keyword arguments
-- `new_config:Callable[[dict],Config]=mkconfig` A function to update the `dref`'s
-  config. Defaults to `mkconfig` function (here similar to the identity).
+- `new_config:Callable[[dict],Config]=mkconfig` A function to update the
+  `dref`'s config. Defaults to `mkconfig` function (here similar to the
+  identity).
 - `new_matcher:Optional[Matcher]=None` Optional new matcher (defaults to the
   existing matcher)
 - `new_realizer:Optional[Realizer]=None` Optional new realizer (defaults to
@@ -2101,7 +2286,7 @@ print(rref2path(rref))
 ## `fetchlocal()`
 
 ```python
-def fetchlocal(m: Manager, path: str, sha256: str, mode: str = 'unpack,remove', name: Optional[str] = None, filename: Optional[str] = None, kwargs) -> DRef
+def fetchlocal(m: Manager, sha256: str, path: Optional[str] = None, envname: Optional[str] = None, mode: str = 'unpack,remove', name: Optional[str] = None, filename: Optional[str] = None, kwargs) -> DRef
 ```
 
 Copy local file into Pylightnix storage. This function is typically
@@ -2319,6 +2504,16 @@ def val(self) -> Any
 
 Return th current value of Lens as-is
 
+<a name="pylightnix.lens.Lens.optval"></a>
+### `Lens.optval()`
+
+```python
+@property
+def optval(self) -> Optional[Any]
+```
+
+Return th current value of Lens as-is
+
 <a name="pylightnix.lens.Lens.refpath"></a>
 ### `Lens.refpath()`
 
@@ -2382,7 +2577,7 @@ Return the `dict` representation of the Lens, asserting that it is possible.
 ## `mklens()`
 
 ```python
-def mklens(x: Any, o: Optional[Path] = None, b: Optional[Build] = None, rref: Optional[RRef] = None, ctx: Optional[Context] = None) -> Lens
+def mklens(x: Any, o: Optional[Path] = None, b: Optional[Build] = None, rref: Optional[RRef] = None, ctx: Optional[Context] = None, build_output_idx: int = 0) -> Lens
 ```
 
 Mklens creates [Lenses](#pylightnix.lens.Lens) from various user objects.
@@ -2404,4 +2599,31 @@ Arguments:
   allow Lens to resolve other RRefs using the Context of the given RRef.
 - `ctx:Optional[Context]=None` Passing optional Context would allow Lens to
   resolve RRefs.
+- `build_output_idx:int=0` For `Builds`, specify the index of output path,
+  defaulted to zero
+
+Examples:
+```Python
+stage=partial(fetchurl, url='http://example.com',
+                        sha256='...',
+                        output=[promise,'file.txt'],
+                        foo={'bar':42}, # Additional configuration item
+             )
+
+dref:DRef=instantiate(stage).dref
+
+mklens(dref).url.val  # Access raw value of 'url'
+mklens(dref).foo             # Return another lens pointing at 'foo'
+mklens(dref).foo.val         # Return raw value of 'foo' (a dict)
+mklens(dref).foo.bar.val     # Return raw value of 'bar'
+mklens(dref).foo.refpath     # Error! dict is not a path
+
+mklens(dref).output.val      # Return raw output value
+mklens(dref).output.refpath  # Return output as a RefPath (a list)
+mklens(dref).output.syspath  # Error! not a realization
+
+rref:RRef=realize(instantiate(stage))
+
+mklens(rref).output.syspath  # Return output as a system path
+```
 
