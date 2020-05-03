@@ -113,7 +113,7 @@ def build_setoutgroups(b:Build,
     for tag,o in g.items():
       if b.timeprefix:
         with open(join(o,'__buildtime__.txt'), 'w') as f:
-           f.write(b.timeprefix)
+          f.write(b.timeprefix)
       with open(join(o,'tag.txt'), 'w') as f:
         f.write(tag)
       with open(join(o,'group.txt'), 'w') as f:
@@ -130,6 +130,14 @@ def build_markstop(b:Build, buildstop:Optional[str]=None)->None:
     for outpath in g.values():
       with open(join(outpath,'__buildstop__.txt'), 'w') as f:
         f.write(buildstop_)
+
+def store_buildelta(rref:RRef)->Optional[float]:
+  def _gettime(fn)->Optional[float]:
+    ts=tryread(Path(join(rref2path(rref),fn)))
+    return parsetime(ts) if ts is not None else None
+  bb=_gettime('__buildtime__.txt')
+  be=_gettime('__buildstop__.txt')
+  return be-bb if bb is not None and be is not None else None
 
 def build_outpaths(b:Build)->List[Path]:
   assert len(b.outgroups)>0, f"Build outpaths were not set"
