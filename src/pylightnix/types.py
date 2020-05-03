@@ -17,7 +17,7 @@
 
 from pylightnix.imports import ( deepcopy, OrderedDict )
 from typing import ( List, Any, Tuple, Union, Optional, Iterable, IO, Callable,
-    Dict, NamedTuple, Set, Generator, TypeVar )
+    Dict, NamedTuple, Set, Generator, TypeVar, NewType, SupportsAbs )
 
 class Path(str):
   """ `Path` is an alias for string. It is used in pylightnix to
@@ -152,6 +152,31 @@ PYLIGHTNIX_CLAIM_TAG = "__claim__"
 #: ```
 PromisePath = List[Any]
 
+#: Realization tag is a user-defined string without spaces and newline symbols.
+#: By default, realizations have tag 'out'. This can be changed by realizer
+#: e.g. to store logs, manual pages etc. separately.  The tag is supposed to be
+#: unique across the [Group](#pylightnix.types.Group).
+Tag = NewType('Tag', str)
+
+#: Realization group allows users to distinguish between sets of
+#: [tagged](#pylightnix.types.Tag) realizations.  For example, there may be
+#: a group containing tags ['out',log'] and another group containing
+#: realizations tagged with ['out','log','docs']. 'out' realizations are
+#: pre-defined and are subject for matching with
+#: [Matchers](#pylightnix.types.Matcher).
+#:
+#: By default, each realization is given its own unique group identifier
+#:
+#: Group invariants:
+#: - At least one RRef in every Group
+#: - All group refs have the same Context
+#: - Any RRef belongs to exactly one group
+Group = NewType('Group', str)
+
+#: A group of tagged realization references. There should always be at least one
+#: 'out' tag per group.
+RRefGroup = Dict[Tag,RRef]
+
 #: Context type is an alias for Python dict which maps
 #: [DRefs](#pylightnix.types.DRef) into one or many
 #: [RRefs](#pylightnix.types.RRef).
@@ -161,13 +186,15 @@ PromisePath = List[Any]
 Context=Dict[DRef,List[RRef]]
 
 #: Matcher is a type of user-defined functions which select required
-#: realizations from the set of all realizations available.
+#: realizations from the set of possible realizations.
 #:
-#: Matchers take the derivation reference and the context. They may easily
-#: determine the set of existing realizations (see
-#: [store_rrefs](#pylightnix.core.store_rrefs) and should return the subset of
-#: this set or None which is a request to Pylightnix to produce more
-#: realizations.
+#: Matchers take a derivation reference and a context. They are to determine
+#: the possible realizations (see [store_rrefs](#pylightnix.core.store_rrefs)
+#: and return either a subset of this set or None which would be a signal to
+#: Pylightnix to produce more realizations.
+#:
+#: When the matching is doen, Pylightnix updates the context with new
+#: `(DRef,List[RRef])` pair and use it to e.g. resolve downstream realizations.
 #:
 #: Matchers should follow the below rules:
 #:
@@ -190,7 +217,7 @@ Context=Dict[DRef,List[RRef]]
 #: - [match_some](#pylightnix.core.match_some) matches any existing realizations
 #: - [match_only](#pylightnix.core.match_only) matches exactly one existing
 #:   realization (asserts if there are more than one realizations)
-Matcher = Callable[[DRef,Context],Optional[List[RRef]]]
+Matcher = Callable[[DRef,Context],Optional[List[RRefGroup]]]
 
 InstantiateArg=Dict[str,Any]
 RealizeArg=Dict[str,Any]
@@ -233,7 +260,7 @@ RealizeArg=Dict[str,Any]
 #:   ...
 #:   return mkdrv(m, ...,  _realize)
 #: ```
-Realizer = Callable[[DRef,Context,RealizeArg],List[Path]]
+Realizer = Callable[[DRef,Context,RealizeArg],List[Dict[Tag,Path]]]
 
 #: Derivation is the core type of Pylightnix. It keeps all the information about
 #: a stage: it's [configuration](#pylightnix.types.Config), how to
@@ -338,7 +365,8 @@ class Build:
   - [build_cattrs](#pylightnix.core.build_cattrs) - Obtain the ConfigAttrs helper
   - [build_path](#pylightnix.core.build_path) - Convert a RefPath or a PromisePath
     into a system file path
-  - [build_outpath](#pylightnix.core.build_outpath) - Create and return the output path.
+  - [build_setoutgroups](#pylightnix.build.build_setoutgroups) - Initialize and
+    return groups of output folders
   - [build_deref](#pylightnix.core.build_deref) - Convert a dependency DRef
     into a realization reference.
 
@@ -373,7 +401,7 @@ class Build:
     self.iarg=ba.iarg
     self.rarg=ba.rarg
     self.timeprefix=ba.timeprefix
-    self.outpaths:List[Path]=[]
+    self.outgroups:List[Dict[Tag,Path]]=[]
     self.cattrs_cache:Optional[ConfigAttrs]=None
 
 class Manager:
@@ -389,6 +417,10 @@ class Manager:
   more.  """
   def __init__(self):
     self.builders:Dict[DRef,Derivation]=OrderedDict()
+
+
+#: R is a DRef or any of its derivatives
+R = TypeVar('R',bound=SupportsAbs[DRef])
 
 #: From the user's point of view, Stage is a basic building block of
 #: Pylightnix.  It is a function that 'introduces'
@@ -409,9 +441,8 @@ class Manager:
 #: Stage = Callable[[Manager,VarArg(Any),KwArg(Any)],DRef]
 #: ```
 #: We use `type:ignore` pragmas when we need to pass `**kwargs`.
-Stage = Callable[[Manager],DRef]
+Stage = Callable[[Manager],R]
 
 
 Key = Callable[[RRef],Optional[Union[int,float,str]]]
-
 

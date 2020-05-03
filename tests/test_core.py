@@ -1,16 +1,16 @@
-from pylightnix import ( instantiate, DRef, RRef, Path, mklogdir,
-    dirhash, assert_valid_dref, assert_valid_rref, store_deps, store_deepdeps,
-    store_gc, assert_valid_hash, assert_valid_config, Manager, mkcontext,
-    store_realize, store_rrefs, mkdref, mkrref, unrref, undref, realize,
+from pylightnix import ( instantiate, DRef, RRef, Path, mklogdir, dirhash,
+    assert_valid_dref, assert_valid_rref, store_deps, store_deepdeps, store_gc,
+    assert_valid_hash, assert_valid_config, Manager, mkcontext,
+    store_realize_group, store_rrefs, mkdref, mkrref, unrref, undref, realize,
     rref2dref, store_config, mkconfig, Build, Context, build_outpath,
     match_only, mkdrv, store_deref, rref2path, store_rrefs_, config_cattrs,
     mksymlink, store_cattrs, build_deref, build_path, mkrefpath, build_config,
-    store_drefs, store_rrefs, store_rrefs_, build_wrapper, recursion_manager,
-    build_cattrs, build_name, match_best, tryread, trywrite,
-    assert_recursion_manager_empty, match, latest, best, exact, Key,
-    match_latest, match_all, match_some, match_n, realizeMany, build_outpaths,
-    scanref_dict, config_dict, promise, checkpaths, mklens, isrref, Config,
-    RConfig, build_setoutpaths, partial, path2rref )
+    store_drefs, store_rrefs, build_wrapper, recursion_manager, build_cattrs,
+    build_name, match_best, tryread, trywrite, assert_recursion_manager_empty,
+    match, latest, best, exact, Key, match_latest, match_all, match_some,
+    match_n, realizeMany, build_outpaths, scanref_dict, config_dict, promise,
+    mklens, isrref, Config, RConfig, build_setoutpaths, partial, path2rref, Tag,
+    Group, RRefGroup, concat )
 
 from tests.imports import ( given, Any, Callable, join, Optional, islink,
     isfile, List, randint, sleep, rmtree, system, S_IWRITE, S_IREAD, S_IEXEC,
@@ -22,6 +22,9 @@ from tests.generators import (
 from tests.setup import (
     ShouldHaveFailed, setup_testpath, setup_storage, mktestnode_nondetermenistic, mktestnode )
 
+def store_rrefs__(x):
+  return concat([list(g.values()) for g in store_rrefs_(x)])
+
 
 @given(d=dicts())
 def test_realize(d)->None:
@@ -31,15 +34,16 @@ def test_realize(d)->None:
     dref=list(m.builders.values())[-1].dref
     assert_valid_dref(dref)
     assert len(list(store_rrefs(dref, mkcontext()))) == 0
-    rrefs=list(m.builders.values())[-1].matcher(dref, mkcontext())
-    assert rrefs is None
-    rref=store_realize(dref, mkcontext(), list(m.builders.values())[-1].realizer(dref, mkcontext(),{})[0])
+    rrefgs=list(m.builders.values())[-1].matcher(dref, mkcontext())
+    assert rrefgs is None
+    rrefg=store_realize_group(dref, mkcontext(),
+        list(m.builders.values())[-1].realizer(dref, mkcontext(),{})[0])
     assert len(list(store_rrefs(dref, mkcontext()))) == 1
-    assert_valid_rref(rref)
-    rrefs2=list(m.builders.values())[-1].matcher(dref, mkcontext())
-    assert rrefs2 is not None
-    rref2=rrefs2[0]
-    assert rref==rref2
+    assert_valid_rref(rrefg[Tag('out')])
+    rrefgs2=list(m.builders.values())[-1].matcher(dref, mkcontext())
+    assert rrefgs2 is not None
+    rrefg2=rrefgs2[0]
+    assert rrefg==rrefg2
 
 
 def test_realize_dependencies()->None:
@@ -147,7 +151,7 @@ def test_realize_readonly()->None:
         "Did we lost exec permission?"
 
 
-def test_minimal_closure():
+def test_minimal_closure()->None:
   with setup_storage('test_minimal_closure'):
 
     def _somenode(m):
@@ -163,7 +167,7 @@ def test_minimal_closure():
 
     rref1=realize(instantiate(_somenode))
     rref=realize(instantiate(_anothernode))
-    rref2=store_deref(rref,store_cattrs(rref).papa)
+    rref2=store_deref(rref,store_cattrs(rref).papa)[Tag('out')]
     assert rref1==rref2, '''
       Nodes with no dependencies should have empty context, regardless of their
       position in the closure.
@@ -189,14 +193,14 @@ def test_realize_nondetermenistic()->None:
     DATA = 2
     rref2 = realize(instantiate(_setup), force_rebuild=[n2])
 
-    assert len(list(store_rrefs_(n1))) == 1
-    assert len(list(store_rrefs_(n2))) == 2
-    assert len(list(store_rrefs_(n3))) == 2
+    assert len(list(store_rrefs__(n1))) == 1
+    assert len(list(store_rrefs__(n2))) == 2
+    assert len(list(store_rrefs__(n3))) == 2
     assert rref1 != rref2
 
-    n2_rref1 = store_deref(rref1, n2)
-    n2_rref2 = store_deref(rref2, n2)
-    assert n2_rref1 != n2_rref2
+    n2_gr1 = store_deref(rref1, n2)
+    n2_gr2 = store_deref(rref2, n2)
+    assert n2_gr1 != n2_gr2
 
 def test_no_recursive_realize()->None:
   with setup_storage('test_no_recursive_realize'):
@@ -275,76 +279,6 @@ def test_mksymlink()->None:
     s3=mksymlink(rref2, tgtpath=tp, name='thelink', withtime=False)
     assert s3==s
 
-def test_build_deref()->None:
-  with setup_storage('test_build_deref'):
-
-    def _depuser(m:Manager, sources:dict)->DRef:
-      def _instantiate()->Config:
-        return mkconfig(sources)
-      def _realize(b)->None:
-        o = build_outpath(b)
-        c = build_cattrs(b)
-        with open(join(o,'proof_papa'),'w') as f:
-          f.write(str(build_deref(b, c.papa)))
-        with open(join(o,'proof_maman'),'w') as d:
-          with open(build_path(b, c.maman),'r') as s:
-            d.write(s.read())
-        return
-      return mkdrv(m, _instantiate(), match_only(), build_wrapper(_realize))
-
-    def _setting(m:Manager)->DRef:
-      n1 = mktestnode_nondetermenistic(m, {'a':'1'}, lambda : 42)
-      n2 = mktestnode(m, {'b':'2'})
-      n3 = _depuser(m, {'maman':mkrefpath(n1,['artifact']), 'papa':n2})
-      return n3
-
-    rref = realize(instantiate(_setting))
-    assert_valid_rref(rref)
-
-def test_build_cattrs():
-  with setup_storage('test_build_cattrs'):
-    def _setting(m:Manager)->DRef:
-      def _instantiate()->Config:
-        return mkconfig({'a':1,'b':2})
-      def _realize(b)->None:
-        c = build_cattrs(b)
-        o = build_outpath(b)
-        assert hasattr(c,'a')
-        assert hasattr(c,'b')
-        assert not hasattr(c,'c')
-        c.c = 'foo'
-        c2 = build_cattrs(b) # Should use the cache
-        assert hasattr(c2,'c')
-        return
-      return mkdrv(m, _instantiate(), match_only(), build_wrapper(_realize))
-
-    rref = realize(instantiate(_setting))
-    assert_valid_rref(rref)
-
-def test_build_name()->None:
-  with setup_storage('test_build_name'):
-    def _setting(m:Manager)->DRef:
-      def _realize(b)->None:
-        n=build_name(b)
-        assert n=='foobar'
-        o=build_outpath(b)
-      return mkdrv(m, mkconfig({'name':'foobar'}), match_only(), build_wrapper(_realize))
-    rref=realize(instantiate(_setting))
-    assert isrref(rref)
-    assert 'foobar' in rref
-
-def test_build_exception()->None:
-  with setup_storage('test_build_name'):
-    def _setting(m:Manager)->DRef:
-      def _realize(b)->None:
-        raise ValueError('Oops')
-      return mkdrv(m, mkconfig({}), match_only(), build_wrapper(_realize))
-    try:
-      rref=realize(instantiate(_setting))
-      raise ShouldHaveFailed()
-    except ValueError as e:
-      assert 'Oops' in str(e)
-
 def test_ignored_stage()->None:
   with setup_storage('test_ignored_stage'):
     n1:DRef; n2:DRef; n3:DRef; n4:DRef
@@ -361,10 +295,10 @@ def test_ignored_stage()->None:
     rrefs:List[RRef] = []
     all_drefs = list(store_drefs())
     assert len(all_drefs)==4
-    assert len(list(store_rrefs_(n1)))==1
-    assert len(list(store_rrefs_(n2)))==0
-    assert len(list(store_rrefs_(n3)))==1
-    assert len(list(store_rrefs_(n4)))==0
+    assert len(list(store_rrefs__(n1)))==1
+    assert len(list(store_rrefs__(n2)))==0
+    assert len(list(store_rrefs__(n3)))==1
+    assert len(list(store_rrefs__(n4)))==0
 
 
 def test_overwrite_realizer()->None:
@@ -382,7 +316,7 @@ def test_overwrite_realizer()->None:
     all_drefs = list(store_drefs())
     assert len(all_drefs)==2
 
-    rref_n3=store_deref(rref_n2, store_cattrs(rref_n2).maman)
+    rref_n3=store_deref(rref_n2, store_cattrs(rref_n2).maman)[Tag('out')]
     assert open(join(rref2path(rref_n3),'artifact'),'r').read() == '42'
 
 def test_match_only()->None:
@@ -397,17 +331,17 @@ def test_match_only()->None:
       return mkdrv(m, mkconfig({'a':1}), match_only(), build_wrapper(_realize))
 
     closure = instantiate(_setting)
-    assert len(list(store_rrefs_(closure.dref))) == 0
+    assert len(list(store_rrefs__(closure.dref))) == 0
     rref = realize(closure)
-    assert len(list(store_rrefs_(closure.dref))) == 1
+    assert len(list(store_rrefs__(closure.dref))) == 1
     rref = realize(closure)
-    assert len(list(store_rrefs_(closure.dref))) == 1
+    assert len(list(store_rrefs__(closure.dref))) == 1
     try:
       rref = realize(closure, force_rebuild=[closure.dref])
       raise ShouldHaveFailed('Should have failed in match_only assertion')
     except AssertionError as e:
       pass
-    assert len(list(store_rrefs_(closure.dref))) == 2
+    assert len(list(store_rrefs__(closure.dref))) == 2
 
 
 def test_match_best()->None:
@@ -427,30 +361,30 @@ def test_match_best()->None:
     score='0'
     rref1a=realize(clo1)
     assert isfile(join(rref2path(rref1a),'score'))
-    assert len(list(store_rrefs_(clo1.dref))) == 1
+    assert len(list(store_rrefs__(clo1.dref))) == 1
     assert tryread(Path(join(rref2path(rref1a),'score')))=='0'
     score='non-integer'
     rref1b=realize(clo1, force_rebuild=[clo1.dref])
     assert isfile(join(rref2path(rref1b),'score'))
-    assert len(list(store_rrefs_(clo1.dref))) == 2
+    assert len(list(store_rrefs__(clo1.dref))) == 2
     assert tryread(Path(join(rref2path(rref1b),'score')))=='0'
     score='1'
     rref1c=realize(clo1, force_rebuild=[clo1.dref])
     assert isfile(join(rref2path(rref1c),'score'))
-    assert len(list(store_rrefs_(clo1.dref))) == 3
+    assert len(list(store_rrefs__(clo1.dref))) == 3
     assert tryread(Path(join(rref2path(rref1c),'score')))=='1'
     score='100500'
     fname='baz'
     rref1d=realize(clo1, force_rebuild=[clo1.dref])
     assert not isfile(join(rref2path(rref1d),'baz'))
-    assert len(list(store_rrefs_(clo1.dref))) == 4
+    assert len(list(store_rrefs__(clo1.dref))) == 4
 
     clo1=instantiate(_mklrg, {'a':1},
       matcher=match([exact([
-        RRef('rref:64617f2a2a9446340241b071413f6f68-a76762e9bc54e47c09455bdb226e2388-unnamed')])]))
+        RRef('rref:185201dae637421f69a47dcea050e4fd-a76762e9bc54e47c09455bdb226e2388-unnamed')])]))
     rref1e=realize(clo1)
     assert isfile(join(rref2path(rref1e),'baz'))
-    assert len(list(store_rrefs_(clo1.dref))) == 4
+    assert len(list(store_rrefs__(clo1.dref))) == 4
 
     clo1=instantiate(_mklrg, {'a':1}, matcher=match_best('score'))
     rref1=realize(clo1)
@@ -458,7 +392,7 @@ def test_match_best()->None:
     assert tryread(Path(join(rref2path(rref1),'score')))=='1'
 
 
-def test_match_latest():
+def test_match_latest()->None:
   def _mknode(m, cfg, matcher, nouts:int, data=0, buildtime=True):
     def _realize(b:Build)->None:
       build_setoutpaths(b,nouts)
@@ -470,21 +404,21 @@ def test_match_latest():
   with setup_storage('test_match_latest'):
     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=1)
     rref1=realize(clo)
-    assert len(list(store_rrefs_(clo.dref)))==1
+    assert len(list(store_rrefs__(clo.dref)))==1
     sleep(0.01)
     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=2)
     rref2=realize(clo, force_rebuild=[clo.dref])
-    assert len(list(store_rrefs_(clo.dref)))==2
+    assert len(list(store_rrefs__(clo.dref)))==2
     assert tryread(Path(join(rref2path(rref2),'artifact')))==str('2_0')
 
   with setup_storage('test_match_latest'):
     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=1)
     rref1=realize(clo)
-    assert len(list(store_rrefs_(clo.dref)))==1
+    assert len(list(store_rrefs__(clo.dref)))==1
     sleep(0.01)
     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=2, buildtime=False)
     rref2=realize(clo, force_rebuild=[clo.dref])
-    assert len(list(store_rrefs_(clo.dref)))==2
+    assert len(list(store_rrefs__(clo.dref)))==2
     assert tryread(Path(join(rref2path(rref2),'artifact')))==str('1_0')
 
   for i in range(10):
@@ -500,7 +434,7 @@ def test_match_latest():
         assert ntop>nouts
 
 
-def test_match_all():
+def test_match_all()->None:
   """ match_all() should match all the references """
   def _mknode(m,cfg, matcher, nouts:int):
     def _realize(b:Build)->None:
@@ -525,7 +459,7 @@ def test_match_all():
       rrefs_all=realizeMany(clo)
       assert len(rrefs_all)==nouts
 
-def test_match_some():
+def test_match_some()->None:
   with setup_storage('test_match_some'):
     def _mknode(m, cfg, nouts:int, top:int):
       def _realize(b:Build)->None:
@@ -545,7 +479,7 @@ def test_match_some():
         assert top>nouts
 
 
-def test_gc():
+def test_gc()->None:
   with setup_storage('test_gc'):
     def _node1(m:Manager)->DRef:
       return mktestnode(m, {'name':'1'})
@@ -562,7 +496,7 @@ def test_gc():
     assert rm_drefs=={rref2dref(r) for r in [r3]}
     assert rm_rrefs=={x for x in [r3]}
 
-def test_promise():
+def test_promise()->None:
   with setup_storage('test_promise'):
     def _setting(m:Manager, fullfill:bool)->DRef:
       n1=mktestnode(m, {'name':'1', 'promise':[promise,'artifact']})
@@ -591,21 +525,7 @@ def test_promise():
     rref=realize(instantiate(_setting,True))
     assert_valid_rref(rref)
 
-
-def test_checkfiles():
-  with setup_storage('test_checkfiles'):
-
-    def _setting(m:Manager)->DRef:
-      n1=mktestnode(m, {'name':'1', 'promise':[promise,'artifact']})
-      n2=mktestnode(m, {'name':'2', 'promise':[promise,'artifact']})
-      n3=checkpaths(m, {'f1':mklens(n1).promise.refpath,
-                        'f2':mklens(n2).promise.refpath})
-      return n3
-
-    rrefs=realizeMany(instantiate(_setting))
-    assert len(rrefs)==2
-
-def test_path2rref():
+def test_path2rref()->None:
   with setup_storage('test_path2rref') as s:
     s1=partial(mktestnode, sources={'name':'1', 'promise':[promise,'artifact']})
     rref1=realize(instantiate(s1))

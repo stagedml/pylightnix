@@ -15,7 +15,7 @@
 """ Builtin stages for fetching things from the Internet """
 
 from pylightnix.imports import (sha256 as sha256sum, sha1 as sha1sum, urlparse,
-    Popen, remove, basename, join, rename, isfile, copyfile )
+    Popen, remove, basename, join, rename, isfile, copyfile, environ )
 from pylightnix.types import ( DRef, Manager, Build, Context, Name,
     Path, Optional, List, Config )
 from pylightnix.core import ( mkconfig, mkdrv, match_only, promise )
@@ -153,8 +153,9 @@ def fetchurl(m:Manager,
 
 
 def fetchlocal(m:Manager,
-             path:str,
              sha256:str,
+             path:Optional[str]=None,
+             envname:Optional[str]=None,
              mode:str='unpack,remove',
              name:Optional[str]=None,
              filename:Optional[str]=None,
@@ -170,22 +171,37 @@ def fetchlocal(m:Manager,
 
   def _instantiate()->Config:
     assert AUNPACK() is not None
-    kwargs.update({'name':name or 'fetchlocal',
-                   'path':path,
-                   'sha256':sha256,
-                   'mode':mode})
+    assert path is not None or envname is not None, (
+      "Either `path` or `envname` argument must be specified")
+    assert path is None or envname is None, (
+      "`path` and `envname` arguments can't be both set")
+    kwargs.update({'name':name or 'fetchlocal'})
+    if path is not None:
+      kwargs.update({'path':path})
+    if envname is not None:
+      assert envname in environ, (
+        f"Environment variable {envname} should be set")
+      kwargs.update({'envname':envname})
+    kwargs.update({'sha256':sha256, 'mode':mode})
     return mkconfig(kwargs)
 
   def _realize(b:Build)->None:
     c=build_cattrs(b)
     o=build_outpath(b)
 
+    if getattr(c,'envname',None) is not None:
+      path_=environ[getattr(c,'envname')]
+    elif getattr(c,'path',None) is not None:
+      path_=getattr(c,'path')
+    else:
+      assert False, 'Either `path` or `envname` arguments should be set'
+
     try:
-      fname=filename or basename(path)
+      fname=filename or basename(path_)
       assert len(fname)>0, ("Destination filename shouldn't be empty. "
                             "Try specifying a valid `filename` argument")
       partpath=join(o,fname+'.tmp')
-      copyfile(c.path, partpath)
+      copyfile(path_, partpath)
       assert isfile(partpath), f"Can't find output file '{partpath}'"
 
       with open(partpath,"rb") as f:
@@ -194,7 +210,7 @@ def fetchlocal(m:Manager,
                                     f"but got '{realhash}'")
 
       fullpath=join(o,fname)
-      rename(partpath, fullpath)
+      rename(partpath,fullpath)
 
       if 'unpack' in c.mode:
         _unpack(o, fullpath, 'remove' in c.mode)

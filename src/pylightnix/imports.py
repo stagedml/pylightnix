@@ -30,7 +30,7 @@ from stat import ( S_IWRITE, S_IREAD, S_IRGRP, S_IROTH, S_IXUSR, S_IXGRP,
 from hashlib import sha1, sha256
 from copy import deepcopy
 from tempfile import mkdtemp
-from shutil import rmtree, copyfile
+from shutil import rmtree, copyfile, copytree
 from unicodedata import normalize
 from re import sub as re_sub, match as re_match
 from distutils.spawn import find_executable
@@ -44,4 +44,5 @@ from sys import maxsize
 from datetime import datetime
 from fnmatch import fnmatch
 from functools import partial
+from itertools import chain
 

@@ -21,10 +21,12 @@ from pylightnix.imports import ( datetime, gmtime, timegm, join, makedirs,
     json_dumps, json_loads, makedirs, replace, dirname, walk, abspath,
     normalize, re_sub, split, json_load, find_executable, chmod, S_IWRITE,
     S_IREAD, S_IRGRP, S_IROTH, S_IXUSR, S_IXGRP, S_IXOTH, stat, ST_MODE,
-    S_IWGRP, S_IWOTH, rmtree, rename, getsize, readlink )
+    S_IWGRP, S_IWOTH, rmtree, rename, getsize, readlink, partial, copytree,
+    chain )
 
 from pylightnix.types import ( Hash, Path, List, Any, Optional, Iterable, IO,
-    DRef, RRef, Tuple, Callable, PYLIGHTNIX_PROMISE_TAG, PYLIGHTNIX_CLAIM_TAG )
+    DRef, RRef, Tuple, Callable, PYLIGHTNIX_PROMISE_TAG, PYLIGHTNIX_CLAIM_TAG,
+    TypeVar )
 
 from pylightnix.tz import tzlocal
 
@@ -190,6 +192,16 @@ def dirrm(path:Path, ignore_not_found:bool=True)->None:
     if not ignore_not_found:
       raise
 
+def dircp(src:Path, dst:Path, make_rw:bool=False)->None:
+  """ Powerful folder copyier. """
+  assert isdir(src)
+  assert not isdir(dst)
+  tmppath=Path(dst+'.tmp')
+  copytree(src,tmppath)
+  if make_rw:
+    dirrw(tmppath)
+  rename(tmppath,dst)
+
 
 def isrref(ref:Any)->bool:
   """ FIXME: Add better detection criteia, at least like in `assert_valid_ref` """
@@ -285,23 +297,40 @@ def readstr(path:str)->str:
   with open(path,'r') as f:
     return f.read()
 
+def writestr(path:str, data:str)->None:
+  with open(path,'w') as f:
+    f.write(data)
+
 def readjson(json_path:str)->Any:
-  with open((json_path), "r") as f:
+  with open(json_path, "r") as f:
     return json_load(f)
 
-def tryread(path:Path)->Optional[str]:
+A=TypeVar('A')
+def trycatch(f:Callable[[],A], default:A)->A:
   try:
-    return readstr(path)
+    return f()
+  except KeyboardInterrupt:
+    raise
   except Exception:
-    return None
+    return default
+
+def tryreadjson(json_path:str)->Optional[Any]:
+  return trycatch(partial(readjson,json_path=json_path),None)
+
+def tryreadjson_def(json_path:str, default:Any)->Any:
+  return trycatch(partial(readjson,json_path=json_path),default)
+
+def tryread(path:Path)->Optional[str]:
+  return trycatch(partial(readstr,path=path),None)
+
+def tryread_def(path:Path, default:str)->str:
+  return trycatch(partial(readstr,path=path),default)
 
 def trywrite(path:Path, data:str)->bool:
-  try:
-    with open(path,'w') as f:
-      f.write(data)
+  def _do():
+    writestr(path,data)
     return True
-  except Exception:
-    return False
+  return trycatch(_do,False)
 
 def try_executable(name:str, not_found_message:Optional[str]=None)->Callable[[],str]:
   e=find_executable(name)
@@ -316,4 +345,7 @@ def try_executable(name:str, not_found_message:Optional[str]=None)->Callable[[],
 def get_executable(name:str, not_found_message:str)->str:
   e=try_executable(name)
   return e()
+
+def concat(l:List[List[Any]])->List[Any]:
+  return list(chain.from_iterable(l))
 
