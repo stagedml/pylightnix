@@ -102,8 +102,8 @@ $(WHEEL): $(SRC) $(TESTS)
 	python3 setup.py sdist bdist_wheel
 	test -f $@
 
-.PHONY: wheels
-wheels: $(WHEEL)
+.PHONY: wheel
+wheel: $(WHEEL)
 	@echo "To install, run \`sudo -H make install\` or"
 	@echo "> sudo -H pip3 install --force $(WHEEL)"
 
