@@ -194,16 +194,21 @@ def assert_store_initialized()->None:
      f"This case is not supported yet. Consider setting PYLIGHTNIX_TMP to be on the same "
      f"device with PYLIGHTNIX_STORE")
 
-def store_initialize(custom_store:Optional[str]=None, custom_tmp:Optional[str]=None, check_not_exist:bool=False)->None:
+def store_initialize(custom_store:Optional[str]=None,
+                     custom_tmp:Optional[str]=None,
+                     check_not_exist:bool=False)->None:
   """ Create the storage and temp direcories if they don't exist. Default
   locations are determined by `PYLIGHTNIX_STORE` and `PYLIGHTNIX_TMP` global
   variables which in turn may be set by either setting environment variables of
   the same name or by direct assigning.
 
   Parameters:
-  - `custom_store`: If not None, create new storage located here.
-  - `custom_tmp`: If not None, set the temp files directory here.
-  - `check_not_exist`: Set to True to assert on already existing storages
+  - `custom_store:Optional[str]=None`: If not None, create new storage located
+    here.
+  - `custom_tmp:Optional[str]=None`: If not None, set the temp files directory
+    here.
+  - `check_not_exist:bool=False`: Set to True to assert on already existing
+    storages. Good to become sure that newly created storage is empty.
 
   See also [assert_store_initialized](#pylightnix.core.assert_store_initialized).
 
