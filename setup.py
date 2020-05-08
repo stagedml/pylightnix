@@ -18,7 +18,7 @@ setup(
   package_dir={'':'src'},
   package_data={"pylightnix": ["py.typed"]},
   zip_safe=False, # https://mypy.readthedocs.io/en/latest/installed_packages.html
-  version="0.2.0",
+  use_scm_version=True,
   author="grwlf",
   author_email="grrwlf@gmail.com",
   description="A Nix-style immutable data management library in Python",
@@ -38,6 +38,7 @@ setup(
   python_requires='>=3.6',
   test_suite='pytest',
   tests_require=['pytest', 'pytest-mypy', 'hypothesis'],
+  setup_requires=['setuptools_scm'],
 )
 
 
