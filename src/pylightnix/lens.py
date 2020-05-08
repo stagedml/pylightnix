@@ -90,6 +90,14 @@ def traverse(l:"Lens")->Any:
     val=d[s]
   return val
 
+def mutate(l:"Lens", v:Any)->None:
+  assert len(l.steps)>0, f"Fields to set are not specified"
+  val=l.start
+  for s in l.steps[:-1]:
+    assert isinstance(val,dict), f"Lens {'.'.join(l.steps)} can't be mutated"
+    assert s in val, f"Lens {'.'.join(l.steps)} can't be mutated"
+    val=val[s]
+  val[l.steps[-1]]=v
 
 class Lens:
   """ Lens objects provide quick access to the parameters of stage
@@ -130,17 +138,21 @@ class Lens:
     return Lens(self.ctx, self.start, self.steps+[key])
 
   @property
+  def optval(self)->Optional[Any]:
+    """ Return the value of Lens as-is """
+    v=traverse(self)
+    return v
+
+  @property
   def val(self)->Any:
-    """ Return th current value of Lens as-is """
+    """ Return the value of Lens as-is, assuming it is not None """
     v=traverse(self)
     assert v is not None
     return v
 
-  @property
-  def optval(self)->Optional[Any]:
-    """ Return th current value of Lens as-is """
-    v=traverse(self)
-    return v
+  @val.setter
+  def val(self, v):
+    mutate(self,v)
 
   @property
   def refpath(self)->RefPath:
