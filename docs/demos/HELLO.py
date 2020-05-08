@@ -71,4 +71,4 @@ print(rref)
 
 
 hello_bin=join(rref2path(rref),'usr/bin/hello')
-print(Popen([hello_bin], stdout=PIPE, shell=True).stdout.read())
+print(Popen([hello_bin], stdout=PIPE, shell=True).stdout.read()) # type:ignore

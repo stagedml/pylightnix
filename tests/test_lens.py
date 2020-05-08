@@ -80,7 +80,7 @@ def test_lens():
     except AssertionError:
       pass
     try:
-      print(mklens(rref).papa.dict.d1.resolve())
+      print(mklens(rref).papa.dict.d1.syspath)
       raise ShouldHaveFailed()
     except AssertionError:
       pass

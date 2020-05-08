@@ -20,7 +20,8 @@ from tests.generators import (
     rrefs, drefs, configs, dicts )
 
 from tests.setup import (
-    ShouldHaveFailed, setup_testpath, setup_storage, mktestnode_nondetermenistic, mktestnode )
+    ShouldHaveFailed, setup_testpath, setup_storage,
+    mktestnode_nondetermenistic, mktestnode, pipe_stdout )
 
 def store_rrefs__(x):
   return concat([list(g.values()) for g in store_rrefs_(x)])
@@ -146,9 +147,8 @@ def test_realize_readonly()->None:
       chmod(join(build_outpath(b),'exe'), S_IWRITE|S_IREAD|S_IEXEC)
     rref2=realize(instantiate(mkdrv, Config({}),
                               match_only(), build_wrapper(_realize)))
-    assert Popen([join(rref2path(rref2),'exe')],
-        stdout=PIPE).stdout.read()=='Fooo\n'.encode('utf-8'), \
-        "Did we lost exec permission?"
+    assert pipe_stdout([join(rref2path(rref2),'exe')])=='Fooo\n', \
+      "Did we lost exec permission?"
 
 
 def test_minimal_closure()->None:
