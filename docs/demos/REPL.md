@@ -183,56 +183,62 @@ x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
 
-Epoch 00001: val_accuracy improved from -inf to 0.98300, saving model
+Epoch 00001: val_accuracy improved from -inf to 0.98225, saving model
 to
-/workspace/_pylightnix/tmp/200306-21:37:51:833853+0300_d20f6e78_8070gvlb/checkpoint.ckpt
+/workspace/_pylightnix/tmp/200509-00:22:13:749127+0300_out_d20f6e78_wq2h1z_n/checkpoint.ckpt
+Build wrapper of dref:d20f6e78a3801f50d5df4872ca0c79b4-convnn_mnist
+raised an exception. Remaining build directories are: [{'out':
+'/workspace/_pylightnix/tmp/200509-00:22:13:749127+0300_out_d20f6e78_wq2h1z_n'}]
 ```
 
 ```
----------------------------------------------------------------------------AttributeError
+--------------------------------------------------------------AttributeError
 Traceback (most recent call last)<ipython-input-1-9b8c69999b87> in
 <module>
 ----> 1 realize(instantiate(convnn_mnist), force_rebuild=True)   #
 Spoiler: will fail
 ~/3rdparty/pylightnix/src/pylightnix/core.py in realize(closure,
 force_rebuild, assert_realized)
-    701   """ A simplified version of
+    662   """ A simplified version of
 [realizeMany](#pylightnix.core.realizeMany).
-    702   Expects only one output path. """
---> 703   rrefs=realizeMany(closure, force_rebuild, assert_realized)
-    704   assert len(rrefs)==1, (
-    705       f"`realize` is to be used with single-output
+    663   Expects only one output path. """
+--> 664   rrefs=realizeMany(closure, force_rebuild, assert_realized)
+    665   assert len(rrefs)==1, (
+    666       f"`realize` is to be used with single-output
 derivations. Derivation "
 ~/3rdparty/pylightnix/src/pylightnix/core.py in realizeMany(closure,
-force_rebuild, assert_realized)
-    766     next(gen)
-    767     while True:
---> 768       gen.send((None,False)) # Ask for default action
-    769   except StopIteration as e:
-    770     res=e.value
+force_rebuild, assert_realized, realize_args)
+    730     next(gen)
+    731     while True:
+--> 732       gen.send((None,False)) # Ask for default action
+    733   except StopIteration as e:
+    734     res=e.value
 ~/3rdparty/pylightnix/src/pylightnix/core.py in realizeSeq(closure,
-force_interrupt, assert_realized)
-    800             f"Unfortunately, it is not the case."
-    801             )
---> 802           paths=drv.realizer(dref,dref_context)
-    803           rrefs_built=[store_realize(dref,dref_context,path)
-for path in paths]
-    804           rrefs_matched=drv.matcher(dref,dref_context)
-~/3rdparty/pylightnix/src/pylightnix/core.py in _matcher(dref, ctx)
-    632   def _promise_aware(realizer)->Realizer:
-    633     def _matcher(dref:DRef,ctx:Context)->List[Path]:
---> 634       outpaths=realizer(dref,ctx)
-    635       for key,refpath in
+force_interrupt, assert_realized, realize_args)
+    770             f"{store_config(dref)}"
+    771             )
+--> 772
+gpaths:List[Dict[Tag,Path]]=drv.realizer(dref,dref_context,realize_args.get(dref,{}))
+    773
+rrefgs_built=[store_realize_group(dref,dref_context,g) for g in
+gpaths]
+    774           rrefgs_matched=drv.matcher(dref,dref_context)
+~/3rdparty/pylightnix/src/pylightnix/core.py in _realizer(dref, ctx,
+rarg)
+    591   def _promise_aware(realizer)->Realizer:
+    592     def
+_realizer(dref:DRef,ctx:Context,rarg:RealizeArg)->List[Dict[Tag,Path]]:
+--> 593       outgroups=realizer(dref,ctx,rarg)
+    594       for key,refpath in
 config_promises(store_config_(dref),dref):
-    636         for o in outpaths:
-~/3rdparty/pylightnix/src/pylightnix/core.py in _wrapper(dref,
-context)
-    426     buildtime:bool=True)->Realizer:
-    427   def _wrapper(dref,context)->List[Path]:
---> 428     b=ctr(mkbuildargs(dref,context,buildtime)); f(b); return
-list(getattr(b,'outpaths'))
-    429   return _wrapper
-    430
+    595         for g in outgroups:
+~/3rdparty/pylightnix/src/pylightnix/build.py in _wrapper(dref,
+context, rarg)
+     65     b=ctr(mkbuildargs(dref,context,timeprefix,{},rarg));
+     66     try:
+---> 67       f(b);
+     68       build_markstop(b) # type:ignore
+     69     except:
 <ipython-input-1-f38c6dead39e> in mnist_realize(b)
      77 def mnist_realize(b:Model):
      78   mnist_train(b)
@@ -300,7 +306,7 @@ repl_realize(instantiate(convnn_mnist))
 ```
 
 ```
-<pylightnix.repl.ReplHelper at 0x7f2a34b37c88>
+<pylightnix.repl.ReplHelper at 0x7f62d0362470>
 ```
 
 
@@ -329,7 +335,7 @@ x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
 
-Epoch 00001: val_accuracy improved from -inf to 0.98317, saving model to /workspace/_pylightnix/tmp/200306-21:37:59:086883+0300_d20f6e78_ohv_xh2g/checkpoint.ckpt
+Epoch 00001: val_accuracy improved from -inf to 0.98408, saving model to /workspace/_pylightnix/tmp/200509-00:22:36:479601+0300_out_d20f6e78_273pbadq/checkpoint.ckpt
 ```
 
 
@@ -338,7 +344,7 @@ mnist_eval_correct(b)
 ```
 
 ```
-0.9825
+0.9845
 ```
 
 
@@ -355,7 +361,7 @@ print(rref)
 ```
 
 ```
-rref:ed2f736c8cd71fe839d1e3f1a5581e8a-d20f6e78a3801f50d5df4872ca0c79b4-convnn_mnist
+rref:9cc59b8551bca5f12b02f0dd56ec4321-d20f6e78a3801f50d5df4872ca0c79b4-convnn_mnist
 ```
 
 
