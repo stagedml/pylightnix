@@ -18,7 +18,7 @@ from pylightnix.imports import ( join, deepcopy, dirname, makedirs, isfile,
     isdir, defaultdict )
 from pylightnix.core import ( mkdrv, mkconfig, match_only,
     assert_valid_name, datahash, config_dict, store_config,
-    match_some, assert_valid_refpath, rref2path, store_config_ )
+    match_some, assert_valid_refpath, rref2path, store_config_, promise )
 from pylightnix.build import ( mkbuild, build_outpath, build_setoutpaths,
     build_paths, build_deref_, build_cattrs, build_wrapper )
 from pylightnix.types import ( RefPath, Manager, Context, Build, Name,
@@ -27,12 +27,16 @@ from pylightnix.types import ( RefPath, Manager, Context, Build, Name,
 from pylightnix.utils import ( forcelink, isrefpath, traverse_dict )
 
 
-def mknode(m:Manager, sources:dict, artifacts:Dict[Name,bytes]={}, name:str='mknode')->DRef:
+def mknode(m:Manager,
+           sources:dict,
+           artifacts:Dict[Name,bytes]={},
+           name:str='mknode')->DRef:
   config=deepcopy(sources)
   config['name']=name
   assert '__artifacts__' not in config, \
       "config shouldn't contain reserved field '__artifacts__'"
-  config.update({'__artifacts__':{an:Hash(datahash([av])) for (an,av) in artifacts.items()}})
+  config.update({'__artifacts__':{an:Hash(datahash([av])) \
+                 for (an,av) in artifacts.items()}})
   def _realize(b:Build)->None:
     o=build_outpath(b)
     for an,av in artifacts.items():
@@ -41,55 +45,17 @@ def mknode(m:Manager, sources:dict, artifacts:Dict[Name,bytes]={}, name:str='mkn
   return mkdrv(m, mkconfig(config), match_only(), build_wrapper(_realize))
 
 
-def mkfile(m:Manager, name:Name, contents:bytes, filename:Optional[Name]=None)->DRef:
+def mkfile(m:Manager,
+           name:Name,
+           contents:bytes,
+           filename:Optional[Name]=None)->DRef:
   filename_:Name=filename if filename is not None else name
-  return mknode(m, sources={name:name}, artifacts={filename_:contents})
-
-
-# def checkpaths(m:Manager, promises:dict, name:str="checkpaths")->DRef:
-#   def _promises()->Dict[DRef,List[RefPath]]:
-#     refpaths:Dict[DRef,List[RefPath]]=defaultdict(list)
-#     def _mut(k,v):
-#       nonlocal refpaths
-#       if isrefpath(v):
-#         refpaths[v[0]].append(v)
-#       return v
-#     traverse_dict(promises,_mut)
-#     return refpaths
-#
-#   def _config()->Config:
-#     assert len(promises.keys())>0
-#     d:Dict[str,Any]={'name':promises.get('name',name)}
-#     for dref,rpaths in _promises().items():
-#       for rp in rpaths:
-#         assert_valid_refpath(rp)
-#       d[str(dref)]=config_dict(store_config(dref))
-#     d.update(promises)
-#     return mkconfig(d)
-#
-#   def _realize(b:Build)->None:
-#     c=build_cattrs(b)
-#     promises=_promises()
-#     dref2rrefs={dref:build_deref_(b,dref) for dref in promises.keys()}
-#     os=build_setoutpaths(b, sum([len(v) for v in dref2rrefs.values()]))
-#     index=0
-#     for dref,refpaths in promises.items():
-#       for rref in dref2rrefs[dref]:
-#         o=os[index]
-#         for refpath in refpaths:
-#           assert refpath[0]==dref
-#           path=Path(join(rref2path(rref),*refpath[1:]))
-#           assert isdir(path) or isfile(path), \
-#             f"promise failed: {path} doesn't exist"
-#           opath=Path(join(o,*refpath[1:]))
-#           forcelink(path,opath)
-#         index+=1
-#   return mkdrv(m, _config(), match_some(), build_wrapper(_realize))
-
+  return mknode(m, sources={'output':[promise,filename_]},
+                   artifacts={filename_:contents})
 
 def redefine(
     stage:Any,
-    new_config:Callable[[dict],Config]=mkconfig,
+    new_config:Callable[[dict],None]=lambda x:None,
     new_matcher:Optional[Matcher]=None,
     new_realizer:Optional[Realizer]=None,
     check_promises:bool=True)->Any:
@@ -98,9 +64,8 @@ def redefine(
 
   Arguments:
   - `stage:Any` a `Stage` function, accepting arbitrary keyword arguments
-  - `new_config:Callable[[dict],Config]=mkconfig` A function to update the
-    `dref`'s config. Defaults to `mkconfig` function (here similar to the
-    identity).
+  - `new_config:Callable[[dict],None]` A function to update the `dref`'s config.
+    Default varsion makes no changes.
   - `new_matcher:Optional[Matcher]=None` Optional new matcher (defaults to the
     existing matcher)
   - `new_realizer:Optional[Realizer]=None` Optional new realizer (defaults to
@@ -123,12 +88,13 @@ def redefine(
   """
   def _new_stage(m:Manager,*args,**kwargs)->DRef:
     dref=stage(m,*args,**kwargs) # type:ignore
-    new_config_=new_config(config_dict(store_config_(dref)))
+    d=config_dict(store_config_(dref))
+    new_config(d)
     new_matcher_=new_matcher if new_matcher is not None\
                              else m.builders[dref].matcher
     new_realizer_=new_realizer if new_realizer is not None\
                                else m.builders[dref].realizer
-    return mkdrv(m, new_config_, new_matcher_, new_realizer_,
+    return mkdrv(m, mkconfig(d), new_matcher_, new_realizer_,
       check_promises=check_promises)
   return _new_stage
 
