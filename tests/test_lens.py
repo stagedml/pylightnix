@@ -99,5 +99,7 @@ def test_lens():
       raise ShouldHaveFailed()
     except AssertionError:
       pass
+    mklens(d).bar.val+='33'
+    assert d['bar']=='bar33'
 
 
