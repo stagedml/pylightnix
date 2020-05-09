@@ -261,7 +261,7 @@ Now we could convert RRef to the system path and run the GNU Hello binary.
 ```python, complete=True, wrap=False
 
 hello_bin=join(rref2path(rref),'usr/bin/hello')
-print(Popen([hello_bin], stdout=PIPE, shell=True).stdout.read())
+print(Popen([hello_bin], stdout=PIPE, shell=True).stdout.read()) # type:ignore
 ```
 
 

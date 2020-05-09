@@ -26,8 +26,8 @@ from tests.imports import ( given, Any, Callable, join, Optional, islink,
 from tests.generators import (
     rrefs, drefs, configs, dicts )
 
-from tests.setup import (
-    ShouldHaveFailed, setup_testpath, setup_storage, mktestnode_nondetermenistic, mktestnode )
+from tests.setup import ( ShouldHaveFailed, setup_testpath, setup_storage,
+    mktestnode_nondetermenistic, mktestnode )
 
 
 
@@ -80,7 +80,26 @@ def test_lens():
     except AssertionError:
       pass
     try:
-      print(mklens(rref).papa.dict.d1.resolve())
+      print(mklens(rref).papa.dict.d1.syspath)
       raise ShouldHaveFailed()
     except AssertionError:
       pass
+
+    try:
+      mklens(rref).papa.dict.d1.val=42 # can't mutate rref
+      raise ShouldHaveFailed()
+    except AssertionError:
+      pass
+
+    d={'foo':'foo','bar':'bar'}
+    mklens(d).foo.val='zzz'
+    assert d['foo']=='zzz'
+    try:
+      mklens(d).x.val=42 # can't set new values
+      raise ShouldHaveFailed()
+    except AssertionError:
+      pass
+    mklens(d).bar.val+='33'
+    assert d['bar']=='bar33'
+
+

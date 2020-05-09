@@ -1,7 +1,7 @@
 from pylightnix import ( Manager, DRef, RRef, Path, mklogdir, dirhash, mknode,
     store_deps, store_deepdeps, rref2path, Manager, mkcontext, instantiate,
     realize, mkfile, Name, realized, build_wrapper, Build, mkconfig, match_only,
-    mkdrv, build_outpath )
+    mkdrv, build_outpath, redefine, tryread, mklens, promise )
 
 from tests.imports import (
     given, assume, example, note, settings, text, decimals, integers, rmtree,
@@ -88,18 +88,21 @@ def test_realized()->None:
     rref2=realize(instantiate(realized(_setting), assume_realized=True))
     assert rref==rref2
 
+def test_redefine()->None:
+  with setup_storage('test_redefine'):
 
-# def test_checkpaths()->None:
-#   with setup_storage('test_checkpaths'):
+    def _setting(m:Manager)->DRef:
+      return mknode(m, {'name':'foo','bar':'baz','output':[promise,'f']},
+                       {Name('f'):bytes(('umgh').encode('utf-8'))})
 
-#     def _setting(m:Manager)->DRef:
-#       n1=mktestnode(m, {'name':'1', 'promise':[promise,'artifact']})
-#       n2=mktestnode(m, {'name':'2', 'promise':[promise,'artifact']})
-#       n3=checkpaths(m, {'f1':mklens(n1).promise.refpath,
-#                         'f2':mklens(n2).promise.refpath})
-#       return n3
+    def _nc(c):
+      mklens(c).bar.val=42
+    _setting2=redefine(_setting, new_config=_nc)
 
-#     rrefs=realizeMany(instantiate(_setting))
-#     assert len(rrefs)==2
+    rref=realize(instantiate(_setting2))
+    assert mklens(rref).bar.val==42
+    assert tryread(mklens(rref).output.syspath)=='umgh'
+
+
 
 

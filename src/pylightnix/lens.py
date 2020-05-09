@@ -24,6 +24,84 @@ from pylightnix.core import ( store_deref, store_config, rref2dref, rref2path,
 from pylightnix.build import ( build_outpaths, build_config, build_context )
 
 
+def val2dict(v:Any)->Optional[dict]:
+  """ Return the `dict` representation of the Lens, asserting that it is possible. """
+  if isdref(v):
+    return config_dict(store_config(DRef(v)))
+  elif isrref(v):
+    return config_dict(store_config(rref2dref(RRef(v))))
+  elif isinstance(v,Build):
+    return config_dict(build_config(v))
+  elif isinstance(v,dict):
+    return v
+  else:
+    return None
+
+
+def val2path(v:Any, ctx:Tuple[Any,Any])->Path:
+  """ Resolve the current value of Lens into system path. Assert if it is not
+  possible or if the result is associated with multiple paths."""
+  if isdref(v):
+    return store_dref2path(DRef(v))
+  elif isrref(v):
+    return rref2path(RRef(v))
+  elif isrefpath(v):
+    refpath=list(v) # RefPath is list
+    bpath=ctx[0]
+    context=ctx[1]
+    if context is not None:
+      if refpath[0] in context:
+        rgs=context_deref(context, refpath[0])
+        assert len(rgs)==1, "Lens doesn't support multirealization dependencies"
+        return Path(join(rref2path(rgs[0][Tag('out')]), *refpath[1:]))
+      else:
+        if bpath is not None:
+          # FIXME: should we assert on refpath[0]==build.dref ?
+          return Path(join(bpath, *refpath[1:]))
+        else:
+          assert False, f"Can't dereference refpath {refpath}"
+    else:
+      assert False, f"Lens couldn't resolve '{refpath}' without a context"
+  else:
+    assert False, f"Lens doesn't know how to resolve '{v}'"
+
+def val2rref(v:Any, ctx)->RRef:
+  if isdref(v):
+    dref=DRef(v)
+    context=ctx[1]
+    if context is not None:
+      if dref in context:
+        rgs=context_deref(context, dref)
+        assert len(rgs)==1, "Lens doesn't support multirealization dependencies"
+        return rgs[0][Tag('out')]
+      else:
+        assert False, f"Can't convert {dref} into RRef because it is not in context"
+    else:
+      assert False, f"Lens couldn't resolve '{dref}' without a context"
+  assert isrref(v), f"Lens expected RRef, but got '{v}'"
+  return RRef(v)
+
+def traverse(l:"Lens", hint:str)->Any:
+  val=l.start
+  for s in l.steps:
+    d=val2dict(val)
+    if d is None:
+      assert False, f"Lens `{hint}` can't be traversed"
+    val=d[s]
+  return val
+
+def mutate(l:"Lens", v:Any, hint:str)->None:
+  assert len(l.steps)>0, f"Fields to set are not specified"
+  val=l.start
+  for s in l.steps[:-1]:
+    assert isinstance(val,dict), f"Lens {hint} can't be mutated"
+    assert s in val, f"Lens `{hint}` can't be mutated"
+    val=val[s]
+  val[l.steps[-1]]=v
+
+def lens_repr(l, accessor:str)->str:
+  return f"mklens(x).{'.'.join(l.steps+[accessor])}"
+
 class Lens:
   """ Lens objects provide quick access to the parameters of stage
   configurations by navigating through different kinds of Pylightnix entities
@@ -44,9 +122,12 @@ class Lens:
   To create Lenses, use `mklens` function rather than creating it directly
   because it encodes a number of supported ways of deducing `ctx` of Lens.
   """
-  def __init__(self, ctx:Tuple[Optional[Path],Optional[Context]], v:Any)->None:
+  def __init__(self, ctx:Tuple[Optional[Path],Optional[Context]],
+                     start:Any,
+                     steps:List[str])->None:
     self.ctx=ctx
-    self.v=v
+    self.start=start
+    self.steps=steps
 
   def __getattr__(self, key)->"Lens":
     """ Sugar for `Lens.get` """
@@ -54,96 +135,55 @@ class Lens:
 
   def get(self, key)->"Lens":
     """ Return a new Lens out of the `key` attribute of the current Lens """
-    d=self.as_dict()
-    return Lens(self.ctx, d[key] if key in d else None)
-
-  @property
-  def val(self)->Any:
-    """ Return th current value of Lens as-is """
-    assert self.v is not None
-    return self.v
+    r=lens_repr(self,key)
+    d=val2dict(traverse(self, r))
+    assert d is not None, f"In `{r}`: can't convert '{key}' into a dict"
+    assert key in d, f"In `{r}`: field '{key}' not found"
+    return Lens(self.ctx, self.start, self.steps+[key])
 
   @property
   def optval(self)->Optional[Any]:
-    """ Return th current value of Lens as-is """
-    return self.v
+    """ Return the value of Lens as-is """
+    v=traverse(self, lens_repr(self,'optval'))
+    return v
+
+  @property
+  def val(self)->Any:
+    """ Return the value of Lens as-is, assuming it is not None """
+    v=traverse(self, lens_repr(self,'val'))
+    assert v is not None
+    return v
+
+  @val.setter
+  def val(self, v):
+    mutate(self,v, lens_repr(self,'val'))
 
   @property
   def refpath(self)->RefPath:
     """ Check that the current value of Lens is a `RefPath` and return it """
-    assert isrefpath(self.v), f"Lens expected RefPath, but got '{self.v}'"
-    return self.v
-
-  @property
-  def syspath(self)->Path:
-    """ Check that the current value of Lens is a `Path` and return it """
-    res=self.resolve()
-    assert isinstance(res,Path), f"Lens didn't resolve itself into a syspath. Got '{res}' instead."
-    return res
+    v=traverse(self, lens_repr(self,'refpath'))
+    assert isrefpath(v), f"Lens expected RefPath, but got '{v}'"
+    return v
 
   @property
   def dref(self)->DRef:
     """ Check that the current value of Lens is a `DRef` and return it """
-    assert isdref(self.v), f"Lens expected DRef, but got '{self.v}'"
-    return DRef(self.v)
+    r=lens_repr(self,'dref')
+    v=traverse(self, r)
+    assert isdref(v), f"Lens {r} expected DRef, but got '{v}'"
+    return DRef(v)
+
+  @property
+  def syspath(self)->Path:
+    """ Check that the current value of Lens is a `Path` and return it """
+    v=traverse(self, lens_repr(self,'syspath'))
+    return val2path(v, self.ctx)
 
   @property
   def rref(self)->RRef:
     """ Check that the current value of Lens is an `RRef` and return it """
-    if isdref(self.v):
-      dref=DRef(self.v)
-      context=self.ctx[1]
-      if context is not None:
-        if dref in context:
-          rgs=context_deref(context, dref)
-          assert len(rgs)==1, "Lens doesn't support multirealization dependencies"
-          return rgs[0][Tag('out')]
-        else:
-          assert False, f"Can't convert {dref} into RRef because it is not in context"
-      else:
-        assert False, f"Lens couldn't resolve '{dref}' without a context"
-    assert isrref(self.v), f"Lens expected RRef, but got '{self.v}'"
-    return RRef(self.v)
-
-  def resolve(self)->Path:
-    """ Resolve the current value of Lens into system path. Assert if it is not
-    possible or if the result is associated with multiple paths."""
-    if isdref(self.v):
-      return store_dref2path(DRef(self.v))
-    elif isrref(self.v):
-      return rref2path(RRef(self.v))
-    elif isrefpath(self.v):
-      refpath=list(self.v) # RefPath is list
-      bpath=self.ctx[0]
-      context=self.ctx[1]
-      if context is not None:
-        if refpath[0] in context:
-          rgs=context_deref(context, refpath[0])
-          assert len(rgs)==1, "Lens doesn't support multirealization dependencies"
-          return Path(join(rref2path(rgs[0][Tag('out')]), *refpath[1:]))
-        else:
-          if bpath is not None:
-            # FIXME: should we assert on refpath[0]==build.dref ?
-            return Path(join(bpath, *refpath[1:]))
-          else:
-            assert False, f"Can't dereference refpath {refpath}"
-      else:
-        assert False, f"Lens couldn't resolve '{refpath}' without a context"
-    else:
-      assert False, f"Lens doesn't know how to resolve '{self.val}'"
-
-  def as_dict(self)->dict:
-    """ Return the `dict` representation of the Lens, asserting that it is possible. """
-    if isdref(self.v):
-      return config_dict(store_config(DRef(self.v)))
-    elif isrref(self.v):
-      return config_dict(store_config(rref2dref(RRef(self.v))))
-    elif isinstance(self.v,Build):
-      return config_dict(build_config(self.v))
-    elif isinstance(self.v,dict):
-      return self.v
-    else:
-      assert False, f"Can't get dict representation of {self.val}"
+    v=traverse(self, lens_repr(self,'rref'))
+    return val2rref(v, self.ctx)
 
 
 def mklens(x:Any, o:Optional[Path]=None,
@@ -211,5 +251,5 @@ def mklens(x:Any, o:Optional[Path]=None,
     o=build_outpaths(b)[build_output_idx]
   if o is None and isinstance(x,Build):
     o=build_outpaths(x)[build_output_idx]
-  return Lens((o,ctx),x)
+  return Lens((o,ctx),x,[])
 

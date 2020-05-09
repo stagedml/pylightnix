@@ -286,7 +286,7 @@ print(mnist1)
 x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
-rref:a40871536aad231af64a99b1b9cf153f-62bf4c470bd346d4b4431438958999eb-unnamed
+rref:20ee736e35338c37a5f31da758e13a8c-62bf4c470bd346d4b4431438958999eb-unnamed
 ```
 
 
@@ -312,7 +312,7 @@ print(mnist2)
 x_train shape: (60000, 28, 28, 1)
 60000 train samples
 10000 test samples
-rref:911aea3045dd817856386f9572a50d07-62bf4c470bd346d4b4431438958999eb-unnamed
+rref:0d2c64e632b76b37f0c2604079b6e668-62bf4c470bd346d4b4431438958999eb-unnamed
 ```
 
 
@@ -336,7 +336,13 @@ lsref(mnist1)
 ```
 
 ```
-['context.json', '__buildtime__.txt', 'accuracy.txt', 'weights.h5']
+['context.json',
+ '__buildtime__.txt',
+ 'accuracy.txt',
+ 'group.txt',
+ '__buildstop__.txt',
+ 'weights.h5',
+ 'tag.txt']
 ```
 
 
@@ -345,7 +351,7 @@ catref(mnist1,['accuracy.txt'])
 ```
 
 ```
-['0.9836']
+['0.983']
 ```
 
 
@@ -354,7 +360,7 @@ catref(mnist2,['accuracy.txt'])
 ```
 
 ```
-['0.9844']
+['0.9846']
 ```
 
 
@@ -388,7 +394,7 @@ catref(mnist_best,['accuracy.txt'])
 ```
 
 ```
-['0.9844']
+['0.9846']
 ```
 
 

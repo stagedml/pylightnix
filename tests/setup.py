@@ -3,7 +3,7 @@ from pylightnix import ( Manager, Path, store_initialize, DRef, Context,
     Name, mkdrv, rref2path, dirchmod, promise, Config, RealizeArg, Tag,
     RRefGroup )
 from tests.imports import ( rmtree, join, makedirs, listdir, Callable,
-    contextmanager, List, Dict )
+    contextmanager, List, Dict,  Popen, PIPE )
 
 PYLIGHTNIX_TEST:str='/tmp/pylightnix_tests'
 
@@ -73,4 +73,7 @@ def mktestnode(m:Manager, sources:dict, buildtime=True)->DRef:
   """ Build a test node with a given config and fixed build artifact """
   return mktestnode_nondetermenistic(m, sources, lambda:0, buildtime)
 
+
+def pipe_stdout(args:List[str], **kwargs)->str:
+  return Popen(args, stdout=PIPE, **kwargs).stdout.read().decode() #type:ignore
 

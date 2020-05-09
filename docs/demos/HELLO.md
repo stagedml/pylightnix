@@ -136,9 +136,9 @@ print(hello_rref)
 ```
 
 ```
-Unpacking /tmp/200306-21:37:03:030903+0300_5ba7196c_aqic_mi9/hello-2.10.tar.gz..
-Removing /tmp/200306-21:37:03:030903+0300_5ba7196c_aqic_mi9/hello-2.10.tar.gz..
-rref:3fce7614ca738e68d6ad5b8a2057c488-ff665a238aa45b818710fba821b26258-hello-src
+Unpacking /tmp/200509-00:20:19:089121+0300_out_5ba7196c_ums11e75/hello-2.10.tar.gz..
+Removing /tmp/200509-00:20:19:089121+0300_out_5ba7196c_ums11e75/hello-2.10.tar.gz..
+rref:662ba41f498f08d25a06e269b4e61eb4-ff665a238aa45b818710fba821b26258-hello-src
 ```
 
 
@@ -161,7 +161,7 @@ print(rref2path(hello_rref))
 
 ```
 /tmp/pylightnix_hello_demo/ff665a238aa45b818710fba821b26258-hello-
-src/3fce7614ca738e68d6ad5b8a2057c488
+src/662ba41f498f08d25a06e269b4e61eb4
 ```
 
 
@@ -177,7 +177,8 @@ print(lsref(hello_rref))
 ```
 
 ```
-['context.json', '__buildtime__.txt', 'hello-2.10']
+['context.json', '__buildtime__.txt', 'group.txt', 'hello-2.10',
+'__buildstop__.txt', 'tag.txt']
 ```
 
 
@@ -307,7 +308,7 @@ print(rref)
 ```
 
 ```
-rref:336da7444c7358a3d66a02a184e36e1d-e6e4f681aa7a78becc745cee408f3a8b-hello-bin
+rref:fd22d2d71b9ca0978a44397862f13d7c-e6e4f681aa7a78becc745cee408f3a8b-hello-bin
 ```
 
 
@@ -318,7 +319,7 @@ Now we could convert RRef to the system path and run the GNU Hello binary.
 ```python
 
 hello_bin=join(rref2path(rref),'usr/bin/hello')
-print(Popen([hello_bin], stdout=PIPE, shell=True).stdout.read())
+print(Popen([hello_bin], stdout=PIPE, shell=True).stdout.read()) # type:ignore
 ```
 
 ```
