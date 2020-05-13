@@ -17,7 +17,7 @@
 from pylightnix.types import ( Iterable, List, Union, Optional, DRef, RRef,
     Dict, Tuple, Path, Build, Stage, Tag )
 from pylightnix.imports import ( isfile, isdir, listdir, join, rmtree, environ,
-    Popen, rename, getsize, fnmatch )
+    Popen, rename, getsize, fnmatch, dirname )
 from pylightnix.core import ( store_dref2path, rref2path, isrref, isdref,
     store_drefs, store_rrefs_, store_config, config_name, store_buildtime,
     instantiate, store_cfgpath, rref2dref )
@@ -98,8 +98,12 @@ def shell(r:Union[Build,RRef,DRef,Path,str,None]=None)->None:
     cwd=r.outgroups[0][Tag('out')]
   elif isdir(r):
     cwd=str(r)
+  elif isfile(r):
+    cwd=dirname(str(r))
   else:
-    assert False, f"Expecting `RRef`, `DRef`, a directory path (either a string or a `Path`), or None, got {r}"
+    assert False, (
+      f"Expecting `RRef`, `DRef`, a directory or file path (either a string or "
+      f"a `Path`), or None. Got {r}")
   Popen([environ.get('SHELL','/bin/sh')], shell=False, cwd=cwd).wait()
 
 def shellref(r:Union[RRef,DRef,None]=None)->None:
