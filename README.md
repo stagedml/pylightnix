@@ -270,8 +270,8 @@ installed.
    'disk usage' and calculates the size of realizations stored.
 
 
-Rational
---------
+Rationale
+---------
 
 * Q: Why based on Nix ideas?
 * A: There are many solutions in the area of software deployment. Besides Nix,
