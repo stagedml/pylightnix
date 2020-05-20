@@ -25,11 +25,14 @@ from pylightnix.build import ( build_outpaths, build_config, build_context )
 
 
 def val2dict(v:Any)->Optional[dict]:
-  """ Return the `dict` representation of the Lens, asserting that it is possible. """
+  """ Return the `dict` representation of the Lens value, if possible. Getting
+  the dictionary allows for creating new lenses """
   if isdref(v):
     return config_dict(store_config(DRef(v)))
   elif isrref(v):
     return config_dict(store_config(rref2dref(RRef(v))))
+  elif isrefpath(v):
+    return config_dict(store_config(list(v)[0]))
   elif isinstance(v,Build):
     return config_dict(build_config(v))
   elif isinstance(v,dict):
