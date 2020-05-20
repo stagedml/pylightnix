@@ -192,7 +192,8 @@ def diff(stageA:Union[RRef,DRef,Stage], stageB:Union[RRef,DRef,Stage])->None:
     else:
       return store_cfgpath(instantiate(s).dref)
 
-  Popen(['diff', '-u', _cfgpathof(stageA), _cfgpathof(stageB)], shell=False, cwd='/').wait()
+  Popen(['diff', '-u', _cfgpathof(stageA), _cfgpathof(stageB)],
+        shell=False, cwd='/').wait()
 
 
 

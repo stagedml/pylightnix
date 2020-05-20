@@ -22,13 +22,18 @@ from pylightnix.imports import ( datetime, gmtime, timegm, join, makedirs,
     normalize, re_sub, split, json_load, find_executable, chmod, S_IWRITE,
     S_IREAD, S_IRGRP, S_IROTH, S_IXUSR, S_IXGRP, S_IXOTH, stat, ST_MODE,
     S_IWGRP, S_IWOTH, rmtree, rename, getsize, readlink, partial, copytree,
-    chain )
+    chain, getLogger )
 
 from pylightnix.types import ( Hash, Path, List, Any, Optional, Iterable, IO,
     DRef, RRef, Tuple, Callable, PYLIGHTNIX_PROMISE_TAG, PYLIGHTNIX_CLAIM_TAG,
     TypeVar )
 
 from pylightnix.tz import tzlocal
+
+
+logger=getLogger(__name__)
+warning=logger.warning
+
 
 #: Defines the `strftime`-compatible format of time, used in e.g.
 #: `__buildtime__.txt` files. Do not change!
@@ -102,7 +107,7 @@ def datahash(data:Iterable[bytes])->Hash:
     e.update(s)
     nitems+=1
   if nitems==0:
-    print('Warning: datahash: called on empty iterator')
+    warning("datahash() was called on empty iterator")
   return Hash(e.hexdigest())
 
 def dirhash(path:Path)->Hash:
@@ -144,8 +149,7 @@ def dirro(o:Path)->None:
       if isfile(f):
         filero(Path(join(root, f)))
       if islink(f):
-        print('Warning: we discourage using symlinks in Pylightnix.',
-              f"Seen: '{f}'")
+        warning(f"Pylightnix doesn't guarantee the consistency of symlink '{f}'")
   chmod(o, stat(o)[ST_MODE] & ~(S_IWRITE | S_IWGRP | S_IWOTH) )
 
 def dirrw(o:Path)->None:
@@ -157,8 +161,7 @@ def dirrw(o:Path)->None:
       if isfile(f):
         filerw(Path(join(root, f)))
       if islink(f):
-        print('Warning: we discourage using symlinks in Pylightnix.',
-              f"Seen: '{f}'")
+        warning(f"Pylightnix doesn't guarantee the consistency of symlink '{f}'")
   chmod(o, stat(o)[ST_MODE] | (S_IWRITE | S_IWGRP | S_IWOTH) )
 
 

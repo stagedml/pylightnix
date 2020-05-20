@@ -20,7 +20,8 @@ temporary build directory management, time counting, etc.
 from pylightnix.imports import ( sha256, deepcopy, isdir, islink, makedirs,
     join, json_dump, json_load, json_dumps, json_loads, isfile, relpath,
     listdir, rmtree, mkdtemp, replace, environ, split, re_match, ENOTEMPTY,
-    get_ident, contextmanager, OrderedDict, lstat, maxsize, readlink )
+    get_ident, contextmanager, OrderedDict, lstat, maxsize, readlink,
+    getLogger )
 from pylightnix.utils import ( dirhash, assert_serializable, assert_valid_dict,
     dicthash, scanref_dict, scanref_list, forcelink, timestring, parsetime,
     datahash, readjson, tryread, encode, dirchmod, dirrm, filero, isrref,
@@ -33,6 +34,11 @@ from pylightnix.types import ( Dict, List, Any, Tuple, Union, Optional,
     Config, RealizeArg, InstantiateArg, Tag, RRefGroup )
 from pylightnix.core import ( assert_valid_config, store_config, config_cattrs,
     config_hash, config_name, context_deref, assert_valid_refpath, rref2path )
+
+logger=getLogger(__name__)
+info=logger.info
+warning=logger.warning
+error=logger.error
 
 #  ____        _ _     _
 # | __ ) _   _(_) | __| |
@@ -68,8 +74,8 @@ def build_wrapper_(
       build_markstop(b) # type:ignore
     except:
       build_markstop(b) # type:ignore
-      print(f'Build wrapper of {dref} raised an exception. Remaining '
-            f'build directories are: {getattr(b,"outgroups","<unknown>")}')
+      error(f"Build wrapper of {dref} raised an exception. Remaining "
+            f"build directories are: {getattr(b,'outgroups','<unknown>')}")
       raise
     return getattr(b,'outgroups')
   return _wrapper

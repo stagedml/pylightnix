@@ -19,7 +19,8 @@ Core Pylightnix definitions
 from pylightnix.imports import ( sha256, deepcopy, isdir, islink, makedirs,
     join, json_dump, json_load, json_dumps, json_loads, isfile, relpath,
     listdir, rmtree, mkdtemp, replace, environ, split, re_match, ENOTEMPTY,
-    get_ident, contextmanager, OrderedDict, lstat, maxsize, readlink, chain )
+    get_ident, contextmanager, OrderedDict, lstat, maxsize, readlink, chain,
+    getLogger )
 from pylightnix.utils import ( dirhash, assert_serializable, assert_valid_dict,
     dicthash, scanref_dict, scanref_list, forcelink, timestring, parsetime,
     datahash, readjson, tryread, encode, dirchmod, dirrm, filero, isrref,
@@ -31,34 +32,39 @@ from pylightnix.types import ( Dict, List, Any, Tuple, Union, Optional,
     Key, BuildArgs, PYLIGHTNIX_PROMISE_TAG, PYLIGHTNIX_CLAIM_TAG, Config,
     RealizeArg, InstantiateArg, Tag, Group, RRefGroup )
 
+logger=getLogger(__name__)
+info=logger.info
+warning=logger.warning
+
 #: *Do not change!*
 #: Tracks the version of pylightnix storage
-PYLIGHTNIX_STORE_VERSION = 0
+PYLIGHTNIX_STORE_VERSION=0
 
 #: `PYLIGHTNIX_ROOT` contains the path to the root of pylightnix shared data folder.
 #:
 #: Default is `~/_pylightnix` or `/var/run/_pylightnix` if no `$HOME` is available.
 #: Setting `PYLIGHTNIX_ROOT` environment variable overwrites the defaults.
-PYLIGHTNIX_ROOT = environ.get('PYLIGHTNIX_ROOT', join(environ.get('HOME','/var/run'),'_pylightnix'))
+PYLIGHTNIX_ROOT=environ.get('PYLIGHTNIX_ROOT',
+  join(environ.get('HOME','/var/run'), '_pylightnix'))
 
 
 #: `PYLIGHTNIX_TMP` contains the path to the root of temporary folders.
 #: Setting `PYLIGHTNIX_TMP` environment variable overwrites the default value of
 #: `$PYLIGHTNIX_ROOT/tmp`.
-PYLIGHTNIX_TMP = environ.get('PYLIGHTNIX_TMP', join(PYLIGHTNIX_ROOT,'tmp'))
+PYLIGHTNIX_TMP=environ.get('PYLIGHTNIX_TMP', join(PYLIGHTNIX_ROOT,'tmp'))
 
 #: `PYLIGHTNIX_STORE` contains the path to the main pylightnix store folder.
 #:
 #: By default, the store is located in `$PYLIGHTNIX_ROOT/store-vXX` folder.
 #: Setting `PYLIGHTNIX_STORE` environment variable overwrites the defaults.
-PYLIGHTNIX_STORE = join(PYLIGHTNIX_ROOT, f'store-v{PYLIGHTNIX_STORE_VERSION}')
+PYLIGHTNIX_STORE=join(PYLIGHTNIX_ROOT, f'store-v{PYLIGHTNIX_STORE_VERSION}')
 
 #: Set the regular expression pattern for valid name characters.
-PYLIGHTNIX_NAMEPAT = "[a-zA-Z0-9_-]"
+PYLIGHTNIX_NAMEPAT="[a-zA-Z0-9_-]"
 
 #: Reserved file names which are treated specially be the core. Users should
 #: not normally create or alter files with this names.
-PYLIGHTNIX_RESERVED = ['context.json','group.json']
+PYLIGHTNIX_RESERVED=['context.json','group.json']
 
 #  ____       __
 # |  _ \ ___ / _|___
@@ -224,7 +230,8 @@ def store_initialize(custom_store:Optional[str]=None,
 
   if custom_store is not None:
     PYLIGHTNIX_STORE=custom_store
-  print(f"Initializing {'' if isdir(PYLIGHTNIX_STORE) else 'non-'}existing {PYLIGHTNIX_STORE}")
+  info(f"Initializing {'' if isdir(PYLIGHTNIX_STORE) else 'non-'}existing "
+       f"{PYLIGHTNIX_STORE}")
   makedirs(PYLIGHTNIX_STORE, exist_ok=False if check_not_exist else True)
 
   if custom_tmp is not None:
@@ -585,8 +592,8 @@ def mkdrv(m:Manager,
   """
   dref=store_instantiate(config)
   if dref in m.builders:
-    print((f"Overwriting either the matcher or the realizer of '{dref}'. "
-           f"RConfig:\n{store_config_(dref)}"))
+    warning((f"Overwriting either the matcher or the realizer of '{dref}'. "
+             f"RConfig:\n{store_config_(dref)}"))
 
   def _promise_aware(realizer)->Realizer:
     def _realizer(dref:DRef,ctx:Context,rarg:RealizeArg)->List[Dict[Tag,Path]]:
@@ -779,9 +786,9 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
             f"unmatched: {rrefgs_built}" )
           if (set(groups2rrefs(rrefgs_built)) & set(groups2rrefs(rrefgs_matched))) == set() and \
              (set(groups2rrefs(rrefgs_built)) | set(groups2rrefs(rrefgs_matched))) != set():
-            print(f"Warning: None of the newly obtained realizations of "
-                  f"{dref} were matched by the matcher. To capture those "
-                  f"realizations explicitly, try `matcher([exact(..)])`")
+            warning(f"None of the newly obtained realizations of "
+                    f"{dref} were matched by the matcher. To capture those "
+                    f"realizations explicitly, try `matcher([exact(..)])`")
           rrefgs=rrefgs_matched
         context_acc=context_add(context_acc,dref,groups2rrefs(rrefgs))
     assert rrefgs is not None
@@ -978,23 +985,23 @@ def assert_valid_context(c:Context)->None:
 
 def assert_valid_closure(closure:Closure)->None:
   assert len(closure.derivations)>0, \
-      "Closure can not be empty"
+    "Closure can not be empty"
   assert closure.dref in [d.dref for d in closure.derivations], \
-      "Closure should contain target derivation"
+    "Closure should contain target derivation"
 
 def warn_rref_deps(c:Config)->None:
   _,rrefs=scanref_dict(config_dict(c))
   if len(rrefs)>0:
-    print(f"Warning: RRef dependencies were found in config {config_dict(c)}:\n{rrefs}")
+    warning(f"RRef dependencies were found in config {config_dict(c)}:\n{rrefs}")
 
 def assert_have_realizers(m:Manager, drefs:List[DRef])->None:
   have_drefs=set(m.builders.keys())
   need_drefs=store_deepdeps(drefs)|set(drefs)
   missing=list(need_drefs-have_drefs)
   assert len(missing)==0, (
-      f"The following derivations don't have realizers associated with them:\n"
-      f"{missing}\n"
-      f"Did you pass those DRefs from another `instantiate` session ?")
+    f"The following derivations don't have realizers associated with them:\n"
+    f"{missing}\n"
+    f"Did you pass those DRefs from another `instantiate` session ?")
 
 def assert_recursion_manager_empty()->None:
   global PYLIGHTNIX_RECURSION

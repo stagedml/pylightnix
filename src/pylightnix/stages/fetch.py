@@ -15,7 +15,7 @@
 """ Builtin stages for fetching things from the Internet """
 
 from pylightnix.imports import (sha256 as sha256sum, sha1 as sha1sum, urlparse,
-    Popen, remove, basename, join, rename, isfile, copyfile, environ )
+    Popen, remove, basename, join, rename, isfile, copyfile, environ, getLogger )
 from pylightnix.types import ( DRef, Manager, Build, Context, Name,
     Path, Optional, List, Config )
 from pylightnix.core import ( mkconfig, mkdrv, match_only, promise )
@@ -23,18 +23,20 @@ from pylightnix.build import ( mkbuild, build_outpath, build_setoutpaths,
     build_paths, build_deref_, build_cattrs, build_wrapper, build_wrapper )
 from pylightnix.utils import ( try_executable, makedirs )
 
+logger=getLogger(__name__)
+info=logger.info
+error=logger.error
 
 WGET=try_executable('wget', 'Please install `wget` pacakge.')
 AUNPACK=try_executable('aunpack', 'Please install `apack` tool from `atool` package.')
 
-
 def _unpack(o:str, fullpath:str, remove_file:bool):
-  print(f"Unpacking {fullpath}..")
+  info(f"Unpacking {fullpath}..")
   p=Popen([AUNPACK(), fullpath], cwd=o)
   p.wait()
   assert p.returncode == 0, f"Unpack failed, errcode '{p.returncode}'"
   if remove_file:
-    print(f"Removing {fullpath}..")
+    info(f"Removing {fullpath}..")
     remove(fullpath)
 
 
@@ -143,8 +145,8 @@ def fetchurl(m:Manager,
         _unpack(o, fullpath, 'remove' in c.mode)
 
     except Exception as e:
-      print(f"Download failed:",e)
-      print(f"Temp folder {o}")
+      error(f"Download failed:", e)
+      error(f"Keeping temporary directory {o}")
       raise
 
   return mkdrv(m, _instantiate(), match_only(), build_wrapper(_realize),
@@ -216,8 +218,8 @@ def fetchlocal(m:Manager,
         _unpack(o, fullpath, 'remove' in c.mode)
 
     except Exception as e:
-      print(f"Copying failed:",e)
-      print(f"Temp folder {o}")
+      error(f"Copying failed:", e)
+      error(f"Keeping temporary directory {o}")
       raise
 
   return mkdrv(m, _instantiate(), match_only(), build_wrapper(_realize))
