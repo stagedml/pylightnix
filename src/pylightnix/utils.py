@@ -230,6 +230,10 @@ def ispromise(p:Any)->bool:
 def isclaim(p:Any)->bool:
   return ispromiselike(p,PYLIGHTNIX_CLAIM_TAG)
 
+def isclosure(x:Any)->bool:
+  return isinstance(x,tuple) and len(x)==2 and isdref(x[0]) \
+         and isinstance(x[1],list)
+
 Mutator=Callable[[Any,Any],Any]
 
 def traverse_list(l:list,mut:Mutator)->None:

@@ -263,21 +263,28 @@ RealizeArg=Dict[str,Any]
 Realizer = Callable[[DRef,Context,RealizeArg],List[Dict[Tag,Path]]]
 
 #: Derivation is the core type of Pylightnix. It keeps all the information about
-#: a stage: it's [configuration](#pylightnix.types.Config), how to
-#: [realize](#pylightnix.core.realize) it and how to make a
-#: [selection](#pylightnix.types.Matcher) among multiple realizations.
+#: a stage:
+#:
+#: * It's [configuration](#pylightnix.types.Config)
+#: * It's [realize](#pylightnix.core.realize) method
+#: * And how to find best [match](#pylightnix.types.Matcher) among possible
+#:   multiple realizations.
+#:
 #: Information is stored partly on disk (in the Pylightnix storage), partly in
 #: memory in form of Python code.
 #:
 #: Derivations normally appear as a result of [mkdrv](#pylightnix.core.mkdrv)
 #: call.
-Derivation = NamedTuple('Derivation', [('dref',DRef), ('matcher',Matcher), ('realizer',Realizer) ])
+Derivation = NamedTuple('Derivation', [('dref',DRef),
+                                       ('matcher',Matcher),
+                                       ('realizer',Realizer)])
 
-#: Closure is a named tuple, encoding a reference to derivation, the list of
-#: it's dependencies, plus maybe some additional derivations. So the closure is
-#: complete set of dependencies but not necessary minimal.
+#: Closure is a named tuple, containing a reference to target
+#: [DRef](#pylightnix.types.DRef) and a collection of required derivations.
+#: `derivations` of a valid Closure contains complete (but not nesessary
+#: minimal) collection of dependencies of it's target derivation `dref`.
 #:
-#: Closure is typically obtained as a result of the call to
+#: Closure is typically obtained as a result of the
 #: [instantiate](#pylightnix.core.instantiate) and is typically consumed by the
 #: call to [realizeMany](#pylightnix.core.realizeMany) or it's analogs.
 Closure = NamedTuple('Closure', [('dref',DRef),('derivations',List[Derivation])])

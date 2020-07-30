@@ -14,10 +14,11 @@
 
 """ Simple functions imitating unix shell tools.  """
 
-from pylightnix import ( instantiate, DRef, RRef, Path,
-    Build, Manager, mklens, mkdrv, promise, match_only, build_wrapper,
-    instantiate, realize, isrref, isdref, store_cattrs, build_cattrs,
-    build_outpath, build_path, mkconfig, assert_valid_rref, isrefpath )
+from pylightnix import (instantiate, DRef, RRef, Path, Build, Manager, mklens,
+                        mkdrv, promise, match_only, build_wrapper, instantiate,
+                        realize, isrref, isdref, store_cattrs, build_cattrs,
+                        build_outpath, build_path, mkconfig, assert_valid_rref,
+                        isrefpath, isclosure)
 
 from tests.imports import ( given, Any, Callable, join, Optional, islink,
     isfile, List, randint, sleep, rmtree, system, S_IWRITE, S_IREAD, S_IEXEC,
@@ -103,3 +104,17 @@ def test_lens():
     assert d['bar']=='bar33'
 
 
+def test_lens_closures():
+  with setup_storage('test_lens_closures'):
+    def _setting(m:Manager)->DRef:
+      n1=mktestnode(m, {'name':'1', 'x':33, 'promise':[promise,'artifact']})
+      n2=mktestnode(m, {'name':'2', 'papa':n1, 'dict':{'d1':1} })
+      n3=mktestnode(m, {'name':'3', 'maman':n2 })
+      return n3
+
+    clo=instantiate(_setting)
+    assert isclosure(clo)
+
+    rref=realize(mklens(clo).maman.papa.closure)
+    assert mklens(rref).x.val == 33
+    assert open(mklens(rref).promise.syspath).read() == '0'

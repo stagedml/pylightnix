@@ -17,11 +17,15 @@ through the dependent configurations """
 
 from pylightnix.imports import ( join )
 from pylightnix.types import ( Any, Dict, List, Build, DRef, RRef, Optional,
-    RefPath, Tuple, Union, Path, Context, Tag )
+    RefPath, Tuple, Union, Path, Context, Tag, NamedTuple, Context, Closure )
 from pylightnix.utils import ( isrefpath, isdref, isrref )
 from pylightnix.core import ( store_deref, store_config, rref2dref, rref2path,
     config_dict, store_dref2path, store_context, context_deref, context_add )
 from pylightnix.build import ( build_outpaths, build_config, build_context )
+
+LensContext=NamedTuple('LensContext', [('build_path',Optional[Path]),
+                                       ('context',Optional[Context]),
+                                       ('closure',Optional[Closure])])
 
 
 def val2dict(v:Any)->Optional[dict]:
@@ -37,11 +41,13 @@ def val2dict(v:Any)->Optional[dict]:
     return config_dict(build_config(v))
   elif isinstance(v,dict):
     return v
+  elif isinstance(v,Closure):
+    return val2dict(v.dref)
   else:
     return None
 
 
-def val2path(v:Any, ctx:Tuple[Any,Any])->Path:
+def val2path(v:Any, ctx:LensContext)->Path:
   """ Resolve the current value of Lens into system path. Assert if it is not
   possible or if the result is associated with multiple paths."""
   if isdref(v):
@@ -65,13 +71,15 @@ def val2path(v:Any, ctx:Tuple[Any,Any])->Path:
           assert False, f"Can't dereference refpath {refpath}"
     else:
       assert False, f"Lens couldn't resolve '{refpath}' without a context"
+  elif isinstance(v, Closure):
+    return val2path(v.dref, ctx)
   else:
     assert False, f"Lens doesn't know how to resolve '{v}'"
 
-def val2rref(v:Any, ctx)->RRef:
+def val2rref(v:Any, ctx:LensContext)->RRef:
   if isdref(v):
     dref=DRef(v)
-    context=ctx[1]
+    context=ctx.context
     if context is not None:
       if dref in context:
         rgs=context_deref(context, dref)
@@ -81,8 +89,11 @@ def val2rref(v:Any, ctx)->RRef:
         assert False, f"Can't convert {dref} into RRef because it is not in context"
     else:
       assert False, f"Lens couldn't resolve '{dref}' without a context"
-  assert isrref(v), f"Lens expected RRef, but got '{v}'"
-  return RRef(v)
+  elif isinstance(v,Closure):
+    return val2rref(v.dref, ctx)
+  else:
+    assert isrref(v), f"Lens expected RRef, but got '{v}'"
+    return RRef(v)
 
 def traverse(l:"Lens", hint:str)->Any:
   val=l.start
@@ -105,32 +116,40 @@ def mutate(l:"Lens", v:Any, hint:str)->None:
 def lens_repr(l, accessor:str)->str:
   return f"mklens(x).{'.'.join(l.steps+[accessor])}"
 
+
 class Lens:
-  """ Lens objects provide quick access to the parameters of stage
-  configurations by navigating through different kinds of Pylightnix entities
-  like DRefs, RRefs, Configs and RefPaths.
+  """ Lens is a helper `sugar` object which could traverse through various
+  Python and Pylightnix tree-like structures in a uniform way.
 
-  Lens lifecycle consists of three stages:
-  1. Creation on the basis of existing objects. Lens may be created out of
-     any Python value, but the meaningful operations (besides getting this value
-     back) are supported for the Pylightnix types which could be casted to
-     Python dictionaries. See [mklens](#pylightnix.lens.mklens) for the list of
-     supported source objects.
-  2. Navigation through the nested configurations. Lenses access configuration
-     attributes, automatically dereference Pylightnix references and produce other
-     Lenses, which are 'focused' on new locations.
+  The list of supported structures include:
+
+  * Python dicts
+  * Pylightnix DRefs, which are converted to Python dicts of their
+    configuration parameters
+  * Pylightnix RRefs (which are DRefs plus realizations)
+  * Pylightnix Build objects (which are DRefs plus temporary build folder)
+  * Pylightnix Closures (which are DRefs with accompanying library of
+    Derivations)
+
+  Lens lifecycle typically consists of three stages:
+  1. Lens creation with [mklens](#pylightnix.lens.mklens) helper function.
+  2. Navigation through the nested fileds using regular Python dot-notation.
+     Accessing Lens's attributes results in the creation of new Lens.
   3. Access to the raw value which could no longer be converted into a Lens. In
-     this case the raw value is returned.
-
-  To create Lenses, use `mklens` function rather than creating it directly
-  because it encodes a number of supported ways of deducing `ctx` of Lens.
+     this case the raw value is returned. See `val`, `optval`, `rref`, `dref`,
+     etc.
   """
-  def __init__(self, ctx:Tuple[Optional[Path],Optional[Context]],
-                     start:Any,
-                     steps:List[str])->None:
-    self.ctx=ctx
-    self.start=start
-    self.steps=steps
+  def __init__(self, ctx:LensContext, start:Any, steps:List[str])->None:
+    """
+    Arguments:
+    * `ctx` - is the context in which this Lens is created. The more information
+      it contains the more functions are available
+    * `start` - Source object which we explore
+    * `steps` - List of attributes to query
+    """
+    self.ctx:LensContext=ctx
+    self.start:Any=start
+    self.steps:List[str]=steps
 
   def __getattr__(self, key)->"Lens":
     """ Sugar for `Lens.get` """
@@ -188,13 +207,24 @@ class Lens:
     v=traverse(self, lens_repr(self,'rref'))
     return val2rref(v, self.ctx)
 
+  @property
+  def closure(self)->Closure:
+    """ Check that the current value of Lens is an `RRef` and return it """
+    r=lens_repr(self,'closure')
+    v=traverse(self, r)
+    assert isdref(v), f"Lens {r} expected closure, but got '{v}'"
+    assert self.ctx.closure is not None
+    return Closure(v, self.ctx.closure.derivations)
+
 
 def mklens(x:Any, o:Optional[Path]=None,
                   b:Optional[Build]=None,
                   rref:Optional[RRef]=None,
                   ctx:Optional[Context]=None,
+                  closure:Optional[Closure]=None,
                   build_output_idx:int=0)->Lens:
-  """ Mklens creates [Lenses](#pylightnix.lens.Lens) from various user objects.
+  """ mklens creates [Lens](#pylightnix.lens.Lens) objects from various
+  Pylightnix objects.
 
   Arguments:
   - `x:Any` The object to create the Lens from. Supported source object types
@@ -254,5 +284,7 @@ def mklens(x:Any, o:Optional[Path]=None,
     o=build_outpaths(b)[build_output_idx]
   if o is None and isinstance(x,Build):
     o=build_outpaths(x)[build_output_idx]
-  return Lens((o,ctx),x,[])
+  if closure is None and isinstance(x,Closure):
+    closure=x
+  return Lens(LensContext(o,ctx,closure),x,[])
 
