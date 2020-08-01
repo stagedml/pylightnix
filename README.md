@@ -5,11 +5,13 @@ Pylightnix
 
 Pylightnix is a Python-based DSL library for manipulating filesystem-based
 immutable data objects, inspired by the [Nix](https://nixos.org) package
-manager.
+manager and Purely Functional Software Deployment Model thesis.
+
+[PhD thesis by Eelco Dolstra](https://edolstra.github.io/pubs/phd-thesis.pdf)
 
 Pylightnix provides a generic Python API, allowing programmers to:
 
-* Define linked immutable data objects by specifying how to create them
+* Define immutable linked data objects by specifying how to create them
   and how to operate on them.
 * Actually create (build) such objects in a filesystem-based storage, access
   their data, inspect dependencies, and remove them as needed.
@@ -54,13 +56,13 @@ Implementation:
 
 * Written in Python 3.6, [mypy](http://mypy-lang.org/) typing information is
   provided.
-* Tested with Pytest and [hypothesis](https://hypothesis.works).
-* No non-standard Python dependencies. We do require
+* Is well-tested
+* Includes no no third-party Python dependencies. We do require
   [wget](https://www.gnu.org/software/wget/) and
   [atool](https://www.nongnu.org/atool/) system packages.
 * Alas, Pylightnix is not a production-ready yet! Nor parallelism, neither
-  network synchronization are supported out of the box. Also, we didn't check it
-  on any operating system besides Linux.
+  network synchronization are supported out of the box. Also, we didn't check
+  Pylightnix on any operating system besides Linux.
   - We tried our best to make Pylightnix' operations on storage atomic. Among
     other benefits, this design allows running multiple instances of the library
     on a single storage at once.
