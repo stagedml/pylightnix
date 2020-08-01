@@ -57,7 +57,7 @@ Implementation:
 * Written in Python 3.6, [mypy](http://mypy-lang.org/) typing information is
   provided.
 * Is well-tested
-* Includes no no third-party Python dependencies. We do require
+* Includes no third-party Python dependencies. We do require
   [wget](https://www.gnu.org/software/wget/) and
   [atool](https://www.nongnu.org/atool/) system packages.
 * Alas, Pylightnix is not a production-ready yet! Nor parallelism, neither
