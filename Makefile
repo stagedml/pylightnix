@@ -61,8 +61,8 @@ coverage: .coverage.xml
 	codecov -t `cat .codecovrc` -f $<
 	touch $@
 
-.PHONY: codecov
-codecov: .stamp_codecov
+.PHONY: coverage-upload
+coverage-upload: .stamp_codecov
 
 docs/demos/MNIST.md: docs/demos/MNIST.pmd $(SRC) .stamp_check
 	pweave -f markdown $<
