@@ -18,7 +18,7 @@ through the dependent configurations """
 from pylightnix.imports import ( join )
 from pylightnix.types import ( Any, Dict, List, Build, DRef, RRef, Optional,
     RefPath, Tuple, Union, Path, Context, Tag, NamedTuple, Context, Closure )
-from pylightnix.utils import ( isrefpath, isdref, isrref )
+from pylightnix.utils import ( isrefpath, isdref, isrref, tryreadjson )
 from pylightnix.core import ( store_deref, store_config, rref2dref, rref2path,
     config_dict, store_dref2path, store_context, context_deref, context_add )
 from pylightnix.build import ( build_outpaths, build_config, build_context )
@@ -28,7 +28,7 @@ LensContext=NamedTuple('LensContext', [('build_path',Optional[Path]),
                                        ('closure',Optional[Closure])])
 
 
-def val2dict(v:Any)->Optional[dict]:
+def val2dict(v:Any, ctx:LensContext)->Optional[dict]:
   """ Return the `dict` representation of the Lens value, if possible. Getting
   the dictionary allows for creating new lenses """
   if isdref(v):
@@ -36,13 +36,16 @@ def val2dict(v:Any)->Optional[dict]:
   elif isrref(v):
     return config_dict(store_config(rref2dref(RRef(v))))
   elif isrefpath(v):
-    return config_dict(store_config(list(v)[0]))
+    j=tryreadjson(val2path(v, ctx))
+    assert j is not None, f"Refpath {v} doesn't contain valid JSON"
+    assert isinstance(j, dict), f"Refpath {v} doesn't contain valid JSON dict"
+    return j
   elif isinstance(v,Build):
     return config_dict(build_config(v))
   elif isinstance(v,dict):
     return v
   elif isinstance(v,Closure):
-    return val2dict(v.dref)
+    return val2dict(v.dref, ctx)
   else:
     return None
 
@@ -98,7 +101,7 @@ def val2rref(v:Any, ctx:LensContext)->RRef:
 def traverse(l:"Lens", hint:str)->Any:
   val=l.start
   for s in l.steps:
-    d=val2dict(val)
+    d=val2dict(val, l.ctx)
     if d is None:
       assert False, f"Lens `{hint}` can't be traversed"
     val=d[s]
@@ -158,7 +161,7 @@ class Lens:
   def get(self, key)->"Lens":
     """ Return a new Lens out of the `key` attribute of the current Lens """
     r=lens_repr(self,key)
-    d=val2dict(traverse(self, r))
+    d=val2dict(traverse(self, r), self.ctx)
     assert d is not None, f"In `{r}`: can't convert '{key}' into a dict"
     assert key in d, f"In `{r}`: field '{key}' not found"
     return Lens(self.ctx, self.start, self.steps+[key])

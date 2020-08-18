@@ -146,6 +146,18 @@ def repl_buildargs(rh:Optional[ReplHelper]=None, buildtime:bool=True)->BuildArgs
   return mkbuildargs(rh.dref, rh.context, timeprefix, {}, rh.rarg)
 
 def repl_build(rh:Optional[ReplHelper]=None, buildtime:bool=True)->Build:
+  """ Return `Build` object for using in repl-based debugging
+
+  Example:
+  ```
+  from stages import some_stage, some_stage_build, some_stage_train
+
+  rh=repl_realize(instantiate(some_stage))
+  b=repl_build(rh)
+  some_stage_build(b) # Debug as needed
+  some_stage_train(b) # Debug as needed
+  ```
+  """
   return Build(repl_buildargs(rh, buildtime))
 
 def repl_cancel(rh:Optional[ReplHelper]=None)->None:

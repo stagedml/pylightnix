@@ -41,7 +41,8 @@ def lsrref(r:RRef, fn:List[str]=[])->List[str]:
 
 def lsref(r:Union[RRef,DRef])->List[str]:
   """ List the contents of `r`. For [DRefs](#pylightnix.types.DRef), return
-  realization hashes. For [RRefs](#pylightnix.types.RRef), list artifact files. """
+  realization hashes. For [RRefs](#pylightnix.types.RRef), list artifact files.
+  """
   if isrref(r):
     return list(lsrref(RRef(r)))
   elif isdref(r):
@@ -55,7 +56,8 @@ def catrref_(r:RRef, fn:List[str])->Iterable[str]:
       yield l
 
 def catref(r:RRef, fn:List[str])->List[str]:
-  """ Return the contents of r's artifact file `fn` line by line. """
+  """ Return the contents of r's artifact line by line. `fn` is a list of
+  folders, relative to rref's root. """
   if isrref(r) and isinstance(r,RRef):
     return list(catrref_(r,fn))
   else:
