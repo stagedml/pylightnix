@@ -117,8 +117,9 @@ def dirhash(path:Path)->Hash:
 
   FIXME: Include file/directory names into hash data.
   FIXME: Figure out how does sha265sum handle symlinks and do the same thing.
+  FIXME: Stop loading whole files in memory for calculating hashes
   """
-  assert isdir(path), f"dirhash(path) expects directory path, not '{path}'"
+  assert isdir(path), f"dirhash() expects directory path, not '{path}'"
 
   def _iter()->Iterable[bytes]:
     for root, dirs, filenames in walk(abspath(path), topdown=True):
@@ -131,6 +132,11 @@ def dirhash(path:Path)->Hash:
             yield f.read()
 
   return datahash(_iter())
+
+def filehash(path:Path)->Hash:
+  assert isfile(path), f"filehash() expects a file path, not '{path}'"
+  with open(path,'rb') as f:
+    return datahash([f.read()])
 
 def filerw(f:Path)->None:
   assert isfile(f), f"'{f}' is not a file"

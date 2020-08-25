@@ -3,7 +3,7 @@ from pylightnix import ( instantiate, DRef, RRef, Path, mklogdir, dirhash,
     store_gc, assert_valid_hash, assert_valid_config, Manager, mkcontext,
     store_rrefs, mkdref, mkrref, unrref, undref, realize, rref2dref,
     store_initialize, mkconfig, timestring, parsetime, traverse_dict, isrref,
-    isdref, scanref_dict )
+    isdref, scanref_dict, filehash )
 
 from tests.imports import ( given, text, isdir, isfile, join, from_regex,
     islink, get_executable, run, dictionaries, binary, one_of, integers,
@@ -129,6 +129,14 @@ def test_dirhash3(d)->None:
   h=dirhash(path)
   assert (p.stdout[:len(h)].decode('utf-8'))==h
 
+@given(d=dicts())
+def test_dirhash4(d)->None:
+  path=setup_testpath('dirhash4')
+  with open(join(path,'a'),'w') as f:
+    f.write(str(d))
+  dh=dirhash(path)
+  fh=filehash(Path(join(path,'a')))
+  assert dh==fh, "Hash of a 1-file dir should match the hash of the file"
 
 @given(d=dicts())
 def test_traverse(d)->None:
