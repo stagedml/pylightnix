@@ -1,5 +1,5 @@
 from pylightnix import ( DRef, RRef, lsref, catref, instantiate, realize,
-    unrref, fetchurl, fetchlocal, isrref, rref2path, isfile )
+    unrref, fetchurl, fetchlocal, isrref, rref2path, isfile, mklens )
 
 from tests.imports import ( TemporaryDirectory, join, stat, chmod, S_IEXEC,
     system, Popen, PIPE, get_executable )
@@ -46,7 +46,7 @@ def test_fetchlocal():
       f.write('dogfood')
     system(f"tar -C '{tmp}' -zcvf {tmp}/mockdata.tar.gz mockdata")
 
-    wanted_sha256=pipe_stdout([SHA256SUM, f"mockdata.tar.gz"], cwd=tmp).split()[0]
+    wanted_sha256=pipe_stdout([SHA256SUM, "mockdata.tar.gz"], cwd=tmp).split()[0]
 
     rref=realize(instantiate(fetchlocal,
           path=mockdata+'.tar.gz',
@@ -55,4 +55,18 @@ def test_fetchlocal():
     assert isrref(rref)
     assert isfile(join(rref2path(rref),'mockdata'))
 
+
+def test_fetchlocal2():
+  with setup_storage('test_fetclocal') as tmp:
+    mockdata=join(tmp,'mockdata')
+    with open(mockdata,'w') as f:
+      f.write('dogfood')
+
+    wanted_sha256=pipe_stdout([SHA256SUM, "mockdata"], cwd=tmp).split()[0]
+
+    rref=realize(instantiate(fetchlocal, path=mockdata, sha256=wanted_sha256,
+                             mode='as-is'))
+    assert isrref(rref)
+    assert isfile(join(rref2path(rref),'mockdata'))
+    assert isfile(mklens(rref).out_path.syspath)
 

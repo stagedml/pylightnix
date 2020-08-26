@@ -22,6 +22,7 @@ from pylightnix.core import ( mkconfig, mkdrv, match_only, promise )
 from pylightnix.build import ( mkbuild, build_outpath, build_setoutpaths,
     build_paths, build_deref_, build_cattrs, build_wrapper, build_wrapper )
 from pylightnix.utils import ( try_executable, makedirs )
+from pylightnix.lens import ( mklens )
 
 logger=getLogger(__name__)
 info=logger.info
@@ -30,7 +31,7 @@ error=logger.error
 WGET=try_executable('wget', 'Please install `wget` pacakge.')
 AUNPACK=try_executable('aunpack', 'Please install `apack` tool from `atool` package.')
 
-def _unpack(o:str, fullpath:str, remove_file:bool):
+def _unpack_inplace(o:str, fullpath:str, remove_file:bool):
   info(f"Unpacking {fullpath}..")
   p=Popen([AUNPACK(), fullpath], cwd=o)
   p.wait()
@@ -57,6 +58,8 @@ def fetchurl(m:Manager,
   expected SHA-256 hashsum of the stored data. `mode` allows to tweak the
   stage's behavior: adding word 'unpack' instructs fetchurl to unpack the
   package, adding 'remove' instructs it to remove the archive after unpacking.
+
+  If 'unpack' is not expected, then the promise named 'out_path' is created.
 
   Agruments:
   - `m:Manager` the dependency resolution [Manager](#pylightnix.types.Manager).
@@ -89,6 +92,10 @@ def fetchurl(m:Manager,
   import pylightnix.core
   tmpfetchdir=join(pylightnix.core.PYLIGHTNIX_TMP,'fetchurl')
 
+  fname=filename or basename(urlparse(url).path)
+  assert len(fname)>0, ("Downloadable filename shouldn't be empty. "
+                        "Try specifying a valid `filename` argument")
+
   def _instantiate()->Config:
     assert WGET() is not None
     assert AUNPACK() is not None
@@ -106,6 +113,8 @@ def fetchurl(m:Manager,
                      'mode':mode})
     else:
       assert False, 'Either sha256 or sha1 arguments should be set'
+    if 'unpack' not in mode:
+      kwargs.update({'out_path': [promise, fname]})
     return mkconfig(kwargs)
 
   def _realize(b:Build)->None:
@@ -115,9 +124,6 @@ def fetchurl(m:Manager,
     download_dir=o if force_download else tmpfetchdir
 
     try:
-      fname=filename or basename(urlparse(c.url).path)
-      assert len(fname)>0, ("Downloadable filename shouldn't be empty. "
-                            "Try specifying a valid `filename` argument")
       partpath=join(download_dir,fname+'.tmp')
       p=Popen([WGET(), "--continue", '--output-document', partpath, c.url],
               cwd=download_dir)
@@ -128,11 +134,11 @@ def fetchurl(m:Manager,
 
       with open(partpath,"rb") as f:
         if sha256 is not None:
-          realhash=sha256sum(f.read()).hexdigest();
+          realhash=sha256sum(f.read()).hexdigest()
           assert realhash==c.sha256, (f"Expected sha256 checksum '{c.sha256}', "
                                       f"but got '{realhash}'")
         elif sha1 is not None:
-          realhash=sha1sum(f.read()).hexdigest();
+          realhash=sha1sum(f.read()).hexdigest()
           assert realhash==c.sha1, (f"Expected sha1 checksum '{c.sha1}', "
                                       f"but got '{realhash}'")
         else:
@@ -142,10 +148,10 @@ def fetchurl(m:Manager,
       rename(partpath, fullpath)
 
       if 'unpack' in c.mode:
-        _unpack(o, fullpath, 'remove' in c.mode)
+        _unpack_inplace(o, fullpath, 'remove' in c.mode)
 
     except Exception as e:
-      error(f"Download failed:", e)
+      error(f"Download failed: {e}")
       error(f"Keeping temporary directory {o}")
       raise
 
@@ -154,22 +160,37 @@ def fetchurl(m:Manager,
 
 
 
-def fetchlocal(m:Manager,
-             sha256:str,
-             path:Optional[str]=None,
-             envname:Optional[str]=None,
-             mode:str='unpack,remove',
-             name:Optional[str]=None,
-             filename:Optional[str]=None,
-             **kwargs)->DRef:
+def fetchlocal(m:Manager, sha256:str,
+               path:Optional[str]=None,
+               envname:Optional[str]=None,
+               mode:str='unpack,remove',
+               name:Optional[str]=None,
+               filename:Optional[str]=None,
+               check_promises:bool=True,
+               **kwargs)->DRef:
   """ Copy local file into Pylightnix storage. This function is typically
   intended to register application-specific files which are distributed with a
   source repository.
 
+  See `fetchurl` for arguments description.
+
+  If 'unpack' is not expected, then the promise named 'out_path' is created.
 
   FIXME: Switch regular `fetchurl` to `curl` and call it with `file://` URLs.
-
   """
+
+  path_:Optional[str]=None
+  if path is not None:
+    path_=path
+  if envname is not None:
+    assert envname in environ, (
+      f"Environment variable {envname} should be set")
+    path_=environ[envname]
+  assert path_ is not None, \
+    f"Either 'path' or 'envname' should be specified"
+  fname=filename or str(basename(path_))
+  assert len(fname)>0, ("Destination filename shouldn't be empty. "
+                        "Try specifying a valid `filename` argument")
 
   def _instantiate()->Config:
     assert AUNPACK() is not None
@@ -181,44 +202,35 @@ def fetchlocal(m:Manager,
     if path is not None:
       kwargs.update({'path':path})
     if envname is not None:
-      assert envname in environ, (
-        f"Environment variable {envname} should be set")
       kwargs.update({'envname':envname})
     kwargs.update({'sha256':sha256, 'mode':mode})
+    if 'unpack' not in mode:
+      kwargs.update({'out_path': [promise, fname]})
     return mkconfig(kwargs)
 
   def _realize(b:Build)->None:
     c=build_cattrs(b)
     o=build_outpath(b)
 
-    if getattr(c,'envname',None) is not None:
-      path_=environ[getattr(c,'envname')]
-    elif getattr(c,'path',None) is not None:
-      path_=getattr(c,'path')
-    else:
-      assert False, 'Either `path` or `envname` arguments should be set'
-
     try:
-      fname=filename or basename(path_)
-      assert len(fname)>0, ("Destination filename shouldn't be empty. "
-                            "Try specifying a valid `filename` argument")
-      partpath=join(o,fname+'.tmp')
+      assert path_ is not None
+      partpath=join(o,fname)+'.tmp'
+      fullpath=join(o,fname)
+
       copyfile(path_, partpath)
-      assert isfile(partpath), f"Can't find output file '{partpath}'"
+      assert isfile(partpath), f"Can't copy '{path_}' to '{partpath}'"
 
       with open(partpath,"rb") as f:
-        realhash=sha256sum(f.read()).hexdigest();
+        realhash=sha256sum(f.read()).hexdigest()
         assert realhash==c.sha256, (f"Expected sha256 checksum '{c.sha256}', "
                                     f"but got '{realhash}'")
-
-      fullpath=join(o,fname)
       rename(partpath,fullpath)
 
       if 'unpack' in c.mode:
-        _unpack(o, fullpath, 'remove' in c.mode)
+        _unpack_inplace(o, fullpath, 'remove' in c.mode)
 
     except Exception as e:
-      error(f"Copying failed:", e)
+      error(f"Copying failed: {e}")
       error(f"Keeping temporary directory {o}")
       raise
 
