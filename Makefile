@@ -44,9 +44,10 @@ typecheck:
 	pytest --mypy -m mypy
 tc: typecheck
 
-.PHONY: coverage
+.PHONY: coverage test
 coverage: .coverage.xml
 	coverage report -m
+test: coverage
 
 .stamp_codecov: .coverage.xml .stamp_check .codecovrc
 	@if ! which codecov >/dev/null ; then \
