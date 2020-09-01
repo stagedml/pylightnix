@@ -46,6 +46,21 @@ error=logger.error
 # | |_) | |_| | | | (_| |
 # |____/ \__,_|_|_|\__,_|
 
+
+class BuildError(Exception):
+  """ Exception class for build errors """
+  def __init__(self,
+               dref:DRef,
+               outgroups:List[Dict[Tag,Path]],
+               exception:Exception,
+               msg:str=''):
+    """ Initialize BUildError instance. """
+    super().__init__(msg)
+    self.dref=dref
+    self.exception=exception
+    self.outgroups:List[Dict[Tag,Path]]=outgroups
+
+
 def mkbuildargs(dref:DRef, context:Context, timeprefix:Optional[str],
     iarg:InstantiateArg, rarg:RealizeArg)->BuildArgs:
   assert_valid_config(store_config(dref))
@@ -68,15 +83,18 @@ def build_wrapper_(
   FIXME: Specify the fact that `B` should be derived from `Build` """
   def _wrapper(dref,context,rarg)->List[Dict[Tag,Path]]:
     timeprefix=timestring() if buildtime else None
-    b=ctr(mkbuildargs(dref,context,timeprefix,{},rarg));
+    b=ctr(mkbuildargs(dref,context,timeprefix,{},rarg))
     try:
-      f(b);
+      f(b)
       build_markstop(b) # type:ignore
-    except:
+    except KeyboardInterrupt:
+      build_markstop(b) # type:ignore
+      raise
+    except Exception as e:
       build_markstop(b) # type:ignore
       error(f"Build wrapper of {dref} raised an exception. Remaining "
             f"build directories are: {getattr(b,'outgroups','<unknown>')}")
-      raise
+      raise BuildError(dref, getattr(b,'outgroups',[]), e)
     return getattr(b,'outgroups')
   return _wrapper
 

@@ -9,7 +9,7 @@ from pylightnix import ( instantiate, DRef, RRef, Path, mklogdir, dirhash,
     tryread, trywrite, assert_recursion_manager_empty, match, latest, best,
     exact, Key, match_latest, match_all, match_some, match_n, realizeMany,
     build_outpaths, scanref_dict, config_dict, promise, mklens, isrref, Config,
-    RConfig, build_setoutpaths, partial, path2rref )
+    RConfig, build_setoutpaths, partial, path2rref, BuildError )
 
 from tests.imports import ( given, Any, Callable, join, Optional, islink,
     isfile, List, randint, sleep, rmtree, system, S_IWRITE, S_IREAD, S_IEXEC,
@@ -87,9 +87,12 @@ def test_build_exception()->None:
       def _realize(b)->None:
         raise ValueError('Oops')
       return mkdrv(m, mkconfig({}), match_only(), build_wrapper(_realize))
+    clo=instantiate(_setting)
     try:
-      rref=realize(instantiate(_setting))
+      realize(clo)
       raise ShouldHaveFailed()
-    except ValueError as e:
-      assert 'Oops' in str(e)
+    except BuildError as e:
+      assert isinstance(e.exception, ValueError)
+      assert e.dref==clo.dref
+      assert str(e.exception)=='Oops'
 
