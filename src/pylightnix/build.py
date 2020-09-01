@@ -62,7 +62,7 @@ class BuildError(Exception):
 
 
 def mkbuildargs(dref:DRef, context:Context, timeprefix:Optional[str],
-    iarg:InstantiateArg, rarg:RealizeArg)->BuildArgs:
+                iarg:InstantiateArg, rarg:RealizeArg)->BuildArgs:
   assert_valid_config(store_config(dref))
   return BuildArgs(dref, context, timeprefix, iarg, rarg)
 
@@ -72,10 +72,9 @@ def mkbuild(dref:DRef, context:Context, buildtime:bool=True)->Build:
 
 B=TypeVar('B')
 
-def build_wrapper_(
-    f:Callable[[B],None],
-    ctr:Callable[[BuildArgs],B],
-    buildtime:bool=True)->Realizer:
+def build_wrapper_(f:Callable[[B],None],
+                   ctr:Callable[[BuildArgs],B],
+                   buildtime:bool=True)->Realizer:
   """ Build Adapter which convers user-defined realizers which use
   [Build](#pylightnix.types.Build) API into a low-level
   [Realizer](#pylightnix.types.Realizer)
@@ -126,7 +125,7 @@ def build_setoutgroups(b:Build,
                        tags:List[Tag]=[Tag('out')])->List[Dict[Tag,Path]]:
   assert nouts>0, f"Attempt to set {nouts} (<=0) output paths"
   assert len(b.outgroups)==0, f"Build outpaths were already set:\n{b.outgroups}"
-  assert len(tags)>0, f"Expecting at least one output tag"
+  assert len(tags)>0, f"Expecting at least one output tag, got {len(tags)}: {tags}"
   import pylightnix.core
   tmp=pylightnix.core.PYLIGHTNIX_TMP
   h=config_hash(build_config(b))[:8]
@@ -164,7 +163,7 @@ def store_buildelta(rref:RRef)->Optional[float]:
   return be-bb if bb is not None and be is not None else None
 
 def build_outpaths(b:Build)->List[Path]:
-  assert len(b.outgroups)>0, f"Build outpaths were not set"
+  assert len(b.outgroups)>0, "Build outgroups(outpaths) were not set"
   return [g[Tag('out')] for g in b.outgroups]
 
 def build_outpath(b:Build)->Path:

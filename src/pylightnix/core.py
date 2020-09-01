@@ -761,7 +761,6 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
       dref=drv.dref
       rrefgs:Optional[List[RRefGroup]]
       if dref in target_deps or dref==target_dref:
-        c=store_config(dref)
         dref_deps=store_deepdeps([dref])
         dref_context={k:v for k,v in context_acc.items() if k in dref_deps}
         if dref in force_interrupt_:
@@ -874,7 +873,7 @@ def latest()->Key:
       with open(join(rref2path(rref),'__buildtime__.txt'),'r') as f:
         t=parsetime(f.read())
         return float(0 if t is None else t)
-    except OSError as e:
+    except OSError:
       return float(0)
   return _key
 
@@ -888,9 +887,9 @@ def best(filename:str)->Key:
     try:
       with open(join(rref2path(rref),filename),'r') as f:
         return float(f.readline())
-    except OSError as e:
+    except OSError:
       return float('-inf')
-    except ValueError as e:
+    except ValueError:
       return float('-inf')
   return _key
 

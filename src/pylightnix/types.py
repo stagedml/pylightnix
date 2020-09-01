@@ -452,4 +452,3 @@ Stage = Callable[[Manager],R]
 
 
 Key = Callable[[RRef],Optional[Union[int,float,str]]]
-
