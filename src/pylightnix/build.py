@@ -254,3 +254,68 @@ def build_path(b:Build, refpath:RefPath, tag:Tag=Tag('out'))->Path:
   return paths[0]
 
 
+def build_environ(b:Build, env:Optional[Any]=None)->dict:
+  """ Prepare environment by adding Build's config to the environment as
+  variables. The function resolves all singular RefPaths into system paths
+  using current Build's context.
+
+  FIXME: Use bash-array syntax for multi-ouput paths """
+
+  if env is None:
+    env=environ
+  acc=dict(deepcopy(env))
+  be=config_dict(build_config(b))
+  for k,v in be.items():
+    if isrefpath(v):
+      syspaths=build_paths(b,v)
+      if len(syspaths)==1:
+        v=syspaths[0]
+    acc[str(k)]=str(v)
+  return acc
+
+
+# def either_wrapper(f:Callable[[Build],None],
+#                    ctr:Callable[[BuildArgs],Build],
+#                    buildtime:bool=True,
+#                    nouts:int=1)->Realizer:
+#   """ This wrapper implements poor-man's `(EitherT Error)` monad on stages.
+#   With this wrapper, stages could become either LEFT (if rasied an error) or
+#   RIGHT (after normal completion). If the stage turns LEFT, then so will be any
+#   of it's dependant stages. """
+
+#   def _either(b:Build)->None:
+#     build_setoutpaths(b, nouts)
+
+#     # Write the specified build status to every output
+#     def _mark_status(status:str, e:Optional[str]=None)->None:
+#       for o in build_outpaths(b):
+#         writestr(join(o,'status_either.txt'), status)
+#         if e is not None:
+#           writestr(join(o,'exception.txt'), e)
+
+#     # Scan all immediate dependecnies of this build, propagate 'LEFT' status
+#     for dref in store_deps([b.dref]):
+#       for rg in context_deref(b.context, dref):
+#         rref = rg[Tag('out')]
+#         status=tryreadstr_def(join(rref2path(rref),'status_either.txt'), 'RIGHT')
+#         if status=='RIGHT':
+#           continue
+#         elif status=='LEFT':
+#           _mark_status('LEFT')
+#           return
+#         else:
+#           assert False, f"Invalid either status {status}"
+
+#     # Execute the original build
+#     try:
+#       f(b)
+#       _mark_status('RIGHT')
+#     except KeyboardInterrupt:
+#       raise
+#     except Exception:
+#       _mark_status('LEFT', format_exc())
+
+#   realizer=build_wrapper_(_either, ctr, buildtime)
+#   return realizer
+
+
