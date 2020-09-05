@@ -17,23 +17,34 @@ Built-in realization wrapper named `Build` provides helpful functions like
 temporary build directory management, time counting, etc.
 """
 
-from pylightnix.imports import ( sha256, deepcopy, isdir, islink, makedirs,
-    join, json_dump, json_load, json_dumps, json_loads, isfile, relpath,
-    listdir, rmtree, mkdtemp, replace, environ, split, re_match, ENOTEMPTY,
-    get_ident, contextmanager, OrderedDict, lstat, maxsize, readlink,
-    getLogger )
-from pylightnix.utils import ( dirhash, assert_serializable, assert_valid_dict,
-    dicthash, scanref_dict, scanref_list, forcelink, timestring, parsetime,
-    datahash, readjson, tryread, encode, dirchmod, dirrm, filero, isrref,
-    isdref, traverse_dict, ispromise, isclaim, concat )
-from pylightnix.types import ( Dict, List, Any, Tuple, Union, Optional,
-    Iterable, IO, Path, Hash, DRef, RRef, RefPath, PromisePath, HashPart,
-    Callable, Context, Name, NamedTuple, Build, RConfig, ConfigAttrs,
-    Derivation, Stage, Manager, Matcher, Realizer, Set, Closure, Generator,
-    Key, TypeVar, BuildArgs, PYLIGHTNIX_PROMISE_TAG, PYLIGHTNIX_CLAIM_TAG,
-    Config, RealizeArg, InstantiateArg, Tag, RRefGroup )
-from pylightnix.core import ( assert_valid_config, store_config, config_cattrs,
-    config_hash, config_name, context_deref, assert_valid_refpath, rref2path )
+from pylightnix.imports import (sha256, deepcopy, isdir, islink, makedirs, join,
+                                json_dump, json_load, json_dumps, json_loads,
+                                isfile, relpath, listdir, rmtree, mkdtemp,
+                                replace, split, re_match, ENOTEMPTY, get_ident,
+                                contextmanager, OrderedDict, lstat, maxsize,
+                                readlink, getLogger, format_exc, environ)
+
+from pylightnix.utils import (dirhash, assert_serializable, assert_valid_dict,
+                              dicthash, scanref_dict, scanref_list, forcelink,
+                              timestring, parsetime, datahash, readjson,
+                              tryread, encode, dirchmod, dirrm, filero, isrref,
+                              isdref, traverse_dict, ispromise, isclaim, concat,
+                              writestr, readstr, tryreadstr_def, isrefpath)
+
+from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional,
+                              Iterable, IO, Path, Hash, DRef, RRef, RefPath,
+                              PromisePath, HashPart, Callable, Context, Name,
+                              NamedTuple, Build, RConfig, ConfigAttrs,
+                              Derivation, Stage, Manager, Matcher, Realizer,
+                              Set, Closure, Generator, Key, TypeVar, BuildArgs,
+                              PYLIGHTNIX_PROMISE_TAG, PYLIGHTNIX_CLAIM_TAG,
+                              Config, RealizeArg, InstantiateArg, Tag,
+                              RRefGroup, SupportsAbs)
+
+from pylightnix.core import (assert_valid_config, store_config, config_cattrs,
+                             config_hash, config_name, context_deref,
+                             assert_valid_refpath, rref2path, store_deps,
+                             config_dict)
 
 logger=getLogger(__name__)
 info=logger.info
@@ -79,7 +90,8 @@ def build_wrapper_(f:Callable[[B],None],
   [Build](#pylightnix.types.Build) API into a low-level
   [Realizer](#pylightnix.types.Realizer)
 
-  FIXME: Specify the fact that `B` should be derived from `Build` """
+  FIXME: Specify the fact that `B` should be derived from `Build`.
+         Maybe just replace `B` with `Build` and require deriving from it? """
   def _wrapper(dref,context,rarg)->List[Dict[Tag,Path]]:
     timeprefix=timestring() if buildtime else None
     b=ctr(mkbuildargs(dref,context,timeprefix,{},rarg))
@@ -203,8 +215,8 @@ def build_paths(b:Build, refpath:RefPath, tag:Tag=Tag('out'))->List[Path]:
   accessing it's [build_context](#pylightnix.build.build_context).
 
   Typically, we configure stages to match only one realization at once, so the
-  returned list often has only one entry. Consider using
-  [build_path](#pylightnix.build.build_path) if this fact is known in advance.
+  returned list often has only one entry. For this case there is a simplified
+  [build_path](#pylightnix.build.build_path) version of this function.
 
   Example:
   ```python
@@ -229,8 +241,8 @@ def build_paths(b:Build, refpath:RefPath, tag:Tag=Tag('out'))->List[Path]:
   assert_valid_refpath(refpath)
   if refpath[0]==b.dref:
     assert len(b.outgroups)>0, (
-        f"Attempt to access build outpaths before they are set. Call"
-        f"`build_outpath(b,num)` first to set their number." )
+      "Attempt to access build outpaths before they are set. Call"
+      "`build_outpath(b,num)` first to set their number." )
     return [Path(join(g[tag], *refpath[1:])) for g in b.outgroups]
   else:
     return [Path(join(rref2path(rg[tag]), *refpath[1:])) for rg in build_deref_(b, refpath[0])]

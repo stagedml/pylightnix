@@ -16,12 +16,14 @@
 through the dependent configurations """
 
 from pylightnix.imports import ( join )
-from pylightnix.types import ( Any, Dict, List, Build, DRef, RRef, Optional,
-    RefPath, Tuple, Union, Path, Context, Tag, NamedTuple, Context, Closure )
-from pylightnix.utils import ( isrefpath, isdref, isrref, tryreadjson )
-from pylightnix.core import ( store_deref, store_config, rref2dref, rref2path,
-    config_dict, store_dref2path, store_context, context_deref, context_add )
-from pylightnix.build import ( build_outpaths, build_config, build_context )
+from pylightnix.types import (Any, Dict, List, Build, DRef, RRef, Optional,
+                              RefPath, Tuple, Union, Path, Context, Tag,
+                              NamedTuple, Context, Closure )
+from pylightnix.utils import (isrefpath, isdref, isrref, tryreadjson )
+from pylightnix.core import (store_deref, store_config, rref2dref, rref2path,
+                             config_dict, store_dref2path, store_context,
+                             context_deref, context_add, tag_out )
+from pylightnix.build import (build_outpaths, build_config, build_context )
 
 LensContext=NamedTuple('LensContext', [('build_path',Optional[Path]),
                                        ('context',Optional[Context]),

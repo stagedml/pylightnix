@@ -16,21 +16,29 @@
 Core Pylightnix definitions
 """
 
-from pylightnix.imports import ( sha256, deepcopy, isdir, islink, makedirs,
-    join, json_dump, json_load, json_dumps, json_loads, isfile, relpath,
-    listdir, rmtree, mkdtemp, replace, environ, split, re_match, ENOTEMPTY,
-    get_ident, contextmanager, OrderedDict, lstat, maxsize, readlink, chain,
-    getLogger )
-from pylightnix.utils import ( dirhash, assert_serializable, assert_valid_dict,
-    dicthash, scanref_dict, scanref_list, forcelink, timestring, parsetime,
-    datahash, readjson, tryread, encode, dirchmod, dirrm, filero, isrref,
-    isdref, traverse_dict, ispromise, isclaim, tryread_def, tryreadjson_def )
-from pylightnix.types import ( Dict, List, Any, Tuple, Union, Optional,
-    Iterable, IO, Path, Hash, DRef, RRef, RefPath, PromisePath, HashPart,
-    Callable, Context, Name, NamedTuple, Build, RConfig, ConfigAttrs,
-    Derivation, Stage, Manager, Matcher, Realizer, Set, Closure, Generator,
-    Key, BuildArgs, PYLIGHTNIX_PROMISE_TAG, PYLIGHTNIX_CLAIM_TAG, Config,
-    RealizeArg, InstantiateArg, Tag, Group, RRefGroup )
+from pylightnix.imports import (sha256, deepcopy, isdir, islink, makedirs,
+                                join, json_dump, json_load, json_dumps,
+                                json_loads, isfile, relpath, listdir, rmtree,
+                                mkdtemp, replace, environ, split, re_match,
+                                ENOTEMPTY, get_ident, contextmanager,
+                                OrderedDict, lstat, maxsize, readlink, chain,
+                                getLogger)
+
+from pylightnix.utils import (dirhash, assert_serializable, assert_valid_dict,
+                              dicthash, scanref_dict, scanref_list, forcelink,
+                              timestring, parsetime, datahash, readjson,
+                              tryread, encode, dirchmod, dirrm, filero, isrref,
+                              isdref, traverse_dict, ispromise, isclaim,
+                              tryread_def, tryreadjson_def, isrefpath)
+
+from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional, Iterable,
+                              IO, Path, Hash, DRef, RRef, RefPath, PromisePath,
+                              HashPart, Callable, Context, Name, NamedTuple,
+                              Build, RConfig, ConfigAttrs, Derivation, Stage,
+                              Manager, Matcher, Realizer, Set, Closure,
+                              Generator, Key, BuildArgs, PYLIGHTNIX_PROMISE_TAG,
+                              PYLIGHTNIX_CLAIM_TAG, Config, RealizeArg,
+                              InstantiateArg, Tag, Group, RRefGroup)
 
 logger=getLogger(__name__)
 info=logger.info
@@ -123,6 +131,10 @@ def mktag(s:str)->Tag:
   for c in ['\n',' ']:
     assert c not in s
   return Tag(s)
+
+def tag_out()->Tag:
+  """ Pre-defined default Tag name """
+  return mktag('out')
 
 def mkgroup(s:str)->Group:
   for c in ['\n',' ']:
@@ -941,8 +953,7 @@ def match_only()->Matcher:
 def assert_valid_refpath(refpath:RefPath)->None:
   error_msg=(f"Value of type {type(refpath)} is not a valid refpath! Expected "
              f"list of strings starting from a valid DRef string, got '{refpath}'")
-  assert len(refpath)>0, error_msg
-  assert_valid_dref(refpath[0])
+  assert isrefpath(refpath), error_msg
 
 def assert_valid_config(c:Config)->Config:
   assert c is not None, "Expected `Config` object, but None was passed"

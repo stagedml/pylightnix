@@ -320,6 +320,7 @@ def readjson(json_path:str)->Any:
 
 A=TypeVar('A')
 def trycatch(f:Callable[[],A], default:A)->A:
+  """ FIXME: don't handle all exceptions, handle only string-related ones """
   try:
     return f()
   except KeyboardInterrupt:
@@ -330,8 +331,14 @@ def trycatch(f:Callable[[],A], default:A)->A:
 def tryreadjson(json_path:str)->Optional[Any]:
   return trycatch(partial(readjson,json_path=json_path),None)
 
+def tryreadstr(path:str)->Optional[str]:
+  return trycatch(partial(readstr, path=path),None)
+
 def tryreadjson_def(json_path:str, default:Any)->Any:
   return trycatch(partial(readjson,json_path=json_path),default)
+
+def tryreadstr_def(path:str, default:str)->str:
+  return trycatch(partial(readstr, path=path),default)
 
 def tryread(path:Path)->Optional[str]:
   return trycatch(partial(readstr,path=path),None)

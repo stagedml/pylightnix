@@ -35,7 +35,7 @@ def mknode(m:Manager,
   config['name']=name
   assert '__artifacts__' not in config, \
       "config shouldn't contain reserved field '__artifacts__'"
-  config.update({'__artifacts__':{an:Hash(datahash([av])) \
+  config.update({'__artifacts__':{an:Hash(datahash([av]))
                  for (an,av) in artifacts.items()}})
   def _realize(b:Build)->None:
     o=build_outpath(b)
@@ -53,12 +53,11 @@ def mkfile(m:Manager,
   return mknode(m, sources={'output':[promise,filename_]},
                    artifacts={filename_:contents})
 
-def redefine(
-    stage:Any,
-    new_config:Callable[[dict],None]=lambda x:None,
-    new_matcher:Optional[Matcher]=None,
-    new_realizer:Optional[Realizer]=None,
-    check_promises:bool=True)->Any:
+def redefine(stage:Any,
+             new_config:Callable[[dict],None]=lambda x:None,
+             new_matcher:Optional[Matcher]=None,
+             new_realizer:Optional[Realizer]=None,
+             check_promises:bool=True)->Any:
   """ Define a new Derivation based on the existing one, by updating it's
   config, optionally re-writing it's matcher, or it's realizer.
 

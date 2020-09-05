@@ -8,3 +8,4 @@ from pylightnix.inplace import *
 from pylightnix.bashlike import *
 from pylightnix.repl import *
 from pylightnix.lens import *
+from pylightnix.either import *

@@ -1,7 +1,7 @@
 from pylightnix import ( Manager, Path, store_initialize, DRef, Context,
     Optional, mkbuild, build_outpath, store_rrefs, RRef, mkconfig,
     Name, mkdrv, rref2path, dirchmod, promise, Config, RealizeArg, Tag,
-    RRefGroup )
+    RRefGroup, tryreadstr_def)
 from tests.imports import ( rmtree, join, makedirs, listdir, Callable,
     contextmanager, List, Dict,  Popen, PIPE )
 
@@ -41,14 +41,17 @@ def setup_inplace_reset()->None:
   import pylightnix.inplace
   pylightnix.inplace.PYLIGHTNIX_MANAGER=Manager()
 
-def mktestnode_nondetermenistic(m:Manager, sources:dict,
+def mktestnode_nondetermenistic(m:Manager,
+                                sources:dict,
                                 nondet:Callable[[],int],
-                                buildtime:bool=True)->DRef:
+                                buildtime:bool=True,
+                                realize_wrapper=None,
+                                promise_strength=promise)->DRef:
   """ Emulate non-determenistic builds. `nondet` is expected to return
   different values from build to build """
   def _instantiate()->Config:
     c=mkconfig(sources)
-    c.val['promise_artifact']=[promise,'artifact']
+    c.val['promise_artifact']=[promise_strength,'artifact']
     return c
   def _realize(dref:DRef, context:Context, ra:RealizeArg)->List[Dict[Tag,Path]]:
     b=mkbuild(dref, context, buildtime=buildtime)
@@ -60,18 +63,25 @@ def mktestnode_nondetermenistic(m:Manager, sources:dict,
     max_gr:Optional[List[RRefGroup]]=None
     for gr in store_rrefs(dref, context):
       rref=gr[Tag('out')]
-      with open(join(rref2path(rref),'artifact'),'r') as f:
-        i=int(f.read())
-        if i>max_i:
-          max_i=i
-          max_gr=[gr]
+      i=int(tryreadstr_def(join(rref2path(rref),'artifact'), "0"))
+      if i>max_i:
+        max_i=i
+        max_gr=[gr]
     return max_gr
-  return mkdrv(m, _instantiate(), _match, _realize)
+
+  rw=(lambda x:x) if realize_wrapper is None else realize_wrapper
+  return mkdrv(m, _instantiate(), _match, rw(_realize))
 
 
-def mktestnode(m:Manager, sources:dict, buildtime=True)->DRef:
+def mktestnode(m:Manager,
+               sources:dict,
+               buildtime=True,
+               realize_wrapper=None)->DRef:
   """ Build a test node with a given config and fixed build artifact """
-  return mktestnode_nondetermenistic(m, sources, lambda:0, buildtime)
+  return mktestnode_nondetermenistic(m, sources,
+                                     lambda:0,
+                                     buildtime,
+                                     realize_wrapper)
 
 
 def pipe_stdout(args:List[str], **kwargs)->str:

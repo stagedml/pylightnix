@@ -18,8 +18,8 @@ from tests.imports import ( given, Any, Callable, join, Optional, islink,
 from tests.generators import (
     rrefs, drefs, configs, dicts )
 
-from tests.setup import (
-    ShouldHaveFailed, setup_testpath, setup_storage, mktestnode_nondetermenistic, mktestnode )
+from tests.setup import ( ShouldHaveFailed, setup_testpath, setup_storage,
+                         mktestnode_nondetermenistic, mktestnode )
 
 
 
@@ -56,7 +56,7 @@ def test_build_cattrs()->None:
         return mkconfig({'a':1,'b':2})
       def _realize(b)->None:
         c = build_cattrs(b)
-        o = build_outpath(b)
+        _ = build_outpath(b)
         assert hasattr(c,'a')
         assert hasattr(c,'b')
         assert not hasattr(c,'c')
@@ -75,7 +75,7 @@ def test_build_name()->None:
       def _realize(b)->None:
         n=build_name(b)
         assert n=='foobar'
-        o=build_outpath(b)
+        _=build_outpath(b)
       return mkdrv(m, mkconfig({'name':'foobar'}), match_only(), build_wrapper(_realize))
     rref=realize(instantiate(_setting))
     assert isrref(rref)
