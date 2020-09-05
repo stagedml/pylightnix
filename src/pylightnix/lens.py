@@ -56,7 +56,14 @@ def val2path(v:Any, ctx:LensContext)->Path:
   """ Resolve the current value of Lens into system path. Assert if it is not
   possible or if the result is associated with multiple paths."""
   if isdref(v):
-    return store_dref2path(DRef(v))
+    dref=DRef(v)
+    context=ctx[1]
+    if context is not None:
+      if dref in context:
+        rgs=context_deref(context, dref)
+        assert len(rgs)==1, "Lens doesn't support multirealization dependencies"
+        return Path(rref2path(rgs[0][tag_out()]))
+    return store_dref2path(dref)
   elif isrref(v):
     return rref2path(RRef(v))
   elif isrefpath(v):
