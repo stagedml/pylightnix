@@ -1,5 +1,8 @@
 from pylightnix import (instantiate, DRef, RRef, assert_valid_rref, Manager,
-                        realize, mklens, either_wrapper, claim, readstr)
+                        Build, realize, mklens, either_wrapper, claim, readstr,
+                        mkconfig, mkdrv, match_only, build_wrapper,
+                        build_setoutpaths, either_status, either_isRight,
+                        either_isLeft)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink,
                            isfile, List, randint, sleep, rmtree, system,
@@ -38,4 +41,20 @@ def test_either()->None:
     assert readstr(join(mklens(rref).papa.syspath, 'status_either.txt'))=='LEFT'
     assert isfile(join(mklens(rref).papa.syspath, 'exception.txt'))
 
+def test_either_success()->None:
+  with setup_storage('test_either_success'):
+    def _setting(m:Manager)->DRef:
+      n1 = mkeither(m, {'name':'n1', 'foo':'bar'})
+      def _make(b:Build):
+        build_setoutpaths(b, 1)
+        assert mklens(b).name.val=='n2'
+      return mkdrv(m, mkconfig({'name':'n2', 'maman':n1}),
+                   match_only(), either_wrapper(build_wrapper(_make)))
+
+    rref = realize(instantiate(_setting))
+    assert_valid_rref(rref)
+    assert mklens(rref).maman.name.val=='n1'
+    assert mklens(rref).name.val=='n2'
+    assert either_isRight(rref), either_status(rref)
+    assert not either_isLeft(rref), either_status(rref)
 

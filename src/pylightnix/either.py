@@ -8,7 +8,7 @@ from pylightnix.core import (assert_valid_config, store_config, config_cattrs,
                              assert_valid_refpath, rref2path, tag_out,
                              store_deps)
 
-from pylightnix.utils import (readstr, writestr, tryreadstr_def)
+from pylightnix.utils import (readstr, writestr, readstr, tryreadstr_def)
 
 
 def either_wrapper(f:Realizer)->Realizer:
@@ -38,8 +38,8 @@ def either_wrapper(f:Realizer)->Realizer:
           writestr(join(o,'exception.txt'), exception)
 
     # Scan all immediate dependecnies of this build, propagate 'LEFT' status
-    for dref in store_deps([dref]):
-      for rg in context_deref(ctx, dref):
+    for dref_dep in store_deps([dref]):
+      for rg in context_deref(ctx, dref_dep):
         rref = rg[tag_out()]
         status=tryreadstr_def(join(rref2path(rref),'status_either.txt'), 'RIGHT')
         if status=='RIGHT':
@@ -66,4 +66,12 @@ def either_wrapper(f:Realizer)->Realizer:
 
   return _either
 
+def either_status(rref:RRef)->str:
+  return readstr(join(rref2path(rref),'status_either.txt'))
+
+def either_isRight(rref:RRef)->bool:
+  return either_status(rref)=='RIGHT'
+
+def either_isLeft(rref:RRef)->bool:
+  return either_status(rref)=='LEFT'
 
