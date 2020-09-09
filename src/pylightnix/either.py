@@ -10,6 +10,10 @@ from pylightnix.core import (assert_valid_config, store_config, config_cattrs,
 
 from pylightnix.utils import (readstr, writestr, readstr, tryreadstr_def)
 
+# FIXME: Get rid of this dependency. Maybe we need to define core exception
+# `RealizeError`
+from pylightnix.build import BuildError
+
 
 def either_wrapper(f:Realizer)->Realizer:
   """ This wrapper implements poor-man's `(EitherT Error)` monad on stages.
@@ -57,6 +61,9 @@ def either_wrapper(f:Realizer)->Realizer:
       _mark_status(outpaths, 'RIGHT')
     except KeyboardInterrupt:
       raise
+    except BuildError as be:
+      outpaths=be.outgroups
+      _mark_status(outpaths, 'LEFT', format_exc())
     except Exception:
       outpaths=[{tag_out(): Path(mkdtemp(prefix="either_tmp", dir=tmp))}]
       _mark_status(outpaths, 'LEFT', format_exc())

@@ -2,13 +2,13 @@ from pylightnix import (instantiate, DRef, RRef, assert_valid_rref, Manager,
                         Build, realize, mklens, either_wrapper, claim, readstr,
                         mkconfig, mkdrv, match_only, build_wrapper,
                         build_setoutpaths, either_status, either_isRight,
-                        either_isLeft)
+                        either_isLeft, realizeMany, rref2path, match_some)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink,
                            isfile, List, randint, sleep, rmtree, system,
                            S_IWRITE, S_IREAD, S_IEXEC, chmod, Popen, PIPE)
 
-from tests.generators import (rrefs, drefs, configs, dicts)
+from tests.generators import (drefs, configs, dicts)
 
 from tests.setup import (ShouldHaveFailed, setup_testpath, setup_storage,
                          mktestnode_nondetermenistic, mktestnode)
@@ -57,4 +57,20 @@ def test_either_success()->None:
     assert mklens(rref).name.val=='n2'
     assert either_isRight(rref), either_status(rref)
     assert not either_isLeft(rref), either_status(rref)
+
+def test_either_builderror()->None:
+  with setup_storage('test_either_builderror'):
+    def _setting(m:Manager)->DRef:
+      def _make(b:Build):
+        build_setoutpaths(b, 2)
+        raise ValueError('Ooops')
+      return mkdrv(m, mkconfig({'name':'pigfood'}),
+                   match_some(n=2), either_wrapper(build_wrapper(_make)))
+
+    rrefs = realizeMany(instantiate(_setting))
+    assert len(rrefs)==2
+    for rref in rrefs:
+      assert_valid_rref(rref)
+      assert either_isLeft(rref), either_status(rref)
+      assert isfile(join(rref2path(rref),'exception.txt'))
 
