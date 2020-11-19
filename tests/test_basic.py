@@ -3,7 +3,7 @@ from pylightnix import ( instantiate, DRef, RRef, Path, mklogdir, dirhash,
     store_gc, assert_valid_hash, assert_valid_config, Manager, mkcontext,
     store_rrefs, mkdref, mkrref, unrref, undref, realize, rref2dref,
     store_initialize, mkconfig, timestring, parsetime, traverse_dict, isrref,
-    isdref, scanref_dict, filehash )
+    isdref, scanref_dict, filehash, readjson, writejson )
 
 from tests.imports import ( given, text, isdir, isfile, join, from_regex,
     islink, get_executable, run, dictionaries, binary, one_of, integers,
@@ -155,5 +155,10 @@ def test_traverse(d)->None:
   assert len(rrefs)==0
   assert len(drefs)==replacements, f"{d}, {replacements}"
 
-
+@given(d=dicts())
+def test_readwrite(d)->None:
+  with setup_storage('test_readwrite') as p:
+    f=join(p,'testfile.json')
+    writejson(f,d)
+    assert str(readjson(f)) == str(d)
 

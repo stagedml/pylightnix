@@ -314,6 +314,9 @@ def writestr(path:str, data:str)->None:
   with open(path,'w') as f:
     f.write(data)
 
+def writejson(path:str, data, indent:Optional[int]=None)->None:
+  writestr(path, json_dumps(data, indent=indent))
+
 def readjson(json_path:str)->Any:
   with open(json_path, "r") as f:
     return json_load(f)
