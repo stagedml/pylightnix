@@ -791,10 +791,10 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
           rrefgs_built=[store_realize_group(dref,dref_context,g) for g in gpaths]
           rrefgs_matched=drv.matcher(dref,dref_context)
           assert rrefgs_matched is not None, (
-            f"Derivation {dref}: Matcher repeatedly asked the core to "
-            f"realize. Probably, realizer doesn't match the matcher. "
+            f"Matcher of {dref} repeatedly asked the core to realize"
+            f"Probably, it's realizer doesn't match the matcher. "
             f"In particular, the follwoing just-built rrefs are "
-            f"unmatched: {rrefgs_built}" )
+            f"marked as unmatched: {rrefgs_built}" )
           if (set(groups2rrefs(rrefgs_built)) & set(groups2rrefs(rrefgs_matched))) == set() and \
              (set(groups2rrefs(rrefgs_built)) | set(groups2rrefs(rrefgs_matched))) != set():
             warning(f"None of the newly obtained realizations of "
