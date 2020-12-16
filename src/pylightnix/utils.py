@@ -24,9 +24,10 @@ from pylightnix.imports import ( datetime, gmtime, timegm, join, makedirs,
     S_IWGRP, S_IWOTH, rmtree, rename, getsize, readlink, partial, copytree,
     chain, getLogger )
 
-from pylightnix.types import ( Hash, Path, List, Any, Optional, Iterable, IO,
-    DRef, RRef, Tuple, Callable, PYLIGHTNIX_PROMISE_TAG, PYLIGHTNIX_CLAIM_TAG,
-    TypeVar )
+from pylightnix.types import (Union, Hash, Path, List, Any, Optional,
+                              Iterable, IO, DRef, RRef, Tuple, Callable,
+                              PYLIGHTNIX_PROMISE_TAG, PYLIGHTNIX_CLAIM_TAG,
+                              TypeVar)
 
 from pylightnix.tz import tzlocal
 
@@ -314,7 +315,9 @@ def writestr(path:str, data:str)->None:
   with open(path,'w') as f:
     f.write(data)
 
-def writejson(path:str, data, indent:Optional[int]=None)->None:
+def writejson(path:str,
+              data:Union[dict,list,int,float,bool],
+              indent:Optional[int]=None)->None:
   writestr(path, json_dumps(data, indent=indent))
 
 def readjson(json_path:str)->Any:

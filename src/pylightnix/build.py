@@ -70,7 +70,8 @@ class BuildError(Exception):
     self.dref=dref
     self.exception=exception
     self.outgroups:List[Dict[Tag,Path]]=outgroups
-
+  def __str__(self):
+    return f"Failed to realize '{self.dref}': {self.exception}"
 
 def mkbuildargs(dref:DRef, context:Context, timeprefix:Optional[str],
                 iarg:InstantiateArg, rarg:RealizeArg)->BuildArgs:
@@ -175,7 +176,9 @@ def store_buildelta(rref:RRef)->Optional[float]:
   return be-bb if bb is not None and be is not None else None
 
 def build_outpaths(b:Build)->List[Path]:
-  assert len(b.outgroups)>0, "Build outgroups(outpaths) were not set"
+  assert len(b.outgroups)>0, (
+    f"Attempting to access output paths, but they were not declared. "
+    f"Did you call `build_setoutpaths`?")
   return [g[Tag('out')] for g in b.outgroups]
 
 def build_outpath(b:Build)->Path:
