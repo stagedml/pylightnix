@@ -16,13 +16,13 @@
 """ Random utils and helper functions """
 
 
-from pylightnix.imports import ( datetime, gmtime, timegm, join, makedirs,
+from pylightnix.imports import (datetime, gmtime, timegm, join, makedirs,
     symlink, basename, mkdir, isdir, isfile, islink, remove, sha256, EEXIST,
     json_dumps, json_loads, makedirs, replace, dirname, walk, abspath,
     normalize, re_sub, split, json_load, find_executable, chmod, S_IWRITE,
     S_IREAD, S_IRGRP, S_IROTH, S_IXUSR, S_IXGRP, S_IXOTH, stat, ST_MODE,
     S_IWGRP, S_IWOTH, rmtree, rename, getsize, readlink, partial, copytree,
-    chain, getLogger )
+    chain, getLogger)
 
 from pylightnix.types import (Union, Hash, Path, List, Any, Optional,
                               Iterable, IO, DRef, RRef, Tuple, Callable,
@@ -59,7 +59,7 @@ def parsetime(time:str)->Optional[float]:
   format is fixed and compatible with `timestring`. """
   try:
     return datetime.strptime(time,PYLIGHTNIX_TIME).timestamp()
-  except ValueError as e:
+  except ValueError:
     return None
   except OverflowError:
     return None

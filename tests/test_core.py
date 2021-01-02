@@ -10,11 +10,11 @@ from pylightnix import ( instantiate, DRef, RRef, Path, mklogdir, dirhash,
     match, latest, best, exact, Key, match_latest, match_all, match_some,
     match_n, realizeMany, build_outpaths, scanref_dict, config_dict, promise,
     mklens, isrref, Config, RConfig, build_setoutpaths, partial, path2rref, Tag,
-    Group, RRefGroup, concat )
+    Group, RRefGroup, concat, linkrrefs )
 
-from tests.imports import ( given, Any, Callable, join, Optional, islink,
-    isfile, List, randint, sleep, rmtree, system, S_IWRITE, S_IREAD, S_IEXEC,
-    chmod, Popen, PIPE )
+from tests.imports import (given, Any, Callable, join, Optional, islink,
+                           isfile, islink, List, randint, sleep, rmtree, system,
+                           S_IWRITE, S_IREAD, S_IEXEC, chmod, Popen, PIPE)
 
 from tests.generators import (
     rrefs, drefs, configs, dicts )
@@ -540,5 +540,15 @@ def test_path2rref()->None:
     for x in [path2rref(Path('')),path2rref(Path('foo'))]:
       assert x is None
 
+def test_linkrrefs()->None:
+  with setup_storage('test_linkrefs') as p:
+    s1=partial(mktestnode, sources={'name':'1', 'promise':[promise,'artifact']})
+    rref1=realize(instantiate(s1))
+    l=linkrrefs([rref1, rref1], destdir=p)
+    assert len(l)==2
+    assert str(l[0])==join(p,'result-1')
+    assert islink(join(p,'result-1'))
+    l=linkrrefs([rref1], destdir=p, withtime=True)
+    assert p in l[0]
 
 

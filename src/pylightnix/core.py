@@ -70,7 +70,7 @@ PYLIGHTNIX_STORE=join(PYLIGHTNIX_ROOT, f'store-v{PYLIGHTNIX_STORE_VERSION}')
 #: Set the regular expression pattern for valid name characters.
 PYLIGHTNIX_NAMEPAT="[a-zA-Z0-9_-]"
 
-#: Reserved file names which are treated specially be the core. Users should
+#: Reserved file names are treated specially be the core. Users should
 #: not normally create or alter files with this names.
 PYLIGHTNIX_RESERVED=['context.json','group.json']
 
@@ -819,6 +819,26 @@ def mksymlink(rref:RRef, tgtpath:Path, name:str, withtime=True)->Path:
   symlink=Path(join(tgtpath,f'{timetag}{name}'))
   forcelink(Path(relpath(rref2path(rref), tgtpath)), symlink)
   return symlink
+
+
+def linkrref(rref:RRef, destdir:Optional[Path]=None,
+             withtime:bool=False)->Path:
+  """ Helper function that creates a symbolic link to a particular realization
+  reference. The link is created under the current directory by default or under
+  the `destdir` directory. """
+  tgtpath=destdir if destdir is not None else '.'
+  linkname='result-'+config_name(store_config(rref))
+  makedirs(tgtpath, exist_ok=True)
+  return mksymlink(rref, tgtpath=tgtpath, name=linkname, withtime=withtime)
+
+
+def linkrrefs(rrefs:Iterable[RRef], destdir:Optional[Path]=None,
+              withtime:bool=False)->List[Path]:
+  """ A Wrapper around `linkrref` for linking a set of RRefs. """
+  acc=[]
+  for r in rrefs:
+    acc.append(linkrref(r, destdir=destdir, withtime=withtime))
+  return acc
 
 
 #  __  __       _       _
