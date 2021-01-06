@@ -51,7 +51,7 @@ def test_repl_basic():
     assert repl_rref(rh) is not None
 
 
-def test_repl_recursion():
+def test_repl_race():
   with setup_storage('test_repl_recursion'):
 
     def _setting(m:Manager)->DRef:
@@ -65,14 +65,9 @@ def test_repl_recursion():
     assert rh.dref==clo.dref
 
     clo2=instantiate(_setting)
-    try:
-      rref2=realize(clo2)
-      raise ShouldHaveFailed("Recursion manager should have alerted")
-    except AssertionError:
-      pass
+    rref2=realize(clo2) # Realize dref while repl_realizing same dref
 
     repl_cancel(rh)
-    rref2=realize(clo2)
     assert_valid_rref(rref2)
 
 

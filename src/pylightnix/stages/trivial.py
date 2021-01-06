@@ -93,8 +93,13 @@ def redefine(stage:Any,
                              else m.builders[dref].matcher
     new_realizer_=new_realizer if new_realizer is not None\
                                else m.builders[dref].realizer
-    return mkdrv(m, mkconfig(d), new_matcher_, new_realizer_,
-      check_promises=check_promises)
+    m.in_redefine=True
+    try:
+      dref=mkdrv(m, mkconfig(d), new_matcher_, new_realizer_,
+        check_promises=check_promises)
+    finally:
+      m.in_redefine=False
+    return dref
   return _new_stage
 
 def realized(stage:Any)->Stage:

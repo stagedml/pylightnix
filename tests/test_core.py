@@ -1,16 +1,20 @@
 from pylightnix import ( instantiate, DRef, RRef, Path, mklogdir, dirhash,
-    assert_valid_dref, assert_valid_rref, store_deps, store_deepdeps, store_gc,
-    assert_valid_hash, assert_valid_config, Manager, mkcontext,
-    store_realize_group, store_rrefs, mkdref, mkrref, unrref, undref, realize,
-    rref2dref, store_config, mkconfig, Build, Context, build_outpath,
-    match_only, mkdrv, store_deref, rref2path, store_rrefs_, config_cattrs,
-    mksymlink, store_cattrs, build_deref, build_path, mkrefpath, build_config,
-    store_drefs, store_rrefs, build_wrapper, recursion_manager, build_cattrs,
-    build_name, match_best, tryread, trywrite, assert_recursion_manager_empty,
-    match, latest, best, exact, Key, match_latest, match_all, match_some,
-    match_n, realizeMany, build_outpaths, scanref_dict, config_dict, promise,
-    mklens, isrref, Config, RConfig, build_setoutpaths, partial, path2rref, Tag,
-    Group, RRefGroup, concat, linkrrefs )
+                        assert_valid_dref, assert_valid_rref, store_deps,
+                        store_deepdeps, store_gc, assert_valid_hash,
+                        assert_valid_config, Manager, mkcontext,
+                        store_realize_group, store_rrefs, mkdref, mkrref,
+                        unrref, undref, realize, rref2dref, store_config,
+                        mkconfig, Build, Context, build_outpath, match_only,
+                        mkdrv, store_deref, rref2path, store_rrefs_,
+                        config_cattrs, mksymlink, store_cattrs, build_deref,
+                        build_path, mkrefpath, build_config, store_drefs,
+                        store_rrefs, build_wrapper, build_cattrs, build_name,
+                        match_best, tryread, trywrite, match, latest, best,
+                        exact, Key, match_latest, match_all, match_some,
+                        match_n, realizeMany, build_outpaths, scanref_dict,
+                        config_dict, promise, mklens, isrref, Config, RConfig,
+                        build_setoutpaths, partial, path2rref, Tag, Group,
+                        RRefGroup, concat, linkrrefs, instantiate_ )
 
 from tests.imports import (given, Any, Callable, join, Optional, islink,
                            isfile, islink, List, randint, sleep, rmtree, system,
@@ -80,18 +84,18 @@ def test_realize_dependencies()->None:
     assert store_deepdeps([n2,n3]) == set([n1])
     assert store_deepdeps([toplevel]) == set([n1,n2,n3])
 
-def test_detect_rref_deps()->None:
-  with setup_storage('test_detect_rref_deps'):
-    rref=realize(instantiate(mktestnode,{'a':1}))
-    clo=instantiate(mktestnode,{'a':1,'maman':rref})
-    _,rrefs=scanref_dict(config_dict(store_config(clo.dref)))
-    assert len(rrefs)>0
+# def test_detect_rref_deps()->None:
+#   with setup_storage('test_detect_rref_deps'):
+#     rref=realize(instantiate(mktestnode,{'a':1}))
+#     clo=instantiate(mktestnode,{'a':1,'maman':rref})
+#     _,rrefs=scanref_dict(config_dict(store_config(clo.dref)))
+#     assert len(rrefs)>0
 
 def test_no_dref_deps_without_realizers()->None:
   with setup_storage('test_no_dref_deps_without_realizers'):
     try:
       clo=instantiate(mktestnode,{'a':1})
-      rref=realize(instantiate(mktestnode,{'maman':clo.dref}))
+      _=realize(instantiate(mktestnode,{'maman':clo.dref}))
       raise ShouldHaveFailed("We shouldn't share DRefs across managers")
     except AssertionError:
       pass
@@ -132,13 +136,13 @@ def test_realize_readonly()->None:
       with open(join(rref2path(rref1),'newfile'),'w') as f:
         f.write('foo')
       raise ShouldHaveFailed('No write-protection??')
-    except OSError as err:
+    except OSError:
       pass
 
     try:
       rmtree(rref2path(rref1))
       raise ShouldHaveFailed('No remove-protection??')
-    except OSError as err:
+    except OSError:
       pass
 
     def _realize(b:Build):
@@ -162,8 +166,6 @@ def test_minimal_closure()->None:
       n2=_somenode(m)
       n3=mktestnode(m,{'maman':n1,'papa':n2})
       return n3
-
-    assert_recursion_manager_empty()
 
     rref1=realize(instantiate(_somenode))
     rref=realize(instantiate(_anothernode))
@@ -202,40 +204,32 @@ def test_realize_nondetermenistic()->None:
     n2_gr2 = store_deref(rref2, n2)
     assert n2_gr1 != n2_gr2
 
-def test_no_recursive_realize()->None:
-  with setup_storage('test_no_recursive_realize'):
 
+def test_no_rref_deps()->None:
+  with setup_storage('test_no_rref_deps'):
     def _setup(m):
-      rref1 = realize(instantiate(_setup))
-      n2 = mktestnode(m,{'bogus':rref1})
+      rref=realize(instantiate(mktestnode, {'foo':'bar'}))
+      n2 = mktestnode(m,{'bogus':rref})
       return n2
-
     try:
-      rref = realize(instantiate(_setup))
-      raise ShouldHaveFailed(f"Should fail, but got {rref}")
+      dref = instantiate(_setup)
+      raise ShouldHaveFailed(f"Should fail, but got {dref}")
     except AssertionError:
       pass
+
 
 def test_no_recursive_instantiate()->None:
   with setup_storage('test_no_recursive_instantiate'):
-
     def _setup(m):
-      derivs = instantiate(_setup)
+      derivs = instantiate_(m,_setup)
       n2 = mktestnode(m,{'bogus':derivs.dref})
       return n2
-
     try:
-      rref = instantiate(_setup)
-      raise ShouldHaveFailed(f"Should fail, but got {rref}")
+      dref = instantiate(_setup)
+      raise ShouldHaveFailed(f"Should fail, but got {dref}")
     except AssertionError:
       pass
 
-def test_recursion_manager()->None:
-  try:
-    with recursion_manager('foo'): pass
-    raise ShouldHaveFailed(f"Should have failed")
-  except AssertionError:
-    pass
 
 def test_config_ro():
   d={'a':1,'b':33}

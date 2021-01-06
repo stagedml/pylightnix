@@ -85,5 +85,5 @@ def mktestnode(m:Manager,
 
 
 def pipe_stdout(args:List[str], **kwargs)->str:
-  return Popen(args, stdout=PIPE, **kwargs).stdout.read().decode() #type:ignore
+  return Popen(args, stdout=PIPE, **kwargs).stdout.read().decode() # type:ignore
 

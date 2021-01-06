@@ -150,6 +150,7 @@ def mkgroup(s:str)->Group:
 
 
 def mkconfig(d:dict)->Config:
+  """ FIXME: Should we assert on invalid Config here? """
   return Config(assert_valid_dict(d,'dict'))
 
 def config_dict(cp:Config)->dict:
@@ -425,7 +426,7 @@ def store_instantiate(c:Config)->DRef:
   assert_store_initialized()
   # c=cp.config
   assert_valid_config(c)
-  warn_rref_deps(c)
+  assert_rref_deps(c)
 
   refname=config_name(c)
   dhash=config_hash(c)
@@ -604,8 +605,12 @@ def mkdrv(m:Manager,
   """
   dref=store_instantiate(config)
   if dref in m.builders:
-    warning((f"Overwriting either the matcher or the realizer of '{dref}'. "
-             f"RConfig:\n{store_config_(dref)}"))
+    if not m.in_redefine:
+      warning((f"Overwriting either the matcher or the realizer of derivation "
+               f"'{dref}'. It could be intended (e.g. a result of `redefine`), "
+               f"but now we see a different situation. Could it be  "
+               f"a recursive call to `instantiate`?\n"
+               f"Derivation config:\n{store_config_(dref)}"))
 
   def _promise_aware(realizer)->Realizer:
     def _realizer(dref:DRef,ctx:Context,rarg:RealizeArg)->List[Dict[Tag,Path]]:
@@ -621,47 +626,17 @@ def mkdrv(m:Manager,
                               realizer=_promise_aware(realizer) if check_promises else realizer)
   return dref
 
-#: `PYLIGHTNIX_RECURSION` encodes the state of [recursion
-#: manager](#pylightnix.core.recursion_manager), do not modify!
-PYLIGHTNIX_RECURSION:Dict[Any,List[str]]={}
-
-@contextmanager
-def recursion_manager(funcname:str):
-  """ Recursion manager is a helper context manager which detects and prevents
-  unwanted recursions. Currently, the following kinds of recursions are catched:
-
-  - `instantiate() -> <config> -> instantiate()`. Instantiate stores Derivation
-    in Manager and returns a DRef as a proof that given Manager contains given
-    Derivation. Recursive call to instantiate would break this idea by
-    introducing nested Managers.
-  - `realize() -> <realizer> -> realize()`. Sometimes this recursion is OK,
-    but in some cases it may lead to infinite loop, so we deny it completely for now.
-  - `realize() -> <realizer> -> instantiate()`. Instantiate produces new DRefs,
-    while realize should only work with existing DRefs which form a Closure.
-  """
-  global PYLIGHTNIX_RECURSION
-  if get_ident() not in PYLIGHTNIX_RECURSION:
-    PYLIGHTNIX_RECURSION[get_ident()]=[]
-  error_msg=(f"Recursion manager alert, during an attempt to call '{funcname}'. "
-             f"Contents of the recursion stack: {PYLIGHTNIX_RECURSION[get_ident()]}")
-  if funcname=='instantiate':
-    assert 'instantiate' not in PYLIGHTNIX_RECURSION[get_ident()], error_msg
-  elif funcname=='realize':
-    assert 'instantiate' not in PYLIGHTNIX_RECURSION[get_ident()], error_msg
-    assert 'realize' not in PYLIGHTNIX_RECURSION[get_ident()], error_msg
-  else:
-    assert False, f"recursion_manager doesn't contain '{funcname}' rules"
-  PYLIGHTNIX_RECURSION[get_ident()].append(funcname)
-  try:
-    yield ()
-  finally:
-    del PYLIGHTNIX_RECURSION[get_ident()][-1]
-
 def instantiate_(m:Manager, stage:Any, *args, **kwargs)->Closure:
-  with recursion_manager('instantiate'):
+  assert not m.in_instantiate, (
+    "Recursion detected. `instantiate` should not be called recursively "
+    "by stage functions with the same `Manager` as argument")
+  m.in_instantiate=True
+  try:
     target_dref=stage(m,*args,**kwargs)
-    assert_have_realizers(m, [target_dref])
-    return Closure(target_dref,list(m.builders.values()))
+  finally:
+    m.in_instantiate=False
+  assert_have_realizers(m,[target_dref])
+  return Closure(target_dref,list(m.builders.values()))
 
 def instantiate(stage:Any, *args, **kwargs)->Closure:
   """ Instantiate takes the [Stage](#pylightnix.types.Stage) function and
@@ -765,45 +740,44 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
   with appropriate failing realizer on every Derivation. """
   assert_valid_closure(closure)
   force_interrupt_:Set[DRef]=set(force_interrupt)
-  with recursion_manager('realize'):
-    context_acc:Context={}
-    target_dref=closure.dref
-    target_deps=store_deepdeps([target_dref])
-    for drv in closure.derivations:
-      dref=drv.dref
-      rrefgs:Optional[List[RRefGroup]]
-      if dref in target_deps or dref==target_dref:
-        dref_deps=store_deepdeps([dref])
-        dref_context={k:v for k,v in context_acc.items() if k in dref_deps}
-        if dref in force_interrupt_:
-          rrefgs,abort=yield (dref,dref_context,drv,realize_args.get(dref,{}))
-          if abort:
-            return []
-        else:
-          rrefgs=drv.matcher(dref,dref_context)
-        if rrefgs is None:
-          assert dref not in assert_realized, (
-            f"Stage '{dref}' was assumed to be already realized. "
-            f"Unfortunately, it is not the case. Config:\n"
-            f"{store_config(dref)}"
-            )
-          gpaths:List[Dict[Tag,Path]]=drv.realizer(dref,dref_context,realize_args.get(dref,{}))
-          rrefgs_built=[store_realize_group(dref,dref_context,g) for g in gpaths]
-          rrefgs_matched=drv.matcher(dref,dref_context)
-          assert rrefgs_matched is not None, (
-            f"Matcher of {dref} repeatedly asked the core to realize"
-            f"Probably, it's realizer doesn't match the matcher. "
-            f"In particular, the follwoing just-built rrefs are "
-            f"marked as unmatched: {rrefgs_built}" )
-          if (set(groups2rrefs(rrefgs_built)) & set(groups2rrefs(rrefgs_matched))) == set() and \
-             (set(groups2rrefs(rrefgs_built)) | set(groups2rrefs(rrefgs_matched))) != set():
-            warning(f"None of the newly obtained realizations of "
-                    f"{dref} were matched by the matcher. To capture those "
-                    f"realizations explicitly, try `matcher([exact(..)])`")
-          rrefgs=rrefgs_matched
-        context_acc=context_add(context_acc,dref,groups2rrefs(rrefgs))
-    assert rrefgs is not None
-    return rrefgs
+  context_acc:Context={}
+  target_dref=closure.dref
+  target_deps=store_deepdeps([target_dref])
+  for drv in closure.derivations:
+    dref=drv.dref
+    rrefgs:Optional[List[RRefGroup]]
+    if dref in target_deps or dref==target_dref:
+      dref_deps=store_deepdeps([dref])
+      dref_context={k:v for k,v in context_acc.items() if k in dref_deps}
+      if dref in force_interrupt_:
+        rrefgs,abort=yield (dref,dref_context,drv,realize_args.get(dref,{}))
+        if abort:
+          return []
+      else:
+        rrefgs=drv.matcher(dref,dref_context)
+      if rrefgs is None:
+        assert dref not in assert_realized, (
+          f"Stage '{dref}' was assumed to be already realized. "
+          f"Unfortunately, it is not the case. Config:\n"
+          f"{store_config(dref)}"
+          )
+        gpaths:List[Dict[Tag,Path]]=drv.realizer(dref,dref_context,realize_args.get(dref,{}))
+        rrefgs_built=[store_realize_group(dref,dref_context,g) for g in gpaths]
+        rrefgs_matched=drv.matcher(dref,dref_context)
+        assert rrefgs_matched is not None, (
+          f"Matcher of {dref} repeatedly asked the core to realize"
+          f"Probably, it's realizer doesn't match the matcher. "
+          f"In particular, the follwoing just-built rrefs are "
+          f"marked as unmatched: {rrefgs_built}" )
+        if (set(groups2rrefs(rrefgs_built)) & set(groups2rrefs(rrefgs_matched))) == set() and \
+           (set(groups2rrefs(rrefgs_built)) | set(groups2rrefs(rrefgs_matched))) != set():
+          warning(f"None of the newly obtained realizations of "
+                  f"{dref} were matched by the matcher. To capture those "
+                  f"realizations explicitly, try `matcher([exact(..)])`")
+        rrefgs=rrefgs_matched
+      context_acc=context_add(context_acc,dref,groups2rrefs(rrefgs))
+  assert rrefgs is not None
+  return rrefgs
 
 
 def mksymlink(rref:RRef, tgtpath:Path, name:str, withtime=True)->Path:
@@ -1019,10 +993,14 @@ def assert_valid_closure(closure:Closure)->None:
   assert closure.dref in [d.dref for d in closure.derivations], \
     "Closure should contain target derivation"
 
-def warn_rref_deps(c:Config)->None:
+def assert_rref_deps(c:Config)->None:
   _,rrefs=scanref_dict(config_dict(c))
-  if len(rrefs)>0:
-    warning(f"RRef dependencies were found in config {config_dict(c)}:\n{rrefs}")
+  assert len(rrefs)==0, (
+    f"Realization references were found in configuration:\n"
+    f"{config_dict(c)}:\n"
+    f"Normally derivations should not contain references to "
+    f"realizations, because Pylightnix doesn't keep "
+    f"records of how did we build it.\n")
 
 def assert_have_realizers(m:Manager, drefs:List[DRef])->None:
   have_drefs=set(m.builders.keys())
@@ -1031,10 +1009,5 @@ def assert_have_realizers(m:Manager, drefs:List[DRef])->None:
   assert len(missing)==0, (
     f"The following derivations don't have realizers associated with them:\n"
     f"{missing}\n"
-    f"Did you pass those DRefs from another `instantiate` session ?")
-
-def assert_recursion_manager_empty()->None:
-  global PYLIGHTNIX_RECURSION
-  stack=PYLIGHTNIX_RECURSION.get(get_ident(),[])
-  assert len(stack)==0
+    f"Did you mix DRefs from several `Manager` sessions?")
 

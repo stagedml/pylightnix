@@ -94,7 +94,6 @@ def test_redefine()->None:
     def _setting(m:Manager)->DRef:
       return mknode(m, {'name':'foo','bar':'baz','output':[promise,'f']},
                        {Name('f'):bytes(('umgh').encode('utf-8'))})
-
     def _nc(c):
       mklens(c).bar.val=42
     _setting2=redefine(_setting, new_config=_nc)

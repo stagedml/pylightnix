@@ -411,6 +411,7 @@ class Build:
     self.outgroups:List[Dict[Tag,Path]]=[]
     self.cattrs_cache:Optional[ConfigAttrs]=None
 
+
 class Manager:
   """ The derivation manager is a mutable storage where we store derivations
   before combining them into a [Closure](#pylightnix.types.Closure).
@@ -424,6 +425,8 @@ class Manager:
   more.  """
   def __init__(self):
     self.builders:Dict[DRef,Derivation]=OrderedDict()
+    self.in_instantiate:bool=False
+    self.in_redefine:bool=False
 
 
 #: R is a DRef or any of its derivatives
