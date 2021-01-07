@@ -205,6 +205,18 @@ def test_realize_nondetermenistic()->None:
     assert n2_gr1 != n2_gr2
 
 
+def test_no_foreign_dref_deps()->None:
+  with setup_storage('test_no_foreign_dref_deps'):
+    def _setup(m):
+      clo=instantiate(mktestnode, {'foo':'bar'})
+      return mktestnode(m,{'bogus':clo.dref})
+    try:
+      dref = instantiate(_setup)
+      raise ShouldHaveFailed(f"Should fail, but got {dref}")
+    except AssertionError:
+      pass
+
+
 def test_no_rref_deps()->None:
   with setup_storage('test_no_rref_deps'):
     def _setup(m):
@@ -218,8 +230,8 @@ def test_no_rref_deps()->None:
       pass
 
 
-def test_no_recursive_instantiate()->None:
-  with setup_storage('test_no_recursive_instantiate'):
+def test_no_recursive_instantiate_with_same_manager()->None:
+  with setup_storage('test_no_recursive_instantiate_with_same_manager'):
     def _setup(m):
       derivs = instantiate_(m,_setup)
       n2 = mktestnode(m,{'bogus':derivs.dref})
@@ -229,6 +241,22 @@ def test_no_recursive_instantiate()->None:
       raise ShouldHaveFailed(f"Should fail, but got {dref}")
     except AssertionError:
       pass
+
+
+def test_recursive_realize_with_another_manager()->None:
+  with setup_storage('test_recursive_realize_with_another_manager'):
+    rref_inner=None
+    def _setup_inner(m):
+      return mktestnode(m,{'foo':'bar'})
+    def _setup_outer(m):
+      nonlocal rref_inner
+      rref_inner=realize(instantiate(_setup_inner))
+      return mktestnode(m,{'baz':mklens(rref_inner).foo.val})
+    rref=realize(instantiate(_setup_outer))
+    assert len(store_deepdeps([rref2dref(rref)]))==0
+    assert len(store_deepdeps([rref2dref(rref_inner)]))==0
+    assert mklens(rref_inner).foo.val=='bar'
+    assert mklens(rref).baz.val=='bar'
 
 
 def test_config_ro():
