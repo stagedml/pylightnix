@@ -736,7 +736,7 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
   algorithm. Consider calling [realizeMany](#pylightnix.core.realizeMany) or
   it's analogs instead.
 
-  FIXME: `assert_realized` may probably be a implemented by calling `redefine`
+  FIXME: `assert_realized` may probably be implemented by calling `redefine`
   with appropriate failing realizer on every Derivation. """
   assert_valid_closure(closure)
   force_interrupt_:Set[DRef]=set(force_interrupt)

@@ -13,6 +13,13 @@ assert WGET is not None and isfile(WGET), (
   "'`wget` executable not found. Please either install system package `wget` "
   "or set PYLIGHTNIX_WGET environment variable")
 
+CURL=environ.get('PYLIGHTNIX_CURL')
+if CURL is None:
+  CURL=find_executable('curl')
+assert CURL is not None and isfile(CURL), (
+  "'`curl` executable not found. Please either install system package `curl` "
+  "or set PYLIGHTNIX_CURL environment variable")
+
 AUNPACK=environ.get('PYLIGHTNIX_AUNPACK')
 if AUNPACK is None:
   AUNPACK=find_executable('aunpack')

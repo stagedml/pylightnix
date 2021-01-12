@@ -13,7 +13,7 @@ buildPythonPackage {
     ) ./.;
 
   preConfigure = ''
-    export PATH="${pkgs.atool}/bin:${pkgs.wget}/bin:${pkgs.git}/bin:$PATH"
+    export PATH="${pkgs.atool}/bin:${pkgs.curl}/bin:${pkgs.wget}/bin:${pkgs.git}/bin:$PATH"
     if ! test -d /build/pylightnix/.git ; then
       echo "Looks like Pylightnix is a submodule of some other repo."\
            "\`nix-build\` is unable to detect its version, unfortunately."\
@@ -28,7 +28,7 @@ buildPythonPackage {
   checkInputs = [ pytest pytest-mypy hypothesis ];
 
   checkPhase = ''
-    export PATH="${pkgs.atool}/bin:${pkgs.wget}/bin:$PATH"
+    export PATH="${pkgs.atool}/bin:${pkgs.curl}/bin:${pkgs.wget}/bin:$PATH"
     pytest
   '';
 
