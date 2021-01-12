@@ -41,6 +41,7 @@ let
 
     shellHook = with pkgs; ''
       export PYTHONPATH=`pwd`/src:$PYTHONPATH
+      export MYPYPATH=`pwd`/src:`pwd`/tests
     '';
   };
 in
