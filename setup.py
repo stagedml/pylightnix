@@ -1,17 +1,30 @@
 from setuptools import setup, find_packages
 from distutils.spawn import find_executable
+from os import environ
+from os.path import isfile
 
 with open("README.md", "r") as fh:
   long_description = fh.read()
 
-WGET=find_executable('wget')
-assert WGET is not None, '`wget` executable not found. Please install system package `wget` and check PATH'
+WGET=environ.get('PYLIGHTNIX_WGET')
+if WGET is None:
+  WGET=find_executable('wget')
+assert WGET is not None and isfile(WGET), (
+  "'`wget` executable not found. Please either install system package `wget` "
+  "or set PYLIGHTNIX_WGET environment variable")
 
-AUNPACK=find_executable('aunpack')
-assert AUNPACK is not None, '`aunpack` executable not found. Please install system package `atool` and check PATH'
+AUNPACK=environ.get('PYLIGHTNIX_AUNPACK')
+if AUNPACK is None:
+  AUNPACK=find_executable('aunpack')
+assert AUNPACK is not None and isfile(AUNPACK), (
+  "`aunpack` executable not found. Please either install system `atool` system "
+  "package or set PYLIGHTNIX_AUNPACK environment variable")
 
 SHA256SUM=find_executable('sha256sum')
-assert SHA256SUM is not None, '`sha256sum` executable not found. It should be in `coreutils` system package, please figure out why is it missing. Check PATH.'
+assert SHA256SUM is not None, (
+  "`sha256sum` executable not found. It should "
+  "be in `coreutils` system package, please figure out why is it missing. "
+  "Consider checking your PATH.")
 
 setup(
   name="pylightnix",
