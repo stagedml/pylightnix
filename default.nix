@@ -1,6 +1,6 @@
 { pkgs ?  import <nixpkgs> {}
 , python ? pkgs.python36
-, doCheck ? false
+, doCheck ? true
 } :
 
 with python.pkgs;
@@ -13,9 +13,7 @@ buildPythonPackage {
     ) ./.;
 
   preConfigure = ''
-    export PYLIGHTNIX_AUNPACK="${pkgs.atool}/bin/aunpack"
-    export PYLIGHTNIX_WGET="${pkgs.wget}/bin/wget"
-    export PATH="${pkgs.git}/bin:$PATH"
+    export PATH="${pkgs.atool}/bin:${pkgs.wget}/bin:${pkgs.git}/bin:$PATH"
     if ! test -d /build/pylightnix/.git ; then
       echo "Looks like Pylightnix is a submodule of some other repo."\
            "\`nix-build\` is unable to detect its version, unfortunately."\
@@ -25,7 +23,14 @@ buildPythonPackage {
     fi
   '';
 
-  buildInputs = [ pytest pytest-mypy hypothesis setuptools_scm ];
+  buildInputs = [ setuptools_scm ];
+
+  checkInputs = [ pytest pytest-mypy hypothesis ];
+
+  checkPhase = ''
+    export PATH="${pkgs.atool}/bin:${pkgs.wget}/bin:$PATH"
+    pytest
+  '';
 
   inherit doCheck;
 }
