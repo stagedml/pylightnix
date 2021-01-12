@@ -2,13 +2,19 @@
 , stdenv ? pkgs.stdenv
 } :
 let
+  mypython = pkgs.python37.withPackages (
+    pp: with pp; [
+      ipython
+      hypothesis
+      pytest
+      pytest-mypy
+      Pweave
+      coverage
+      python-language-server
+    ]);
 
-  self = pkgs.python36Packages;
-  inherit (pkgs) fetchgit;
-  inherit (self) buildPythonPackage fetchPypi;
-
-  pyls = self.python-language-server.override { providers=["pycodestyle" "pyflakes"]; };
-  pyls-mypy = self.pyls-mypy.override { python-language-server=pyls; };
+  pyls = mypython.pkgs.python-language-server.override { providers=["pycodestyle" "pyflakes"]; };
+  pyls-mypy = mypython.pkgs.pyls-mypy.override { python-language-server=pyls; };
 
   env = stdenv.mkDerivation {
     name = "buildenv";
@@ -16,22 +22,16 @@ let
     ( with pkgs;
       with self;
     [
-      ipython
-      pyls-mypy
-      pyls
-      hypothesis
-      pytest
-      pytest-mypy
-      Pweave
-      coverage
       gnumake
+      mypython
+      pyls
+      pyls-mypy
     ]);
 
     shellHook = with pkgs; ''
       export PYTHONPATH=`pwd`/src:$PYTHONPATH
     '';
   };
-
 in
   env
 
