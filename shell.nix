@@ -26,6 +26,17 @@ let
       mypython
       pyls
       pyls-mypy
+
+      (let
+         mytexlive = texlive.override { python=mypython; };
+       in
+         mytexlive.combine {
+           scheme-medium = mytexlive.scheme-medium;
+           inherit (mytexlive) fvextra upquote xstring pgfopts currfile
+           collection-langcyrillic makecell ftnxtra minted catchfile framed
+           pdflscape;
+         }
+      )
     ]);
 
     shellHook = with pkgs; ''
