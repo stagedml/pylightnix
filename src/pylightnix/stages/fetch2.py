@@ -16,10 +16,12 @@
 
 from pylightnix.imports import (sha256 as sha256sum, sha1 as sha1sum, urlparse,
                                 Popen, remove, basename, join, rename, isfile,
-                                copyfile, environ, getLogger, isabs )
+                                copyfile, environ, getLogger, isabs, isdir,
+                                splitext, re_sub )
 from pylightnix.types import ( DRef, Manager, Build, Context, Name,
     Path, Optional, List, Config )
-from pylightnix.core import ( mkconfig, mkdrv, match_only, promise )
+from pylightnix.core import ( mkconfig, mkdrv, match_only, promise,
+                             PYLIGHTNIX_NAMEPAT )
 from pylightnix.build import ( mkbuild, build_outpath, build_setoutpaths,
     build_paths, build_deref_, build_cattrs, build_wrapper, build_wrapper )
 from pylightnix.utils import ( try_executable, makedirs, filehash )
@@ -83,18 +85,22 @@ def fetchurl2(m:Manager,
   assert isabs(tmpfetchdir), (f"Expect absolute PYLIGHTNIX_TMP path, "
                               f"got {tmpfetchdir}")
 
-  fname=filename or basename(urlparse(url).path)
-  assert len(fname)>0, ("Downloadable filename shouldn't be empty. "
-                        "Try specifying a valid `filename` argument")
+  filename_=filename or basename(urlparse(url).path)
+  assert len(filename_)>0, ("Downloadable filename shouldn't be empty. "
+                            "Try specifying a valid `filename` argument")
   assert CURL() is not None
   makedirs(tmpfetchdir, exist_ok=True)
 
+  if name is None:
+    name='fetchurl2'
+
   if sha256 is None and sha1 is None:
-    if url.startswith('file://'):
+    if isfile(url):
       sha256=filehash(url)
+      url=f'file://{url}'
     else:
-      assert False, ("Either sha256 or sha1 arguments should be set for non "
-                     "`file://' URLs")
+      assert False, ("Either `sha256` or `sha1` arguments should be specified "
+                     "for URLs")
 
   def _config()->dict:
     args={'name':name}
@@ -102,6 +108,7 @@ def fetchurl2(m:Manager,
       args.update({'sha1':sha1})
     if sha256 is not None:
       args.update({'sha256':sha256})
+    args.update({'out':[promise, filename_]})
     args.update(**kwargs)
     return args
 
@@ -110,7 +117,7 @@ def fetchurl2(m:Manager,
     o=build_outpath(b)
 
     download_dir=o if force_download else tmpfetchdir
-    partpath=join(download_dir,fname+'.tmp')
+    partpath=join(download_dir,filename_+'.tmp')
 
     try:
       p=Popen([CURL(), "--continue-at", "-", "--output", partpath, url],
@@ -128,7 +135,7 @@ def fetchurl2(m:Manager,
           realhash=sha1sum(f.read()).hexdigest()
           assert realhash==c.sha1, (f"Expected sha1 checksum '{c.sha1}', "
                                     f"but got '{realhash}'")
-      fullpath=join(o,fname)
+      fullpath=join(o,filename_)
       rename(partpath, fullpath)
 
     except Exception as e:
