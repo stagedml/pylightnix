@@ -406,7 +406,7 @@ def test_match_best()->None:
     # message and fix the exact argument below.
     clo1=instantiate(_mklrg, {'a':1},
       matcher=match([exact([
-        RRef('rref:0554aac0dbae2d80f67e7d280ab331a4-a76762e9bc54e47c09455bdb226e2388-unnamed')])]))
+        RRef('rref:185201dae637421f69a47dcea050e4fd-a76762e9bc54e47c09455bdb226e2388-unnamed')])]))
     rref1e=realize(clo1)
     assert isfile(join(rref2path(rref1e),'baz'))
     assert len(list(store_rrefs__(clo1.dref))) == 4
