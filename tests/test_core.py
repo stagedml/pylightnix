@@ -14,7 +14,8 @@ from pylightnix import ( instantiate, DRef, RRef, Path, mklogdir, dirhash,
                         match_n, realizeMany, build_outpaths, scanref_dict,
                         config_dict, promise, mklens, isrref, Config, RConfig,
                         build_setoutpaths, partial, path2rref, Tag, Group,
-                        RRefGroup, concat, linkrrefs, instantiate_ )
+                        RRefGroup, concat, linkrrefs, instantiate_,
+                        store_dref2path, path2dref, linkdref )
 
 from tests.imports import (given, Any, Callable, join, Optional, islink,
                            isfile, islink, List, randint, sleep, rmtree, system,
@@ -560,6 +561,21 @@ def test_path2rref()->None:
     rref3=path2rref(Path("/foo/00000000000000000000000000000000-bar/11111111111111111111111111111111"))
     assert rref3=='rref:11111111111111111111111111111111-00000000000000000000000000000000-bar'
     for x in [path2rref(Path('')),path2rref(Path('foo'))]:
+      assert x is None
+
+def test_path2dref()->None:
+  with setup_storage('test_path2dref') as s:
+    s1=partial(mktestnode, sources={'name':'1', 'promise':[promise,'artifact']})
+    clo1=instantiate(s1)
+    dref1=clo1.dref
+    rref1=realize(clo1)
+    dref2=path2dref(store_dref2path(rref2dref(rref1)))
+    assert dref1==dref2
+    l=linkdref(dref1, s, 'result_dref')
+    assert path2dref(Path(l))==dref1
+    dref3=path2dref(Path("/foo/00000000000000000000000000000000-bar"))
+    assert dref3=='dref:00000000000000000000000000000000-bar'
+    for x in [path2dref(Path('')),path2dref(Path('foo'))]:
       assert x is None
 
 def test_linkrrefs()->None:

@@ -110,13 +110,26 @@ def mkname(s:str)->Name:
   assert_valid_name(Name(s))
   return Name(s)
 
+def path2dref(p:Path)->Optional[DRef]:
+  """ Takes either a system path of some realization in the Pylightnix storage
+  or a symlink pointing to such path. Return a `DRef` which corresponds to this
+  path.
+
+  Note: `path2dref` operates on `p` symbolically. It doesn't actually check the
+  presence of such an object in storage """
+  if islink(p):
+    p=Path(readlink(p))
+  _,dref_part=split(p)
+  dref=DRef('dref:'+dref_part)
+  return dref if isdref(dref) else None
+
 def path2rref(p:Path)->Optional[RRef]:
   """ Takes either a system path of some realization in the Pylightnix storage
   or a symlink pointing to such path. Return `RRef` which corresponds to this
   path.
 
-  Note: `path2rref` doesn't actually check the existance of such an object in
-  storage """
+  Note: `path2rref` operates on `p` symbolically. It doesn't actually check the
+  presence of such an object in storage """
   if islink(p):
     p=Path(readlink(p))
   head,h1=split(p)
@@ -780,40 +793,54 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
   return rrefgs
 
 
-def mksymlink(rref:RRef, tgtpath:Path, name:str, withtime=True)->Path:
-  """ Create a symlink pointing to realization `rref`. Other arguments define
-  symlink name and location. Informally,
-  `{tgtpath}/{timeprefix}{name} --> $PYLIGHTNIX_STORE/{dref}/{rref}`.
-  Overwrite existing symlinks. Folder named `tgtpath` should exist.
-  """
-  assert_valid_rref(rref)
-  assert isdir(tgtpath), f"Target link directory doesn't exist: '{tgtpath}'"
-  ts:Optional[str]=store_buildtime(rref) if withtime else None
-  timetag=f'{ts}_' if ts is not None else ''
-  symlink=Path(join(tgtpath,f'{timetag}{name}'))
-  forcelink(Path(relpath(rref2path(rref), tgtpath)), symlink)
-  return symlink
-
-
-def linkrref(rref:RRef, destdir:Optional[Path]=None,
+def linkrref(rref:RRef,
+             destdir:Optional[Path]=None,
+             name:Optional[str]=None,
              withtime:bool=False)->Path:
   """ Helper function that creates a symbolic link to a particular realization
   reference. The link is created under the current directory by default or under
-  the `destdir` directory. """
-  tgtpath=destdir if destdir is not None else '.'
-  linkname='result-'+config_name(store_config(rref))
-  makedirs(tgtpath, exist_ok=True)
-  return mksymlink(rref, tgtpath=tgtpath, name=linkname, withtime=withtime)
+  the `destdir` directory.
 
+  Create a symlink pointing to realization `rref`. Other arguments define
+  symlink name and location. Informally,
+  `{tgtpath}/{timeprefix}{name} --> $PYLIGHTNIX_STORE/{dref}/{rref}`.
+  Overwrite existing symlinks. Folder named `tgtpath` should exist.
+
+
+  """
+  destdir_='.' if destdir is None else destdir
+  name_:str=name if name is not None else (
+    '_result-'+config_name(store_config(rref)) if destdir is None else
+    'result-'+config_name(store_config(rref)))
+  ts:Optional[str]=store_buildtime(rref) if withtime else None
+  timetag_=f'{ts}_' if ts is not None else ''
+  symlink=Path(join(destdir_,f"{timetag_}{name_}"))
+  forcelink(Path(relpath(rref2path(rref), destdir_)), symlink)
+  return symlink
+
+def linkdref(dref:DRef,
+             destdir:Optional[Path]=None,
+             name:Optional[str]=None)->Path:
+  destdir_='.' if destdir is None else destdir
+  name_:str=name if name is not None else (
+    '_result-'+config_name(store_config(dref)) if destdir is None else
+    'result-'+config_name(store_config(dref)))
+  symlink=Path(join(destdir_,name_))
+  forcelink(Path(relpath(store_dref2path(dref), destdir_)), symlink)
+  return symlink
 
 def linkrrefs(rrefs:Iterable[RRef], destdir:Optional[Path]=None,
               withtime:bool=False)->List[Path]:
   """ A Wrapper around `linkrref` for linking a set of RRefs. """
   acc=[]
   for r in rrefs:
-    acc.append(linkrref(r, destdir=destdir, withtime=withtime))
+    acc.append(linkrref(r, destdir=destdir, name=None, withtime=withtime))
   return acc
 
+def mksymlink(rref:RRef, tgtpath:Path, name:str, withtime:bool=True)->Path:
+  """ A wrapper for `linkrref`, for backward compatibility """
+  assert isdir(tgtpath), f"Target link directory doesn't exist: '{tgtpath}'"
+  return linkrref(rref, destdir=tgtpath, name=name, withtime=withtime)
 
 #  __  __       _       _
 # |  \/  | __ _| |_ ___| |__   ___ _ __ ___
