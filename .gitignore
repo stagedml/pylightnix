@@ -9,3 +9,4 @@ tags
 result
 coverage.xml
 !__init__.py
+pythontex-*

@@ -1,0 +1,180 @@
+\documentclass{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage[russian,english]{babel}
+\usepackage{minted}
+\renewcommand{\MintedPygmentize}{/nix/store/9r8n35slzprv3q4hfdnc0fz3r70z2y64-python3.7-Pygments-2.7.2/bin/pygmentize}
+\usepackage[rerun=always, pygopt={texcomments=true}]{pythontex}
+\usepackage{lscape}
+\usepackage[a4paper]{geometry}
+\usepackage{pdflscape}
+\usepackage{longtable}
+\usepackage{hyperref}
+
+\begin{document}
+
+\newenvironment{shellcode}
+  {\VerbatimEnvironment\begin{minted}[escapeinside=!!, breaklines, breakafter=0123456789-]{sh}}
+  {\end{minted}}
+\newenvironment{pythoncode}
+  {\VerbatimEnvironment\begin{minted}[escapeinside=!!, breaklines, breakafter=0123456789-]{python}}
+  {\end{minted}}
+
+\selectlanguage{english}
+
+\title{Pylightnix}
+\author{Sergey Mironov}
+\date{February 2021}
+\maketitle
+
+
+\begin{abstract}
+
+Pylightnix is a Python-based DSL library for manipulating filesystem-based
+immutable data objects, inspired by the \href{https://nixos.org}{Nix} package
+manager and \href{https://edolstra.github.io/pubs/phd-thesis.pdf}{Purely
+Functional Software Deployment Model thesis by Eelco Dolstra}.
+
+Pylightnix provides a generic Python API, allowing programmers to:
+\begin{itemize}
+  \item Define immutable linked data objects by specifying how to create them
+    and how to operate on them.
+  \item Actually create (build) such objects in a filesystem-based storage,
+    access its data, inspect dependencies, and remove them as needed.
+  \item Special attention is paid to the support of non-deterministic build
+    processes.
+\end{itemize}
+
+Pylightnix originally appeared as a core module of
+\href{https://github.com/stagedml/stagedml}{StagedML} library, later it was
+moved into a separate project.
+
+\end{abstract}
+
+
+\section{Features}
+
+Logic:
+
+\begin{itemize}
+  \item Pylightnix allows us to Create, query and maintain linked objects,
+    called here **stages**.
+  \item Creation of stages includes two passes: At the **instantiation** pass we
+    check configurations of the whole graph of linked objects. At the
+    **realization** pass we decide whether to take existing realization or to
+    run the constructors to get new ones.
+  \item Pylightnix is focused on non-deterministic build processes such as
+    machine learning. We formalize comparison and selection of competing results
+    of such processes.
+  \item The possible applications of Pylightnix include:
+    \begin{itemize}
+      \item Data science / Machine learning experiments (see
+        \href{https://github.com/stagedml/stagedml}{StagedML})
+      \item Domain-specific package managers
+      \item Other applications which fit into blackboard design pattern
+        \href{https://en.wikipedia.org/wiki/Blackboard_design_pattern}{wiki}.
+    \end{itemize}
+\end{itemize}
+
+Implementation:
+
+\begin{itemize}
+  \item Written in Python 3.6. \href{http://mypy-lang.org/}{Mypy} typing
+    information is provided.
+  \item Is well-tested
+  \item Includes no third-party Python dependencies. We do require
+    \href{https://www.gnu.org/software/wget/}{wget} and
+    \href{https://www.nongnu.org/atool/}{atool} system packages.
+  \item Alas, Pylightnix is not a production-ready yet! Nor parallelism, neither
+    network synchronization are supported out of the box. Also, we didn't check
+    Pylightnix on any operating system besides Linux.
+    \begin{itemize}
+      \item We tried our best to make Pylightnix' operations on storage atomic.
+        Among other benefits, this design allows running multiple instances of
+        the library on a single storage at once.
+      \item Synchronization of different machines should be possible by
+        exclusively running `rsync` tool on their storages.
+    \end{itemize}
+\end{itemize}
+
+\section{Related work}
+
+\begin{itemize}
+  \item \href{https://nixos.org}{Nix} (
+    \href{https://github.com/nixos/nix}{Nix repo},
+    \href{./Comparison.md#Pylightnix-vs-Nix}{Comparison})
+  \item \href{https://spack.io}{Spack}
+  \item \href{https://falsifiable.us}{Popper}
+  \item \href{https://cknowledge.org}{CK}
+\end{itemize}
+
+\section{Install}
+
+\subsection{Install with Pip}
+
+\begin{shellcode}
+$ pip3 install pylightnix
+\end{shellcode}
+
+\subsection{Build from source}
+
+\begin{enumerate}
+\item Clone the repo
+  \begin{shellcode}
+  $ git clone https://github.com/stagedml/pylightnix
+  $ cd pylightnix
+  \end{shellcode}
+\item Either
+  \begin{itemize}
+    \item Setup `PYTHONPATH` to point to the sources.
+      \begin{shellcode}
+      $ export PYTHONPATH="`pwd`/src:$PYTHONPATH"
+      \end{shellcode}
+      Now you could import pylightnix from your applications.
+    \item Build and install pylightnix wheel.
+      \begin{shellcode}
+       $ make wheels
+       $ sudo -H pip3 install --force dist/*whl
+      \end{shellcode}
+    \item Nix users may refer to \href{../default.nix}{default.nix} and
+      \href{../shell.nix}{shell.nix} expressions.
+  \end{itemize}
+\item (Optional) Run the tests.
+\item (Optional) Make docs
+\item (Optional) Build the demos
+\end{enumerate}
+
+\section{Quick start} Pylightnix could be used as a lightweight build system
+(rather unsafe one, because it lacks built-in build isolation). This guide
+illustrates it by defining a couple of objects ("stages") which are required  to
+build the GNU Hello program.
+
+Below operations typically require only a pure Python environment with
+Pylightnix library installed.
+
+\begin{enumerate}
+
+  \item Install development version of Pylightnix and an interactive shell.
+    \begin{shellcode}
+    $ pip install ipython git+https://github.com/stagedml/pylightnix
+    $ ipython
+    \end{shellcode}
+    Subsequent steps may be copypasted into the IPython shell
+
+  \item Make sure that the storage is initialized
+    \begin{pythoncode}
+    from pylightnix import store_initialize
+    store_initialize()
+    \end{pythoncode}
+
+\end{enumerate}
+
+
+\section{Documentation}
+bla
+\section{Frequently Asked Questions}
+bla
+
+\end{document}
+

@@ -98,6 +98,11 @@ demo_repl: docs/demos/REPL.md docs/demos/REPL.py
 .PHONY: demos
 demos: demo_mnist demo_hello demo_repl
 
+.PHONY: tex-quickstart
+tex-quickstart: docs/QuickStart.pdf
+docs/QuickStart.pdf: docs/QuickStart.tex
+	/bin/sh ./docs/compile.sh $<
+
 $(WHEEL): $(SRC) $(TESTS)
 	rm -rf build dist || true
 	python3 setup.py sdist bdist_wheel
