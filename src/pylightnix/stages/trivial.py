@@ -35,7 +35,7 @@ def mknode(m:Manager,
   config['name']=name
   assert '__artifacts__' not in config, \
       "config shouldn't contain reserved field '__artifacts__'"
-  config.update({'__artifacts__':{an:Hash(datahash([av]))
+  config.update({'__artifacts__':{an:Hash(datahash([('artifact',av)]))
                  for (an,av) in artifacts.items()}})
   def _realize(b:Build)->None:
     o=build_outpath(b)

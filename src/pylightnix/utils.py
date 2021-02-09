@@ -22,7 +22,7 @@ from pylightnix.imports import (datetime, gmtime, timegm, join, makedirs,
     normalize, re_sub, split, json_load, find_executable, chmod, S_IWRITE,
     S_IREAD, S_IRGRP, S_IROTH, S_IXUSR, S_IXGRP, S_IXOTH, stat, ST_MODE,
     S_IWGRP, S_IWOTH, rmtree, rename, getsize, readlink, partial, copytree,
-    chain, getLogger)
+    chain, getLogger, environ)
 
 from pylightnix.types import (Union, Hash, Path, List, Any, Optional,
                               Iterable, IO, DRef, RRef, Tuple, Callable,
@@ -34,6 +34,8 @@ from pylightnix.tz import tzlocal
 
 logger=getLogger(__name__)
 warning=logger.warning
+info=logger.info
+debug=logger.debug
 
 
 #: Defines the `strftime`-compatible format of time, used in e.g.
@@ -101,17 +103,20 @@ def forcelink(src:Path,dst:Path,**kwargs)->None:
 def encode(s:str, encoding:str='utf-8')->bytes:
   return bytes(s, encoding)
 
-def datahash(data:Iterable[bytes])->Hash:
+def datahash(data:Iterable[Tuple[str,bytes]],
+             verbose:bool=False)->Hash:
   e=sha256()
   nitems=0
-  for s in data:
+  for hint,s in data:
     e.update(s)
+    if verbose:
+      debug(f'Adding {hint}: {e.hexdigest()}')
     nitems+=1
   if nitems==0:
-    warning("datahash() was called on empty iterator")
+    warning("datahash() was called with empty iterator")
   return Hash(e.hexdigest())
 
-def dirhash(path:Path)->Hash:
+def dirhash(path:Path, verbose:bool=False)->Hash:
   """ Calculate recursive SHA256 hash of a directory. Ignore files with names
   starting with underscope ('_'). For symbolic links, hash the result of
   `readlink(link)`.
@@ -128,16 +133,16 @@ def dirhash(path:Path)->Hash:
         if len(filename)>0 and filename[0] != '_':
           localpath=abspath(join(root, filename))
           if islink(localpath):
-            yield encode(readlink(localpath))
+            yield (f'link:{localpath}',encode(readlink(localpath)))
           with open(localpath,'rb') as f:
-            yield f.read()
+            yield (localpath,f.read())
 
-  return datahash(_iter())
+  return datahash(_iter(), verbose=verbose)
 
 def filehash(path:Path)->Hash:
   assert isfile(path), f"filehash() expects a file path, not '{path}'"
   with open(path,'rb') as f:
-    return datahash([f.read()])
+    return datahash([(path,f.read())])
 
 def filerw(f:Path)->None:
   assert isfile(f), f"'{f}' is not a file"
@@ -358,19 +363,23 @@ def trywrite(path:Path, data:str)->bool:
     return True
   return trycatch(_do,False)
 
-def try_executable(name:str, not_found_message:Optional[str]=None)->Callable[[],str]:
-  e=find_executable(name)
+def try_executable(name:str,
+                   envname:str,
+                   not_found_message:Optional[str],
+                   not_found_warning:Optional[str])->Callable[[],Optional[str]]:
+  e=environ.get(envname)
   if e is None:
+    e=find_executable(name)
+  if e is None:
+    warning(not_found_message)
+    warning(not_found_warning)
     def _err():
       assert False, not_found_message
-      return f"<{name}_not_found>"
+      return None
     return _err
   else:
+    info(f"Using {name} system executable: {e}")
     return lambda: str(e)
-
-def get_executable(name:str, not_found_message:str)->str:
-  e=try_executable(name)
-  return e()
 
 def concat(l:List[List[Any]])->List[Any]:
   return list(chain.from_iterable(l))

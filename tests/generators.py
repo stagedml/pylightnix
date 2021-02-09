@@ -50,7 +50,7 @@ def names():
   return from_regex(re_compile(f'^{PYLIGHTNIX_NAMEPAT}+$'))
 
 def hashes():
-  return text().map(lambda x: datahash([encode(x)]))
+  return text().map(lambda x: datahash([('testhash',encode(x))]))
 
 def prims():
   return one_of(none(), booleans(), floats(), text(printable), integers(), binary())

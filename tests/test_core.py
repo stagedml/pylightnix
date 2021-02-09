@@ -396,6 +396,8 @@ def test_match_best()->None:
     assert isfile(join(rref2path(rref1c),'score'))
     assert len(list(store_rrefs__(clo1.dref))) == 3
     assert tryread(Path(join(rref2path(rref1c),'score')))=='1'
+    # Here we refuse to create 'score' file altogether. `match_best` should
+    # ignore this realization.
     score='100500'
     fname='baz'
     rref1d=realize(clo1, force_rebuild=[clo1.dref])
@@ -404,9 +406,21 @@ def test_match_best()->None:
 
     # This place case could be flickering. Currently I just look into error
     # message and fix the exact argument below.
+    #
+    # To check, run:
+    # 1. `logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)`
+    # 2. `dirhash('/tmp/test_match_best/a76762e9bc54e47c09455bdb226e2388-unnamed/'
+    #             '0554aac0dbae2d80f67e7d280ab331a4',
+    #             verbose=True)`
+    #
+    # Current output:
+    # context.json: 44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a
+    # tag.txt: 0b20b35d367ea15c3b95476337549e5add5973dab18f0fc1b3391c40ba82cf8a
+    # baz: 6d2909ed88f980f2241835f0f5d76e8b31dbdc90c22d8fb7e446ffe4647eb8f2
+    # group.txt: 0554aac0dbae2d80f67e7d280ab331a44c55f0b63f674a3a278411620fbede12
     clo1=instantiate(_mklrg, {'a':1},
       matcher=match([exact([
-        RRef('rref:185201dae637421f69a47dcea050e4fd-a76762e9bc54e47c09455bdb226e2388-unnamed')])]))
+        RRef('rref:0554aac0dbae2d80f67e7d280ab331a4-a76762e9bc54e47c09455bdb226e2388-unnamed')])]))
     rref1e=realize(clo1)
     assert isfile(join(rref2path(rref1e),'baz'))
     assert len(list(store_rrefs__(clo1.dref))) == 4

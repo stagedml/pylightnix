@@ -31,7 +31,11 @@ logger=getLogger(__name__)
 info=logger.info
 error=logger.error
 
-CURL=try_executable('curl', 'Please install `curl` pacakge.')
+CURL=try_executable('curl',
+                    'PYLIGHTNIX_CURL',
+                    '`curl` executable not found. Please install `curl` system '
+                    'pacakge or set PYLIGHTNIX_CURL env var.',
+                    '`fetchurl2` stage will fail.')
 
 
 def fetchurl2(m:Manager,

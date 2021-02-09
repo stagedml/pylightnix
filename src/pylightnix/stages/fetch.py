@@ -28,8 +28,17 @@ logger=getLogger(__name__)
 info=logger.info
 error=logger.error
 
-WGET=try_executable('wget', 'Please install `wget` pacakge.')
-AUNPACK=try_executable('aunpack', 'Please install `apack` tool from `atool` package.')
+WGET=try_executable('wget',
+                    'PYLIGHTNIX_WGET',
+                    'Executable `wget` not found. Please install `wget` system '
+                    'pacakge or set PYLIGHTNIX_WGET env var.',
+                    '`fetchurl` stage will fail.')
+AUNPACK=try_executable('aunpack',
+                       'PYLIGHTNIX_AUNPACK',
+                       '`aunpack` executable not found. Please install `atool` '
+                       'system package or set PYLIGHTNIX_AUNPACK env var.',
+                       '`fetchurl` and `fetchlocal` stages will fail in its '
+                       '`unpack` mode')
 
 def _unpack_inplace(o:str, fullpath:str, remove_file:bool):
   info(f"Unpacking {fullpath}..")
@@ -98,7 +107,8 @@ def fetchurl(m:Manager,
 
   def _instantiate()->Config:
     assert WGET() is not None
-    assert AUNPACK() is not None
+    if 'unpack' in mode:
+      assert AUNPACK() is not None
     assert (sha256 is None) or (sha1 is None)
     makedirs(tmpfetchdir, exist_ok=True)
     if sha256 is not None:
@@ -193,7 +203,8 @@ def fetchlocal(m:Manager, sha256:str,
                         "Try specifying a valid `filename` argument")
 
   def _instantiate()->Config:
-    assert AUNPACK() is not None
+    if 'unpack' in mode:
+      assert AUNPACK() is not None
     assert path is not None or envname is not None, (
       "Either `path` or `envname` argument must be specified")
     assert path is None or envname is None, (

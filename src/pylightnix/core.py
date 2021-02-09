@@ -176,7 +176,7 @@ def config_serialize(c:Config)->str:
   return json_dumps(config_dict(c), indent=4)
 
 def config_hash(c:Config)->Hash:
-  return datahash([encode(config_serialize(c))])
+  return datahash([(config_name(c),encode(config_serialize(c)))])
 
 def config_name(c:Config)->Name:
   """ Return short human-readable name of a config """
@@ -778,10 +778,10 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
         rrefgs_built=[store_realize_group(dref,dref_context,g) for g in gpaths]
         rrefgs_matched=drv.matcher(dref,dref_context)
         assert rrefgs_matched is not None, (
-          f"Matcher of {dref} repeatedly asked the core to realize"
-          f"Probably, it's realizer doesn't match the matcher. "
-          f"In particular, the follwoing just-built rrefs are "
-          f"marked as unmatched: {rrefgs_built}" )
+          f"Matcher of {dref} repeatedly asked the core to realize. "
+          f"Probably, it's realizer doesn't work well with it's matcher. "
+          f"The follwoing just-built RRefs were marked as unmatched: "
+          f"{rrefgs_built}" )
         if (set(groups2rrefs(rrefgs_built)) & set(groups2rrefs(rrefgs_matched))) == set() and \
            (set(groups2rrefs(rrefgs_built)) | set(groups2rrefs(rrefgs_matched))) != set():
           warning(f"None of the newly obtained realizations of "
