@@ -328,7 +328,7 @@ def store_deepdeps(roots:Iterable[DRef])->Set[DRef]:
     ref = frontier.pop()
     processed.add(ref)
     for dep in store_deps([ref]):
-      if not dep in processed:
+      if dep not in processed:
         frontier.add(dep)
   return processed
 
@@ -349,7 +349,7 @@ def store_drefs()->Iterable[DRef]:
       yield mkdref(HashPart(dirname[:32]), Name(dirname[32+1:]))
 
 def rrefs2groups(rrefs:List[RRef])->List[RRefGroup]:
-  return [({store_tag(rref):rref for rref in rrefs if store_group(rref)==g}) \
+  return [({store_tag(rref):rref for rref in rrefs if store_group(rref)==g})
       for g in sorted({store_group(rref) for rref in rrefs})]
 
 def groups2rrefs(grs:List[RRefGroup])->List[RRef]:
