@@ -342,10 +342,12 @@ def store_deepdepRrefs(roots:Iterable[RRef])->Set[RRef]:
       acc|=set(rref_deps)
   return acc
 
-def store_drefs()->Iterable[DRef]:
-  """ Iterates over all derivations of the storage """
-  for dirname in listdir(PYLIGHTNIX_STORE):
-    if dirname[-4:]!='.tmp' and isdir(join(PYLIGHTNIX_STORE,dirname)):
+def store_drefs(store_path:Optional[Path]=None)->Iterable[DRef]:
+  """ Iterates over all derivations of the storage located at `store_path`
+  (PYLIGHTNIX_STORE env is used by default) """
+  store_path_=store_path if store_path is not None else PYLIGHTNIX_STORE
+  for dirname in listdir(store_path_):
+    if dirname[-4:]!='.tmp' and isdir(join(store_path_,dirname)):
       yield mkdref(HashPart(dirname[:32]), Name(dirname[32+1:]))
 
 def rrefs2groups(rrefs:List[RRef])->List[RRefGroup]:
@@ -408,9 +410,13 @@ def store_group(rref:RRef)->Group:
   """ Return group identifier of the realization """
   return mkgroup(tryreadjson_def(Path(join(rref2path(rref),'group.json')),{}).get('group',rref))
 
-def store_gc(keep_drefs:List[DRef], keep_rrefs:List[RRef])->Tuple[Set[DRef],Set[RRef]]:
+def store_gc(keep_drefs:List[DRef],
+             keep_rrefs:List[RRef],
+             store_path:Optional[Path]=None)->Tuple[Set[DRef],Set[RRef]]:
   """ Take roots which are in use and should not be removed. Return roots which
   are not used and may be removed. Actual removing is to be done by the user.
+
+  Default location of `store_path` may be changed.
 
   See also [rmref](#pylightnix.bashlike.rmref)"""
   assert_store_initialized()
@@ -420,7 +426,7 @@ def store_gc(keep_drefs:List[DRef], keep_rrefs:List[RRef])->Tuple[Set[DRef],Set[
   closure_drefs=store_deepdeps(keep_drefs_) | keep_drefs_ | {rref2dref(rref) for rref in closure_rrefs}
   remove_drefs=set()
   remove_rrefs=set()
-  for dref in store_drefs():
+  for dref in store_drefs(store_path=store_path):
     if dref not in closure_drefs:
       remove_drefs.add(dref)
     for rg in store_rrefs_(dref):
