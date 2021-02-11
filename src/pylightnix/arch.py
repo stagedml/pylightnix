@@ -17,7 +17,7 @@
 from pylightnix.imports import (Popen, dirname, basename, remove, join,
                                 relpath, rename, splitext)
 from pylightnix.types import (RRef, List, Dict, Path)
-from pylightnix.core import (store_deepdeps, store_deepdepRrefs, rref2path)
+from pylightnix.core import (store_deepdeps, store_deepdepRrefs, store_rref2path)
 from pylightnix.utils import (try_executable)
 
 
@@ -45,7 +45,7 @@ def pack(roots:List[RRef], out:Path)->None:
   import pylightnix.core
   store_holder=dirname(pylightnix.core.PYLIGHTNIX_STORE)
   for rref in rrefs | set(roots):
-    p=Popen([APACK(), tmp, relpath(rref2path(rref), start=store_holder)],
+    p=Popen([APACK(), tmp, relpath(store_rref2path(rref), start=store_holder)],
             cwd=store_holder)
     p.wait()
   rename(tmp,out)

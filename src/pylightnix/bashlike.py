@@ -18,7 +18,7 @@ from pylightnix.types import ( Iterable, List, Union, Optional, DRef, RRef,
     Dict, Tuple, Path, Build, Stage, Tag )
 from pylightnix.imports import ( isfile, isdir, listdir, join, rmtree, environ,
     Popen, rename, getsize, fnmatch, dirname )
-from pylightnix.core import ( store_dref2path, rref2path, isrref, isdref,
+from pylightnix.core import ( store_dref2path, store_rref2path, isrref, isdref,
     store_drefs, store_rrefs_, store_config, config_name, store_buildtime,
     instantiate, store_cfgpath, rref2dref )
 from pylightnix.utils import ( dirchmod, dirrm, dirsize, parsetime, timestring )
@@ -32,7 +32,7 @@ def lsdref_(r:DRef)->Iterable[str]:
       yield d
 
 def lsrref_(r:RRef, fn:List[str]=[])->Iterable[str]:
-  p=join(rref2path(r),*fn)
+  p=join(store_rref2path(r),*fn)
   for d in listdir(p):
     yield d
 
@@ -51,7 +51,7 @@ def lsref(r:Union[RRef,DRef])->List[str]:
     assert False, f"Invalid reference {r}"
 
 def catrref_(r:RRef, fn:List[str])->Iterable[str]:
-  with open(join(rref2path(r),*fn),'r') as f:
+  with open(join(store_rref2path(r),*fn),'r') as f:
     for l in f.readlines():
       yield l
 
@@ -72,7 +72,7 @@ def rmref(r:Union[RRef,DRef])->None:
   care of possible race conditions.
   """
   if isrref(r):
-    dirrm(rref2path(RRef(r)))
+    dirrm(store_rref2path(RRef(r)))
   elif isdref(r):
     dirrm(store_dref2path(DRef(r)))
   else:
@@ -91,7 +91,7 @@ def shell(r:Union[Build,RRef,DRef,Path,str,None]=None)->None:
     import pylightnix.core
     cwd=pylightnix.core.PYLIGHTNIX_STORE
   elif isrref(r):
-    cwd=rref2path(RRef(r))
+    cwd=store_rref2path(RRef(r))
   elif isdref(r):
     cwd=store_dref2path(DRef(r))
   elif isinstance(r,Build):
@@ -123,7 +123,7 @@ def du()->Dict[DRef,Tuple[int,Dict[RRef,int]]]:
     dref_total=0
     for gr in store_rrefs_(dref):
       for rref in gr.values():
-        usage=dirsize(rref2path(rref))
+        usage=dirsize(store_rref2path(rref))
         rref_res[rref]=usage
         dref_total+=usage
     dref_total+=getsize(join(store_dref2path(dref),'config.json'))

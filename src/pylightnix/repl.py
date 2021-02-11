@@ -24,7 +24,7 @@ from pylightnix.utils import ( dirrm, timestring, concat )
 
 from pylightnix.types import ( Dict, Closure, Context, Derivation, RRef, DRef,
     List, Tuple, Optional, Generator, Path, Build, Union, Any, BuildArgs,
-    RealizeArg, Tag, RRefGroup )
+    RealizeArg, Tag, RRefGroup, SPath )
 
 from pylightnix.core import ( realizeSeq, store_realize_group, RealizeSeqGen,
     groups2rrefs )
@@ -33,6 +33,7 @@ from pylightnix.build import ( mkbuildargs, build_outpaths )
 class ReplHelper:
   def __init__(self, gen:RealizeSeqGen)->None:
     self.gen:Optional[RealizeSeqGen]=gen
+    self.storage:Optional[SPath]=None
     self.dref:Optional[DRef]=None
     self.context:Optional[Context]=None
     self.drv:Optional[Derivation]=None

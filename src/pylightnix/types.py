@@ -24,6 +24,11 @@ class Path(str):
   tell the typechecker that a given string contains a filesystem path. """
   pass
 
+class SPath(Path):
+  """ `SPath` is an alias for string. It is used in pylightnix to
+  tell the typechecker that a given string contains a path to storage. """
+  pass
+
 class Hash(str):
   """ `Hash` is an alias for string. It is used in pylightnix to
   tell the typechecker that a given string contains sha256 hash digest. """
@@ -84,7 +89,7 @@ class RRef(str):
 
   Valid realization references may be dereferenced down to system paths of
   *build artifacts* by calling
-  [rref2path](#pylightnix.core.rref2path). """
+  [store_rref2path](#pylightnix.core.store_rref2path). """
   pass
 
 class Name(str):
@@ -111,7 +116,7 @@ class Name(str):
 #:    [store_deref](#pylightnix.core.store_deref) or
 #:    [build_deref](#pylightnix.core.build_deref).
 #: 2. Convert the realization reference into system path with
-#:    [rref2path](#pylightnix.core.rref2path)
+#:    [store_rref2path](#pylightnix.core.store_rref2path)
 #: 3.  Join the system path with `[1:]` part of RefPath to get the real filename.
 #:
 #: The algorithm described above is implemented as
@@ -217,7 +222,7 @@ Context=Dict[DRef,List[RRef]]
 #: - [match_some](#pylightnix.core.match_some) matches any existing realizations
 #: - [match_only](#pylightnix.core.match_only) matches exactly one existing
 #:   realization (asserts if there are more than one realizations)
-Matcher = Callable[[DRef,Context],Optional[List[RRefGroup]]]
+Matcher = Callable[[SPath,DRef,Context],Optional[List[RRefGroup]]]
 
 InstantiateArg=Dict[str,Any]
 RealizeArg=Dict[str,Any]
@@ -260,7 +265,7 @@ RealizeArg=Dict[str,Any]
 #:   ...
 #:   return mkdrv(m, ...,  _realize)
 #: ```
-Realizer = Callable[[DRef,Context,RealizeArg],List[Dict[Tag,Path]]]
+Realizer = Callable[[SPath,DRef,Context,RealizeArg],List[Dict[Tag,Path]]]
 
 #: Derivation is the core type of Pylightnix. It keeps all the information about
 #: a stage:
@@ -287,7 +292,9 @@ Derivation = NamedTuple('Derivation', [('dref',DRef),
 #: Closure is typically obtained as a result of the
 #: [instantiate](#pylightnix.core.instantiate) and is typically consumed by the
 #: call to [realizeMany](#pylightnix.core.realizeMany) or it's analogs.
-Closure = NamedTuple('Closure', [('dref',DRef),('derivations',List[Derivation])])
+Closure = NamedTuple('Closure', [('dref',DRef),
+                                 ('derivations',List[Derivation]),
+                                 ('storage',SPath)])
 
 class Config:
   """ Config is a JSON-serializable set of user-defined attributes of Pylightnix
@@ -352,7 +359,8 @@ class ConfigAttrs:
 
 
 
-BuildArgs = NamedTuple('BuildArgs', [('dref',DRef),
+BuildArgs = NamedTuple('BuildArgs', [('storage',SPath),
+                                     ('dref',DRef),
                                      ('context',Context),
                                      ('timeprefix',Optional[str]),
                                      ('iarg',InstantiateArg),
@@ -403,6 +411,7 @@ class Build:
   """
 
   def __init__(self, ba:BuildArgs)->None:
+    self.storage=ba.storage
     self.dref=ba.dref
     self.context=ba.context
     self.iarg=ba.iarg
@@ -423,10 +432,11 @@ class Manager:
   The [inplace module](#pylightnix.inplace) defines it's own [global derivation
   manager](#pylightnix.inplace.PYLIGHTNIX_MANAGER) to simplify the usage even
   more.  """
-  def __init__(self):
+  def __init__(self, S:SPath):
     self.builders:Dict[DRef,Derivation]=OrderedDict()
     self.in_instantiate:bool=False
     self.in_redefine:bool=False
+    self.storage:SPath=S
 
 
 #: R is a DRef or any of its derivatives
