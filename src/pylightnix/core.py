@@ -528,10 +528,10 @@ def store_realize_tag(dref:DRef, l:Context, o:Path,
 
 def store_realize_group(dref:DRef, l:Context, og:Dict[Tag,Path], S=None)->RRefGroup:
   rrefg={}
-  rrefg[Tag('out')]=store_realize_tag(dref,l,og[Tag('out')],S)
+  rrefg[Tag('out')]=store_realize_tag(dref,l,og[Tag('out')],S=S)
   for tag,o in og.items():
     if tag!=Tag('out'):
-      rrefg[tag]=store_realize_tag(dref,l,o,(tag,rrefg[Tag('out')]),S)
+      rrefg[tag]=store_realize_tag(dref,l,o,(tag,rrefg[Tag('out')]),S=S)
   return rrefg
 
 #   ____            _            _
@@ -640,9 +640,9 @@ def mkdrv(m:Manager,
                f"Derivation config:\n{store_config_(dref)}"))
 
   def _promise_aware(realizer)->Realizer:
-    def _realizer(dref:DRef,ctx:Context,rarg:RealizeArg)->List[Dict[Tag,Path]]:
-      outgroups=realizer(dref,ctx,rarg)
-      for key,refpath in config_promises(store_config_(dref),dref):
+    def _realizer(S:SPath,dref:DRef,ctx:Context,rarg:RealizeArg)->List[Dict[Tag,Path]]:
+      outgroups=realizer(S,dref,ctx,rarg)
+      for key,refpath in config_promises(store_config_(dref,S),dref):
         for g in outgroups:
           assert_promise_fulfilled(key,refpath,g[Tag('out')])
       return outgroups
@@ -782,7 +782,7 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
         if abort:
           return []
       else:
-        rrefgs=drv.matcher(dref,dref_context)
+        rrefgs=drv.matcher(S,dref,dref_context)
       if rrefgs is None:
         assert dref not in assert_realized, (
           f"Stage '{dref}' was assumed to be already realized. "

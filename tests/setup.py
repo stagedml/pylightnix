@@ -1,7 +1,7 @@
 from pylightnix import ( Manager, Path, store_initialize, DRef, Context,
     Optional, mkbuild, build_outpath, store_rrefs, RRef, mkconfig,
-    Name, mkdrv, rref2path, dirchmod, promise, Config, RealizeArg, Tag,
-    RRefGroup, tryreadstr_def)
+    Name, mkdrv, store_rref2path, dirchmod, promise, Config, RealizeArg, Tag,
+    RRefGroup, tryreadstr_def, SPath, storage)
 from tests.imports import ( rmtree, join, makedirs, listdir, Callable,
     contextmanager, List, Dict,  Popen, PIPE )
 
@@ -39,7 +39,7 @@ def setup_testpath(name:str)->Path:
 
 def setup_inplace_reset()->None:
   import pylightnix.inplace
-  pylightnix.inplace.PYLIGHTNIX_MANAGER=Manager()
+  pylightnix.inplace.PYLIGHTNIX_MANAGER=Manager(storage(None))
 
 def mktestnode_nondetermenistic(m:Manager,
                                 sources:dict,
@@ -53,17 +53,17 @@ def mktestnode_nondetermenistic(m:Manager,
     c=mkconfig(sources)
     c.val['promise_artifact']=[promise_strength,'artifact']
     return c
-  def _realize(dref:DRef, context:Context, ra:RealizeArg)->List[Dict[Tag,Path]]:
-    b=mkbuild(dref, context, buildtime=buildtime)
+  def _realize(S:SPath, dref:DRef, context:Context, ra:RealizeArg)->List[Dict[Tag,Path]]:
+    b=mkbuild(S, dref, context, buildtime=buildtime)
     with open(join(build_outpath(b),'artifact'),'w') as f:
       f.write(str(nondet()))
     return b.outgroups
-  def _match(dref:DRef, context:Context)->Optional[List[RRefGroup]]:
+  def _match(S:SPath, dref:DRef, context:Context)->Optional[List[RRefGroup]]:
     max_i=-1
     max_gr:Optional[List[RRefGroup]]=None
-    for gr in store_rrefs(dref, context):
+    for gr in store_rrefs(dref, context, S):
       rref=gr[Tag('out')]
-      i=int(tryreadstr_def(join(rref2path(rref),'artifact'), "0"))
+      i=int(tryreadstr_def(join(store_rref2path(rref, S),'artifact'), "0"))
       if i>max_i:
         max_i=i
         max_gr=[gr]

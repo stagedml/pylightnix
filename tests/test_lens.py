@@ -116,5 +116,6 @@ def test_lens_closures():
     assert isclosure(clo)
 
     rref=realize(mklens(clo).maman.papa.closure)
-    assert mklens(rref).x.val == 33
-    assert open(mklens(rref).promise.syspath).read() == '0'
+    assert mklens(rref).x.val==33
+    assert open(mklens(rref).promise.syspath).read()=='0'
+

@@ -56,17 +56,19 @@ def repl_continueMany(out_groups:Optional[List[Dict[Tag,Path]]]=None,
   assert rh.dref is not None, ERR_INACTIVE_RH
   assert rh.context is not None, ERR_INACTIVE_RH
   assert rh.drv is not None, ERR_INACTIVE_RH
+  assert rh.storage is not None, ERR_INACTIVE_RH
   try:
     rrefgs:Optional[List[RRefGroup]]
     if out_groups is not None:
       assert out_rrefgs is None
-      rrefgs=[store_realize_group(rh.dref,rh.context,g) for g in out_groups]
+      rrefgs=[store_realize_group(rh.dref,rh.context,g,rh.storage)
+              for g in out_groups]
     elif out_rrefgs is not None:
       assert out_groups is None
       rrefgs=out_rrefgs
     else:
       rrefgs=None
-    rh.dref,rh.context,rh.drv,rh.rarg=rh.gen.send((rrefgs,False))
+    rh.storage,rh.dref,rh.context,rh.drv,rh.rarg=rh.gen.send((rrefgs,False))
   except StopIteration as e:
     rh.gen=None
     rh.rrefgs=e.value
@@ -119,7 +121,7 @@ def repl_realize(closure:Closure,
   PYLIGHTNIX_REPL_HELPER=rh
   assert rh.gen is not None, ERR_INACTIVE_RH
   try:
-    rh.dref,rh.context,rh.drv,rh.rarg=next(rh.gen)
+    rh.storage,rh.dref,rh.context,rh.drv,rh.rarg=next(rh.gen)
   except StopIteration as e:
     rh.gen=None
     rh.rrefgs=e.value
@@ -143,8 +145,9 @@ def repl_buildargs(rh:Optional[ReplHelper]=None, buildtime:bool=True)->BuildArgs
   assert rh.context is not None, ERR_INACTIVE_RH
   assert rh.dref is not None, ERR_INACTIVE_RH
   assert rh.rarg is not None, ERR_INACTIVE_RH
+  assert rh.storage is not None, ERR_INACTIVE_RH
   timeprefix=timestring() if buildtime else None
-  return mkbuildargs(rh.dref, rh.context, timeprefix, {}, rh.rarg)
+  return mkbuildargs(rh.storage, rh.dref, rh.context, timeprefix, {}, rh.rarg)
 
 def repl_build(rh:Optional[ReplHelper]=None, buildtime:bool=True)->Build:
   """ Return `Build` object for using in repl-based debugging

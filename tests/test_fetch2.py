@@ -1,5 +1,5 @@
 from pylightnix import ( DRef, RRef, lsref, catref, instantiate, realize,
-                        unrref, fetchurl, fetchurl2, isrref, rref2path, isfile,
+                        unrref, fetchurl, fetchurl2, isrref, store_rref2path, isfile,
                         mklens, promise, basename )
 
 from tests.imports import ( TemporaryDirectory, join, stat, chmod, S_IEXEC,

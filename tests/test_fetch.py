@@ -1,5 +1,5 @@
 from pylightnix import ( DRef, RRef, lsref, catref, instantiate, realize,
-    unrref, fetchurl, fetchlocal, isrref, rref2path, isfile, mklens )
+    unrref, fetchurl, fetchlocal, isrref, store_rref2path, isfile, mklens )
 
 from tests.imports import ( TemporaryDirectory, join, stat, chmod, S_IEXEC,
     system, Popen, PIPE, get_executable )
@@ -53,7 +53,7 @@ def test_fetchlocal():
           filename='validname.tar.gz',
           sha256=wanted_sha256))
     assert isrref(rref)
-    assert isfile(join(rref2path(rref),'mockdata'))
+    assert isfile(join(store_rref2path(rref),'mockdata'))
 
 
 def test_fetchlocal2():
@@ -67,6 +67,6 @@ def test_fetchlocal2():
     rref=realize(instantiate(fetchlocal, path=mockdata, sha256=wanted_sha256,
                              mode='as-is'))
     assert isrref(rref)
-    assert isfile(join(rref2path(rref),'mockdata'))
+    assert isfile(join(store_rref2path(rref),'mockdata'))
     assert isfile(mklens(rref).out_path.syspath)
 

@@ -18,13 +18,13 @@ resolution [Manager](#pylightnix.types.Manager) and thus offer a simpler API,
 but add usual risks of using gloabl variables. """
 
 from pylightnix.types import ( Any, DRef, Stage, Manager, Derivation, List,
-    RRef, Closure )
-from pylightnix.core import ( instantiate_, realize )
+                              RRef, Closure, SPath )
+from pylightnix.core import ( instantiate_, realize, storage )
 
 
 #: The Global [Derivation manager](#pylightnix.types.Manager) used by
 #: `instantiate_inplace` and `realize_inplace` functions of this module.
-PYLIGHTNIX_MANAGER = Manager()
+PYLIGHTNIX_MANAGER = Manager(storage(None))
 
 
 def instantiate_inplace(stage:Any, *args, **kwargs)->DRef:
@@ -43,6 +43,7 @@ def realize_inplace(dref:DRef, force_rebuild:List[DRef]=[])->RRef:
   dependency manager and [realizing](#pylightnix.core.realizeMany) this closure.
   """
   global PYLIGHTNIX_MANAGER
-  return realize(Closure(dref,list(PYLIGHTNIX_MANAGER.builders.values())),
+  return realize(Closure(dref,list(PYLIGHTNIX_MANAGER.builders.values()),
+                         storage=PYLIGHTNIX_MANAGER.storage),
                  force_rebuild=force_rebuild)
 

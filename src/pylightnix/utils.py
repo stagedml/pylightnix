@@ -243,7 +243,7 @@ def isclaim(p:Any)->bool:
   return ispromiselike(p,PYLIGHTNIX_CLAIM_TAG)
 
 def isclosure(x:Any)->bool:
-  return isinstance(x,tuple) and len(x)==2 and isdref(x[0]) \
+  return isinstance(x,tuple) and len(x)==3 and isdref(x[0]) \
          and isinstance(x[1],list)
 
 Mutator=Callable[[Any,Any],Any]
