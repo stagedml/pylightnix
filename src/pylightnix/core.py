@@ -71,7 +71,12 @@ PYLIGHTNIX_STORE=join(PYLIGHTNIX_ROOT, f'store-v{PYLIGHTNIX_STORE_VERSION}')
 def storage(S:Optional[SPath]=None)->SPath:
   """ Returns the location to Pylightnix storage, defaulting to
   PYLIGHTNIX_STORE """
-  return SPath(PYLIGHTNIX_STORE) if S is None else S
+  if S is None:
+    assert isinstance(PYLIGHTNIX_STORE, str), \
+      f"Default storage location is not a string: {PYLIGHTNIX_STORE}"
+    return SPath(PYLIGHTNIX_STORE)
+  else:
+    return S
 
 #: Set the regular expression pattern for valid name characters.
 PYLIGHTNIX_NAMEPAT="[a-zA-Z0-9_-]"
@@ -227,14 +232,14 @@ def mkrefpath(r:DRef, items:List[str]=[])->RefPath:
 #  ___) | || (_) | | |  __/
 # |____/ \__\___/|_|  \___|
 
-def assert_store_initialized()->None:
-  assert isdir(PYLIGHTNIX_STORE), \
+def assert_store_initialized(S:SPath)->None:
+  assert isdir(storage(S)), \
     (f"Looks like the Pylightnix store ('{PYLIGHTNIX_STORE}') is not initialized. Did "
      f"you call `store_initialize`?")
   assert isdir(PYLIGHTNIX_TMP), \
     (f"Looks like the Pylightnix tmp ('{PYLIGHTNIX_TMP}') is not initialized. Did "
      f"you call `store_initialize`?")
-  assert lstat(PYLIGHTNIX_STORE).st_dev == lstat(PYLIGHTNIX_TMP).st_dev, \
+  assert lstat((storage(S))).st_dev == lstat(PYLIGHTNIX_TMP).st_dev, \
     (f"Looks like Pylightnix store and tmp directories belong to different filesystems. "
      f"This case is not supported yet. Consider setting PYLIGHTNIX_TMP to be on the same "
      f"device with PYLIGHTNIX_STORE")
@@ -277,7 +282,7 @@ def store_initialize(custom_store:Optional[str]=None,
     PYLIGHTNIX_TMP=custom_tmp
   makedirs(PYLIGHTNIX_TMP, exist_ok=True)
 
-  assert_store_initialized()
+  assert_store_initialized(PYLIGHTNIX_STORE)
 
 def store_dref2path(r:DRef,S=None)->Path:
   (dhash,nm)=undref(r)
@@ -303,7 +308,7 @@ def store_config(r:Union[DRef,RRef],S=None)->RConfig:
     dref=rref2dref(RRef(r))
   else:
     dref=DRef(r)
-  return config_substitutePromises(store_config_(dref),dref)
+  return config_substitutePromises(store_config_(dref,S),dref)
 
 def store_context(r:RRef, S=None)->Context:
   """
@@ -379,8 +384,8 @@ def store_rrefs(dref:DRef, context:Context, S=None)->List[RRefGroup]:
   """ Iterate over realizations of a derivation `dref` which match a specified
   [context](#pylightnix.types.Context). Sorting order is unspecified. """
   rgs:List[RRefGroup]=[]
-  for rg in store_rrefs_(dref):
-    context2=store_context(list(rg.values())[0], S)
+  for rg in store_rrefs_(dref,S):
+    context2=store_context(list(rg.values())[0],S)
     if context_eq(context,context2):
       rgs.append(rg)
   return rgs
@@ -419,14 +424,14 @@ def store_group(rref:RRef,S=None)->Group:
 
 def store_gc(keep_drefs:List[DRef],
              keep_rrefs:List[RRef],
-             S:Optional[SPath]=None)->Tuple[Set[DRef],Set[RRef]]:
+             S:SPath)->Tuple[Set[DRef],Set[RRef]]:
   """ Take roots which are in use and should not be removed. Return roots which
   are not used and may be removed. Actual removing is to be done by the user.
 
   Default location of `S` may be changed.
 
   See also [rmref](#pylightnix.bashlike.rmref)"""
-  assert_store_initialized()
+  assert_store_initialized(S)
   keep_rrefs_=set(keep_rrefs)
   keep_drefs_=set(keep_drefs)
   closure_rrefs=store_deepdepRrefs(keep_rrefs_,S) | keep_rrefs_
@@ -443,13 +448,13 @@ def store_gc(keep_drefs:List[DRef],
   return remove_drefs,remove_rrefs
 
 
-def store_instantiate(c:Config,S=None)->DRef:
+def store_instantiate(c:Config,S:SPath)->DRef:
   """ Place new instantiation into the storage. We attempt to do it atomically
   by moving the directory right into it's place.
 
   FIXME: Assert or handle possible (but improbable) hash collision (*)
   """
-  assert_store_initialized()
+  assert_store_initialized(S)
   # c=cp.config
   assert_valid_config(c)
   assert_rref_deps(c)
@@ -637,7 +642,7 @@ def mkdrv(m:Manager,
                f"'{dref}'. It could be intended (e.g. a result of `redefine`), "
                f"but now we see a different situation. Could it be  "
                f"a recursive call to `instantiate`?\n"
-               f"Derivation config:\n{store_config_(dref)}"))
+               f"Derivation config:\n{store_config_(dref,m.storage)}"))
 
   def _promise_aware(realizer)->Realizer:
     def _realizer(S:SPath,dref:DRef,ctx:Context,rarg:RealizeArg)->List[Dict[Tag,Path]]:

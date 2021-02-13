@@ -3,7 +3,7 @@ from pylightnix import ( Manager, Path, store_initialize, DRef, Context,
     Name, mkdrv, store_rref2path, dirchmod, promise, Config, RealizeArg, Tag,
     RRefGroup, tryreadstr_def, SPath, storage)
 from tests.imports import ( rmtree, join, makedirs, listdir, Callable,
-    contextmanager, List, Dict,  Popen, PIPE )
+    contextmanager, List, Dict,  Popen, PIPE, gettempdir )
 
 PYLIGHTNIX_TEST:str='/tmp/pylightnix_tests'
 
@@ -31,6 +31,32 @@ def setup_storage(tn:str):
     pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
     pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
 
+@contextmanager
+def setup_storage2(tn:str):
+  # We reset STORE variables to prevent interaction with production store
+  import pylightnix.core
+  pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
+  pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
+  assert len(tn)>0
+  testroot=Path(join(gettempdir(), 'pylightnix', tn))
+  storepath=Path(join(testroot, 'store'))
+  tmppath=Path(join(testroot, 'tmp'))
+  try:
+    dirchmod(testroot, 'rw')
+    rmtree(testroot)
+  except FileNotFoundError:
+    pass
+  # store_initialize(custom_store=storepath, custom_tmp=gettempdir())
+  makedirs(storepath, exist_ok=False)
+  makedirs(tmppath, exist_ok=False)
+  pylightnix.core.PYLIGHTNIX_TMP=tmppath # type:ignore
+  assert 0==len(listdir(storepath))
+  try:
+    yield storepath
+  finally:
+    pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
+    pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
+
 def setup_testpath(name:str)->Path:
   testpath=join(PYLIGHTNIX_TEST, name)
   rmtree(testpath, onerror=lambda a,b,c:())
@@ -49,7 +75,7 @@ def mktestnode_nondetermenistic(m:Manager,
                                 promise_strength=promise)->DRef:
   """ Emulate non-determenistic builds. `nondet` is expected to return
   different values from build to build """
-  def _instantiate()->Config:
+  def _config()->Config:
     c=mkconfig(sources)
     c.val['promise_artifact']=[promise_strength,'artifact']
     return c
@@ -70,7 +96,7 @@ def mktestnode_nondetermenistic(m:Manager,
     return max_gr
 
   rw=(lambda x:x) if realize_wrapper is None else realize_wrapper
-  return mkdrv(m, _instantiate(), _match, rw(_realize))
+  return mkdrv(m, _config(), _match, rw(_realize))
 
 
 def mktestnode(m:Manager,

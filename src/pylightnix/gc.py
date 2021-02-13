@@ -25,7 +25,7 @@ from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional,
                               InstantiateArg, Tag, Group, RRefGroup)
 
 from pylightnix.core import (instantiate, realize, path2rref, path2dref,
-                             store_gc, store_rref2path)
+                             store_gc, store_rref2path, storage)
 
 from pylightnix.bashlike import (rmref)
 
@@ -72,7 +72,7 @@ def gc_candidates(keep:Tuple[List[DRef],List[RRef]],S=None)->Tuple[Set[DRef],Set
 
   Return the links to be removed. Run `gc(force=True)` to actually remove the
   links.  """
-  return store_gc(keep_drefs=keep[0], keep_rrefs=keep[1], S=S)
+  return store_gc(keep_drefs=keep[0], keep_rrefs=keep[1], S=storage(S))
 
 
 def gc(keep_dirs:List[Path],
