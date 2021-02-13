@@ -129,7 +129,7 @@ def dirhash(path:Path, verbose:bool=False)->Hash:
 
   def _iter()->Iterable[bytes]:
     for root, dirs, filenames in walk(abspath(path), topdown=True):
-      for filename in filenames:
+      for filename in sorted(filenames):
         if len(filename)>0 and filename[0] != '_':
           localpath=abspath(join(root, filename))
           if islink(localpath):
