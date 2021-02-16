@@ -324,17 +324,17 @@ def store_cattrs(r:Union[DRef,RRef], S=None)->Any:
   return config_cattrs(store_config(r,S))
 
 def store_deps(drefs:Iterable[DRef],S=None)->Set[DRef]:
-  """ Return a list of reference's immediate dependencies, not including `refs`
+  """ Return a list of reference's immediate dependencies, not including `drefs`
   themselves. """
   acc=set()
   for dref in drefs:
     acc.update(config_deps(store_config(dref,S))-{dref})
   return acc
 
-def store_deepdeps(roots:Iterable[DRef], S=None)->Set[DRef]:
-  """ Return the complete set of `roots`'s dependencies, not including `roots`
+def store_deepdeps(drefs:Iterable[DRef], S=None)->Set[DRef]:
+  """ Return the complete set of `drefs`'s dependencies, not including `drefs`
   themselves. """
-  frontier=store_deps(roots,S)
+  frontier=store_deps(drefs,S)
   processed=set()
   while frontier:
     ref = frontier.pop()
@@ -344,12 +344,16 @@ def store_deepdeps(roots:Iterable[DRef], S=None)->Set[DRef]:
         frontier.add(dep)
   return processed
 
-def store_deepdepRrefs(roots:Iterable[RRef],S=None)->Set[RRef]:
-  """ Return the complete set of root's dependencies, not including `roots`
+def store_deepdepRrefs(rrefs:Iterable[RRef],S=None)->Set[RRef]:
+  """ Return the complete set of root's dependencies, not including `rrefs`
   themselves.
+
+  TODO: Validate the property that the resulting set IS the minimal complete
+  set of RRef dependencies. Now it looks so only by creation (see `realizeSeq`,
+  line mark `I`)
   """
   acc:Set=set()
-  for rref in roots:
+  for rref in rrefs:
     for rref_deps in store_context(rref,S).values():
       acc|=set(rref_deps)
   return acc
@@ -555,7 +559,7 @@ def context_eq(a:Context,b:Context)->bool:
 
 def context_add(context:Context, dref:DRef, rrefs:List[RRef])->Context:
   assert dref not in context, (
-    f"Attempting to re-introduce DRef {dref} to context with "
+    f"Attempting to re-introduce DRef {dref} to context with a "
     f"different realization.\n"
     f" * Old realization: {context[dref]}\n"
     f" * New realization: {rrefs}\n" )
@@ -781,7 +785,7 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
     rrefgs:Optional[List[RRefGroup]]
     if dref in target_deps or dref==target_dref:
       dref_deps=store_deepdeps([dref],S)
-      dref_context={k:v for k,v in context_acc.items() if k in dref_deps}
+      dref_context={k:v for k,v in context_acc.items() if k in dref_deps} # I
       if dref in force_interrupt_:
         rrefgs,abort=yield (S,dref,dref_context,drv,realize_args.get(dref,{}))
         if abort:

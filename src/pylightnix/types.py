@@ -186,7 +186,7 @@ RRefGroup = Dict[Tag,RRef]
 #: [DRefs](#pylightnix.types.DRef) into one or many
 #: [RRefs](#pylightnix.types.RRef).
 #:
-#: For any derivation, Context stores a mapping from it's dependency's
+#: For any derivation, the Context stores a mapping from it's dependency's
 #: derivations to realizations.
 Context=Dict[DRef,List[RRef]]
 
