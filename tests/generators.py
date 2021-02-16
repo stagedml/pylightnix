@@ -1,11 +1,14 @@
 from pylightnix import ( RConfig, datahash, PYLIGHTNIX_NAMEPAT, mkdref, mkrref,
     trimhash, encode )
 
-from tests.imports import (
-    given, assume, example, note, settings, text, decimals, integers, rmtree,
-    characters, gettempdir, isdir, join, makedirs, from_regex, islink, listdir,
-    get_executable, run, dictionaries, one_of, lists, recursive, printable,
-    none, booleans, floats, re_compile, composite, event, binary, just )
+from tests.imports import (given, assume, example, note, settings, text,
+                           decimals, integers, rmtree, characters, gettempdir,
+                           isdir, join, makedirs, from_regex, islink, listdir,
+                           get_executable, run, dictionaries, one_of, lists,
+                           recursive, printable, none, booleans, floats,
+                           re_compile, composite, event, binary, just, sets,
+                           permutations, sampled_from)
+
 
 #   ____                           _
 #  / ___| ___ _ __   ___ _ __ __ _| |_ ___  _ __ ___
@@ -65,4 +68,17 @@ def artifacts(draw):
   ns=draw(lists(names(),min_size=1))
   vals=draw(lists(bindata(),min_size=len(ns),max_size=len(ns)))
   return {n:v for n,v in zip(ns,vals)}
+
+
+@composite
+def intdags(draw):
+  """ Return random DAGs as List[Tuple[int,Set[int]]] """
+  N=draw(integers(min_value=1,max_value=10))
+  seen:list=[]
+  acc:list=[]
+  for n in range(N):
+    deps=draw(sets(sampled_from(seen))) if seen else []
+    acc.append((n,set(deps)))
+    seen.append(n)
+  return draw(lists(permutations(acc),min_size=3, max_size=3))
 
