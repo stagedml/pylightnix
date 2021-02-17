@@ -332,6 +332,14 @@ def store_deps(drefs:Iterable[DRef],S=None)->Set[DRef]:
     acc.update(config_deps(store_config(dref,S))-{dref})
   return acc
 
+def store_depRrefs(rrefs:Iterable[RRef],S=None)->Set[RRef]:
+  acc=set()
+  for rref in rrefs:
+    dref=rref2dref(rref)
+    for dref_dep in store_deps([dref],S):
+      acc|=set(store_deref(rref,dref_dep,S).values())
+  return acc
+
 def store_deepdeps(drefs:Iterable[DRef], S=None)->Set[DRef]:
   """ Return the complete set of `drefs`'s dependencies, not including `drefs`
   themselves. """
@@ -346,7 +354,7 @@ def store_deepdeps(drefs:Iterable[DRef], S=None)->Set[DRef]:
   return processed
 
 def store_deepdepRrefs(rrefs:Iterable[RRef],S=None)->Set[RRef]:
-  """ Return the complete set of root's dependencies, not including `rrefs`
+  """ Return the complete set of rrefs's dependencies, not including `rrefs`
   themselves.
 
   TODO: Validate the property that the resulting set IS the minimal complete
@@ -367,6 +375,35 @@ def alldrefs(S=None)->Iterable[DRef]:
     if dirname[-4:]!='.tmp' and isdir(join(store_path_,dirname)):
       yield mkdref(HashPart(dirname[:32]), Name(dirname[32+1:]))
 
+def allrrefs(S=None)->Iterable[RRef]:
+  """ Iterates over all realization references in `S` (PYLIGHTNIX_STORE env is
+  used by default) """
+  for dref in alldrefs(S):
+    for rref in drefrrefs(dref,S):
+      yield rref
+
+def rootdrefs(S:Optional[SPath]=None)->Set[DRef]:
+  """ Return root DRefs of the storage `S` as a set """
+  drefs=kahntsort(alldrefs(S), lambda x:store_deps([x],S))
+  nonroots=set()
+  acc=set()
+  for dref in reversed(drefs):
+    if dref not in nonroots:
+      acc.add(dref)
+    nonroots|=store_deps([dref],S)
+  return acc
+
+def rootrrefs(S:Optional[SPath]=None)->Set[RRef]:
+  """ Return root DRefs of the storage `S` as a set """
+  rrefs=kahntsort(allrrefs(S), lambda x:store_depRrefs([x],S))
+  nonroots=set()
+  acc=set()
+  for rref in reversed(rrefs):
+    if rref not in nonroots:
+      acc.add(rref)
+    nonroots|=store_depRrefs([rref],S)
+  return acc
+
 def rrefs2groups(rrefs:List[RRef], S=None)->List[RRefGroup]:
   return [({store_tag(rref,S):rref for rref in rrefs if store_group(rref,S)==g})
     for g in sorted({store_group(rref,S) for rref in rrefs})]
@@ -374,7 +411,7 @@ def rrefs2groups(rrefs:List[RRef], S=None)->List[RRefGroup]:
 def groups2rrefs(grs:List[RRefGroup])->List[RRef]:
   return list(chain.from_iterable([gr.values() for gr in grs]))
 
-def dref2rrefs(dref:DRef,S=None)->List[RRef]:
+def drefrrefs(dref:DRef,S=None)->List[RRef]:
   """ Iterate over all realizations of a derivation `dref`. The sort order is
   unspecified. Matching is not taken into account. """
   (dhash,nm)=undref(dref)
@@ -388,14 +425,14 @@ def dref2rrefs(dref:DRef,S=None)->List[RRef]:
 def store_rrefs_(dref:DRef,S=None)->List[RRefGroup]:
   """ Iterate over all realizations of a derivation `dref`. The sort order is
   unspecified. """
-  return rrefs2groups(dref2rrefs(dref,S),S)
+  return rrefs2groups(drefrrefs(dref,S),S)
 
 def store_rrefs(dref:DRef, context:Context, S=None)->List[RRefGroup]:
   """ Iterate over realizations of a derivation `dref` which match a specified
   [context](#pylightnix.types.Context). Sorting order is unspecified. """
   rgs:List[RRefGroup]=[]
   for rg in store_rrefs_(dref,S):
-    context2=store_context(list(rg.values())[0],S)
+    context2=store_context(rg[Tag('out')],S)
     if context_eq(context,context2):
       rgs.append(rg)
   return rgs
