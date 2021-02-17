@@ -2,6 +2,7 @@ from pylightnix import ( Manager, Path, store_initialize, DRef, Context,
     Optional, mkbuild, build_outpath, store_rrefs, RRef, mkconfig,
     Name, mkdrv, store_rref2path, dirchmod, promise, Config, RealizeArg, Tag,
     RRefGroup, tryreadstr_def, SPath, storage)
+
 from tests.imports import ( rmtree, join, makedirs, listdir, Callable,
     contextmanager, List, Dict,  Popen, PIPE, gettempdir )
 
@@ -68,7 +69,7 @@ def setup_inplace_reset()->None:
   pylightnix.inplace.PYLIGHTNIX_MANAGER=Manager(storage(None))
 
 def mktestnode_nondetermenistic(m:Manager,
-                                sources:dict,
+                                config:dict,
                                 nondet:Callable[[],int],
                                 buildtime:bool=True,
                                 realize_wrapper=None,
@@ -76,7 +77,7 @@ def mktestnode_nondetermenistic(m:Manager,
   """ Emulate non-determenistic builds. `nondet` is expected to return
   different values from build to build """
   def _config()->Config:
-    c=mkconfig(sources)
+    c=mkconfig(config)
     c.val['promise_artifact']=[promise_strength,'artifact']
     return c
   def _realize(S:SPath, dref:DRef, context:Context, ra:RealizeArg)->List[Dict[Tag,Path]]:
@@ -100,13 +101,11 @@ def mktestnode_nondetermenistic(m:Manager,
 
 
 def mktestnode(m:Manager,
-               sources:dict,
+               config:dict,
                buildtime=True,
                realize_wrapper=None)->DRef:
   """ Build a test node with a given config and fixed build artifact """
-  return mktestnode_nondetermenistic(m, sources,
-                                     lambda:0,
-                                     buildtime,
+  return mktestnode_nondetermenistic(m, config, lambda:0, buildtime,
                                      realize_wrapper)
 
 

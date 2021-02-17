@@ -16,14 +16,13 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir,
                         Config, RConfig, build_setoutpaths, partial, path2rref,
                         Tag, Group, RRefGroup, concat, linkrrefs, instantiate_,
                         store_dref2path, path2dref, linkdref, storage,
-                        drefrrefs)
+                        store_deepdepRrefs, drefrrefs, allrrefs)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink,
                            isfile, islink, List, randint, sleep, rmtree, system,
-                           S_IWRITE, S_IREAD, S_IEXEC, chmod, Popen, PIPE)
+                           S_IWRITE, S_IREAD, S_IEXEC, chmod, Popen, PIPE, data)
 
-from tests.generators import (
-    rrefs, drefs, configs, dicts )
+from tests.generators import (rrefs, drefs, configs, dicts, rootstages)
 
 from tests.setup import ( ShouldHaveFailed, setup_testpath, setup_storage,
                          setup_storage2, mktestnode_nondetermenistic,
@@ -565,7 +564,7 @@ def test_promise()->None:
 
 def test_path2rref()->None:
   with setup_storage2('test_path2rref') as S:
-    s1=partial(mktestnode, sources={'name':'1', 'promise':[promise,'artifact']})
+    s1=partial(mktestnode, config={'name':'1', 'promise':[promise,'artifact']})
     rref1=realize(instantiate(s1,S=S))
     rref2=path2rref(store_rref2path(rref1,S))
     assert rref1==rref2
@@ -578,7 +577,7 @@ def test_path2rref()->None:
 
 def test_path2dref()->None:
   with setup_storage2('test_path2dref') as S:
-    s1=partial(mktestnode, sources={'name':'1', 'promise':[promise,'artifact']})
+    s1=partial(mktestnode, config={'name':'1', 'promise':[promise,'artifact']})
     clo1=instantiate(s1,S=S)
     dref1=clo1.dref
     rref1=realize(clo1)
@@ -593,7 +592,7 @@ def test_path2dref()->None:
 
 def test_linkrrefs()->None:
   with setup_storage2('test_linkrefs') as S:
-    s1=partial(mktestnode, sources={'name':'1', 'promise':[promise,'artifact']})
+    s1=partial(mktestnode, config={'name':'1', 'promise':[promise,'artifact']})
     rref1=realize(instantiate(s1,S=S))
     l=linkrrefs([rref1, rref1], destdir=S, S=S)
     assert len(l)==2
@@ -602,4 +601,26 @@ def test_linkrrefs()->None:
     l=linkrrefs([rref1], destdir=S, withtime=True, S=S)
     assert S in l[0]
 
+@given(stages=rootstages())
+def test_union_of_root_derivations(stages):
+  """ Union of dep.closures of root derivations must be equal to the set of all
+  derivations. """
+  with setup_storage2('test_union_of_root_derivations') as S:
+    deps=set()
+    for stage in stages:
+      clo=instantiate(stage,S=S)
+      deps |= store_deepdeps([clo.dref],S) | set([clo.dref])
+    assert deps==set(alldrefs(S))
+
+
+@given(stages=rootstages())
+def test_union_of_root_realizations(stages):
+  """ Union of dep.closures of root realizations must be equal to the set of all
+  realizations. """
+  with setup_storage2('test_union_of_root_realizations') as S:
+    deps=set()
+    for stage in stages:
+      rrefs=realizeMany(instantiate(stage,S=S))
+      deps|=store_deepdepRrefs(rrefs,S) | set(rrefs)
+    assert deps==set(allrrefs(S))
 

@@ -418,4 +418,14 @@ def kahntsort(nodes:Iterable[Any],
 
   return None if cnt>sz else acc
 
+def dagroots(sorted_nodes:Iterable[Any],
+             inbounds:Callable[[Any],Set[Any]])->Set[DRef]:
+  nonroots=set()
+  acc=set()
+  for node in reversed(sorted_nodes):
+    if node not in nonroots:
+      acc.add(node)
+    nonroots|=inbounds(node)
+  return acc
+
 

@@ -1,5 +1,5 @@
-from pylightnix import ( RConfig, datahash, PYLIGHTNIX_NAMEPAT, mkdref, mkrref,
-    trimhash, encode )
+from pylightnix import (Manager, SPath, RConfig, datahash, PYLIGHTNIX_NAMEPAT, mkdref,
+                        mkrref, trimhash, encode, instantiate_, dagroots)
 
 from tests.imports import (given, assume, example, note, settings, text,
                            decimals, integers, rmtree, characters, gettempdir,
@@ -7,8 +7,10 @@ from tests.imports import (given, assume, example, note, settings, text,
                            get_executable, run, dictionaries, one_of, lists,
                            recursive, printable, none, booleans, floats,
                            re_compile, composite, event, binary, just, sets,
-                           permutations, sampled_from)
+                           permutations, sampled_from, partial)
 
+
+from tests.setup import (mktestnode)
 
 #   ____                           _
 #  / ___| ___ _ __   ___ _ __ __ _| |_ ___  _ __ ___
@@ -69,10 +71,10 @@ def artifacts(draw):
   vals=draw(lists(bindata(),min_size=len(ns),max_size=len(ns)))
   return {n:v for n,v in zip(ns,vals)}
 
-
 @composite
 def intdags(draw):
-  """ Return random DAGs as List[Tuple[int,Set[int]]] """
+  """ Return random DAG as List[Tuple[int,Set[int]]]. Returned DAGs are
+  topologically sorted by construction. """
   N=draw(integers(min_value=1,max_value=10))
   seen:list=[]
   acc:list=[]
@@ -80,5 +82,25 @@ def intdags(draw):
     deps=draw(sets(sampled_from(seen))) if seen else []
     acc.append((n,set(deps)))
     seen.append(n)
-  return draw(lists(permutations(acc),min_size=3, max_size=3))
+  return acc
+
+@composite
+def intdags_permutations(draw):
+  """ Return a list of instances of a same DAG. Instances are not nesessarily
+  topologically sorted """
+  return draw(lists(permutations(draw(intdags())),min_size=3,max_size=3))
+
+
+@composite
+def rootstages(draw):
+  dag=draw(intdags().filter(lambda dag: len(dag)>0))
+  roots=dagroots([n[0] for n in dag], lambda n:dag[n][1])
+  def _stage(m, root):
+    drefs:dict={}
+    for n,deps in list(dag):
+      drefs[n]=mktestnode(m, config={'name':f'node_{n}',
+                                     'parents':[drefs[d] for d in deps]})
+    return drefs[root]
+  return [partial(_stage, root=root) for root in roots]
+
 

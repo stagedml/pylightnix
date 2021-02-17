@@ -31,10 +31,10 @@ from pylightnix.utils import (forcelink, isrefpath, traverse_dict)
 
 
 def mknode(m:Manager,
-           sources:dict,
+           config_dict:dict,
            artifacts:Dict[Name,bytes]={},
            name:str='mknode')->DRef:
-  config=deepcopy(sources)
+  config=deepcopy(config_dict)
   config['name']=name
   assert '__artifacts__' not in config, \
       "config shouldn't contain reserved field '__artifacts__'"
@@ -53,7 +53,7 @@ def mkfile(m:Manager,
            contents:bytes,
            filename:Optional[Name]=None)->DRef:
   filename_:Name=filename if filename is not None else name
-  return mknode(m, sources={'output':[promise,filename_]},
+  return mknode(m, config_dict={'output':[promise,filename_]},
                    artifacts={filename_:contents})
 
 def redefine(stage:Any,

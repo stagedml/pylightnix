@@ -10,7 +10,7 @@ from hypothesis.strategies import (text, decimals, integers, characters,
                                    from_regex, dictionaries, one_of, lists,
                                    recursive, none, booleans, floats,
                                    composite, binary, just, sets, permutations,
-                                   sampled_from)
+                                   sampled_from, data)
 from string import printable
 from distutils.spawn import find_executable
 
@@ -29,6 +29,8 @@ from calendar import timegm
 from random import randint
 
 from time import sleep
+
+from functools import partial
 
 def get_executable(name:str, not_found_message:str)->str:
   e=find_executable(name)

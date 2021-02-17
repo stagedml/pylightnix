@@ -95,8 +95,8 @@ def test_du():
 
 def test_find():
   with setup_storage('test_find') as s:
-    s1=partial(mktestnode_nondetermenistic, sources={'name':'1'}, nondet=lambda:42)
-    s2=partial(mktestnode_nondetermenistic, sources={'name':'2'}, nondet=lambda:33)
+    s1=partial(mktestnode_nondetermenistic, config={'name':'1'}, nondet=lambda:42)
+    s2=partial(mktestnode_nondetermenistic, config={'name':'2'}, nondet=lambda:33)
     rref1=realize(instantiate(s1))
     sleep(0.1)
     now=parsetime(timestring())
@@ -114,8 +114,8 @@ def test_find():
 
 def test_diff():
   with setup_storage('test_find') as s:
-    s1=partial(mktestnode_nondetermenistic, sources={'name':'1'}, nondet=lambda:42)
-    s2=partial(mktestnode_nondetermenistic, sources={'name':'2'}, nondet=lambda:33)
+    s1=partial(mktestnode_nondetermenistic, config={'name':'1'}, nondet=lambda:42)
+    s2=partial(mktestnode_nondetermenistic, config={'name':'2'}, nondet=lambda:33)
     dref1=instantiate(s1).dref
     rref2=realize(instantiate(s2))
     diff(dref1, rref2)

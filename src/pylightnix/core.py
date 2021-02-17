@@ -30,7 +30,7 @@ from pylightnix.utils import (dirhash, assert_serializable, assert_valid_dict,
                               tryread, encode, dirchmod, dirrm, filero, isrref,
                               isdref, traverse_dict, ispromise, isclaim,
                               tryread_def, tryreadjson_def, isrefpath,
-                              kahntsort)
+                              kahntsort, dagroots)
 
 from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional,
                               Iterable, IO, Path, SPath, Hash, DRef, RRef,
@@ -384,25 +384,15 @@ def allrrefs(S=None)->Iterable[RRef]:
 
 def rootdrefs(S:Optional[SPath]=None)->Set[DRef]:
   """ Return root DRefs of the storage `S` as a set """
-  drefs=kahntsort(alldrefs(S), lambda x:store_deps([x],S))
-  nonroots=set()
-  acc=set()
-  for dref in reversed(drefs):
-    if dref not in nonroots:
-      acc.add(dref)
-    nonroots|=store_deps([dref],S)
-  return acc
+  def _inb(x):
+    return store_deps([x],S)
+  return dagroots(kahntsort(alldrefs(S), _inb), _inb)
 
 def rootrrefs(S:Optional[SPath]=None)->Set[RRef]:
   """ Return root DRefs of the storage `S` as a set """
-  rrefs=kahntsort(allrrefs(S), lambda x:store_depRrefs([x],S))
-  nonroots=set()
-  acc=set()
-  for rref in reversed(rrefs):
-    if rref not in nonroots:
-      acc.add(rref)
-    nonroots|=store_depRrefs([rref],S)
-  return acc
+  def _inb(x):
+    return store_depRrefs([x],S)
+  return dagroots(kahntsort(allrrefs(S), _inb), _inb)
 
 def rrefs2groups(rrefs:List[RRef], S=None)->List[RRefGroup]:
   return [({store_tag(rref,S):rref for rref in rrefs if store_group(rref,S)==g})

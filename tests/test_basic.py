@@ -13,7 +13,7 @@ from tests.imports import (given, text, isdir, isfile, join, from_regex,
                            HealthCheck)
 
 from tests.generators import (rrefs, drefs, configs, dicts, prims,
-                              dicts_with_refs, intdags)
+                              dicts_with_refs, intdags, intdags_permutations)
 
 from tests.setup import (ShouldHaveFailed, setup_testpath, setup_storage,
                          setup_storage2)
@@ -177,7 +177,7 @@ def run_kahntsort(dag):
     seen.add(n)
   return res
 
-@given(dags=intdags())
+@given(dags=intdags_permutations())
 def test_kahntsort(dags)->None:
   with setup_storage2('test_kahntsort') as S:
     res0=None
