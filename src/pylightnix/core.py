@@ -29,7 +29,8 @@ from pylightnix.utils import (dirhash, assert_serializable, assert_valid_dict,
                               timestring, parsetime, datahash, readjson,
                               tryread, encode, dirchmod, dirrm, filero, isrref,
                               isdref, traverse_dict, ispromise, isclaim,
-                              tryread_def, tryreadjson_def, isrefpath)
+                              tryread_def, tryreadjson_def, isrefpath,
+                              kahntsort)
 
 from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional,
                               Iterable, IO, Path, SPath, Hash, DRef, RRef,
@@ -303,7 +304,7 @@ def store_config(r:Union[DRef,RRef],S=None)->RConfig:
   [resolve](#pylightnix.core.config_substitutePromises) it from promises and
   claims. """
   assert isrref(r) or isdref(r), (
-      f"Invalid reference {r}. Expected either RRef or DRef." )
+      f"Invalid reference '{r}'. Expected either RRef or DRef." )
   if isrref(r):
     dref=rref2dref(RRef(r))
   else:
@@ -358,7 +359,7 @@ def store_deepdepRrefs(rrefs:Iterable[RRef],S=None)->Set[RRef]:
       acc|=set(rref_deps)
   return acc
 
-def store_drefs(S=None)->Iterable[DRef]:
+def alldrefs(S=None)->Iterable[DRef]:
   """ Iterates over all derivations of the storage located at `S`
   (PYLIGHTNIX_STORE env is used by default) """
   store_path_=storage(S)
@@ -442,7 +443,7 @@ def store_gc(keep_drefs:List[DRef],
   closure_drefs=store_deepdeps(keep_drefs_,S) | keep_drefs_ | {rref2dref(rref) for rref in closure_rrefs}
   remove_drefs=set()
   remove_rrefs=set()
-  for dref in store_drefs(S):
+  for dref in alldrefs(S):
     if dref not in closure_drefs:
       remove_drefs.add(dref)
     for rg in store_rrefs_(dref,S):

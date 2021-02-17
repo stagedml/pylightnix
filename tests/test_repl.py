@@ -1,7 +1,7 @@
 from pylightnix import ( Manager, DRef, RRef, Path, mklogdir, dirhash, mknode,
     store_deps, store_deepdeps, store_rref2path, Manager, mkcontext, instantiate,
     realize, instantiate_inplace, realize_inplace, assert_valid_rref,
-    store_rrefs_, store_drefs, assert_valid_dref, repl_realize, repl_cancel,
+    store_rrefs_, alldrefs, assert_valid_dref, repl_realize, repl_cancel,
     repl_continue, repl_rref, repl_build, ReplHelper, build_outpath,
     store_deref, tryread, repl_continueBuild, isrref, Tag, Group, RRefGroup )
 

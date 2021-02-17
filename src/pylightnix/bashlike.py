@@ -19,7 +19,7 @@ from pylightnix.types import ( Iterable, List, Union, Optional, DRef, RRef,
 from pylightnix.imports import ( isfile, isdir, listdir, join, rmtree, environ,
     Popen, rename, getsize, fnmatch, dirname )
 from pylightnix.core import ( store_dref2path, store_rref2path, isrref, isdref,
-    store_drefs, store_rrefs_, store_config, config_name, store_buildtime,
+    alldrefs, store_rrefs_, store_config, config_name, store_buildtime,
     instantiate, store_cfgpath, rref2dref )
 from pylightnix.utils import ( dirchmod, dirrm, dirsize, parsetime, timestring )
 
@@ -118,7 +118,7 @@ def du()->Dict[DRef,Tuple[int,Dict[RRef,int]]]:
   total disk usage and disk usages per realizations. Note, that total disk usage
   of a derivation is slightly bigger than sum of it's realization's usages."""
   res={}
-  for dref in store_drefs():
+  for dref in alldrefs():
     rref_res={}
     dref_total=0
     for gr in store_rrefs_(dref):
@@ -157,7 +157,7 @@ def find(name:Optional[Union[Stage,str]]=None, newer:Optional[float]=None)->List
     else:
       stage=name
       name_=config_name(store_config(instantiate(stage).dref))
-  for dref in store_drefs():
+  for dref in alldrefs():
     for gr in store_rrefs_(dref):
       for rref in gr.values():
         if name_ is not None:

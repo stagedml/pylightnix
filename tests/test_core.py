@@ -8,7 +8,7 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir,
                         match_only, mkdrv, store_deref, store_rref2path,
                         store_rrefs_, config_cattrs, mksymlink, store_cattrs,
                         build_deref, build_path, mkrefpath, build_config,
-                        store_drefs, store_rrefs, build_wrapper, build_cattrs,
+                        alldrefs, store_rrefs, build_wrapper, build_cattrs,
                         build_name, match_best, tryread, trywrite, match,
                         latest, best, exact, Key, match_latest, match_all,
                         match_some, match_n, realizeMany, build_outpaths,
@@ -316,7 +316,7 @@ def test_ignored_stage()->None:
     cl=instantiate(_setting,S=S)
     rref = realize(cl)
     rrefs:List[RRef] = []
-    all_drefs = list(store_drefs(S))
+    all_drefs = list(alldrefs(S))
     assert len(all_drefs)==4
     assert len(list(store_rrefs__(n1,S)))==1
     assert len(list(store_rrefs__(n2,S)))==0
@@ -336,7 +336,7 @@ def test_overwrite_realizer()->None:
       return n2
 
     rref_n2=realize(instantiate(_setting, S=S))
-    all_drefs = list(store_drefs(S))
+    all_drefs = list(alldrefs(S))
     assert len(all_drefs)==2
 
     rref_n3=store_deref(rref_n2, store_cattrs(rref_n2, S).maman, S)[Tag('out')]
