@@ -15,7 +15,8 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir,
                         scanref_dict, config_dict, promise, mklens, isrref,
                         Config, RConfig, build_setoutpaths, partial, path2rref,
                         Tag, Group, RRefGroup, concat, linkrrefs, instantiate_,
-                        store_dref2path, path2dref, linkdref, storage)
+                        store_dref2path, path2dref, linkdref, storage,
+                        dref2rrefs)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink,
                            isfile, islink, List, randint, sleep, rmtree, system,
@@ -27,9 +28,6 @@ from tests.generators import (
 from tests.setup import ( ShouldHaveFailed, setup_testpath, setup_storage,
                          setup_storage2, mktestnode_nondetermenistic,
                          mktestnode, pipe_stdout )
-
-def store_rrefs__(x,S=None):
-  return concat([list(g.values()) for g in store_rrefs_(x,S)])
 
 
 @given(d=dicts())
@@ -196,9 +194,9 @@ def test_realize_nondetermenistic()->None:
     DATA = 2
     rref2 = realize(instantiate(_setup,S=S), force_rebuild=[n2])
 
-    assert len(list(store_rrefs__(n1,S))) == 1
-    assert len(list(store_rrefs__(n2,S))) == 2
-    assert len(list(store_rrefs__(n3,S))) == 2
+    assert len(list(dref2rrefs(n1,S))) == 1
+    assert len(list(dref2rrefs(n2,S))) == 2
+    assert len(list(dref2rrefs(n3,S))) == 2
     assert rref1 != rref2
 
     n2_gr1 = store_deref(rref1, n2,S)
@@ -318,10 +316,10 @@ def test_ignored_stage()->None:
     rrefs:List[RRef] = []
     all_drefs = list(alldrefs(S))
     assert len(all_drefs)==4
-    assert len(list(store_rrefs__(n1,S)))==1
-    assert len(list(store_rrefs__(n2,S)))==0
-    assert len(list(store_rrefs__(n3,S)))==1
-    assert len(list(store_rrefs__(n4,S)))==0
+    assert len(list(dref2rrefs(n1,S)))==1
+    assert len(list(dref2rrefs(n2,S)))==0
+    assert len(list(dref2rrefs(n3,S)))==1
+    assert len(list(dref2rrefs(n4,S)))==0
 
 
 def test_overwrite_realizer()->None:
@@ -354,17 +352,17 @@ def test_match_only()->None:
       return mkdrv(m, mkconfig({'a':1}), match_only(), build_wrapper(_realize))
 
     closure = instantiate(_setting,S=S)
-    assert len(list(store_rrefs__(closure.dref,S))) == 0
+    assert len(list(dref2rrefs(closure.dref,S))) == 0
     rref = realize(closure)
-    assert len(list(store_rrefs__(closure.dref,S))) == 1
+    assert len(list(dref2rrefs(closure.dref,S))) == 1
     rref = realize(closure)
-    assert len(list(store_rrefs__(closure.dref,S))) == 1
+    assert len(list(dref2rrefs(closure.dref,S))) == 1
     try:
       rref = realize(closure, force_rebuild=[closure.dref])
       raise ShouldHaveFailed('Should have failed in match_only assertion')
     except AssertionError as e:
       pass
-    assert len(list(store_rrefs__(closure.dref,S))) == 2
+    assert len(list(dref2rrefs(closure.dref,S))) == 2
 
 
 def test_match_best()->None:
@@ -384,17 +382,17 @@ def test_match_best()->None:
     score='0'
     rref1a=realize(clo1)
     assert isfile(join(store_rref2path(rref1a,S),'score'))
-    assert len(list(store_rrefs__(clo1.dref,S))) == 1
+    assert len(list(dref2rrefs(clo1.dref,S))) == 1
     assert tryread(Path(join(store_rref2path(rref1a,S),'score')))=='0'
     score='non-integer'
     rref1b=realize(clo1, force_rebuild=[clo1.dref])
     assert isfile(join(store_rref2path(rref1b,S),'score'))
-    assert len(list(store_rrefs__(clo1.dref,S))) == 2
+    assert len(list(dref2rrefs(clo1.dref,S))) == 2
     assert tryread(Path(join(store_rref2path(rref1b,S),'score')))=='0'
     score='1'
     rref1c=realize(clo1, force_rebuild=[clo1.dref])
     assert isfile(join(store_rref2path(rref1c,S),'score'))
-    assert len(list(store_rrefs__(clo1.dref,S))) == 3
+    assert len(list(dref2rrefs(clo1.dref,S))) == 3
     assert tryread(Path(join(store_rref2path(rref1c,S),'score')))=='1'
     # Here we refuse to create 'score' file altogether. `match_best` should
     # ignore this realization.
@@ -402,7 +400,7 @@ def test_match_best()->None:
     fname='baz'
     rref1d=realize(clo1, force_rebuild=[clo1.dref])
     assert not isfile(join(store_rref2path(rref1d,S),'baz'))
-    assert len(list(store_rrefs__(clo1.dref,S))) == 4
+    assert len(list(dref2rrefs(clo1.dref,S))) == 4
 
     # This test case did flicker. The last fix was to sort filenames in
     # `dirhash`.
@@ -424,7 +422,7 @@ def test_match_best()->None:
                      S=S)
     rref1e=realize(clo1)
     assert isfile(join(store_rref2path(rref1e,S),'baz'))
-    assert len(list(store_rrefs__(clo1.dref,S))) == 4
+    assert len(list(dref2rrefs(clo1.dref,S))) == 4
 
     clo1=instantiate(_mklrg, {'a':1}, matcher=match_best('score'),S=S)
     rref1=realize(clo1)
@@ -444,21 +442,21 @@ def test_match_latest()->None:
   with setup_storage2('test_match_latest') as S:
     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=1, S=S)
     rref1=realize(clo)
-    assert len(list(store_rrefs__(clo.dref,S)))==1
+    assert len(list(dref2rrefs(clo.dref,S)))==1
     sleep(0.01)
     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=2, S=S)
     rref2=realize(clo, force_rebuild=[clo.dref])
-    assert len(list(store_rrefs__(clo.dref,S)))==2
+    assert len(list(dref2rrefs(clo.dref,S)))==2
     assert tryread(Path(join(store_rref2path(rref2,S),'artifact')))==str('2_0')
 
   with setup_storage2('test_match_latest') as S:
     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=1, S=S)
     rref1=realize(clo)
-    assert len(list(store_rrefs__(clo.dref,S)))==1
+    assert len(list(dref2rrefs(clo.dref,S)))==1
     sleep(0.01)
     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=2, buildtime=False, S=S)
     rref2=realize(clo, force_rebuild=[clo.dref])
-    assert len(list(store_rrefs__(clo.dref,S)))==2
+    assert len(list(dref2rrefs(clo.dref,S)))==2
     assert tryread(Path(join(store_rref2path(rref2,S),'artifact')))==str('1_0')
 
   for i in range(10):

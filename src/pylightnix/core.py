@@ -374,16 +374,21 @@ def rrefs2groups(rrefs:List[RRef], S=None)->List[RRefGroup]:
 def groups2rrefs(grs:List[RRefGroup])->List[RRef]:
   return list(chain.from_iterable([gr.values() for gr in grs]))
 
-def store_rrefs_(dref:DRef,S=None)->List[RRefGroup]:
+def dref2rrefs(dref:DRef,S=None)->List[RRef]:
   """ Iterate over all realizations of a derivation `dref`. The sort order is
-  unspecified. """
+  unspecified. Matching is not taken into account. """
   (dhash,nm)=undref(dref)
   drefpath=store_dref2path(dref,S)
   rrefs:List[RRef]=[]
   for f in listdir(drefpath):
     if f[-4:]!='.tmp' and isdir(join(drefpath,f)):
       rrefs.append(mkrref(HashPart(f), dhash, nm))
-  return rrefs2groups(rrefs,S)
+  return rrefs
+
+def store_rrefs_(dref:DRef,S=None)->List[RRefGroup]:
+  """ Iterate over all realizations of a derivation `dref`. The sort order is
+  unspecified. """
+  return rrefs2groups(dref2rrefs(dref,S),S)
 
 def store_rrefs(dref:DRef, context:Context, S=None)->List[RRefGroup]:
   """ Iterate over realizations of a derivation `dref` which match a specified
