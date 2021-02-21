@@ -179,7 +179,7 @@ def run_kahntsort(dag):
 
 @given(dags=intdags_permutations())
 def test_kahntsort(dags)->None:
-  with setup_storage2('test_kahntsort') as S:
+  with setup_storage2('test_kahntsort') as T,S:
     res0=None
     for dag in dags:
       res=run_kahntsort(dag)

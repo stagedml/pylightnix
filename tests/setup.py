@@ -1,7 +1,7 @@
 from pylightnix import ( Manager, Path, store_initialize, DRef, Context,
     Optional, mkbuild, build_outpath, store_rrefs, RRef, mkconfig,
     Name, mkdrv, store_rref2path, dirchmod, promise, Config, RealizeArg, Tag,
-    RRefGroup, tryreadstr_def, SPath, storage)
+    RRefGroup, tryreadstr_def, SPath, storage, storagename)
 
 from tests.imports import ( rmtree, join, makedirs, listdir, Callable,
     contextmanager, List, Dict,  Popen, PIPE, gettempdir )
@@ -40,7 +40,7 @@ def setup_storage2(tn:str):
   pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
   assert len(tn)>0
   testroot=Path(join(gettempdir(), 'pylightnix', tn))
-  storepath=Path(join(testroot, 'store'))
+  storepath=Path(join(testroot, storagename()))
   tmppath=Path(join(testroot, 'tmp'))
   try:
     dirchmod(testroot, 'rw')
@@ -53,7 +53,7 @@ def setup_storage2(tn:str):
   pylightnix.core.PYLIGHTNIX_TMP=tmppath # type:ignore
   assert 0==len(listdir(storepath))
   try:
-    yield storepath
+    yield tmppath,storepath
   finally:
     pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
     pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore

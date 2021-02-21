@@ -28,11 +28,11 @@ from tests.setup import (
     ShouldHaveFailed, setup_testpath, setup_storage2,
     mktestnode_nondetermenistic, mktestnode, pipe_stdout )
 
-from pylightnix.arch import pack
+from pylightnix.arch import (pack,unpack)
 
 
 def test_pack()->None:
-  with setup_storage2('test_pack') as S:
+  with setup_storage2('test_pack') as (T,S):
     def _stage(m):
       s1=mktestnode(m, {'name':'1', 'promise':[promise,'artifact']})
       s2=mktestnode(m,{'name':'2', 'maman': s1,
@@ -42,7 +42,8 @@ def test_pack()->None:
       return s3
     rref3=realize(instantiate(_stage,S=S))
 
-    arch_path=join(S,'archive.zip')
+    arch_path=join(T,'archive.zip')
     pack([rref3], arch_path, S=S)
+    unpack(arch_path, S=S)
     assert isfile(arch_path)
 

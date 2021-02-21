@@ -15,11 +15,16 @@
 """ Functions for moving parts of the storage to and from archives.  """
 
 from pylightnix.imports import (Popen, dirname, basename, remove, join,
-                                relpath, rename, splitext)
-from pylightnix.types import (RRef, List, Dict, Path)
+                                relpath, rename, splitext, mkdtemp, basename,
+                                isfile, isdir)
+from pylightnix.types import (RRef, List, Dict, Path, Iterable, Optional, SPath,
+                              Manager, DRef, Config, RConfig, Build)
 from pylightnix.core import (store_deepdeps, store_deepdepRrefs,
-                             store_rref2path, storage)
-from pylightnix.utils import (try_executable)
+                             store_rref2path, store_dref2path, storage, tempdir,
+                             storagename, alldrefs, rootdrefs, rref2dref,
+                             config_deps, store_config, build_wrapper,
+                             match_all, mkdrv, realizeMany, instantiate)
+from pylightnix.utils import (try_executable, dirrm)
 
 
 
@@ -28,27 +33,76 @@ APACK=try_executable('apack',
                      '`apack` executable not found. Please install `atool` system '
                      'pacakge or set PYLIGHTNIX_APACK env var.',
                      '`arch.pack` procedure will fail.')
+AUNPACK=try_executable('aunpack',
+                     'PYLIGHTNIX_AUNPACK',
+                     '`aunpack` executable not found. Please install `atool` system '
+                     'pacakge or set PYLIGHTNIX_AUNPACK env var.',
+                     '`arch.unpack` procedure will fail.')
 
 
 def pack(roots:List[RRef], out:Path, S=None)->None:
   tmp=splitext(out)[0]+'_tmp'+splitext(out)[1]
-  rrefs=store_deepdepRrefs(roots,S)
   try:
     remove(tmp)
   except KeyboardInterrupt:
     raise
   except Exception:
     pass
-  store_holder=storage(S)
-  for rref in rrefs | set(roots):
-    p=Popen([APACK(), tmp, relpath(store_rref2path(rref,S), start=store_holder)],
-            cwd=store_holder)
+  rrefs=store_deepdepRrefs(roots,S)
+  store_holder=dirname(storage(S))
+  retcode=0
+  done=False
+  try:
+    for rref in rrefs | set(roots):
+      p=Popen([APACK(), tmp,
+               relpath(store_dref2path(rref2dref(rref),S), start=store_holder),
+               relpath(store_rref2path(rref,S), start=store_holder)],
+              cwd=store_holder)
+      p.wait()
+      assert p.returncode==0, f"Failed to pack {rref}. Retcode is {p.returncode}"
+    done=True
+  finally:
+    if done:
+      rename(tmp,out)
+    else:
+      try:
+        remove(tmp)
+      except FileNotFoundError:
+        pass
+
+def unpack(archive:Path,S=None)->None:
+  tmppath=mkdtemp(suffix=f"_{basename(archive)}", dir=tempdir())
+  try:
+    p=Popen([AUNPACK(), '-X', tmppath, archive], cwd=tempdir())
     p.wait()
-  rename(tmp,out)
+    assert p.returncode==0, \
+      f"Failed to unpack '{archive}'. Retcode is {p.returncode}"
+    archstore=SPath(join(tmppath, storagename()))
+    assert isdir(archstore), \
+      f"Archive '{archive}' didn't contain a directory '{storagename()}'"
+    # copyclosure(rootdrefs(S=archstore), archstore, S)
+  finally:
+    # dirrm(tmppath)
+    pass
 
+def copyclosure(rrefs:Iterable[RRef], S:SPath, D:Optional[SPath]=None)->None:
+  """ Copy the closure of `rrefs` from storage S to storage D (defaults to
+  default storage.  """
 
-def unpack(file_path:Path)->None:
-  assert False, "Not implemented"
+  def _stage(m:Manager, cfg:RConfig)->DRef:
+    for dep_dref in config_deps(cfg):
+      dep=_stage(m, store_config(dep_dref,S=S))
+      assert dep==dep_dref
+    def _make(b:Build)->None:
+      assert False, "Not impl"
+    # We pass RConfig in place of Config. Not sure it would work.
+    return mkdrv(m, cfg, match_all, build_wrapper(_make))
 
+  # for dref in alldrefs(S=S):
+  #   print(dref)
+  for root_dref in rootdrefs(S=S):
+    print("Realizing root:",root_dref)
+    realizeMany(instantiate(_stage, store_config(root_dref,S=S), S=D))
+  assert False, "Not impl"
 
 

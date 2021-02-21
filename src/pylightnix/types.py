@@ -308,11 +308,12 @@ Closure = NamedTuple('Closure', [('dref',DRef),
                                  ('storage',SPath)])
 
 class Config:
-  """ Config is a JSON-serializable set of user-defined attributes of Pylightnix
-  node. Typically, configs should determine node's realization process.
+  """ Config is a JSON-serializable dict which contains user-defined attributes
+  of Pylightnix stage. Together with Realizers and Matchers, Configs determine
+  stage's realization process.
 
   Configs should match the requirements of `assert_valid_config`. Typically,
-  it's `val` dictionary should contain JSON-serializable types only: strings,
+  it's `val` dictionary should only contain JSON-serializable types: strings,
   string aliases such as [DRefs](#pylightnix.types.DRef), bools, ints, floats,
   lists or other dicts. No bytes, `numpy.float32` or lambdas are allowed. Tuples
   are also forbidden because they are not preserved (decoded into lists).
@@ -353,8 +354,10 @@ class Config:
 
 
 class RConfig(Config):
-  """ RConfig is a [Config](#pylightnix.types.Config) where all claims and
-  promises are resolved."""
+  """ `RConfig` is a [Config](#pylightnix.types.Config) where all
+  [Claims](#pylightnix.types.PYLIGHTNIX_CLAIM_TAG) and
+  [Promises](#pylightnix.types.PYLIGHTNIX_PROMISE_TAG) are resolved.  RConfig
+  stands for 'Resolved Config'.  """
   pass
 
 

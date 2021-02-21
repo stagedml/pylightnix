@@ -50,6 +50,9 @@ warning=logger.warning
 #: Tracks the version of pylightnix storage
 PYLIGHTNIX_STORE_VERSION=0
 
+def storagename():
+  return f"store-v{PYLIGHTNIX_STORE_VERSION}"
+
 #: `PYLIGHTNIX_ROOT` contains the path to the root of pylightnix shared data folder.
 #:
 #: Default is `~/_pylightnix` or `/var/run/_pylightnix` if no `$HOME` is available.
@@ -63,11 +66,19 @@ PYLIGHTNIX_ROOT=environ.get('PYLIGHTNIX_ROOT',
 #: `$PYLIGHTNIX_ROOT/tmp`.
 PYLIGHTNIX_TMP=environ.get('PYLIGHTNIX_TMP', join(PYLIGHTNIX_ROOT,'tmp'))
 
+def tempdir(tmp:Optional[Path]=None)->Path:
+  if tmp is None:
+    assert isinstance(PYLIGHTNIX_TMP, str), \
+      f"Default temp folder location is not a string: {PYLIGHTNIX_TMP}"
+    return Path(PYLIGHTNIX_TMP)
+  else:
+    return tmp
+
 #: `PYLIGHTNIX_STORE` contains the path to the main pylightnix store folder.
 #:
 #: By default, the store is located in `$PYLIGHTNIX_ROOT/store-vXX` folder.
 #: Setting `PYLIGHTNIX_STORE` environment variable overwrites the defaults.
-PYLIGHTNIX_STORE=join(PYLIGHTNIX_ROOT, f'store-v{PYLIGHTNIX_STORE_VERSION}')
+PYLIGHTNIX_STORE=join(PYLIGHTNIX_ROOT, storagename())
 
 def storage(S:Optional[SPath]=None)->SPath:
   """ Returns the location to Pylightnix storage, defaulting to
@@ -237,10 +248,10 @@ def assert_store_initialized(S:SPath)->None:
   assert isdir(storage(S)), \
     (f"Looks like the Pylightnix store ('{PYLIGHTNIX_STORE}') is not initialized. Did "
      f"you call `store_initialize`?")
-  assert isdir(PYLIGHTNIX_TMP), \
-    (f"Looks like the Pylightnix tmp ('{PYLIGHTNIX_TMP}') is not initialized. Did "
+  assert isdir(tempdir()), \
+    (f"Looks like the Pylightnix tmp ('{tempdir()}') is not initialized. Did "
      f"you call `store_initialize`?")
-  assert lstat((storage(S))).st_dev == lstat(PYLIGHTNIX_TMP).st_dev, \
+  assert lstat((storage(S))).st_dev == lstat(tempdir()).st_dev, \
     (f"Looks like Pylightnix store and tmp directories belong to different filesystems. "
      f"This case is not supported yet. Consider setting PYLIGHTNIX_TMP to be on the same "
      f"device with PYLIGHTNIX_STORE")
@@ -507,7 +518,7 @@ def mkdrv_(c:Config,S:SPath)->DRef:
 
   dref=mkdref(trimhash(dhash),refname)
 
-  o=Path(mkdtemp(prefix=refname, dir=PYLIGHTNIX_TMP))
+  o=Path(mkdtemp(prefix=refname, dir=tempdir()))
   with open(join(o,'config.json'), 'w') as f:
     f.write(config_serialize(c))
 
