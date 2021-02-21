@@ -389,6 +389,9 @@ def kahntsort(nodes:Iterable[Any],
   """ Kahn's algorithm for topological sorting. Takes iterable `nodes` and
   pure-function `inbounds`. Output list of nodes in topological order, or None
   if graph has cycle.
+
+  One modification is that we use PriorityQueue insted of plain list to put
+  take name-order into account.
   """
   indeg:dict={}
   outbounds:dict=defaultdict(set)
@@ -419,7 +422,8 @@ def kahntsort(nodes:Iterable[Any],
   return None if cnt>sz else acc
 
 def dagroots(sorted_nodes:Iterable[Any],
-             inbounds:Callable[[Any],Set[Any]])->Set[DRef]:
+             inbounds:Callable[[Any],Set[Any]])->Set[Any]:
+  """ Return a set og root nodes of a DAG."""
   nonroots=set()
   acc=set()
   for node in reversed(sorted_nodes):

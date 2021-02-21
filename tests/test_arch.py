@@ -25,14 +25,14 @@ from tests.generators import (
     rrefs, drefs, configs, dicts )
 
 from tests.setup import (
-    ShouldHaveFailed, setup_testpath, setup_storage,
+    ShouldHaveFailed, setup_testpath, setup_storage2,
     mktestnode_nondetermenistic, mktestnode, pipe_stdout )
 
 from pylightnix.arch import pack
 
 
 def test_pack()->None:
-  with setup_storage('test_pack') as p:
+  with setup_storage2('test_pack') as S:
     def _stage(m):
       s1=mktestnode(m, {'name':'1', 'promise':[promise,'artifact']})
       s2=mktestnode(m,{'name':'2', 'maman': s1,
@@ -40,9 +40,9 @@ def test_pack()->None:
       s3=mktestnode(m,{'name':'3', 'maman': s2,
                        'promise':[promise,'artifact']})
       return s3
-    rref3=realize(instantiate(_stage))
+    rref3=realize(instantiate(_stage,S=S))
 
-    arch_path=join(p,'archive.zip')
-    pack([rref3], arch_path)
+    arch_path=join(S,'archive.zip')
+    pack([rref3], arch_path, S=S)
     assert isfile(arch_path)
 

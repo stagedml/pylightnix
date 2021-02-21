@@ -17,7 +17,8 @@
 from pylightnix.imports import (Popen, dirname, basename, remove, join,
                                 relpath, rename, splitext)
 from pylightnix.types import (RRef, List, Dict, Path)
-from pylightnix.core import (store_deepdeps, store_deepdepRrefs, store_rref2path)
+from pylightnix.core import (store_deepdeps, store_deepdepRrefs,
+                             store_rref2path, storage)
 from pylightnix.utils import (try_executable)
 
 
@@ -29,23 +30,18 @@ APACK=try_executable('apack',
                      '`arch.pack` procedure will fail.')
 
 
-def rsort(rrefs:List[RRef], deps:Dict[RRef,List[RRef]])->List[RRef]:
-  assert False, "Not implemented"
-
-
-def pack(roots:List[RRef], out:Path)->None:
+def pack(roots:List[RRef], out:Path, S=None)->None:
   tmp=splitext(out)[0]+'_tmp'+splitext(out)[1]
-  rrefs=store_deepdepRrefs(roots)
+  rrefs=store_deepdepRrefs(roots,S)
   try:
     remove(tmp)
   except KeyboardInterrupt:
     raise
   except Exception:
     pass
-  import pylightnix.core
-  store_holder=dirname(pylightnix.core.PYLIGHTNIX_STORE)
+  store_holder=storage(S)
   for rref in rrefs | set(roots):
-    p=Popen([APACK(), tmp, relpath(store_rref2path(rref), start=store_holder)],
+    p=Popen([APACK(), tmp, relpath(store_rref2path(rref,S), start=store_holder)],
             cwd=store_holder)
     p.wait()
   rename(tmp,out)
