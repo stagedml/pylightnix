@@ -86,8 +86,11 @@ def unpack(archive:Path,S=None)->None:
     pass
 
 def copyclosure(rrefs:Iterable[RRef], S:SPath, D:Optional[SPath]=None)->None:
-  """ Copy the closure of `rrefs` from storage S to storage D (defaults to
-  default storage.  """
+  """ Copy the closure of `rrefs` from storage `S` to storage `D` (which
+  defaults to the globl-default storage).
+
+  TODO: Implement a non-recursive version.
+  """
 
   def _stage(m:Manager, cfg:RConfig)->DRef:
     for dep_dref in config_deps(cfg):
