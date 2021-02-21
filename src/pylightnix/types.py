@@ -157,25 +157,36 @@ PYLIGHTNIX_CLAIM_TAG = "__claim__"
 #: ```
 PromisePath = List[Any]
 
-#: Realization tag is a user-defined string without spaces and newline symbols.
-#: By default, realizations have tag 'out'. This can be changed by realizer
-#: e.g. to store logs, manual pages etc. separately.  The tag is supposed to be
-#: unique across the [Group](#pylightnix.types.Group).
+#: Realization Tag is a user-defined string without spaces and newline symbols.
+#: There is a special tag named 'out' which is used by default. Users may choose
+#: to introduce other tags, like 'doc','man' or 'checkpoint'. User-tagged
+#: realizations should refer to some specific 'out' realization.  For
+#: realizations, Having the same tag would mean that those realizations share
+#: some functionality, e.g. contain documentation or are ML model checkpoints.
+#:
+#: Every 'out' realization plus zero-to-many other tagged realizations form a
+#: [Group](#pylightnix.types.Group). The group behaves as a whole during
+#: [Matching](#pylightnix.types.Matcher).
+#:
+#: Tag invariants:
+#: - Each RRef has its Tag, the default tag name is 'out'
+#: - Several realization of a derivation may have the same tag. That means they
+#:   contain functionally equivalent artifacts.
 Tag = NewType('Tag', str)
 
-#: Realization group allows users to distinguish between sets of
+#: Realization Group allows users to distinguish between sets of
 #: [tagged](#pylightnix.types.Tag) realizations.  For example, there may be
-#: a group containing tags ['out',log'] and another group containing
+#: a Group containing tags ['out',log'] and another Group containing
 #: realizations tagged with ['out','log','docs']. 'out' realizations are
 #: pre-defined and are subject for matching with
 #: [Matchers](#pylightnix.types.Matcher).
 #:
-#: By default, each realization is given its own unique group identifier
+#: By default, each realization is given its own unique group identifier.
 #:
 #: Group invariants:
-#: - At least one RRef in every Group
-#: - All group refs have the same Context
-#: - Any RRef belongs to exactly one group
+#: - Each RRef of a Derivation belongs to exactly one Group
+#: - Thre is at least one RRef in every Group (There are no empty Groups)
+#: - All RRefs in the same Group have the same Context
 Group = NewType('Group', str)
 
 #: A group of tagged realization references. There should always be at least one

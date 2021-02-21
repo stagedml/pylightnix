@@ -394,11 +394,15 @@ def rootrrefs(S:Optional[SPath]=None)->Set[RRef]:
     return store_depRrefs([x],S)
   return dagroots(kahntsort(allrrefs(S), _inb), _inb)
 
-def rrefs2groups(rrefs:List[RRef], S=None)->List[RRefGroup]:
+def rrefs2groups(rrefs:Iterable[RRef], S=None)->List[RRefGroup]:
+  """ Split RRefs to a set of [Groups](#pylightnix.types.Group), according to
+  their [Tags](#pylightnix.types.Tag) """
   return [({store_tag(rref,S):rref for rref in rrefs if store_group(rref,S)==g})
     for g in sorted({store_group(rref,S) for rref in rrefs})]
 
 def groups2rrefs(grs:List[RRefGroup])->List[RRef]:
+  """ Merges several [Groups](#pylightnix.types.Group) of RRefs into a plain
+  list of RRefs """
   return list(chain.from_iterable([gr.values() for gr in grs]))
 
 def drefrrefs(dref:DRef,S=None)->List[RRef]:
@@ -451,8 +455,8 @@ def store_buildtime(rref:RRef, S=None)->Optional[str]:
   return tryread(Path(join(store_rref2path(rref,S),'__buildtime__.txt')))
 
 def store_tag(rref:RRef,S=None)->Tag:
-  """ Realizations may be marked with a tag. By default the tag is set to be
-  'out'. """
+  """ Return the [Tag](#pylightnix.types.tag) of a Realization. Default Tag
+  name is 'out'. """
   return mktag(tryreadjson_def(Path(join(store_rref2path(rref,S),'group.json')),{}).get('tag','out'))
 
 def store_group(rref:RRef,S=None)->Group:
@@ -485,11 +489,13 @@ def store_gc(keep_drefs:List[DRef],
   return remove_drefs,remove_rrefs
 
 
-def store_instantiate(c:Config,S:SPath)->DRef:
-  """ Place new instantiation into the storage. We attempt to do it atomically
-  by moving the directory right into it's place.
+def mkdrv_(c:Config,S:SPath)->DRef:
+  """ Create new derivation in storage `S`.
 
-  FIXME: Assert or handle possible (but improbable) hash collision (*)
+  We attempt to do it atomically by creating temp directory first and then
+  renaming it right into it's place in the storage.
+
+  FIXME: Assert or handle possible (but improbable) hash collision [*]
   """
   assert_store_initialized(S)
   # c=cp.config
@@ -514,16 +520,26 @@ def store_instantiate(c:Config,S:SPath)->DRef:
     replace(dreftmp, drefpath)
   except OSError as err:
     if err.errno == ENOTEMPTY:
-      # Existing folder means that it has a matched content (*)
+      # Existing folder means that it has a matched content [*]
       dirrm(dreftmp, ignore_not_found=False)
     else:
       raise
   return dref
 
-def store_realize_tag(dref:DRef, l:Context, o:Path,
-                      leader:Optional[Tuple[Tag,RRef]]=None, S=None)->RRef:
-  """
-  FIXME: Assert or handle possible but improbable hash collision (*)
+def mkrealization(dref:DRef, l:Context, o:Path,
+                  leader:Optional[Tuple[Tag,RRef]]=None, S=None)->RRef:
+  """ Create the [Realization](#pylightnix.types.RRef) object in the storage
+  `S`. Return new Realization reference.
+
+  Parameters:
+  - `dref:DRef`: Derivation reference to create the realization of.
+  - `l:Context`: Context which stores dependency information.
+  - `o:Path`: Path to temporal (build) folder which contains artifacts,
+    prepared by the [Realizer](#pylightnix.types.Realizer).
+  - `leader`: Tag name and Group identifier of the Group leader. By default,
+    name `out` and own RRef are used.
+
+  FIXME: Assert or handle possible but improbable hash collision[*]
   """
   c=store_config(dref,S)
   assert_valid_config(c)
@@ -559,7 +575,9 @@ def store_realize_tag(dref:DRef, l:Context, o:Path,
     replace(rreftmp,rrefpath)
   except OSError as err:
     if err.errno == ENOTEMPTY:
-      # Existing folder means that it has a matched content (*)
+      # Folder name contain the hash of the content, so getting here
+      # probably[*] means that we already have this object in storage so we
+      # just remove temp folder.
       dirrm(rreftmp, ignore_not_found=False)
     else:
       # Attempt to roll-back
@@ -568,12 +586,15 @@ def store_realize_tag(dref:DRef, l:Context, o:Path,
       raise
   return rref
 
-def store_realize_group(dref:DRef, l:Context, og:Dict[Tag,Path], S=None)->RRefGroup:
+def mkrgroup(dref:DRef, ctx:Context,
+             og:Dict[Tag,Path], S=None)->RRefGroup:
+  """ Create [realization group](#pylightnix.types.Group) in storage `S` by
+  iteratively calling [mkrealization](#pylightnix.core.mkrealization). """
   rrefg={}
-  rrefg[Tag('out')]=store_realize_tag(dref,l,og[Tag('out')],S=S)
+  rrefg[Tag('out')]=mkrealization(dref,ctx,og[Tag('out')],leader=None,S=S)
   for tag,o in og.items():
     if tag!=Tag('out'):
-      rrefg[tag]=store_realize_tag(dref,l,o,(tag,rrefg[Tag('out')]),S=S)
+      rrefg[tag]=mkrealization(dref,ctx,o,leader=(tag,rrefg[Tag('out')]),S=S)
   return rrefg
 
 #   ____            _            _
@@ -672,7 +693,7 @@ def mkdrv(m:Manager,
   rref:RRef=realize(instantiate(somestage))
   ```
   """
-  dref=store_instantiate(config,m.storage)
+  dref=mkdrv_(config,m.storage)
   if dref in m.builders:
     if not m.in_redefine:
       warning((f"Overwriting either the matcher or the realizer of derivation "
@@ -832,7 +853,7 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
           f"{store_config(dref)}"
           )
         gpaths:List[Dict[Tag,Path]]=drv.realizer(S,dref,dref_context,realize_args.get(dref,{}))
-        rrefgs_built=[store_realize_group(dref,dref_context,g,S) for g in gpaths]
+        rrefgs_built=[mkrgroup(dref,dref_context,g,S) for g in gpaths]
         rrefgs_matched=drv.matcher(S,dref,dref_context)
         assert rrefgs_matched is not None, (
           f"Matcher of {dref} repeatedly asked the core to realize. "

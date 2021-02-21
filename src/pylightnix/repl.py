@@ -26,7 +26,7 @@ from pylightnix.types import ( Dict, Closure, Context, Derivation, RRef, DRef,
     List, Tuple, Optional, Generator, Path, Build, Union, Any, BuildArgs,
     RealizeArg, Tag, RRefGroup, SPath )
 
-from pylightnix.core import ( realizeSeq, store_realize_group, RealizeSeqGen,
+from pylightnix.core import ( realizeSeq, mkrgroup, RealizeSeqGen,
     groups2rrefs )
 from pylightnix.build import ( mkbuildargs, build_outpaths )
 
@@ -61,7 +61,7 @@ def repl_continueMany(out_groups:Optional[List[Dict[Tag,Path]]]=None,
     rrefgs:Optional[List[RRefGroup]]
     if out_groups is not None:
       assert out_rrefgs is None
-      rrefgs=[store_realize_group(rh.dref,rh.context,g,rh.storage)
+      rrefgs=[mkrgroup(rh.dref,rh.context,g,rh.storage)
               for g in out_groups]
     elif out_rrefgs is not None:
       assert out_groups is None
