@@ -1,11 +1,11 @@
 from pylightnix.imports import (join, mkdtemp, format_exc)
 from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional, Config,
                               Realizer, DRef, Context, RealizeArg, RRef, Tag,
-                              Path)
+                              Path, SPath)
 
 from pylightnix.core import (assert_valid_config, store_config, config_cattrs,
                              config_hash, config_name, context_deref,
-                             assert_valid_refpath, rref2path, tag_out,
+                             assert_valid_refpath, store_rref2path, tag_out,
                              store_deps)
 
 from pylightnix.utils import (readstr, writestr, readstr, tryreadstr_def)
@@ -30,7 +30,7 @@ def either_wrapper(f:Realizer)->Realizer:
   import pylightnix.core
   tmp=pylightnix.core.PYLIGHTNIX_TMP
 
-  def _either(dref:DRef, ctx:Context, ra:RealizeArg)->List[Dict[Tag,Path]]:
+  def _either(S:SPath, dref:DRef, ctx:Context, ra:RealizeArg)->List[Dict[Tag,Path]]:
     # Write the specified build status to every output
     def _mark_status(outpaths:List[Dict[Tag,Path]],
                      status:str,
@@ -42,10 +42,10 @@ def either_wrapper(f:Realizer)->Realizer:
           writestr(join(o,'exception.txt'), exception)
 
     # Scan all immediate dependecnies of this build, propagate 'LEFT' status
-    for dref_dep in store_deps([dref]):
-      for rg in context_deref(ctx, dref_dep):
+    for dref_dep in store_deps([dref],S):
+      for rg in context_deref(ctx, dref_dep,S):
         rref = rg[tag_out()]
-        status=tryreadstr_def(join(rref2path(rref),'status_either.txt'), 'RIGHT')
+        status=tryreadstr_def(join(store_rref2path(rref,S),'status_either.txt'), 'RIGHT')
         if status=='RIGHT':
           continue
         elif status=='LEFT':
@@ -57,7 +57,7 @@ def either_wrapper(f:Realizer)->Realizer:
 
     # Execute the original build
     try:
-      outpaths=f(dref,ctx,ra)
+      outpaths=f(S,dref,ctx,ra)
       _mark_status(outpaths, 'RIGHT')
     except KeyboardInterrupt:
       raise
@@ -73,12 +73,12 @@ def either_wrapper(f:Realizer)->Realizer:
 
   return _either
 
-def either_status(rref:RRef)->str:
-  return readstr(join(rref2path(rref),'status_either.txt'))
+def either_status(rref:RRef,S=None)->str:
+  return readstr(join(store_rref2path(rref,S),'status_either.txt'))
 
-def either_isRight(rref:RRef)->bool:
-  return either_status(rref)=='RIGHT'
+def either_isRight(rref:RRef,S=None)->bool:
+  return either_status(rref,S)=='RIGHT'
 
-def either_isLeft(rref:RRef)->bool:
-  return either_status(rref)=='LEFT'
+def either_isLeft(rref:RRef,S=None)->bool:
+  return either_status(rref,S)=='LEFT'
 

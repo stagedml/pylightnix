@@ -1,19 +1,22 @@
-from pylightnix import ( instantiate, DRef, RRef, Path, mklogdir, dirhash,
-    assert_valid_dref, assert_valid_rref, mknode, store_deps, store_deepdeps,
-    store_gc, assert_valid_hash, assert_valid_config, Manager, mkcontext,
-    store_rrefs, mkdref, mkrref, unrref, undref, realize, rref2dref,
-    store_initialize, mkconfig, timestring, parsetime, traverse_dict, isrref,
-    isdref, scanref_dict, filehash, readjson, writejson )
+from pylightnix import (instantiate, DRef, RRef, Path, mklogdir, dirhash,
+                        assert_valid_dref, assert_valid_rref, mknode,
+                        store_deps, store_deepdeps, store_gc,
+                        assert_valid_hash, assert_valid_config, Manager,
+                        mkcontext, store_rrefs, mkdref, mkrref, unrref, undref,
+                        realize, rref2dref, store_initialize, mkconfig,
+                        timestring, parsetime, traverse_dict, isrref, isdref,
+                        scanref_dict, filehash, readjson, writejson, kahntsort)
 
-from tests.imports import ( given, text, isdir, isfile, join, from_regex,
-    islink, get_executable, run, dictionaries, binary, one_of, integers,
-    timegm, gmtime, settings, HealthCheck )
+from tests.imports import (given, text, isdir, isfile, join, from_regex,
+                           islink, get_executable, run, dictionaries, binary,
+                           one_of, integers, timegm, gmtime, settings,
+                           HealthCheck)
 
-from tests.generators import (
-    rrefs, drefs, configs, dicts, prims, dicts_with_refs )
+from tests.generators import (rrefs, drefs, configs, dicts, prims,
+                              dicts_with_refs, intdags, intdags_permutations)
 
-from tests.setup import (
-    ShouldHaveFailed, setup_testpath, setup_storage )
+from tests.setup import (ShouldHaveFailed, setup_testpath, setup_storage,
+                         setup_storage2)
 
 
 SHA256SUM=get_executable('sha256sum', 'Please install `sha256sum` tool from `coreutils` package')
@@ -67,8 +70,8 @@ def test_store_initialize()->None:
     assert isdir(join(p,'tmp'))
     assert isdir(join(p,'store'))
   finally:
-    pylightnix.core.PYLIGHTNIX_TMP=None #type:ignore
-    pylightnix.core.PYLIGHTNIX_STORE=None #type:ignore
+    pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
+    pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
 
 
 
@@ -161,4 +164,25 @@ def test_readwrite(d)->None:
     f=join(p,'testfile.json')
     writejson(f,d)
     assert str(readjson(f)) == str(d)
+
+def run_kahntsort(dag):
+  D={x[0]:x[1] for x in dag}
+  res=kahntsort(D.keys(), lambda x: D[x])
+  assert res is not None
+  assert len(res)==len(D.keys())
+  seen=set()
+  for n in res:
+    for inn in D[n]:
+      assert inn in seen
+    seen.add(n)
+  return res
+
+@given(dags=intdags_permutations())
+def test_kahntsort(dags)->None:
+  with setup_storage2('test_kahntsort') as S:
+    res0=None
+    for dag in dags:
+      res=run_kahntsort(dag)
+      res0=res if res0 is None else res0
+      assert res==res0
 

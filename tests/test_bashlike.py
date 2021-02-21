@@ -1,5 +1,5 @@
 from pylightnix import ( DRef, RRef, lsref, catref, instantiate, realize,
-    unrref, rmref, store_dref2path, rref2path, shellref, shell, rref2dref, du,
+    unrref, rmref, store_dref2path, store_rref2path, shellref, shell, rref2dref, du,
     repl_realize, repl_cancelBuild, repl_build, build_outpath, find, partial,
     diff, timestring, parsetime )
 
@@ -40,7 +40,7 @@ def test_rmdref():
     clo=instantiate(mktestnode_nondetermenistic, {'a':1}, lambda:42)
     drefpath=store_dref2path(clo.dref)
     rref1=realize(clo, force_rebuild=[clo.dref])
-    rrefpath=rref2path(rref1)
+    rrefpath=store_rref2path(rref1)
     assert isdir(rrefpath)
     rmref(rref1)
     assert not isdir(rrefpath)
@@ -66,7 +66,7 @@ def test_shellref():
       shellref(rref)
       shellref(rref2dref(rref))
       shellref()
-      shell(rref2path(rref))
+      shell(store_rref2path(rref))
       repl_realize(instantiate(mktestnode, {'n':1}), force_interrupt=True)
       b=repl_build()
       o=build_outpath(b)
@@ -95,8 +95,8 @@ def test_du():
 
 def test_find():
   with setup_storage('test_find') as s:
-    s1=partial(mktestnode_nondetermenistic, sources={'name':'1'}, nondet=lambda:42)
-    s2=partial(mktestnode_nondetermenistic, sources={'name':'2'}, nondet=lambda:33)
+    s1=partial(mktestnode_nondetermenistic, config={'name':'1'}, nondet=lambda:42)
+    s2=partial(mktestnode_nondetermenistic, config={'name':'2'}, nondet=lambda:33)
     rref1=realize(instantiate(s1))
     sleep(0.1)
     now=parsetime(timestring())
@@ -114,8 +114,8 @@ def test_find():
 
 def test_diff():
   with setup_storage('test_find') as s:
-    s1=partial(mktestnode_nondetermenistic, sources={'name':'1'}, nondet=lambda:42)
-    s2=partial(mktestnode_nondetermenistic, sources={'name':'2'}, nondet=lambda:33)
+    s1=partial(mktestnode_nondetermenistic, config={'name':'1'}, nondet=lambda:42)
+    s2=partial(mktestnode_nondetermenistic, config={'name':'2'}, nondet=lambda:33)
     dref1=instantiate(s1).dref
     rref2=realize(instantiate(s2))
     diff(dref1, rref2)

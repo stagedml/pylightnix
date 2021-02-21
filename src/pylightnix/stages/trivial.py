@@ -14,24 +14,27 @@
 
 """ Trivial builtin stages """
 
-from pylightnix.imports import ( join, deepcopy, dirname, makedirs, isfile,
-    isdir, defaultdict )
-from pylightnix.core import ( mkdrv, mkconfig, match_only,
-    assert_valid_name, datahash, config_dict, store_config,
-    match_some, assert_valid_refpath, rref2path, store_config_, promise )
-from pylightnix.build import ( mkbuild, build_outpath, build_setoutpaths,
-    build_paths, build_deref_, build_cattrs, build_wrapper )
-from pylightnix.types import ( RefPath, Manager, Context, Build, Name,
-    DRef, RRef, Any, Optional, Dict, Hash, Path, List, Callable, Matcher,
-    Realizer, Stage, Config, RealizeArg, Tag, RRefGroup )
-from pylightnix.utils import ( forcelink, isrefpath, traverse_dict )
+from pylightnix.imports import (join, deepcopy, dirname, makedirs, isfile,
+                                isdir, defaultdict)
+from pylightnix.core import (mkdrv, mkconfig, match_only, assert_valid_name,
+                             datahash, config_dict, store_config, match_some,
+                             assert_valid_refpath, store_rref2path,
+                             store_config_, promise, storage)
+from pylightnix.build import (mkbuild, build_outpath, build_setoutpaths,
+                              build_paths, build_deref_, build_cattrs,
+                              build_wrapper)
+from pylightnix.types import (RefPath, Manager, Context, Build, Name, DRef,
+                              RRef, Any, Optional, Dict, Hash, Path, List,
+                              Callable, Matcher, Realizer, Stage, Config,
+                              RealizeArg, Tag, RRefGroup, SPath)
+from pylightnix.utils import (forcelink, isrefpath, traverse_dict)
 
 
 def mknode(m:Manager,
-           sources:dict,
+           config_dict:dict,
            artifacts:Dict[Name,bytes]={},
            name:str='mknode')->DRef:
-  config=deepcopy(sources)
+  config=deepcopy(config_dict)
   config['name']=name
   assert '__artifacts__' not in config, \
       "config shouldn't contain reserved field '__artifacts__'"
@@ -50,7 +53,7 @@ def mkfile(m:Manager,
            contents:bytes,
            filename:Optional[Name]=None)->DRef:
   filename_:Name=filename if filename is not None else name
-  return mknode(m, sources={'output':[promise,filename_]},
+  return mknode(m, config_dict={'output':[promise,filename_]},
                    artifacts={filename_:contents})
 
 def redefine(stage:Any,
@@ -87,7 +90,7 @@ def redefine(stage:Any,
   """
   def _new_stage(m:Manager,*args,**kwargs)->DRef:
     dref=stage(m,*args,**kwargs) # type:ignore
-    d=config_dict(store_config_(dref))
+    d=config_dict(store_config_(dref,S=m.storage))
     new_config(d)
     new_matcher_=new_matcher if new_matcher is not None\
                              else m.builders[dref].matcher
@@ -115,7 +118,7 @@ def realized(stage:Any)->Stage:
   # ^^^ Fail if `my_long_running_stage` is not yet realized.
   ```
   """
-  def _no_realizer(dref:DRef,context:Context,rarg:RealizeArg)->List[Dict[Tag,Path]]:
+  def _no_realizer(S:SPath,dref:DRef,context:Context,rarg:RealizeArg)->List[Dict[Tag,Path]]:
     assert False, (
         f"Stage '{dref}' was assumed to be already realized. "
         f"Unfortunately, it seens to be not the case because it's matcher "

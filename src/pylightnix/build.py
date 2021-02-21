@@ -32,18 +32,18 @@ from pylightnix.utils import (dirhash, assert_serializable, assert_valid_dict,
                               writestr, readstr, tryreadstr_def, isrefpath)
 
 from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional,
-                              Iterable, IO, Path, Hash, DRef, RRef, RefPath,
-                              PromisePath, HashPart, Callable, Context, Name,
-                              NamedTuple, Build, RConfig, ConfigAttrs,
-                              Derivation, Stage, Manager, Matcher, Realizer,
-                              Set, Closure, Generator, Key, TypeVar, BuildArgs,
-                              PYLIGHTNIX_PROMISE_TAG, PYLIGHTNIX_CLAIM_TAG,
-                              Config, RealizeArg, InstantiateArg, Tag,
-                              RRefGroup, SupportsAbs)
+                              Iterable, IO, Path, SPath, Hash, DRef, RRef,
+                              RefPath, PromisePath, HashPart, Callable,
+                              Context, Name, NamedTuple, Build, RConfig,
+                              ConfigAttrs, Derivation, Stage, Manager, Matcher,
+                              Realizer, Set, Closure, Generator, Key, TypeVar,
+                              BuildArgs, PYLIGHTNIX_PROMISE_TAG,
+                              PYLIGHTNIX_CLAIM_TAG, Config, RealizeArg,
+                              InstantiateArg, Tag, RRefGroup, SupportsAbs)
 
 from pylightnix.core import (assert_valid_config, store_config, config_cattrs,
                              config_hash, config_name, context_deref,
-                             assert_valid_refpath, rref2path, store_deps,
+                             assert_valid_refpath, store_rref2path, store_deps,
                              config_dict)
 
 logger=getLogger(__name__)
@@ -61,26 +61,28 @@ error=logger.error
 class BuildError(Exception):
   """ Exception class for build errors """
   def __init__(self,
+               S:SPath,
                dref:DRef,
                outgroups:List[Dict[Tag,Path]],
                exception:Exception,
                msg:str=''):
     """ Initialize BUildError instance. """
     super().__init__(msg)
+    self.storage=S
     self.dref=dref
     self.exception=exception
     self.outgroups:List[Dict[Tag,Path]]=outgroups
   def __str__(self):
     return f"Failed to realize '{self.dref}': {self.exception}"
 
-def mkbuildargs(dref:DRef, context:Context, timeprefix:Optional[str],
+def mkbuildargs(S:SPath, dref:DRef, context:Context, timeprefix:Optional[str],
                 iarg:InstantiateArg, rarg:RealizeArg)->BuildArgs:
-  assert_valid_config(store_config(dref))
-  return BuildArgs(dref, context, timeprefix, iarg, rarg)
+  assert_valid_config(store_config(dref,S))
+  return BuildArgs(S, dref, context, timeprefix, iarg, rarg)
 
-def mkbuild(dref:DRef, context:Context, buildtime:bool=True)->Build:
+def mkbuild(S:SPath, dref:DRef, context:Context, buildtime:bool=True)->Build:
   timeprefix=timestring() if buildtime else None
-  return Build(mkbuildargs(dref,context,timeprefix,{},{}))
+  return Build(mkbuildargs(S,dref,context,timeprefix,{},{}))
 
 B=TypeVar('B')
 
@@ -93,9 +95,9 @@ def build_wrapper_(f:Callable[[B],None],
 
   FIXME: Specify the fact that `B` should be derived from `Build`.
          Maybe just replace `B` with `Build` and require deriving from it? """
-  def _wrapper(dref,context,rarg)->List[Dict[Tag,Path]]:
+  def _wrapper(S:SPath,dref,context,rarg)->List[Dict[Tag,Path]]:
     timeprefix=timestring() if buildtime else None
-    b=ctr(mkbuildargs(dref,context,timeprefix,{},rarg))
+    b=ctr(mkbuildargs(S,dref,context,timeprefix,{},rarg))
     try:
       f(b)
       build_markstop(b) # type:ignore
@@ -106,7 +108,7 @@ def build_wrapper_(f:Callable[[B],None],
       build_markstop(b) # type:ignore
       error(f"Build wrapper of {dref} raised an exception. Remaining "
             f"build directories are: {getattr(b,'outgroups','<unknown>')}")
-      raise BuildError(dref, getattr(b,'outgroups',[]), e)
+      raise BuildError(S,dref,getattr(b,'outgroups',[]), e)
     return getattr(b,'outgroups')
   return _wrapper
 
@@ -119,7 +121,7 @@ def build_wrapper(f:Callable[[Build],None], buildtime:bool=True)->Realizer:
 def build_config(b:Build)->RConfig:
   """ Return the [RConfig](#pylightnix.types.RConfig) object of the realization
   being built. """
-  return store_config(b.dref)
+  return store_config(b.dref, b.storage)
 
 def build_context(b:Build)->Context:
   """ Return the [Context](#pylightnix.types.Context) object of the realization
@@ -167,9 +169,9 @@ def build_markstop(b:Build, buildstop:Optional[str]=None)->None:
       with open(join(outpath,'__buildstop__.txt'), 'w') as f:
         f.write(buildstop_)
 
-def store_buildelta(rref:RRef)->Optional[float]:
+def store_buildelta(rref:RRef,S=None)->Optional[float]:
   def _gettime(fn)->Optional[float]:
-    ts=tryread(Path(join(rref2path(rref),fn)))
+    ts=tryread(Path(join(store_rref2path(rref,S),fn)))
     return parsetime(ts) if ts is not None else None
   bb=_gettime('__buildtime__.txt')
   be=_gettime('__buildstop__.txt')
@@ -203,7 +205,7 @@ def build_deref_(b:Build, dref:DRef)->List[RRefGroup]:
   `build_deref` is designed to be called from
   [Realizer](#pylightnix.types.Realizer) functions. In other cases,
   [store_deref](#pylightnix.core.store_deref) should be used.  """
-  return context_deref(build_context(b), dref)
+  return context_deref(build_context(b), dref, b.storage)
 
 def build_deref(b:Build, dref:DRef)->RRefGroup:
   rgs=build_deref_(b,dref)
@@ -248,7 +250,8 @@ def build_paths(b:Build, refpath:RefPath, tag:Tag=Tag('out'))->List[Path]:
       "`build_outpath(b,num)` first to set their number." )
     return [Path(join(g[tag], *refpath[1:])) for g in b.outgroups]
   else:
-    return [Path(join(rref2path(rg[tag]), *refpath[1:])) for rg in build_deref_(b, refpath[0])]
+    return [Path(join(store_rref2path(rg[tag],b.storage), *refpath[1:]))
+            for rg in build_deref_(b, refpath[0])]
 
 def build_path(b:Build, refpath:RefPath, tag:Tag=Tag('out'))->Path:
   """ A single-realization version of the [build_paths](#pylightnix.build.build_paths). """
@@ -300,7 +303,7 @@ def build_environ(b:Build, env:Optional[Any]=None)->dict:
 #     for dref in store_deps([b.dref]):
 #       for rg in context_deref(b.context, dref):
 #         rref = rg[Tag('out')]
-#         status=tryreadstr_def(join(rref2path(rref),'status_either.txt'), 'RIGHT')
+#         status=tryreadstr_def(join(store_rref2path(rref),'status_either.txt'), 'RIGHT')
 #         if status=='RIGHT':
 #           continue
 #         elif status=='LEFT':

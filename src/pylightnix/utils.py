@@ -22,12 +22,12 @@ from pylightnix.imports import (datetime, gmtime, timegm, join, makedirs,
     normalize, re_sub, split, json_load, find_executable, chmod, S_IWRITE,
     S_IREAD, S_IRGRP, S_IROTH, S_IXUSR, S_IXGRP, S_IXOTH, stat, ST_MODE,
     S_IWGRP, S_IWOTH, rmtree, rename, getsize, readlink, partial, copytree,
-    chain, getLogger, environ)
+    chain, getLogger, environ, defaultdict, PriorityQueue)
 
 from pylightnix.types import (Union, Hash, Path, List, Any, Optional,
                               Iterable, IO, DRef, RRef, Tuple, Callable,
                               PYLIGHTNIX_PROMISE_TAG, PYLIGHTNIX_CLAIM_TAG,
-                              TypeVar)
+                              TypeVar, Set)
 
 from pylightnix.tz import tzlocal
 
@@ -129,7 +129,7 @@ def dirhash(path:Path, verbose:bool=False)->Hash:
 
   def _iter()->Iterable[bytes]:
     for root, dirs, filenames in walk(abspath(path), topdown=True):
-      for filename in filenames:
+      for filename in sorted(filenames):
         if len(filename)>0 and filename[0] != '_':
           localpath=abspath(join(root, filename))
           if islink(localpath):
@@ -243,7 +243,7 @@ def isclaim(p:Any)->bool:
   return ispromiselike(p,PYLIGHTNIX_CLAIM_TAG)
 
 def isclosure(x:Any)->bool:
-  return isinstance(x,tuple) and len(x)==2 and isdref(x[0]) \
+  return isinstance(x,tuple) and len(x)==3 and isdref(x[0]) \
          and isinstance(x[1],list)
 
 Mutator=Callable[[Any,Any],Any]
@@ -383,4 +383,53 @@ def try_executable(name:str,
 
 def concat(l:List[List[Any]])->List[Any]:
   return list(chain.from_iterable(l))
+
+def kahntsort(nodes:Iterable[Any],
+              inbounds:Callable[[Any],Set[Any]])->Optional[List[Any]]:
+  """ Kahn's algorithm for topological sorting. Takes iterable `nodes` and
+  pure-function `inbounds`. Output list of nodes in topological order, or None
+  if graph has cycle.
+
+  One modification is that we use PriorityQueue insted of plain list to put
+  take name-order into account.
+  """
+  indeg:dict={}
+  outbounds:dict=defaultdict(set)
+  q:PriorityQueue=PriorityQueue()
+  sz:int=0
+  for n in nodes:
+    ns=inbounds(n)
+    outbounds[n]|=set()
+    indeg[n]=0
+    for inn in ns:
+      outbounds[inn].add(n)
+      indeg[n]+=1
+    if indeg[n]==0:
+      q.put(n)
+    sz+=1
+
+  acc=[]
+  cnt=0
+  while not q.empty():
+    n=q.get()
+    acc.append(n)
+    for on in outbounds[n]:
+      indeg[on]-=1
+      if indeg[on]==0:
+        q.put(on)
+    cnt+=1
+
+  return None if cnt>sz else acc
+
+def dagroots(sorted_nodes:Iterable[Any],
+             inbounds:Callable[[Any],Set[Any]])->Set[Any]:
+  """ Return a set og root nodes of a DAG."""
+  nonroots=set()
+  acc=set()
+  for node in reversed(sorted_nodes):
+    if node not in nonroots:
+      acc.add(node)
+    nonroots|=inbounds(node)
+  return acc
+
 

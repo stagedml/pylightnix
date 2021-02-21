@@ -1,9 +1,10 @@
 from pylightnix import ( Manager, Path, store_initialize, DRef, Context,
     Optional, mkbuild, build_outpath, store_rrefs, RRef, mkconfig,
-    Name, mkdrv, rref2path, dirchmod, promise, Config, RealizeArg, Tag,
-    RRefGroup, tryreadstr_def)
+    Name, mkdrv, store_rref2path, dirchmod, promise, Config, RealizeArg, Tag,
+    RRefGroup, tryreadstr_def, SPath, storage)
+
 from tests.imports import ( rmtree, join, makedirs, listdir, Callable,
-    contextmanager, List, Dict,  Popen, PIPE )
+    contextmanager, List, Dict,  Popen, PIPE, gettempdir )
 
 PYLIGHTNIX_TEST:str='/tmp/pylightnix_tests'
 
@@ -31,6 +32,32 @@ def setup_storage(tn:str):
     pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
     pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
 
+@contextmanager
+def setup_storage2(tn:str):
+  # We reset STORE variables to prevent interaction with production store
+  import pylightnix.core
+  pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
+  pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
+  assert len(tn)>0
+  testroot=Path(join(gettempdir(), 'pylightnix', tn))
+  storepath=Path(join(testroot, 'store'))
+  tmppath=Path(join(testroot, 'tmp'))
+  try:
+    dirchmod(testroot, 'rw')
+    rmtree(testroot)
+  except FileNotFoundError:
+    pass
+  # store_initialize(custom_store=storepath, custom_tmp=gettempdir())
+  makedirs(storepath, exist_ok=False)
+  makedirs(tmppath, exist_ok=False)
+  pylightnix.core.PYLIGHTNIX_TMP=tmppath # type:ignore
+  assert 0==len(listdir(storepath))
+  try:
+    yield storepath
+  finally:
+    pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
+    pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
+
 def setup_testpath(name:str)->Path:
   testpath=join(PYLIGHTNIX_TEST, name)
   rmtree(testpath, onerror=lambda a,b,c:())
@@ -39,48 +66,46 @@ def setup_testpath(name:str)->Path:
 
 def setup_inplace_reset()->None:
   import pylightnix.inplace
-  pylightnix.inplace.PYLIGHTNIX_MANAGER=Manager()
+  pylightnix.inplace.PYLIGHTNIX_MANAGER=Manager(storage(None))
 
 def mktestnode_nondetermenistic(m:Manager,
-                                sources:dict,
+                                config:dict,
                                 nondet:Callable[[],int],
                                 buildtime:bool=True,
                                 realize_wrapper=None,
                                 promise_strength=promise)->DRef:
   """ Emulate non-determenistic builds. `nondet` is expected to return
   different values from build to build """
-  def _instantiate()->Config:
-    c=mkconfig(sources)
+  def _config()->Config:
+    c=mkconfig(config)
     c.val['promise_artifact']=[promise_strength,'artifact']
     return c
-  def _realize(dref:DRef, context:Context, ra:RealizeArg)->List[Dict[Tag,Path]]:
-    b=mkbuild(dref, context, buildtime=buildtime)
+  def _realize(S:SPath, dref:DRef, context:Context, ra:RealizeArg)->List[Dict[Tag,Path]]:
+    b=mkbuild(S, dref, context, buildtime=buildtime)
     with open(join(build_outpath(b),'artifact'),'w') as f:
       f.write(str(nondet()))
     return b.outgroups
-  def _match(dref:DRef, context:Context)->Optional[List[RRefGroup]]:
+  def _match(S:SPath, dref:DRef, context:Context)->Optional[List[RRefGroup]]:
     max_i=-1
     max_gr:Optional[List[RRefGroup]]=None
-    for gr in store_rrefs(dref, context):
+    for gr in store_rrefs(dref, context, S):
       rref=gr[Tag('out')]
-      i=int(tryreadstr_def(join(rref2path(rref),'artifact'), "0"))
+      i=int(tryreadstr_def(join(store_rref2path(rref, S),'artifact'), "0"))
       if i>max_i:
         max_i=i
         max_gr=[gr]
     return max_gr
 
   rw=(lambda x:x) if realize_wrapper is None else realize_wrapper
-  return mkdrv(m, _instantiate(), _match, rw(_realize))
+  return mkdrv(m, _config(), _match, rw(_realize))
 
 
 def mktestnode(m:Manager,
-               sources:dict,
+               config:dict,
                buildtime=True,
                realize_wrapper=None)->DRef:
   """ Build a test node with a given config and fixed build artifact """
-  return mktestnode_nondetermenistic(m, sources,
-                                     lambda:0,
-                                     buildtime,
+  return mktestnode_nondetermenistic(m, config, lambda:0, buildtime,
                                      realize_wrapper)
 
 

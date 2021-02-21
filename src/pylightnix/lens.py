@@ -18,25 +18,27 @@ through the dependent configurations """
 from pylightnix.imports import ( join )
 from pylightnix.types import (Any, Dict, List, Build, DRef, RRef, Optional,
                               RefPath, Tuple, Union, Path, Context, Tag,
-                              NamedTuple, Context, Closure )
+                              NamedTuple, Context, Closure, SPath )
 from pylightnix.utils import (isrefpath, isdref, isrref, tryreadjson )
-from pylightnix.core import (store_deref, store_config, rref2dref, rref2path,
+from pylightnix.core import (store_deref, store_config, rref2dref, store_rref2path,
                              config_dict, store_dref2path, store_context,
-                             context_deref, context_add, tag_out )
+                             context_deref, context_add, tag_out, storage )
 from pylightnix.build import (build_outpaths, build_config, build_context )
 
-LensContext=NamedTuple('LensContext', [('build_path',Optional[Path]),
-                                       ('context',Optional[Context]),
-                                       ('closure',Optional[Closure])])
+LensContext = NamedTuple('LensContext', [('storage',SPath),
+                                         ('build_path',Optional[Path]),
+                                         ('context',Optional[Context]),
+                                         ('closure',Optional[Closure])])
 
 
 def val2dict(v:Any, ctx:LensContext)->Optional[dict]:
   """ Return the `dict` representation of the Lens value, if possible. Getting
   the dictionary allows for creating new lenses """
+  S:SPath=ctx.storage
   if isdref(v):
-    return config_dict(store_config(DRef(v)))
+    return config_dict(store_config(DRef(v), S))
   elif isrref(v):
-    return config_dict(store_config(rref2dref(RRef(v))))
+    return config_dict(store_config(rref2dref(RRef(v)),S))
   elif isrefpath(v):
     j=tryreadjson(val2path(v, ctx))
     assert j is not None, f"Refpath {v} doesn't contain valid JSON"
@@ -55,26 +57,27 @@ def val2dict(v:Any, ctx:LensContext)->Optional[dict]:
 def val2path(v:Any, ctx:LensContext)->Path:
   """ Resolve the current value of Lens into system path. Assert if it is not
   possible or if the result is associated with multiple paths."""
+  S:SPath=ctx.storage
   if isdref(v):
     dref=DRef(v)
-    context=ctx[1]
+    context=ctx.context
     if context is not None:
       if dref in context:
         rgs=context_deref(context, dref)
         assert len(rgs)==1, "Lens doesn't support multirealization dependencies"
-        return Path(rref2path(rgs[0][tag_out()]))
+        return Path(store_rref2path(rgs[0][tag_out()]))
     return store_dref2path(dref)
   elif isrref(v):
-    return rref2path(RRef(v))
+    return store_rref2path(RRef(v))
   elif isrefpath(v):
     refpath=list(v) # RefPath is list
-    bpath=ctx[0]
-    context=ctx[1]
+    bpath=ctx.build_path
+    context=ctx.context
     if context is not None:
       if refpath[0] in context:
-        rgs=context_deref(context, refpath[0])
+        rgs=context_deref(context,refpath[0],S)
         assert len(rgs)==1, "Lens doesn't support multirealization dependencies"
-        return Path(join(rref2path(rgs[0][Tag('out')]), *refpath[1:]))
+        return Path(join(store_rref2path(rgs[0][Tag('out')],S), *refpath[1:]))
       else:
         if bpath is not None:
           # FIXME: should we assert on refpath[0]==build.dref ?
@@ -89,12 +92,13 @@ def val2path(v:Any, ctx:LensContext)->Path:
     assert False, f"Lens doesn't know how to resolve '{v}'"
 
 def val2rref(v:Any, ctx:LensContext)->RRef:
+  S=ctx.storage
   if isdref(v):
     dref=DRef(v)
     context=ctx.context
     if context is not None:
       if dref in context:
-        rgs=context_deref(context, dref)
+        rgs=context_deref(context, dref, S)
         assert len(rgs)==1, "Lens doesn't support multirealization dependencies"
         return rgs[0][Tag('out')]
       else:
@@ -226,7 +230,7 @@ class Lens:
     v=traverse(self, r)
     assert isdref(v), f"Lens {r} expected closure, but got '{v}'"
     assert self.ctx.closure is not None
-    return Closure(v, self.ctx.closure.derivations)
+    return Closure(v, self.ctx.closure.derivations, self.ctx.storage)
 
 
 def mklens(x:Any, o:Optional[Path]=None,
@@ -234,7 +238,8 @@ def mklens(x:Any, o:Optional[Path]=None,
                   rref:Optional[RRef]=None,
                   ctx:Optional[Context]=None,
                   closure:Optional[Closure]=None,
-                  build_output_idx:int=0)->Lens:
+                  build_output_idx:int=0,
+                  S:Optional[SPath]=None)->Lens:
   """ mklens creates [Lens](#pylightnix.lens.Lens) objects from various
   Pylightnix objects.
 
@@ -284,19 +289,25 @@ def mklens(x:Any, o:Optional[Path]=None,
   ```
 
   """
+  if S is None and b is not None:
+    S=b.storage
+  if S is None and isinstance(x,Build):
+    S=x.storage
+  if S is None:
+    S=storage(S)
   if ctx is None and b is not None:
     ctx=build_context(b)
   if ctx is None and isinstance(x,Build):
     ctx=build_context(x)
   if ctx is None and rref is not None:
-    ctx=store_context(rref)
+    ctx=store_context(rref,S)
   if ctx is None and isrref(x):
-    ctx=context_add(store_context(RRef(x)), rref2dref(RRef(x)), [RRef(x)])
+    ctx=context_add(store_context(RRef(x),S), rref2dref(RRef(x)), [RRef(x)])
   if o is None and b is not None:
     o=build_outpaths(b)[build_output_idx]
   if o is None and isinstance(x,Build):
     o=build_outpaths(x)[build_output_idx]
   if closure is None and isinstance(x,Closure):
     closure=x
-  return Lens(LensContext(o,ctx,closure),x,[])
+  return Lens(LensContext(S,o,ctx,closure),x,[])
 
