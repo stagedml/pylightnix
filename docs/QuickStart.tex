@@ -5,7 +5,7 @@
 \usepackage[russian,english]{babel}
 \usepackage{minted}
 \renewcommand{\MintedPygmentize}{/nix/store/9r8n35slzprv3q4hfdnc0fz3r70z2y64-python3.7-Pygments-2.7.2/bin/pygmentize}
-\usepackage[rerun=always, pygopt={texcomments=true}]{pythontex}
+\usepackage[gobble=auto, rerun=always, pygopt={texcomments=true}]{pythontex}
 \usepackage{lscape}
 \usepackage[a4paper]{geometry}
 \usepackage{pdflscape}
@@ -13,6 +13,8 @@
 \usepackage{hyperref}
 
 \begin{document}
+
+\setpythontexfv{breaklines, breakafter=0123456789-, commandchars=\\\{\}}
 
 \newenvironment{shellcode}
   {\VerbatimEnvironment\begin{minted}[escapeinside=!!, breaklines, breakafter=0123456789-]{sh}}
@@ -47,13 +49,13 @@ filesystem. Its main purpose could be summarized as follows:
     immutable objects here called \textbf{stages}.
   \item Create (in our terms, \textbf{realize}) such objects, access its data,
     navigate through dependencies.
-  \item Re-use the algorithms by monitoring changes in its input
-    parameters. Pylightnix will re-create either a whole or a part of the object
-    collection according to the changes in realization prerequisites.
-  \item Track non-deterministic realizations. Pylightnix provides a generic API
-    for analyzing outcomes of randomized stage realizations. For example, users
-    may define rules to filter a subset of several machine learning model
-    training attempts.
+  \item Re-run realization algorithms whenever its inputs changes.  Pylightnix
+    will re-create either a whole or a part of the object collection according
+    to the changes in prerequisites.
+  \item Track the results of non-deterministic realizations. Pylightnix provides
+    a generic API for analyzing outcomes of randomized stage realizations. As
+    one example, users may instruct Pylightnix stage to depend on top-10 best
+    attempts to train a machine learning model.
 \end{itemize}
 
 Pylightnix originally appeared as a core module of
@@ -69,8 +71,13 @@ We tried to meet high development standards. In particular, Pylightnix:
   \item Is written in Python 3.6. \href{http://mypy-lang.org/}{Mypy} typing is
     used whenever possible.
   \item Is tested using \href{https://pypi.org/project/hypothesis/}{Hypothesis}.
-  \item Exclusively depends on the Standard Python library. Optional modules
-    also depends on \href{https://curl.se/}{Curl},
+  \item Documentation is written in
+    \href{https://en.wikipedia.org/wiki/Literate_programming}{literate
+    programming} paradigm. Most of the code examples shown in this manual were
+    checked and evaluated inline by
+    \href{https://github.com/gpoore/pythontex}{PythonTex} tool.
+  \item Depends solely on the Python standard library. Optional modules
+    do depend on \href{https://curl.se/}{Curl},
     \href{https://www.gnu.org/software/wget/}{wget} and
     \href{https://www.nongnu.org/atool/}{atool} system packages.
   \item Alas, Pylightnix is not a production-ready yet! Nor parallelism, neither
@@ -98,10 +105,11 @@ We tried to meet high development standards. In particular, Pylightnix:
 
 \section{Install}
 
-As any Python library, you could install Pylightnix either with Pip package
-manager or by bundling the package from source. We will also need
-\href{https://curl.se/}{Curl} system package and
-\href{https://www.nongnu.org/atool/}{ATool} system package later in this manual.
+Pylightnix could be installed either by running Pip package manager as usual or
+by bundling the package from source. Since we are in deep betas, you probably
+should prefer source-based installation. We will also need
+\href{https://curl.se/}{Curl} and \href{https://www.nongnu.org/atool/}{ATool}
+system packages later in this manual.
 
 \subsection{Install with Pip}
 
@@ -126,8 +134,8 @@ $ pip3 install pylightnix
       Now you could import pylightnix from your applications.
     \item Build and install pylightnix wheel.
       \begin{shellcode}
-       $ make wheels
-       $ sudo -H pip3 install --force dist/*whl
+      $ make wheels
+      $ sudo -H pip3 install --force dist/*whl
       \end{shellcode}
     \item Nix users may refer to \href{../default.nix}{default.nix} and
       \href{../shell.nix}{shell.nix} expressions.
@@ -143,7 +151,7 @@ Pylightnix utilities rely on Curl and ATool system packages. Installing them
 is highly advised.
 
 \begin{shellcode}
-$ apt-get install -yi curl atool
+$ apt-get install -y curl atool      # Use your system's package manager here!
 ...
 $ curl --version | head -n1
 curl 7.70.0
@@ -154,78 +162,110 @@ atool 0.39.0
 
 \section{Quick start}
 
-This guide illustrates basic principles by defining a
-couple of Pylightnix \textbf{stages} able to build
-\href{https://www.gnu.org/software/hello/}{GNU Hello} program. Resulting stages
-could be used as a part of a lightweight build system (but rather unsafe one,
-because Pylightnix lacks built-in build isolation).
+In this section we illustrate basic principles by defining Pylightnix
+\textbf{stages} required to build \href{https://www.gnu.org/software/hello/}{GNU
+Hello} program. Resulting stages could be used as a part of e.g. a
+project-specific build system (but rather unsafe one, since Pylightnix currently
+lacks built-in build isolation).
 
 \begin{enumerate}
 
   \item Follow the above Install section
 
-  \item Define the process of \texttt{fetchurl} stage. We use \texttt{\_inplace}
-    subset of Pylightnix API for simplicity. It relies on a single global
-    variable for storing tracking the build plan.
+  \item Define a stage named \texttt{stage\_fetch}. For now, our definition
+    simply calls a pre-defined \texttt{fetchurl} function which does all the
+    job.
 
-    \begin{pythoncode}
-    from pylightnix import DRef, RRef, instantiate_inplace, fetchurl
+    \begin{pyblock}[stdout][numbers=left]
+    from pylightnix import (Manager, DRef, RRef, evaluate, fetchurl)
 
     hello_version = '2.10'
 
-    # Define the stage for downloading and unpacking GNU Hello sources.
-    hello_src:DRef = \
-      instantiate_inplace(
-        fetchurl,
+    def stage_fetch(m:Manager)->DRef: # DRef \label{DREF}
+      return fetchurl(m,
         name='hello-src',
         url=f'http://ftp.gnu.org/gnu/hello/hello-{hello_version}.tar.gz',
         sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b')
 
-    # Realize the stage in-place and print the realization reference
-    hello_rref:RRef = realize_inplace(hello_src)
+    hello_rref:RRef = evaluate(stage_fetch)  # RRef \label{RREF}
     print(hello_rref)
-    \end{pythoncode}
+    \end{pyblock}
 
-  \item NEXT
-    \begin{pythoncode}
+    Will print:
+    \par
+    \stdoutpythontex
+    \par
+
+    \begin{itemize}
+
+      \item At line \ref{DREF} we define an algorithm for creating
+        \texttt{hello-src} object. \texttt{fetchurl} function produce stages
+        able to download and unpack urls. We simply re-use it by calling with
+        the right arguments.
+
+      \item At line \ref{RREF} we \textbf{evaluate} our stage. Pylightnix would
+        instantiate and, if no matching realization already exists, realize it.
+        Realizer, in turn, executes \texttt{curl} and \texttt{aunpack}
+        applications. As a result, GNU Hello source folder appears in system in
+        form of a new \textbf{Realization} object. A unique \textbf{Realization
+        reference} is returned to the user.
+
+    \end{itemize}
+
+  \item Our next task is to build the Hello application using common GNU tools.
+    Below we show how to define a stage for it using \textbf{mkdrv} API
+    function.
+
+    \begin{pyblock}[stdout][numbers=left]
     from tempfile import TemporaryDirectory
     from shutil import copytree
     from os import getcwd, chdir, system
     from os.path import join
-    from pylightnix import Config, mkconfig
-    from pylightnix import Path, Build, build_cattrs, build_outpath, build_path
-    from pylightnix import mkdrv, build_wrapper, match_latest, dirrw
+    from pylightnix import (Config, Path, Build, mkconfig, mkdrv, mklens,
+      build_wrapper, match_only, dirrw, promise, build_setoutpaths)
 
-    def hello_config()->Config:
-      name:str = 'hello-bin'
-      src:RefPath = [hello_src, f'hello-{hello_version}']
-      return mkconfig(locals())
+    def stage_build(m:Manager)->DRef:
+      def _config()->Config:
+        name:str = 'hello-bin'
+        src:RefPath = [stage_fetch(m), f'hello-{hello_version}']
+        bin:RefPath = [promise, 'usr', 'bin', 'hello']
+        return mkconfig(locals())
+      def _realize(b:Build)->None:
+        build_setoutpaths(b,1)
+        with TemporaryDirectory() as tmp:
+          copytree(mklens(b).src.syspath, join(tmp,'src'))
+          dirrw(Path(join(tmp,'src')))
+          cwd = getcwd()
+          try:
+            print(f"Building {mklens(b).name.val}")
+            chdir(join(tmp,'src'))
+            system(f'./configure --prefix=/usr')
+            system(f'make')
+            system(f'make install DESTDIR={mklens(b).syspath}')
+          finally:
+            chdir(cwd)
+      return mkdrv(m, _config(), match_only(), build_wrapper(_realize))
 
-    def hello_realize(b:Build)->None:
-      c:Any = build_cattrs(b)
-      o:Path = build_outpath(b)
-      with TemporaryDirectory() as tmp:
-        copytree(build_path(b,c.src),join(tmp,'src'))
-        dirrw(Path(join(tmp,'src')))
-        cwd = getcwd()
-        try:
-          chdir(join(tmp,'src'))
-          system(f'./configure --prefix=/usr')
-          system(f'make')
-          system(f'make install DESTDIR={o}')
-        finally:
-          chdir(cwd)
-
-    # Phase 1, create the derivation. Note, we reference previous stage's
-    # derivation in the configuration of this derivation.
-    hello_dref:DRef = \
-        instantiate_inplace(mkdrv, hello_config(), match_latest(), build_wrapper(hello_realize))
-
-    # Phase 2, realize the derivation
-    hello_rref:RRef = realize_inplace(hello_dref)
-
+    hello_rref:RRef = evaluate(stage_build)
     print(hello_rref)
-    \end{pythoncode}
+    \end{pyblock}
+
+    The output:
+    \par
+    \stdoutpythontex
+    \par
+  \item Finally, we show how to access the information contained in the
+    realization we have built.
+
+    \begin{pyblock}[stdout][numbers=left]
+    from subprocess import run, PIPE
+    print(run([mklens(hello_rref).bin.syspath], stdout=PIPE).stdout.decode('utf-8'))
+    \end{pyblock}
+
+    Will print:
+    \par
+    \stdoutpythontex
+    \par
 
 \end{enumerate}
 

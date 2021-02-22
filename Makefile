@@ -98,8 +98,8 @@ demo_repl: docs/demos/REPL.md docs/demos/REPL.py
 .PHONY: demos
 demos: demo_mnist demo_hello demo_repl
 
-.PHONY: tex-quickstart
-tex-quickstart: docs/QuickStart.pdf
+.PHONY: docs-quickstart
+docs-quickstart: docs/QuickStart.pdf
 docs/QuickStart.pdf: docs/QuickStart.tex
 	/bin/sh ./docs/compile.sh $<
 
