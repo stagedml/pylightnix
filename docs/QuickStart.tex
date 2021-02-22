@@ -203,8 +203,8 @@ lacks built-in build isolation).
         able to download and unpack urls. We simply re-use it by calling with
         the right arguments.
 
-      \item At line \ref{RREF} we \textbf{evaluate} our stage. Pylightnix would
-        instantiate and, if no matching realization already exists, realize it.
+      \item At line \ref{RREF} we \textbf{evaluate} our stage. Pylightnix will
+        run the realization algorithm if no matching realization already exists.
         Realizer, in turn, executes \texttt{curl} and \texttt{aunpack}
         applications. As a result, GNU Hello source folder appears in system in
         form of a new \textbf{Realization} object. A unique \textbf{Realization
