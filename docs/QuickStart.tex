@@ -32,18 +32,28 @@
 \begin{abstract}
 
 Pylightnix is a Python-based DSL library for manipulating filesystem-based
-immutable data objects, inspired by the \href{https://nixos.org}{Nix} package
-manager and \href{https://edolstra.github.io/pubs/phd-thesis.pdf}{Purely
-Functional Software Deployment Model thesis by Eelco Dolstra}.
+immutable data objects, inspired by
+\href{https://edolstra.github.io/pubs/phd-thesis.pdf}{Purely Functional Software
+Deployment Model thesis by Eelco Dolstra} and \href{https://nixos.org}{NixOS}
+package manager. In contrast to Nix, Pylightnix is intended to be used in
+computer science experiments. Domain-specific package management or
+\href{https://en.wikipedia.org/wiki/Blackboard_design_pattern}{blackboard-like
+applications} are also among possible use cases.
 
-Pylightnix provides a generic Python API, allowing programmers to:
+Pylightnix provides a generic Python API for storing information in the
+filesystem. Its main purpose could be summarized as follows:
 \begin{itemize}
-  \item Define immutable linked data objects by specifying how to create them
-    and how to operate on them.
-  \item Actually create (build) such objects in a filesystem-based storage,
-    access its data, inspect dependencies, and remove them as needed.
-  \item Special attention is paid to the support of non-deterministic build
-    processes.
+  \item Declare algorithms for storing arbitrary information in form of linked
+    immutable objects here called \textbf{stages}.
+  \item Create (in our terms, \textbf{realize}) such objects, access its data,
+    navigate through dependencies.
+  \item Re-use the algorithms by monitoring changes in its input
+    parameters. Pylightnix will re-create either a whole or a part of the object
+    collection according to the changes in realization prerequisites.
+  \item Track non-deterministic realizations. Pylightnix provides a generic API
+    for analyzing outcomes of randomized stage realizations. For example, users
+    may define rules to filter a subset of several machine learning model
+    training attempts.
 \end{itemize}
 
 Pylightnix originally appeared as a core module of
@@ -52,38 +62,15 @@ moved into a separate project.
 
 \end{abstract}
 
-
 \section{Features}
 
-Logic:
-
+We tried to meet high development standards. In particular, Pylightnix:
 \begin{itemize}
-  \item Pylightnix allows us to Create, query and maintain linked objects,
-    called here **stages**.
-  \item Creation of stages includes two passes: At the **instantiation** pass we
-    check configurations of the whole graph of linked objects. At the
-    **realization** pass we decide whether to take existing realization or to
-    run the constructors to get new ones.
-  \item Pylightnix is focused on non-deterministic build processes such as
-    machine learning. We formalize comparison and selection of competing results
-    of such processes.
-  \item The possible applications of Pylightnix include:
-    \begin{itemize}
-      \item Data science / Machine learning experiments (see
-        \href{https://github.com/stagedml/stagedml}{StagedML})
-      \item Domain-specific package managers
-      \item Other applications which fit into blackboard design pattern
-        \href{https://en.wikipedia.org/wiki/Blackboard_design_pattern}{wiki}.
-    \end{itemize}
-\end{itemize}
-
-Implementation:
-
-\begin{itemize}
-  \item Written in Python 3.6. \href{http://mypy-lang.org/}{Mypy} typing
-    information is provided.
-  \item Is well-tested
-  \item Includes no third-party Python dependencies. We do require
+  \item Is written in Python 3.6. \href{http://mypy-lang.org/}{Mypy} typing is
+    used whenever possible.
+  \item Is tested using \href{https://pypi.org/project/hypothesis/}{Hypothesis}.
+  \item Exclusively depends on the Standard Python library. Optional modules
+    also depends on \href{https://curl.se/}{Curl},
     \href{https://www.gnu.org/software/wget/}{wget} and
     \href{https://www.nongnu.org/atool/}{atool} system packages.
   \item Alas, Pylightnix is not a production-ready yet! Nor parallelism, neither
@@ -110,6 +97,11 @@ Implementation:
 \end{itemize}
 
 \section{Install}
+
+As any Python library, you could install Pylightnix either with Pip package
+manager or by bundling the package from source. We will also need
+\href{https://curl.se/}{Curl} system package and
+\href{https://www.nongnu.org/atool/}{ATool} system package later in this manual.
 
 \subsection{Install with Pip}
 
@@ -145,27 +137,94 @@ $ pip3 install pylightnix
 \item (Optional) Build the demos
 \end{enumerate}
 
-\section{Quick start} Pylightnix could be used as a lightweight build system
-(rather unsafe one, because it lacks built-in build isolation). This guide
-illustrates it by defining a couple of objects ("stages") which are required  to
-build the GNU Hello program.
+\subsection{Install recommended system packages}
 
-Below operations typically require only a pure Python environment with
-Pylightnix library installed.
+Pylightnix utilities rely on Curl and ATool system packages. Installing them
+is highly advised.
+
+\begin{shellcode}
+$ apt-get install -yi curl atool
+...
+$ curl --version | head -n1
+curl 7.70.0
+$ aunpack --version | head -n1
+atool 0.39.0
+\end{shellcode}
+
+
+\section{Quick start}
+
+This guide illustrates basic principles by defining a
+couple of Pylightnix \textbf{stages} able to build
+\href{https://www.gnu.org/software/hello/}{GNU Hello} program. Resulting stages
+could be used as a part of a lightweight build system (but rather unsafe one,
+because Pylightnix lacks built-in build isolation).
 
 \begin{enumerate}
 
-  \item Install development version of Pylightnix and an interactive shell.
-    \begin{shellcode}
-    $ pip install ipython git+https://github.com/stagedml/pylightnix
-    $ ipython
-    \end{shellcode}
-    Subsequent steps may be copypasted into the IPython shell
+  \item Follow the above Install section
 
-  \item Make sure that the storage is initialized
+  \item Define the process of \texttt{fetchurl} stage. We use \texttt{\_inplace}
+    subset of Pylightnix API for simplicity. It relies on a single global
+    variable for storing tracking the build plan.
+
     \begin{pythoncode}
-    from pylightnix import store_initialize
-    store_initialize()
+    from pylightnix import DRef, RRef, instantiate_inplace, fetchurl
+
+    hello_version = '2.10'
+
+    # Define the stage for downloading and unpacking GNU Hello sources.
+    hello_src:DRef = \
+      instantiate_inplace(
+        fetchurl,
+        name='hello-src',
+        url=f'http://ftp.gnu.org/gnu/hello/hello-{hello_version}.tar.gz',
+        sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b')
+
+    # Realize the stage in-place and print the realization reference
+    hello_rref:RRef = realize_inplace(hello_src)
+    print(hello_rref)
+    \end{pythoncode}
+
+  \item NEXT
+    \begin{pythoncode}
+    from tempfile import TemporaryDirectory
+    from shutil import copytree
+    from os import getcwd, chdir, system
+    from os.path import join
+    from pylightnix import Config, mkconfig
+    from pylightnix import Path, Build, build_cattrs, build_outpath, build_path
+    from pylightnix import mkdrv, build_wrapper, match_latest, dirrw
+
+    def hello_config()->Config:
+      name:str = 'hello-bin'
+      src:RefPath = [hello_src, f'hello-{hello_version}']
+      return mkconfig(locals())
+
+    def hello_realize(b:Build)->None:
+      c:Any = build_cattrs(b)
+      o:Path = build_outpath(b)
+      with TemporaryDirectory() as tmp:
+        copytree(build_path(b,c.src),join(tmp,'src'))
+        dirrw(Path(join(tmp,'src')))
+        cwd = getcwd()
+        try:
+          chdir(join(tmp,'src'))
+          system(f'./configure --prefix=/usr')
+          system(f'make')
+          system(f'make install DESTDIR={o}')
+        finally:
+          chdir(cwd)
+
+    # Phase 1, create the derivation. Note, we reference previous stage's
+    # derivation in the configuration of this derivation.
+    hello_dref:DRef = \
+        instantiate_inplace(mkdrv, hello_config(), match_latest(), build_wrapper(hello_realize))
+
+    # Phase 2, realize the derivation
+    hello_rref:RRef = realize_inplace(hello_dref)
+
+    print(hello_rref)
     \end{pythoncode}
 
 \end{enumerate}
