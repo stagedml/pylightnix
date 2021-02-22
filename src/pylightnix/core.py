@@ -186,8 +186,15 @@ def mkgroup(s:str)->Group:
 
 
 def mkconfig(d:dict)->Config:
-  """ FIXME: Should we assert on invalid Config here? """
-  return Config(assert_valid_dict(d,'dict'))
+  """ Create Config object out of config dictionary. Asserts if the dictionary
+  is not JSON-compatible. As a handy hack, filter out `m:Manager` variable
+  which likely is an utility [Manager](#pylightnix.types.Manager) object.
+
+  FIXME: Should we assert on invalid Config here?
+  """
+  return Config(assert_valid_dict(
+    {k:v for k,v in d.items()
+     if not (k=='m' and 'Manager' in str(type(v)))},'dict'))
 
 def config_dict(cp:Config)->dict:
   return deepcopy(cp.val)
@@ -881,6 +888,8 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
   assert rrefgs is not None
   return rrefgs
 
+def evaluate(stage, *args, **kwargs)->RRef:
+  return realize(instantiate(stage,*args,**kwargs))
 
 def linkrref(rref:RRef,
              destdir:Optional[Path]=None,

@@ -98,7 +98,7 @@ def copyclosure(rrefs:Iterable[RRef], S:SPath, D:Optional[SPath]=None)->None:
       assert dep==dep_dref
     def _make(b:Build)->None:
       assert False, "Not impl"
-    # We pass RConfig in place of Config. Not sure it would work.
+    # We pass RConfig in place of Config. Not sure if its going to work or not.
     return mkdrv(m, cfg, match_all, build_wrapper(_make))
 
   # for dref in alldrefs(S=S):
