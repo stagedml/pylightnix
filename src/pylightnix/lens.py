@@ -88,6 +88,9 @@ def val2path(v:Any, ctx:LensContext)->Path:
       assert False, f"Lens couldn't resolve '{refpath}' without a context"
   elif isinstance(v, Closure):
     return val2path(v.dref, ctx)
+  elif isinstance(v, Build):
+    assert ctx.build_path is not None, f"Lens can't access build path of '{v}'"
+    return ctx.build_path
   else:
     assert False, f"Lens doesn't know how to resolve '{v}'"
 
