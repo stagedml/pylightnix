@@ -11,6 +11,7 @@
 \usepackage{pdflscape}
 \usepackage{longtable}
 \usepackage{hyperref}
+\usepackage{mdframed}
 
 \begin{document}
 
@@ -22,6 +23,10 @@
 \newenvironment{pythoncode}
   {\VerbatimEnvironment\begin{minted}[escapeinside=!!, breaklines, breakafter=0123456789-]{python}}
   {\end{minted}}
+
+\newenvironment{pythontexcode}
+  {\VerbatimEnvironment\begin{mdframed}[leftline=false,rightline=false]\begin{pyblock}[stdout][numbers=left]}
+  {\end{pyblock}\end{mdframed}}
 
 \selectlanguage{english}
 
@@ -172,11 +177,11 @@ lacks built-in build isolation).
 
   \item Follow the above Install section
 
-  \item Define a stage named \texttt{stage\_fetch}. For now, our definition
-    simply calls a pre-defined \texttt{fetchurl} function which does all the
-    job.
+  \item Define a stage for fetching the GNU Hello source tarball. Downloading
+    files from the Internet is a common task, here we just call a pre-defined
+    API function which does the job.
 
-    \begin{pyblock}[stdout][numbers=left]
+    \begin{pythontexcode}
     from pylightnix import (Manager, DRef, RRef, evaluate, fetchurl)
 
     hello_version = '2.10'
@@ -189,7 +194,7 @@ lacks built-in build isolation).
 
     hello_rref:RRef = evaluate(stage_fetch)  # RRef \label{RREF}
     print(hello_rref)
-    \end{pyblock}
+    \end{pythontexcode}
 
     Will print:
     \par
@@ -199,13 +204,14 @@ lacks built-in build isolation).
     \begin{itemize}
 
       \item At line \ref{DREF} we define an algorithm for creating
-        \texttt{hello-src} object. \texttt{fetchurl} function produce stages
-        able to download and unpack urls. We simply re-use it by calling with
-        the right arguments.
+        \texttt{hello-src} object. \textbf{fetchurl} function produce stages
+        able to download and unpack urls. We simply call it with
+        the right arguments and hide this details behind a new name
+        \texttt{stage\_fetch}.
 
-      \item At line \ref{RREF} we \textbf{evaluate} our stage. Pylightnix will
-        run the realization algorithm if no matching realization already exists.
-        Realizer, in turn, executes \texttt{curl} and \texttt{aunpack}
+      \item At line \ref{RREF} we \textbf{evaluate} our new stage. Pylightnix
+        will run the realization algorithm if no matching realization already
+        exists. Realizer, in turn, executes \texttt{curl} and \texttt{aunpack}
         applications. As a result, GNU Hello source folder appears in system in
         form of a new \textbf{Realization} object. A unique \textbf{Realization
         reference} is returned to the user.
@@ -216,7 +222,7 @@ lacks built-in build isolation).
     Below we show how to define a stage for it using \textbf{mkdrv} API
     function.
 
-    \begin{pyblock}[stdout][numbers=left]
+    \begin{pythontexcode}
     from tempfile import TemporaryDirectory
     from shutil import copytree
     from os import getcwd, chdir, system
@@ -248,7 +254,7 @@ lacks built-in build isolation).
 
     hello_rref:RRef = evaluate(stage_build)
     print(hello_rref)
-    \end{pyblock}
+    \end{pythontexcode}
 
     The output:
     \par
@@ -257,10 +263,10 @@ lacks built-in build isolation).
   \item Finally, we show how to access the information contained in the
     realization we have built.
 
-    \begin{pyblock}[stdout][numbers=left]
+    \begin{pythontexcode}
     from subprocess import run, PIPE
     print(run([mklens(hello_rref).bin.syspath], stdout=PIPE).stdout.decode('utf-8'))
-    \end{pyblock}
+    \end{pythontexcode}
 
     Will print:
     \par
