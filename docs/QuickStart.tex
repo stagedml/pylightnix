@@ -28,6 +28,12 @@
   {\VerbatimEnvironment\begin{mdframed}[leftline=false,rightline=false]\begin{pyblock}[stdout][numbers=left]}
   {\end{pyblock}\end{mdframed}}
 
+\newcommand{\mystdout}{\begin{mdframed}\small{\texttt{\stdoutpythontex}}\end{mdframed}}
+
+
+
+
+
 \selectlanguage{english}
 
 \title{Pylightnix}
@@ -198,7 +204,9 @@ lacks built-in build isolation).
 
     Will print:
     \par
-    \stdoutpythontex
+
+    \mystdout
+
     \par
 
     \begin{itemize}
@@ -258,7 +266,7 @@ lacks built-in build isolation).
 
     The output:
     \par
-    \stdoutpythontex
+    \mystdout
     \par
   \item Finally, we show how to access the information contained in the
     realization we have built.
@@ -270,7 +278,7 @@ lacks built-in build isolation).
 
     Will print:
     \par
-    \stdoutpythontex
+    \mystdout
     \par
 
 \end{enumerate}
