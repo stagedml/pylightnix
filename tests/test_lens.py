@@ -55,7 +55,7 @@ def test_lens():
       return mkdrv(m,
         mkconfig({'name':'3', 'maman':n1, 'papa':n2,
                   'promise':[promise,'artifact'],
-                 }),
+                  }),
                  matcher=match_only(),
                  realizer=build_wrapper(_realize))
 
@@ -69,17 +69,21 @@ def test_lens():
     assert mklens(rref).rref == rref
     assert isrefpath(mklens(rref).papa.promise.refpath)
     assert mklens(rref).papa.dict.d1.val == 1
+    assert mklens(rref).dref == clo.dref
     assert isdir(mklens(rref).syspath)
+
     try:
       print(mklens(clo.dref).maman.promise.syspath)
       raise ShouldHaveFailed()
     except AssertionError:
       pass
+
     try:
       print(mklens(rref).papa.dict.d1.get('xxx'))
       raise ShouldHaveFailed()
     except AssertionError:
       pass
+
     try:
       print(mklens(rref).papa.dict.d1.syspath)
       raise ShouldHaveFailed()
