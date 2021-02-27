@@ -75,10 +75,10 @@ class BuildError(Exception):
   def __str__(self):
     return f"Failed to realize '{self.dref}': {self.exception}"
 
-def mkbuildargs(S:SPath, dref:DRef, context:Context, timeprefix:Optional[str],
+def mkbuildargs(S:SPath, dref:DRef, context:Context, starttime:Optional[str],
                 iarg:InstantiateArg, rarg:RealizeArg)->BuildArgs:
   assert_valid_config(store_config(dref,S))
-  return BuildArgs(S, dref, context, timeprefix, iarg, rarg)
+  return BuildArgs(S, dref, context, starttime, iarg, rarg)
 
 def mkbuild(S:SPath, dref:DRef, context:Context, buildtime:bool=True)->Build:
   timeprefix=timestring() if buildtime else None
@@ -88,35 +88,42 @@ B=TypeVar('B')
 
 def build_wrapper_(f:Callable[[B],None],
                    ctr:Callable[[BuildArgs],B],
-                   buildtime:bool=True)->Realizer:
+                   starttime:Optional[str]=None,
+                   stoptime:Optional[str]=None)->Realizer:
   """ Build Adapter which convers user-defined realizers which use
   [Build](#pylightnix.types.Build) API into a low-level
   [Realizer](#pylightnix.types.Realizer)
 
   FIXME: Specify the fact that `B` should be derived from `Build`.
          Maybe just replace `B` with `Build` and require deriving from it? """
+
+  assert starttime is None or isinstance(starttime,str)
+  assert stoptime is None or isinstance(stoptime,str)
+
   def _wrapper(S:SPath,dref,context,rarg)->List[Dict[Tag,Path]]:
-    timeprefix=timestring() if buildtime else None
-    b=ctr(mkbuildargs(S,dref,context,timeprefix,{},rarg))
+    b=ctr(mkbuildargs(S,dref,context,starttime,{},rarg))
     try:
       f(b)
-      build_markstop(b) # type:ignore
+      build_markstop(b,stoptime) # type:ignore
     except KeyboardInterrupt:
-      build_markstop(b) # type:ignore
+      build_markstop(b,stoptime) # type:ignore
       raise
     except Exception as e:
-      build_markstop(b) # type:ignore
+      build_markstop(b,stoptime) # type:ignore
       error(f"Build wrapper of {dref} raised an exception. Remaining "
             f"build directories are: {getattr(b,'outgroups','<unknown>')}")
       raise BuildError(S,dref,getattr(b,'outgroups',[]), e)
     return getattr(b,'outgroups')
+
   return _wrapper
 
-def build_wrapper(f:Callable[[Build],None], buildtime:bool=True)->Realizer:
+def build_wrapper(f:Callable[[Build],None],
+                  starttime:Optional[str]=None,
+                  stoptime:Optional[str]=None)->Realizer:
   """ Build Adapter which convers user-defined realizers which use
   [Build](#pylightnix.types.Build) API into a low-level
   [Realizer](#pylightnix.types.Realizer) """
-  return build_wrapper_(f,Build,buildtime)
+  return build_wrapper_(f,Build,starttime,stoptime)
 
 def build_config(b:Build)->RConfig:
   """ Return the [RConfig](#pylightnix.types.RConfig) object of the realization
@@ -136,17 +143,18 @@ def build_cattrs(b:Build)->Any:
   return b.cattrs_cache
 
 def build_setoutgroups(b:Build,
-                       nouts:int=1,
-                       tags:List[Tag]=[Tag('out')])->List[Dict[Tag,Path]]:
-  assert nouts>0, f"Attempt to set {nouts} (<=0) output paths"
-  assert len(b.outgroups)==0, f"Build outpaths were already set:\n{b.outgroups}"
-  assert len(tags)>0, f"Expecting at least one output tag, got {len(tags)}: {tags}"
+                       tagset:List[List[Tag]]=[[Tag('out')]])->List[Dict[Tag,Path]]:
+  assert len(tagset)>0
+  assert len(b.outgroups)==0, \
+    f"Build outpaths were already set:\n{b.outgroups}"
+  assert all([len(tags)>0 for tags in tagset]), \
+    f"Every group of tags should have at least one tag, got {tagset}"
   import pylightnix.core
   tmp=pylightnix.core.PYLIGHTNIX_TMP
   h=config_hash(build_config(b))[:8]
   def _prefix(t):
     return f'{b.timeprefix}_{t}_{h}_' if b.timeprefix is not None else f'{t}_{h}_'
-  grs=[{t:Path(mkdtemp(prefix=_prefix(t), dir=tmp)) for t in tags} for _ in range(nouts)]
+  grs=[{t:Path(mkdtemp(prefix=_prefix(t), dir=tmp)) for t in tags} for tags in tagset]
   for ngrp,g in enumerate(grs):
     for tag,o in g.items():
       if b.timeprefix:
@@ -160,9 +168,10 @@ def build_setoutgroups(b:Build,
   return grs
 
 def build_setoutpaths(b:Build, nouts:int)->List[Path]:
-  return [g[Tag('out')] for g in build_setoutgroups(b,nouts,[Tag('out')])]
+  return [g[Tag('out')] for g in
+          build_setoutgroups(b,[[Tag('out')] for _ in range(nouts)])]
 
-def build_markstop(b:Build, buildstop:Optional[str]=None)->None:
+def build_markstop(b:Build, buildstop:Optional[str])->None:
   buildstop_=timestring() if buildstop is None else buildstop
   for g in b.outgroups:
     for outpath in g.values():
