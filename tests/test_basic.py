@@ -123,6 +123,7 @@ def test_dirhash2(b)->None:
   h=dirhash(path)
   assert (p.stdout[:len(h)].decode('utf-8'))==h
 
+@settings(suppress_health_check=(HealthCheck.too_slow,))
 @given(d=dicts())
 def test_dirhash3(d)->None:
   path=setup_testpath('dirhash3')
@@ -132,6 +133,7 @@ def test_dirhash3(d)->None:
   h=dirhash(path)
   assert (p.stdout[:len(h)].decode('utf-8'))==h
 
+@settings(suppress_health_check=(HealthCheck.too_slow,))
 @given(d=dicts())
 def test_dirhash4(d)->None:
   path=setup_testpath('dirhash4')
@@ -179,7 +181,7 @@ def run_kahntsort(dag):
 
 @given(dags=intdags_permutations())
 def test_kahntsort(dags)->None:
-  with setup_storage2('test_kahntsort') as T,S:
+  with setup_storage2('test_kahntsort') as (T,S):
     res0=None
     for dag in dags:
       res=run_kahntsort(dag)
