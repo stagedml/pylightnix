@@ -46,6 +46,7 @@ def test_lens():
         assert isrefpath(mklens(b).maman.promise.refpath)
         assert isfile(mklens(b).papa.promise.syspath)
         assert o in mklens(b).promise.syspath
+        assert o == mklens(b).syspath
         assert mklens(b).papa.name.val == '2'
         assert mklens(b).papa.dref == c.papa
 
