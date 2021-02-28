@@ -2,7 +2,8 @@ from pylightnix import (instantiate, DRef, RRef, assert_valid_rref, Manager,
                         Build, realize, mklens, either_wrapper, claim, readstr,
                         mkconfig, mkdrv, match_only, build_wrapper,
                         build_setoutpaths, either_status, either_isRight,
-                        either_isLeft, realizeMany, store_rref2path, match_some)
+                        either_isLeft, realizeMany, store_rref2path, match_some,
+                        writestr)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink,
                            isfile, List, randint, sleep, rmtree, system,
@@ -62,8 +63,10 @@ def test_either_builderror()->None:
   with setup_storage('test_either_builderror'):
     def _setting(m:Manager)->DRef:
       def _make(b:Build):
-        build_setoutpaths(b, 2)
-        raise ValueError('Ooops')
+        # Make both paths differ from each other
+        for p in build_setoutpaths(b, 2):
+          writestr(join(p,'artifact.txt'), p)
+        raise ValueError('Ooops (an intended test failure)')
       return mkdrv(m, mkconfig({'name':'pigfood'}),
                    match_some(n=2), either_wrapper(build_wrapper(_make)))
 

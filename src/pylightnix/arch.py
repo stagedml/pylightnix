@@ -92,6 +92,7 @@ def copyclosure(rrefs_S:Iterable[RRef], S:SPath, D:Optional[SPath]=None)->None:
   storage `D`. By default, use global storage as a desitnation.
 
   TODO: Implement a non-recursive version.
+  TODO: Replace copytree with a smth like movetree
   """
   for rref_S in rrefs_S:
 

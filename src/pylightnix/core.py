@@ -883,18 +883,20 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
           f"Unfortunately, it is not the case. Config:\n"
           f"{store_config(dref)}"
           )
+        rrefgs_existed=store_rrefs(dref,dref_context,S)
         gpaths:List[Dict[Tag,Path]]=drv.realizer(S,dref,dref_context,realize_args.get(dref,{}))
         rrefgs_built=[mkrgroup(dref,dref_context,g,S) for g in gpaths]
         rrefgs_matched=drv.matcher(S,dref,dref_context)
         assert rrefgs_matched is not None, (
-          f"Matcher of {dref} repeatedly asked the core to realize. "
-          f"Probably, its realizer doesn't work well with this matcher. "
-          f"The follwoing just-built RRefs were marked as unmatched: "
-          f"{rrefgs_built}" )
+          f"The matcher of {dref} is not satisfied with its realizatons. "
+          f"The following newly obtained realizations were ignored:\n"
+          f"  {rrefgs_built}\n"
+          f"The following realizations already existed:\n"
+          f"  {rrefgs_existed}")
         if (set(groups2rrefs(rrefgs_built)) & set(groups2rrefs(rrefgs_matched))) == set() and \
            (set(groups2rrefs(rrefgs_built)) | set(groups2rrefs(rrefgs_matched))) != set():
-          warning(f"None of the newly obtained realizations of "
-                  f"{dref} were matched by the matcher. To capture those "
+          warning(f"None of the newly obtained {dref} realizations "
+                  f"were matched by the matcher. To capture those "
                   f"realizations explicitly, try `matcher([exact(..)])`")
         rrefgs=rrefgs_matched
       context_acc=context_add(context_acc,dref,groups2rrefs(rrefgs))
