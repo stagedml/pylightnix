@@ -121,7 +121,7 @@ def dirhash(path:Path, verbose:bool=False)->Hash:
   starting with underscope ('_'). For symbolic links, hash the result of
   `readlink(link)`.
 
-  FIXME: Include file/directory names into hash data.
+  FIXME: Include file/directory names the into hash data.
   FIXME: Figure out how does sha265sum handle symlinks and do the same thing.
   FIXME: Stop loading whole files in memory for calculating hashes
   """

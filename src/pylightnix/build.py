@@ -160,10 +160,10 @@ def build_setoutgroups(b:Build,
       if b.timeprefix:
         with open(join(o,'__buildtime__.txt'), 'w') as f:
           f.write(b.timeprefix)
-      with open(join(o,'tag.txt'), 'w') as f:
-        f.write(tag)
-      with open(join(o,'group.txt'), 'w') as f:
-        f.write(str(ngrp))
+      # with open(join(o,'tag.txt'), 'w') as f:
+      #   f.write(tag)
+      # with open(join(o,'group.txt'), 'w') as f:
+      #   f.write(str(ngrp))
   b.outgroups=grs
   return grs
 
@@ -180,7 +180,7 @@ def build_markstop(b:Build, buildstop:Optional[str])->None:
 
 def store_buildelta(rref:RRef,S=None)->Optional[float]:
   def _gettime(fn)->Optional[float]:
-    ts=tryread(Path(join(store_rref2path(rref,S),fn)))
+    ts=tryread(join(store_rref2path(rref,S),fn))
     return parsetime(ts) if ts is not None else None
   bb=_gettime('__buildtime__.txt')
   be=_gettime('__buildstop__.txt')

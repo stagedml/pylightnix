@@ -416,9 +416,8 @@ def test_match_best()->None:
     # baz: 6d2909ed88f980f2241835f0f5d76e8b31dbdc90c22d8fb7e446ffe4647eb8f2
     # group.txt: 0554aac0dbae2d80f67e7d280ab331a44c55f0b63f674a3a278411620fbede12
     clo1=instantiate(_mklrg, {'a':1},
-      matcher=match([exact([
-        RRef('rref:3e8dfe0bf20b217f96590a4f7c7a5a01-a76762e9bc54e47c09455bdb226e2388-unnamed')])]),
-                     S=S)
+      matcher=match([
+        exact([RRef('rref:d86d09f2769885bae2e76763f2bcd9f8-a76762e9bc54e47c09455bdb226e2388-unnamed')])]), S=S)
     rref1e=realize(clo1)
     assert isfile(join(store_rref2path(rref1e,S),'baz'))
     assert len(list(drefrrefs(clo1.dref,S))) == 4

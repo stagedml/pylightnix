@@ -37,11 +37,11 @@ def test_pack()->None:
       s1=mktestnode(m, {'name':'1', 'promise':[promise,'artifact']})
       s2=mktestnode(m,{'name':'2', 'maman': s1,
                        'promise':[promise,'artifact']})
-      s3=mktestnode(m,{'name':'3', 'maman': s2,
+      s3=mktestnode(m,{'name':'3', 'papa': s2,
                        'promise':[promise,'artifact']})
       return s3
-    rref3=realize(instantiate(_stage,S=S))
 
+    rref3=realize(instantiate(_stage,S=S))
     arch_path=join(T,'archive.zip')
     pack([rref3], arch_path, S=S)
     unpack(arch_path, S=S)

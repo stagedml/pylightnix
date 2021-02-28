@@ -22,7 +22,7 @@ from pylightnix.imports import (sha256, deepcopy, isdir, islink, makedirs,
                                 mkdtemp, replace, environ, split, re_match,
                                 ENOTEMPTY, get_ident, contextmanager,
                                 OrderedDict, lstat, maxsize, readlink, chain,
-                                getLogger)
+                                getLogger, scandir)
 
 from pylightnix.utils import (dirhash, assert_serializable, assert_valid_dict,
                               dicthash, scanref_dict, scanref_list, forcelink,
@@ -96,6 +96,11 @@ PYLIGHTNIX_NAMEPAT="[a-zA-Z0-9_-]"
 #: Reserved file names are treated specially be the core. Users should
 #: not normally create or alter files with this names.
 PYLIGHTNIX_RESERVED=['context.json','group.json']
+
+def reserved(folder:Path, name:str)->Path:
+  assert name in PYLIGHTNIX_RESERVED, \
+    f"File name '{name}' expected to be reserved"
+  return Path(join(folder,name))
 
 #  ____       __
 # |  _ \ ___ / _|___
@@ -412,6 +417,12 @@ def rootrrefs(S:Optional[SPath]=None)->Set[RRef]:
     return store_depRrefs([x],S)
   return dagroots(kahntsort(allrrefs(S), _inb), _inb)
 
+def rrefdata(rref:RRef,S=None)->Iterable[Tuple[str,List[str],List[str]]]:
+  root=store_rref2path(rref,S)
+  for fd in scandir(root):
+    if not (fd.is_file() and fd.name in PYLIGHTNIX_RESERVED):
+      yield Path(join(root, fd.name))
+
 def rrefs2groups(rrefs:Iterable[RRef], S=None)->List[RRefGroup]:
   """ Split RRefs to a set of [Groups](#pylightnix.types.Group), according to
   their [Tags](#pylightnix.types.Tag) """
@@ -470,16 +481,18 @@ def store_buildtime(rref:RRef, S=None)->Optional[str]:
 
   Buildtime is the time when the realization process has started. Some
   realizations may not provide this information. """
-  return tryread(Path(join(store_rref2path(rref,S),'__buildtime__.txt')))
+  return tryread(join(store_rref2path(rref,S),'__buildtime__.txt'))
 
 def store_tag(rref:RRef,S=None)->Tag:
   """ Return the [Tag](#pylightnix.types.tag) of a Realization. Default Tag
   name is 'out'. """
-  return mktag(tryreadjson_def(Path(join(store_rref2path(rref,S),'group.json')),{}).get('tag','out'))
+  return mktag(tryreadjson_def(
+    reserved(store_rref2path(rref,S),'group.json'),{}).get('tag','out'))
 
 def store_group(rref:RRef,S=None)->Group:
   """ Return group identifier of the realization """
-  return mkgroup(tryreadjson_def(Path(join(store_rref2path(rref,S),'group.json')),{}).get('group',rref))
+  return mkgroup(tryreadjson_def(
+    reserved(store_rref2path(rref,S),'group.json'),{}).get('group',rref))
 
 def store_gc(keep_drefs:List[DRef],
              keep_rrefs:List[RRef],
@@ -555,7 +568,7 @@ def mkrealization(dref:DRef, l:Context, o:Path,
   - `o:Path`: Path to temporal (build) folder which contains artifacts,
     prepared by the [Realizer](#pylightnix.types.Realizer).
   - `leader`: Tag name and Group identifier of the Group leader. By default,
-    name `out` and own RRef are used.
+    we use name `out` and derivation's own rref.
 
   FIXME: Assert or handle possible but improbable hash collision[*]
   """
@@ -573,12 +586,12 @@ def mkrealization(dref:DRef, l:Context, o:Path,
        f"This name is reserved, please use another name. List of reserved "
        f"names: {PYLIGHTNIX_RESERVED}")
 
-  with open(join(o,'context.json'), 'w') as f:
+  with open(reserved(o,'context.json'), 'w') as f:
     f.write(context_serialize(l))
 
   if leader is not None:
     tag,group_rref=leader
-    with open(join(o,'group.json'), 'w') as f:
+    with open(reserved(o,'group.json'), 'w') as f:
       json_dump({'tag':tag,'group':group_rref},f)
 
   rhash=dirhash(o)
@@ -875,7 +888,7 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
         rrefgs_matched=drv.matcher(S,dref,dref_context)
         assert rrefgs_matched is not None, (
           f"Matcher of {dref} repeatedly asked the core to realize. "
-          f"Probably, it's realizer doesn't work well with it's matcher. "
+          f"Probably, its realizer doesn't work well with this matcher. "
           f"The follwoing just-built RRefs were marked as unmatched: "
           f"{rrefgs_built}" )
         if (set(groups2rrefs(rrefgs_built)) & set(groups2rrefs(rrefgs_matched))) == set() and \
