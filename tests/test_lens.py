@@ -28,7 +28,7 @@ from tests.generators import (
     rrefs, drefs, configs, dicts )
 
 from tests.setup import ( ShouldHaveFailed, setup_testpath, setup_storage,
-    mktestnode_nondetermenistic, mktestnode )
+    mktestnode )
 
 
 

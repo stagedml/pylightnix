@@ -3,9 +3,8 @@ from pylightnix import ( DRef, RRef, lsref, catref, instantiate, realize,
 
 from tests.imports import ( TemporaryDirectory, join, stat, chmod, S_IEXEC,
     system, Popen, PIPE, get_executable )
-from tests.setup import (
-    ShouldHaveFailed, setup_testpath, setup_storage,
-    mktestnode_nondetermenistic, pipe_stdout )
+from tests.setup import (ShouldHaveFailed, setup_testpath, setup_storage,
+                         pipe_stdout)
 
 
 SHA256SUM=get_executable('sha256sum', 'Please install `sha256sum` tool from `coreutils` package')

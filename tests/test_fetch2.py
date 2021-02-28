@@ -6,7 +6,7 @@ from tests.imports import ( TemporaryDirectory, join, stat, chmod, S_IEXEC,
     system, Popen, PIPE, get_executable )
 from tests.setup import (
     ShouldHaveFailed, setup_testpath, setup_storage,
-    mktestnode_nondetermenistic, pipe_stdout )
+    pipe_stdout )
 
 
 SHA256SUM=get_executable('sha256sum', 'Please install `sha256sum` tool from `coreutils` package')

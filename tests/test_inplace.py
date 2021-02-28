@@ -15,7 +15,7 @@ from tests.generators import (
 
 from tests.setup import (
     setup_testpath, setup_storage, setup_inplace_reset,
-    mktestnode_nondetermenistic, mktestnode )
+    mktestnode )
 
 
 
