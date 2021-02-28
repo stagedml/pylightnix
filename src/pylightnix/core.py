@@ -170,7 +170,7 @@ def path2rref(p:Path)->Optional[RRef]:
 
 def mktag(s:str)->Tag:
   for c in ['\n',' ']:
-    assert c not in s
+    assert c not in s, f"Invalid symbol '{c}' in tag '{s}'"
   return Tag(s)
 
 def tag_out()->Tag:
@@ -455,7 +455,7 @@ def store_rrefs(dref:DRef, context:Context, S=None)->List[RRefGroup]:
   [context](#pylightnix.types.Context). Sorting order is unspecified. """
   rgs:List[RRefGroup]=[]
   for rg in store_rrefs_(dref,S):
-    context2=store_context(rg[Tag('out')],S)
+    context2=store_context(rg[tag_out()],S)
     if context_eq(context,context2):
       rgs.append(rg)
   return rgs
@@ -622,10 +622,10 @@ def mkrgroup(dref:DRef, ctx:Context,
   """ Create [realization group](#pylightnix.types.Group) in storage `S` by
   iteratively calling [mkrealization](#pylightnix.core.mkrealization). """
   rrefg={}
-  rrefg[Tag('out')]=mkrealization(dref,ctx,og[Tag('out')],leader=None,S=S)
+  rrefg[tag_out()]=mkrealization(dref,ctx,og[tag_out()],leader=None,S=S)
   for tag,o in og.items():
-    if tag!=Tag('out'):
-      rrefg[tag]=mkrealization(dref,ctx,o,leader=(tag,rrefg[Tag('out')]),S=S)
+    if tag!=tag_out():
+      rrefg[tag]=mkrealization(dref,ctx,o,leader=(tag,rrefg[tag_out()]),S=S)
   return rrefg
 
 #   ____            _            _
@@ -738,7 +738,7 @@ def mkdrv(m:Manager,
       outgroups=realizer(S,dref,ctx,rarg)
       for key,refpath in config_promises(store_config_(dref,S),dref):
         for g in outgroups:
-          assert_promise_fulfilled(key,refpath,g[Tag('out')])
+          assert_promise_fulfilled(key,refpath,g[tag_out()])
       return outgroups
     return _realizer
 
@@ -995,7 +995,7 @@ def match(keys:List[Key],
   keys=keys+[texthash()]
   def _matcher(S:SPath, dref:DRef, context:Context)->Optional[List[RRefGroup]]:
     # Find 'out' RRefs in each group
-    grefs={gr[Tag('out')]:gr for gr in store_rrefs(dref,context,S)}
+    grefs={gr[tag_out()]:gr for gr in store_rrefs(dref,context,S)}
 
     # Match only among realizations tagged as 'out'
     keymap={rref:[k(rref,S) for k in keys] for rref in grefs.keys()}
