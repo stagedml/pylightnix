@@ -68,12 +68,12 @@ def setup_inplace_reset()->None:
   import pylightnix.inplace
   pylightnix.inplace.PYLIGHTNIX_MANAGER=Manager(storage(None))
 
-def mktestnode_nondetermenistic(m:Manager,
-                                config:dict,
-                                nondet:Callable[[],int],
-                                buildtime:bool=True,
-                                realize_wrapper=None,
-                                promise_strength=promise)->DRef:
+def mkstage(m:Manager,
+            config:dict,
+            nondet:Callable[[],int]=lambda:0,
+            buildtime:bool=True,
+            realize_wrapper=None,
+            promise_strength=promise)->DRef:
   """ Emulate non-determenistic builds. `nondet` is expected to return
   different values from build to build """
   def _config()->Config:
@@ -98,15 +98,6 @@ def mktestnode_nondetermenistic(m:Manager,
 
   rw=(lambda x:x) if realize_wrapper is None else realize_wrapper
   return mkdrv(m, _config(), _match, rw(_realize))
-
-
-def mktestnode(m:Manager,
-               config:dict,
-               buildtime=True,
-               realize_wrapper=None)->DRef:
-  """ Build a test node with a given config and fixed build artifact """
-  return mktestnode_nondetermenistic(m, config, lambda:0, buildtime,
-                                     realize_wrapper)
 
 
 def pipe_stdout(args:List[str], **kwargs)->str:

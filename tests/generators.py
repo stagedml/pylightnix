@@ -10,7 +10,7 @@ from tests.imports import (given, assume, example, note, settings, text,
                            permutations, sampled_from, partial)
 
 
-from tests.setup import (mktestnode)
+from tests.setup import (mkstage)
 
 #   ____                           _
 #  / ___| ___ _ __   ___ _ __ __ _| |_ ___  _ __ ___
@@ -98,7 +98,7 @@ def rootstages(draw):
   def _stage(m, root):
     drefs:dict={}
     for n,deps in list(dag):
-      drefs[n]=mktestnode(m, config={'name':f'node_{n}',
+      drefs[n]=mkstage(m, config={'name':f'node_{n}',
                                      'parents':[drefs[d] for d in deps]})
     return drefs[root]
   return [partial(_stage, root=root) for root in roots]

@@ -12,7 +12,7 @@ from tests.imports import (given, Any, Callable, join, Optional, islink,
 from tests.generators import (drefs, configs, dicts)
 
 from tests.setup import (ShouldHaveFailed, setup_testpath, setup_storage,
-                         mktestnode_nondetermenistic, mktestnode)
+                         mkstage, mkstage)
 
 
 def mkeither(m, source, should_fail=False):
@@ -21,7 +21,7 @@ def mkeither(m, source, should_fail=False):
       raise ValueError('Expected test error')
     else:
       return 33
-  return mktestnode_nondetermenistic(m, source,
+  return mkstage(m, source,
                                      realize_wrapper=either_wrapper,
                                      nondet=_mutate,
                                      promise_strength=claim)

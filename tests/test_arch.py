@@ -26,7 +26,7 @@ from tests.generators import (
 
 from tests.setup import (
     ShouldHaveFailed, setup_testpath, setup_storage2,
-    mktestnode_nondetermenistic, mktestnode, pipe_stdout )
+    mkstage, mkstage, pipe_stdout )
 
 from pylightnix.arch import (pack,unpack)
 
@@ -34,10 +34,10 @@ from pylightnix.arch import (pack,unpack)
 def test_pack()->None:
   with setup_storage2('test_pack') as (T,S):
     def _stage(m):
-      s1=mktestnode(m, {'name':'1', 'promise':[promise,'artifact']})
-      s2=mktestnode(m,{'name':'2', 'maman': s1,
+      s1=mkstage(m, {'name':'1', 'promise':[promise,'artifact']})
+      s2=mkstage(m,{'name':'2', 'maman': s1,
                        'promise':[promise,'artifact']})
-      s3=mktestnode(m,{'name':'3', 'papa': s2,
+      s3=mkstage(m,{'name':'3', 'papa': s2,
                        'promise':[promise,'artifact']})
       return s3
 

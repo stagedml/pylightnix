@@ -20,15 +20,14 @@ from pylightnix import (instantiate, DRef, RRef, Path, Build, Manager, mklens,
                         build_outpath, build_path, mkconfig, assert_valid_rref,
                         isrefpath, isclosure)
 
-from tests.imports import ( given, Any, Callable, join, Optional, islink,
-    isfile, List, randint, sleep, rmtree, system, S_IWRITE, S_IREAD, S_IEXEC,
-    isdir )
+from tests.imports import (given, Any, Callable, join, Optional, islink,
+                           isfile, List, randint, sleep, rmtree, system,
+                           S_IWRITE, S_IREAD, S_IEXEC, isdir)
 
-from tests.generators import (
-    rrefs, drefs, configs, dicts )
+from tests.generators import (rrefs, drefs, configs, dicts)
 
-from tests.setup import ( ShouldHaveFailed, setup_testpath, setup_storage,
-    mktestnode )
+from tests.setup import (ShouldHaveFailed, setup_testpath, setup_storage,
+                         mkstage)
 
 
 
@@ -36,8 +35,8 @@ from tests.setup import ( ShouldHaveFailed, setup_testpath, setup_storage,
 def test_lens():
   with setup_storage('test_lens'):
     def _setting(m:Manager)->DRef:
-      n1=mktestnode(m, {'name':'1', 'promise':[promise,'artifact']})
-      n2=mktestnode(m, {'name':'2', 'promise':[promise,'artifact'],
+      n1=mkstage(m, {'name':'1', 'promise':[promise,'artifact']})
+      n2=mkstage(m, {'name':'2', 'promise':[promise,'artifact'],
                         'dict':{'d1':1} })
 
       def _realize(b:Build):
@@ -112,9 +111,9 @@ def test_lens():
 def test_lens_closures():
   with setup_storage('test_lens_closures'):
     def _setting(m:Manager)->DRef:
-      n1=mktestnode(m, {'name':'1', 'x':33, 'promise':[promise,'artifact']})
-      n2=mktestnode(m, {'name':'2', 'papa':n1, 'dict':{'d1':1} })
-      n3=mktestnode(m, {'name':'3', 'maman':n2 })
+      n1=mkstage(m, {'name':'1', 'x':33, 'promise':[promise,'artifact']})
+      n2=mkstage(m, {'name':'2', 'papa':n1, 'dict':{'d1':1} })
+      n3=mkstage(m, {'name':'3', 'maman':n2 })
       return n3
 
     clo=instantiate(_setting)
