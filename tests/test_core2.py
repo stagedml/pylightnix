@@ -22,7 +22,7 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir,
 from tests.imports import (given, Any, Callable, join, Optional, islink,
                            isfile, islink, List, randint, sleep, rmtree,
                            system, S_IWRITE, S_IREAD, S_IEXEC, chmod, Popen,
-                           PIPE, data, event)
+                           PIPE, data, event, settings, reproduce_failure)
 
 from tests.generators import (rrefs, drefs, configs, dicts, rootstages)
 
@@ -41,17 +41,19 @@ def test_union_of_root_derivations(stages):
       deps |= store_deepdeps([clo.dref],S) | set([clo.dref])
     assert deps==set(alldrefs(S))
 
-
+# @reproduce_failure('5.30.0', b'AAABAAAA')
+@settings(print_blob=True)
 @given(stages=rootstages())
 def test_union_of_root_realizations(stages):
-  """ Union of dep.closures of root realizations must be equal to the set of all
-  realizations. """
+  """ Union of dep.closures of root realizations must be less or equal to the
+  set of all realizations. Less - because realizer may produce more
+  realizations then the matcher matches"""
   with setup_storage2('test_union_of_root_realizations') as (T,S):
     deps=set()
     for stage in stages:
       rrefs=realizeMany(instantiate(stage,S=S))
       deps|=store_deepdepRrefs(rrefs,S) | set(rrefs)
-    assert deps==set(allrrefs(S))
+    assert deps<=set(allrrefs(S))
 
 
 @given(stages=rootstages())
