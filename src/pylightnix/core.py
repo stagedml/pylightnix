@@ -360,7 +360,8 @@ def store_depRrefs(rrefs:Iterable[RRef],S=None)->Set[RRef]:
   for rref in rrefs:
     dref=rref2dref(rref)
     for dref_dep in store_deps([dref],S):
-      acc|=set(store_deref(rref,dref_dep,S).values())
+      for rg in store_deref_(rref,dref_dep,S):
+        acc|=set(rg.values())
   return acc
 
 def store_deepdeps(drefs:Iterable[DRef], S=None)->Set[DRef]:
@@ -412,7 +413,7 @@ def rootdrefs(S:Optional[SPath]=None)->Set[DRef]:
   return dagroots(kahntsort(alldrefs(S), _inb), _inb)
 
 def rootrrefs(S:Optional[SPath]=None)->Set[RRef]:
-  """ Return root DRefs of the storage `S` as a set """
+  """ Return root RRefs of the storage `S` as a set """
   def _inb(x):
     return store_depRrefs([x],S)
   return dagroots(kahntsort(allrrefs(S), _inb), _inb)
@@ -425,7 +426,10 @@ def rrefdata(rref:RRef,S=None)->Iterable[Tuple[str,List[str],List[str]]]:
 
 def rrefs2groups(rrefs:Iterable[RRef], S=None)->List[RRefGroup]:
   """ Split RRefs to a set of [Groups](#pylightnix.types.Group), according to
-  their [Tags](#pylightnix.types.Tag) """
+  their [Tags](#pylightnix.types.Tag)
+
+  FIXME: re-implement with a complexity better than O(N^2)
+  """
   return [({store_tag(rref,S):rref for rref in rrefs if store_group(rref,S)==g})
     for g in sorted({store_group(rref,S) for rref in rrefs})]
 
@@ -643,14 +647,13 @@ def mkcontext()->Context:
 def context_eq(a:Context,b:Context)->bool:
   return json_dumps(a)==json_dumps(b)
 
-def context_add(context:Context, dref:DRef, rrefs:List[RRef])->Context:
-  assert dref not in context, (
+def context_add(ctx:Context, dref:DRef, rrefs:List[RRef])->Context:
+  assert dref not in ctx, (
     f"Attempting to re-introduce DRef {dref} to context with a "
     f"different realization.\n"
-    f" * Old realization: {context[dref]}\n"
+    f" * Old realization: {ctx[dref]}\n"
     f" * New realization: {rrefs}\n" )
-  context[dref]=rrefs
-  return context
+  return dict(sorted([(dref,list(sorted(rrefs)))]+list(ctx.items())))
 
 def context_deref(context:Context, dref:DRef, S=None)->List[RRefGroup]:
   assert dref in context, (
@@ -781,7 +784,7 @@ def realize(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
   assert len(rrefs)==1, (
       f"`realize` is to be used with single-output derivations. Derivation "
       f"{closure.dref} has {len(rrefs)} outputs:\n{rrefs}\n"
-      f"Consider calling `realizeMany` with it." )
+      f"Consider using `realizeMany` or `realizeGroups`." )
   return rrefs[0]
 
 def realizeGroups(closure:Closure,
@@ -981,28 +984,29 @@ def match(keys:List[Key],
   with at least one matched realization.
 
   Arguments:
-  - `keys`: List of [Key](#pylightnix.types.Key) functions. Defaults ot
+  - `keys`: A list of [Key](#pylightnix.types.Key) functions.
   - `rmin`: An integer selecting the minimum number of realizations to accept.
-    If non-None, Realizer is expected to produce at least this number of
-    realizations.
-  - `rmax`: An integer selecting the maximum number of realizations to return
+      If non-None, Pylightnix will be asked to run the Realizer **if** the number
+      of matching keys is less than this number.
+  - `rmax`: An integer selecting the maximum number of realizations to match
     (realizer is free to produce more realizations)
   - `exclusive`: If true, asserts if the number of realizations exceeds `rmax`
   """
   assert (rmin or 0) <= (rmax or maxsize)
-  assert not (len(keys)>0 and (rmax is None)), (
-    "Specifying non-default sorting keys has no effect without specifying `rmax`.")
+  # FIXME: Figure out why did we need such an assert
+  # assert not (len(keys)>0 and (rmax is None)), (
+  #   "Specifying non-default sorting keys has no effect without specifying `rmax`.")
   assert not ((rmax is None) and exclusive), (
     "Specifying `exclusive` has no effect without specifying `rmax`.")
   keys=keys+[texthash()]
   def _matcher(S:SPath, dref:DRef, context:Context)->Optional[List[RRefGroup]]:
-    # Find 'out' RRefs in each group
+    # Find realizations tagged with 'out' among the available realizations
     grefs={gr[tag_out()]:gr for gr in store_rrefs(dref,context,S)}
 
-    # Match only among realizations tagged as 'out'
+    # Calculate the metrics for all "out" realizations
     keymap={rref:[k(rref,S) for k in keys] for rref in grefs.keys()}
 
-    # Apply filters and filter outputs
+    # Filter None results and sort the remaining rrefs according to keys
     res:List[RRef]=sorted(filter(lambda rref: None not in keymap[rref], grefs.keys()),
                           key=lambda rref:keymap[rref], reverse=True)
     # Filter by range

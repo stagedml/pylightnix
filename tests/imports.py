@@ -4,7 +4,8 @@ from os.path import (basename, join, isfile, isdir, islink, relpath, abspath,
                      dirname )
 from shutil import rmtree
 
-from hypothesis import given, assume, example, note, settings, event, HealthCheck
+from hypothesis import (given, assume, example, note, settings, event,
+                        HealthCheck, reproduce_failure, Phase)
 from hypothesis.strategies import (text, decimals, integers, characters,
                                    from_regex, dictionaries, one_of, lists,
                                    recursive, none, booleans, floats,

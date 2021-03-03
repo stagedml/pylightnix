@@ -104,12 +104,15 @@ def tagsets(draw):
 def rootstages(draw):
   dag=draw(intdags().filter(lambda dag: len(dag)>0))
   roots=dagroots([n[0] for n in dag], lambda n:dag[n][1])
-  # tss={n[0]:draw(tagsets()) for n in dag}
-  tss={n[0]:[[tag_out()], [tag_out()]] for n in dag}
+  tss={n[0]:draw(tagsets()) for n in dag}
+  # tss={n[0]:[[tag_out()], [tag_out()]] for n in dag}
   # print(tss)
-  # nmatches={n[0]:draw(integers(min_value=1,max_value=2)) for n in dag}
-  nmatches={n[0]:99 for n in dag}
+  nmatches={n[0]:draw(integers(min_value=1,max_value=2)) for n in dag}
+  # nmatches={n[0]:99 for n in dag}
   # print('NNNNNNNNN',nmatches)
+  note(f"DAG: {dag}")
+  note(f"Tags: {tss}")
+  note(f"NMatches: {nmatches}")
 
   def _stage(m, root):
     drefs:dict={}

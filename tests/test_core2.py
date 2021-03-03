@@ -20,8 +20,9 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir,
                         tag_out, groups2rrefs)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink,
-                           isfile, islink, List, randint, sleep, rmtree, system,
-                           S_IWRITE, S_IREAD, S_IEXEC, chmod, Popen, PIPE, data)
+                           isfile, islink, List, randint, sleep, rmtree,
+                           system, S_IWRITE, S_IREAD, S_IEXEC, chmod, Popen,
+                           PIPE, data, event)
 
 from tests.generators import (rrefs, drefs, configs, dicts, rootstages)
 
@@ -57,10 +58,13 @@ def test_union_of_root_realizations(stages):
 def test_group_invariants(stages):
   """ Group invariants should be fulfilled. """
   with setup_storage2('test_group_invariants') as (T,S):
+    event(f"Number of top-level stages: {len(stages)}")
     for stage in stages:
       rgs=realizeGroups(instantiate(stage,S=S))
       assert len(set(groups2rrefs(rgs)))==len(groups2rrefs(rgs))
+      event(f"Number of output groups: {len(rgs)}")
       for rg in rgs:
+        event(f"Number of output tags: {len(rg.keys())}")
         assert len(rg.keys())>=1
         assert len(set([rref2dref(rref) for rref in rg.values()]))==1
         assert tag_out() in rg.keys()

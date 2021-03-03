@@ -16,15 +16,18 @@
 
 from pylightnix.imports import (Popen, dirname, basename, remove, join,
                                 relpath, rename, splitext, mkdtemp, basename,
-                                isfile, isdir, copytree)
-from pylightnix.types import (RRef, List, Dict, Path, Iterable, Optional, SPath,
-                              Manager, DRef, Config, RConfig, Build)
+                                isfile, isdir, shutil_copy)
+from pylightnix.types import (RRef, List, Dict, Path, Iterable, Optional,
+                              SPath, Manager, DRef, Config, RConfig, Build,
+                              RRefGroup)
 from pylightnix.core import (store_deepdeps, store_deepdepRrefs,
-                             store_rref2path, store_dref2path, storage, tempdir,
-                             storagename, alldrefs, rootdrefs, rootrrefs,
-                             rref2dref, config_deps, store_config_, match_all,
-                             mkdrv, realize, realizeMany, instantiate,
-                             rrefs2groups, store_deref, rrefdata, config_name)
+                             store_rref2path, store_dref2path, storage,
+                             tempdir, storagename, alldrefs, rootdrefs,
+                             rootrrefs, rref2dref, config_deps, store_config_,
+                             match_all, mkdrv, realize, realizeMany,
+                             instantiate, rrefs2groups, store_deref, rrefdata,
+                             config_name, tag_out, store_deref_, realizeGroups,
+                             match, exact, groups2rrefs)
 from pylightnix.build import (build_setoutgroups, build_wrapper)
 from pylightnix.utils import (try_executable, dirrm)
 
@@ -56,7 +59,7 @@ def pack(roots:List[RRef], out:Path, S=None)->None:
   done=False
   try:
     for rref in rrefs | set(roots):
-      p=Popen([APACK(), tmp,
+      p=Popen([APACK(), '-q', tmp,
                relpath(store_dref2path(rref2dref(rref),S), start=store_holder),
                relpath(store_rref2path(rref,S), start=store_holder)],
               cwd=store_holder)
@@ -75,50 +78,60 @@ def pack(roots:List[RRef], out:Path, S=None)->None:
 def unpack(archive:Path,S=None)->None:
   tmppath=mkdtemp(suffix=f"_{basename(archive)}", dir=tempdir())
   try:
-    p=Popen([AUNPACK(), '-X', tmppath, archive], cwd=tempdir())
+    p=Popen([AUNPACK(), '-q', '-X', tmppath, archive], cwd=tempdir())
     p.wait()
     assert p.returncode==0, \
       f"Failed to unpack '{archive}'. Retcode is {p.returncode}"
     archstore=SPath(join(tmppath, storagename()))
     assert isdir(archstore), \
       f"Archive '{archive}' didn't contain a directory '{storagename()}'"
-    copyclosure(rootrrefs(S=archstore), archstore, S)
+    copyclosure(rrefs2groups(rootrrefs(S=archstore),S=archstore),S=archstore,D=S)
   finally:
+    # FIXME: Uncomment
     # dirrm(tmppath)
     pass
 
-def copyclosure(rrefs_S:Iterable[RRef], S:SPath, D:Optional[SPath]=None)->None:
+def deref_(ctxgr, dref, S):
+  return store_deref_(context_holder=ctxgr[tag_out()], dref=dref, S=S) \
+          if dref!=rref2dref(ctxgr[tag_out()]) else [ctxgr]
+
+def copyclosure(rrefgs_S:Iterable[RRefGroup], S:SPath, D:Optional[SPath]=None)->None:
   """ Copy the closure of `rrefs` from source storage `S` to the destination
   storage `D`. By default, use global storage as a desitnation.
 
   TODO: Implement a non-recursive version.
-  TODO: Replace copytree with a smth like movetree
   """
-  for rref_S in rrefs_S:
+  for rrefg_S in rrefgs_S:
 
-    dref_S:DRef=rref2dref(rref_S)
+    dref_S:DRef=rref2dref(rrefg_S[tag_out()])
 
-    def _stage(m:Manager, cfg:RConfig)->DRef:
-      print(f"Instantiating {config_name(cfg)}")
+    def _stage(m:Manager, dref:DRef, cfg:RConfig)->DRef:
+      # print(f"Instantiating {config_name(cfg)}")
       for dep_dref in config_deps(cfg):
-        dep=_stage(m, store_config_(dep_dref,S=S))
+        dep=_stage(m, dep_dref, store_config_(dep_dref,S=S))
         assert dep==dep_dref, f"{dep} != {dep_dref}"
 
       def _make(b:Build)->None:
         """ 'Realize' the derivation in `D` by copying its contents from `S` """
-        rrefs=store_deref(context_holder=rref_S, dref=b.dref, S=S)
-        grps_S=rrefs2groups(rrefs, S=S)
+        grps_S=deref_(rrefg_S, b.dref, S=S)
+        # print(f'Building {b.dref} with {b.context}')
+        # print(grps_S)
         grps=build_setoutgroups(b, [list(grp.keys()) for grp in grps_S])
         for g_S,g in zip(grps_S,grps):
-          for tag,rref in g_S:
+          for tag,rref in g_S.items():
+            # print(f'Copying {tag} : {rref}')
             assert tag in g
             for artifact in rrefdata(rref,S):
-              copytree(artifact, join(g[tag],basename(artifact)))
-      # We pass RConfig in place of Config. Not sure if its going to work or not.
-      return mkdrv(m, cfg, match_all(), build_wrapper(_make))
+              shutil_copy(artifact, g[tag])
 
-    rref_D=realize(instantiate(_stage, store_config_(dref_S,S=S), S=D))
-    assert rref_D==rref_S, f"{rref_D}!={rref_S}"
+      rrefgs_S1=deref_(rrefg_S, dref, S=S)
+      # print(f"Expecting to get: {rrefgs_S1}")
+      return mkdrv(m, cfg, match([exact([g[tag_out()] for g in rrefgs_S1])],
+                                 rmin=1,rmax=None), build_wrapper(_make))
+
+    rrefgs_D=realizeGroups(instantiate(_stage, dref_S, store_config_(dref_S,S=S), S=D))
+    assert len(rrefgs_D)==1, f"{rrefgs_D}"
+    assert rrefgs_D[0]==rrefg_S, f"{rrefgs_D[0]}!={rrefg_S}"
 
 
   # assert False, "Not impl"
