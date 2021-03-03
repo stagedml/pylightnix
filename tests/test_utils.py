@@ -15,8 +15,7 @@ from tests.imports import (given, text, isdir, isfile, join, from_regex,
 from tests.generators import (rrefs, drefs, configs, dicts, prims,
                               dicts_with_refs, intdags, intdags_permutations)
 
-from tests.setup import (ShouldHaveFailed, setup_testpath, setup_storage,
-                         setup_storage2)
+from tests.setup import (ShouldHaveFailed, setup_storage, setup_storage2)
 
 
 SHA256SUM=get_executable('sha256sum', 'Please install `sha256sum` tool from `coreutils` package')
@@ -58,90 +57,90 @@ def test_setup_storage()->None:
   setup_storage('a')
 
 def test_store_initialize()->None:
-  p=setup_testpath('test_store_initialize')
-  import pylightnix.core
-  try:
-    pylightnix.core.PYLIGHTNIX_TMP=join(p,'tmp')
-    pylightnix.core.PYLIGHTNIX_STORE=join(p,'store')
-    store_initialize(custom_store=None, custom_tmp=None)
-    assert isdir(join(p,'tmp'))
-    assert isdir(join(p,'store'))
-    store_initialize(custom_store=None, custom_tmp=None)
-    assert isdir(join(p,'tmp'))
-    assert isdir(join(p,'store'))
-  finally:
-    pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
-    pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
+  with setup_storage('test_store_initialize') as p:
+    import pylightnix.core
+    try:
+      pylightnix.core.PYLIGHTNIX_TMP=join(p,'tmp')
+      pylightnix.core.PYLIGHTNIX_STORE=join(p,'store')
+      store_initialize(custom_store=None, custom_tmp=None)
+      assert isdir(join(p,'tmp'))
+      assert isdir(join(p,'store'))
+      store_initialize(custom_store=None, custom_tmp=None)
+      assert isdir(join(p,'tmp'))
+      assert isdir(join(p,'store'))
+    finally:
+      pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
+      pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
 
 
 
 def test_mklogdir1()->None:
-  path=setup_testpath('mklogdir1')
-  logdir=mklogdir(tag='testtag',logrootdir=path)
-  assert isdir(logdir)
-  logdir=mklogdir(tag='testtag',logrootdir=path, subdirs=['a','b'])
-  assert isdir(join(logdir,'a'))
-  assert isdir(join(logdir,'b'))
+  with setup_storage('mklogdir1') as path:
+    logdir=mklogdir(tag='testtag',logrootdir=path)
+    assert isdir(logdir)
+    logdir=mklogdir(tag='testtag',logrootdir=path, subdirs=['a','b'])
+    assert isdir(join(logdir,'a'))
+    assert isdir(join(logdir,'b'))
 
 @given(strtag=from_regex(r'[a-zA-Z0-9_:-]+', fullmatch=True),
        timetag=from_regex(r'[a-zA-Z0-9_:-]+', fullmatch=True))
 def test_mklogdir2(strtag,timetag)->None:
-  path=setup_testpath('mklogdir2')
-  linkpath=join(path,f'_{strtag}_latest')
-  logdir=mklogdir(tag=strtag,logrootdir=Path(path), timetag=timetag)
-  open(join(logdir,'a'),'w').write('a')
-  assert isdir(logdir)
-  assert islink(linkpath)
-  assert isfile(join(linkpath,'a'))
-  logdir2=mklogdir(tag=strtag,logrootdir=Path(path), timetag=timetag+'2')
-  open(join(logdir2,'b'),'w').write('b')
-  assert isdir(logdir2)
-  assert islink(linkpath)
-  assert isfile(join(linkpath,'b'))
+  with setup_storage('mklogdir2') as path:
+    linkpath=join(path,f'_{strtag}_latest')
+    logdir=mklogdir(tag=strtag,logrootdir=Path(path), timetag=timetag)
+    open(join(logdir,'a'),'w').write('a')
+    assert isdir(logdir)
+    assert islink(linkpath)
+    assert isfile(join(linkpath,'a'))
+    logdir2=mklogdir(tag=strtag,logrootdir=Path(path), timetag=timetag+'2')
+    open(join(logdir2,'b'),'w').write('b')
+    assert isdir(logdir2)
+    assert islink(linkpath)
+    assert isfile(join(linkpath,'b'))
 
 def test_dirhash()->None:
-  path=setup_testpath('dirhash')
-  h1=dirhash(path)
-  assert_valid_hash(h1)
-  with open(join(path,'_a'),'w') as f:
-    f.write('1')
-  h2=dirhash(path)
-  assert_valid_hash(h2)
-  assert h1==h2, "Test expected to ignore files starting with underscope"
-  with open(join(path,'a'),'w') as f:
-    f.write('1')
-  h3=dirhash(path)
-  assert_valid_hash(h3)
-  assert h3 != h2
+  with setup_storage('dirhash') as path:
+    h1=dirhash(path)
+    assert_valid_hash(h1)
+    with open(join(path,'_a'),'w') as f:
+      f.write('1')
+    h2=dirhash(path)
+    assert_valid_hash(h2)
+    assert h1==h2, "Test expected to ignore files starting with underscope"
+    with open(join(path,'a'),'w') as f:
+      f.write('1')
+    h3=dirhash(path)
+    assert_valid_hash(h3)
+    assert h3 != h2
 
 @given(b=binary())
 def test_dirhash2(b)->None:
-  path=setup_testpath('dirhash2')
-  with open(join(path,'a'),'wb') as f:
-    f.write(b)
-  p=run([SHA256SUM, join(path,'a')], stdout=-1, check=True, cwd=path)
-  h=dirhash(path)
-  assert (p.stdout[:len(h)].decode('utf-8'))==h
+  with setup_storage('dirhash2') as path:
+    with open(join(path,'a'),'wb') as f:
+      f.write(b)
+    p=run([SHA256SUM, join(path,'a')], stdout=-1, check=True, cwd=path)
+    h=dirhash(path)
+    assert (p.stdout[:len(h)].decode('utf-8'))==h
 
 @settings(suppress_health_check=(HealthCheck.too_slow,))
 @given(d=dicts())
 def test_dirhash3(d)->None:
-  path=setup_testpath('dirhash3')
-  with open(join(path,'a'),'w') as f:
-    f.write(str(d))
-  p=run([SHA256SUM, join(path,'a')], stdout=-1, check=True, cwd=path)
-  h=dirhash(path)
-  assert (p.stdout[:len(h)].decode('utf-8'))==h
+  with setup_storage('dirhash3') as path:
+    with open(join(path,'a'),'w') as f:
+      f.write(str(d))
+    p=run([SHA256SUM, join(path,'a')], stdout=-1, check=True, cwd=path)
+    h=dirhash(path)
+    assert (p.stdout[:len(h)].decode('utf-8'))==h
 
 @settings(suppress_health_check=(HealthCheck.too_slow,))
 @given(d=dicts())
 def test_dirhash4(d)->None:
-  path=setup_testpath('dirhash4')
-  with open(join(path,'a'),'w') as f:
-    f.write(str(d))
-  dh=dirhash(path)
-  fh=filehash(Path(join(path,'a')))
-  assert dh==fh, "Hash of a 1-file dir should match the hash of the file"
+  with setup_storage('dirhash4') as path:
+    with open(join(path,'a'),'w') as f:
+      f.write(str(d))
+    dh=dirhash(path)
+    fh=filehash(Path(join(path,'a')))
+    assert dh==fh, "Hash of a 1-file dir should match the hash of the file"
 
 @given(d=dicts())
 def test_traverse(d)->None:

@@ -44,7 +44,7 @@ from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional,
 from pylightnix.core import (assert_valid_config, store_config, config_cattrs,
                              config_hash, config_name, context_deref,
                              assert_valid_refpath, store_rref2path, store_deps,
-                             config_dict)
+                             config_dict, tag_out)
 
 logger=getLogger(__name__)
 info=logger.info
@@ -143,7 +143,7 @@ def build_cattrs(b:Build)->Any:
   return b.cattrs_cache
 
 def build_setoutgroups(b:Build,
-                       tagset:List[List[Tag]]=[[Tag('out')]])->List[Dict[Tag,Path]]:
+                       tagset:List[List[Tag]]=[[tag_out()]])->List[Dict[Tag,Path]]:
   assert len(tagset)>0
   assert len(b.outgroups)==0, \
     f"Build outpaths were already set:\n{b.outgroups}"
@@ -160,10 +160,6 @@ def build_setoutgroups(b:Build,
       if b.timeprefix:
         with open(join(o,'__buildtime__.txt'), 'w') as f:
           f.write(b.timeprefix)
-      # with open(join(o,'tag.txt'), 'w') as f:
-      #   f.write(tag)
-      # with open(join(o,'group.txt'), 'w') as f:
-      #   f.write(str(ngrp))
   b.outgroups=grs
   return grs
 

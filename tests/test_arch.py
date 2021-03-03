@@ -24,9 +24,8 @@ from tests.imports import (given, Any, Callable, join, Optional, islink,
 from tests.generators import (
     rrefs, drefs, configs, dicts )
 
-from tests.setup import (
-    ShouldHaveFailed, setup_testpath, setup_storage2,
-    mkstage, mkstage, pipe_stdout )
+from tests.setup import ( ShouldHaveFailed, setup_storage2, mkstage, mkstage,
+                         pipe_stdout )
 
 from pylightnix.arch import (pack,unpack)
 

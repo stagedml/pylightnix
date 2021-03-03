@@ -571,6 +571,7 @@ def mkrealization(dref:DRef, l:Context, o:Path,
     we use name `out` and derivation's own rref.
 
   FIXME: Assert or handle possible but improbable hash collision[*]
+  FIXME: Consider(not sure) writing group.json for all realizations[**]
   """
   c=store_config(dref,S)
   assert_valid_config(c)
@@ -589,7 +590,7 @@ def mkrealization(dref:DRef, l:Context, o:Path,
   with open(reserved(o,'context.json'), 'w') as f:
     f.write(context_serialize(l))
 
-  if leader is not None:
+  if leader is not None: # [**]
     tag,group_rref=leader
     with open(reserved(o,'group.json'), 'w') as f:
       json_dump({'tag':tag,'group':group_rref},f)
@@ -783,28 +784,20 @@ def realize(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
       f"Consider calling `realizeMany` with it." )
   return rrefs[0]
 
-def realizeMany(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
-                                 assert_realized:List[DRef]=[],
-                                 realize_args:Dict[DRef,RealizeArg]={})->List[RRef]:
-  """ Obtain one or more realizations of a stage's
-  [Closure](#pylightnix.types.Closure).
+def realizeGroups(closure:Closure,
+                 force_rebuild:Union[List[DRef],bool]=[],
+                 assert_realized:List[DRef]=[],
+                 realize_args:Dict[DRef,RealizeArg]={})->List[RRefGroup]:
+  """ Obtain one or more [Closure](#pylightnix.types.Closure) realizations of a
+  stage.
 
-  If [matching](#pylightnix.types.Matcher) realizations do exist in the
-  storage, and if user doesn't ask to forcebly rebuild the stage, `realizeMany`
-  returns the references immediately.
+  Returned value is a collection of tagged
+  [realizations](#pylightnix.types.RRef) references.
 
-  Otherwize, it calls [Realizers](#pylightnix.types.Realizer) of the Closure to
-  get desired realizations of the closure top-level derivation.
+  The function returns [matching](#pylightnix.types.Matcher) realizations
+  immediately if they are exist.
 
-  Returned value is a list realization references
-  [realizations](#pylightnix.types.RRef). Every RRef may be [converted
-  to system path](#pylightnix.core.store_rref2path) of the folder which
-  contains build artifacts.
-
-  In order to create each realization, realizeMany moves it's build artifacts
-  into the storage by executing `os.replace` function which are assumed to be
-  atomic. `realizeMany` also assumes that derivation's config is present in the
-  storage at this moment (See e.g. [rmref](#pylightnix.bashlike.rmref))
+  Otherwize, a number of [Realizers](#pylightnix.types.Realizer) are called.
 
   Example:
   ```python
@@ -813,11 +806,11 @@ def realizeMany(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
     return mkdrv(m, ...)
 
   clo:Closure=instantiate(mystage)
-  rrefs:List[RRef]=realizeMany(clo)
-  print('Available realizations:', [store_rref2path(rref) for rref in rrefs])
+  rrefgs:List[RRefGroup]=realizeGroups(clo)
+  print([mklen(rref).syspath for grp[tag_out()] in rrefgs])
   ```
 
-  `realizeMany` has the following analogs:
+  Pylightnix contains the following alternatives to `realizeGroup`:
 
   * [realize](#pylightnix.core.realize) - A single-output version
   * [repl_realize](#pylightnix.repl.repl_realize) - A REPL-friendly version
@@ -847,7 +840,14 @@ def realizeMany(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
       gen.send((None,False)) # Ask for default action
   except StopIteration as e:
     res=e.value
-  return groups2rrefs(res)
+  return res
+
+def realizeMany(closure:Closure,
+                force_rebuild:Union[List[DRef],bool]=[],
+                assert_realized:List[DRef]=[],
+                realize_args:Dict[DRef,RealizeArg]={})->List[RRef]:
+  return groups2rrefs(realizeGroups(
+    closure, force_rebuild, assert_realized, realize_args))
 
 def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
                                 assert_realized:List[DRef]=[],
@@ -886,6 +886,8 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
         rrefgs_existed=store_rrefs(dref,dref_context,S)
         gpaths:List[Dict[Tag,Path]]=drv.realizer(S,dref,dref_context,realize_args.get(dref,{}))
         rrefgs_built=[mkrgroup(dref,dref_context,g,S) for g in gpaths]
+        if sum(len(g.values()) for g in gpaths)!=len(set.union(*[set(g.values()) for g in rrefgs_built])):
+          warning(f"Several {dref} realizations resolved to the same filesystem object")
         rrefgs_matched=drv.matcher(S,dref,dref_context)
         assert rrefgs_matched is not None, (
           f"The matcher of {dref} is not satisfied with its realizatons. "

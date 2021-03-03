@@ -14,9 +14,8 @@ from tests.imports import (
 from tests.generators import (
     configs, dicts, artifacts )
 
-from tests.setup import (
-    setup_testpath, setup_storage, setup_inplace_reset,
-    mkstage, mkstage, ShouldHaveFailed )
+from tests.setup import ( setup_storage, setup_inplace_reset, mkstage, mkstage,
+                         ShouldHaveFailed )
 
 # def test_repl_null():
 #   with setup_storage('test_repl_null'):

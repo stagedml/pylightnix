@@ -27,8 +27,9 @@ from pylightnix.imports import (datetime, gmtime, timegm, join, makedirs,
 from pylightnix.types import (Union, Hash, Path, List, Any, Optional,
                               Iterable, IO, DRef, RRef, Tuple, Callable,
                               PYLIGHTNIX_PROMISE_TAG, PYLIGHTNIX_CLAIM_TAG,
-                              TypeVar, Set)
+                              Set)
 
+from typing import TypeVar
 from pylightnix.tz import tzlocal
 
 
@@ -330,20 +331,29 @@ def readjson(json_path:str)->Any:
     return json_load(f)
 
 A=TypeVar('A')
-def trycatch(f:Callable[[],A], default:A)->A:
+B=TypeVar('B')
+def trycatch(f:Callable[[],A], default:A, mp:Callable[[A],B]=lambda x:x)->B:
   """ FIXME: don't handle all exceptions, handle only string-related ones """
   try:
-    return f()
+    return mp(f())
   except KeyboardInterrupt:
     raise
   except Exception:
-    return default
+    return mp(default)
 
 def tryreadjson(json_path:str)->Optional[Any]:
   return trycatch(partial(readjson,json_path=json_path),None)
 
+C=TypeVar('C')
+def maybereadjson(path:str,default:Any,mp:Callable[[Any],C])->C:
+  return trycatch(partial(readjson,json_path=path),default,mp)
+
 def tryreadstr(path:str)->Optional[str]:
   return trycatch(partial(readstr, path=path),None)
+
+D=TypeVar('D')
+def maybereadstr(path:str,default:str,mp:Callable[[str],D])->D:
+  return trycatch(partial(readstr, path=path),default,mp)
 
 def tryreadjson_def(json_path:str, default:Any)->Any:
   return trycatch(partial(readjson,json_path=json_path),default)

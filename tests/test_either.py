@@ -11,8 +11,7 @@ from tests.imports import (given, Any, Callable, join, Optional, islink,
 
 from tests.generators import (drefs, configs, dicts)
 
-from tests.setup import (ShouldHaveFailed, setup_testpath, setup_storage,
-                         mkstage, mkstage)
+from tests.setup import (ShouldHaveFailed, setup_storage, mkstage, mkstage)
 
 
 def mkeither(m, source, should_fail=False):
@@ -21,10 +20,8 @@ def mkeither(m, source, should_fail=False):
       raise ValueError('Expected test error')
     else:
       return 33
-  return mkstage(m, source,
-                                     realize_wrapper=either_wrapper,
-                                     nondet=_mutate,
-                                     promise_strength=claim)
+  return mkstage(m, source, realize_wrapper=either_wrapper, nondet=_mutate,
+                 promise_strength=claim)
 
 def test_either()->None:
   with setup_storage('test_either'):

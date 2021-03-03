@@ -1,12 +1,13 @@
-from pylightnix import ( Manager, Path, store_initialize, DRef, Context,
-    Optional, mkbuild, build_outpath, store_rrefs, RRef, mkconfig,
-    Name, mkdrv, store_rref2path, dirchmod, promise, Config, RealizeArg, Tag,
-    RRefGroup, tryreadstr_def, SPath, storage, storagename, deepcopy)
+from pylightnix import (Manager, Path, store_initialize, DRef, Context,
+                        Optional, mkbuild, build_outpath, store_rrefs, RRef,
+                        mkconfig, Name, mkdrv, store_rref2path, dirchmod,
+                        promise, Config, RealizeArg, Tag, RRefGroup,
+                        tryreadstr_def, SPath, storage, storagename, deepcopy,
+                        build_setoutgroups, tag_out, maybereadstr)
 
-from tests.imports import ( rmtree, join, makedirs, listdir, Callable,
-    contextmanager, List, Dict,  Popen, PIPE, gettempdir )
-
-PYLIGHTNIX_TEST:str='/tmp/pylightnix_tests'
+from tests.imports import (rmtree, join, makedirs, listdir, Callable,
+                           contextmanager, List, Dict,  Popen, PIPE,
+                           gettempdir, mkdtemp)
 
 class ShouldHaveFailed(Exception):
   pass
@@ -17,13 +18,14 @@ def setup_storage(tn:str):
   import pylightnix.core
   pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
   pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
-  storepath=Path(f'/tmp/{tn}')
+  storepath=Path(join(gettempdir(),tn))
   try:
     dirchmod(storepath, 'rw')
     rmtree(storepath)
   except FileNotFoundError:
     pass
-  store_initialize(custom_store=storepath, custom_tmp='/tmp')
+  store_initialize(custom_store=storepath,
+                   custom_tmp=join(gettempdir(),'pylightnix_tmp'))
   assert 0==len(listdir(storepath))
   try:
     yield storepath
@@ -58,12 +60,6 @@ def setup_storage2(tn:str):
     pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
     pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
 
-def setup_testpath(name:str)->Path:
-  testpath=join(PYLIGHTNIX_TEST, name)
-  rmtree(testpath, onerror=lambda a,b,c:())
-  makedirs(testpath, exist_ok=False)
-  return Path(testpath)
-
 def setup_inplace_reset()->None:
   import pylightnix.inplace
   pylightnix.inplace.PYLIGHTNIX_MANAGER=Manager(storage(None))
@@ -73,28 +69,38 @@ def mkstage(m:Manager,
             nondet:Callable[[],int]=lambda:0,
             buildtime:bool=True,
             realize_wrapper=None,
-            promise_strength=promise)->DRef:
-  """ Emulate non-determenistic builds. `nondet` is expected to return
-  different values from build to build """
+            promise_strength=promise,
+            tagset:List[List[Tag]]=[[Tag('out')]],
+            nmatch:int=1)->DRef:
+  """ Create a test stage.
+
+  Parameters:
+  - `nondet`: emulates non-deterministic build outcomes
+  """
   def _config()->Config:
     c=deepcopy(config)
     c['artifact']=[promise_strength,'artifact']
     return mkconfig(c)
   def _realize(S:SPath, dref:DRef, context:Context, ra:RealizeArg)->List[Dict[Tag,Path]]:
     b=mkbuild(S, dref, context, buildtime=buildtime)
-    with open(join(build_outpath(b),'artifact'),'w') as f:
-      f.write(str(nondet()))
+    grps=build_setoutgroups(b,tagset)
+    for i,g in enumerate(grps):
+      assert tag_out() in g.keys()
+      for tag,o in g.items():
+        with open(join(o,'artifact'),'w') as f:
+          f.write(str(nondet()))
+        with open(join(o,'group'),'w') as f:
+          f.write(str(i))
+        with open(join(o,'tag'),'w') as f:
+          f.write(str(tag))
     return b.outgroups
   def _match(S:SPath, dref:DRef, context:Context)->Optional[List[RRefGroup]]:
-    max_i=-1
-    max_gr:Optional[List[RRefGroup]]=None
-    for gr in store_rrefs(dref, context, S):
-      rref=gr[Tag('out')]
-      i=int(tryreadstr_def(join(store_rref2path(rref, S),'artifact'), "0"))
-      if i>max_i:
-        max_i=i
-        max_gr=[gr]
-    return max_gr
+    """ Selects top-`nmatch` maximum values of the artifact """
+    grps=store_rrefs(dref, context, S)
+    values=list(sorted([(maybereadstr(join(store_rref2path(gr[tag_out()], S),'artifact'),'0',int),gr)
+                        for gr in grps], key=lambda x:x[0]))
+    # print(len(values),nmatch)
+    return [tup[1] for tup in values[-nmatch:]] if len(values)>0 else None
 
   rw=(lambda x:x) if realize_wrapper is None else realize_wrapper
   return mkdrv(m, _config(), _match, rw(_realize))

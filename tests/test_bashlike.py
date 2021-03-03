@@ -3,8 +3,7 @@ from pylightnix import ( DRef, RRef, lsref, catref, instantiate, realize,
     repl_realize, repl_cancelBuild, repl_build, build_outpath, find, partial,
     diff, timestring, parsetime )
 
-from tests.setup import ( ShouldHaveFailed, setup_testpath, setup_storage,
-    mkstage, mkstage )
+from tests.setup import ( ShouldHaveFailed, setup_storage, mkstage, mkstage )
 
 from tests.imports import ( isdir, environ, chmod, stat, TemporaryDirectory,
     join, S_IEXEC, sleep )

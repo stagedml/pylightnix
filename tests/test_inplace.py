@@ -12,7 +12,7 @@ from tests.imports import (
 
 from tests.generators import (configs, dicts, artifacts)
 
-from tests.setup import (setup_testpath, setup_storage, setup_inplace_reset,
+from tests.setup import (setup_storage, setup_inplace_reset,
                          mkstage)
 
 

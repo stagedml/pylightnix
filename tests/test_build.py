@@ -22,8 +22,7 @@ from tests.imports import ( given, Any, Callable, join, Optional, islink,
 from tests.generators import (
     rrefs, drefs, configs, dicts )
 
-from tests.setup import ( ShouldHaveFailed, setup_testpath, setup_storage,
-                         mkstage, mkstage )
+from tests.setup import ( ShouldHaveFailed, setup_storage, mkstage, mkstage )
 
 
 

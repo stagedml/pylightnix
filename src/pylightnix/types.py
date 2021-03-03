@@ -174,23 +174,22 @@ PromisePath = List[Any]
 #:   contain functionally equivalent artifacts.
 Tag = NewType('Tag', str)
 
-#: Realization Group allows users to distinguish between sets of
-#: [tagged](#pylightnix.types.Tag) realizations.  For example, there may be
-#: a Group containing tags ['out',log'] and another Group containing
-#: realizations tagged with ['out','log','docs']. 'out' realizations are
-#: pre-defined and are subject for matching with
-#: [Matchers](#pylightnix.types.Matcher).
-#:
-#: By default, each realization is given its own unique group identifier.
-#:
-#: Group invariants:
-#: - Each RRef of a Derivation belongs to exactly one Group
-#: - Thre is at least one RRef in every Group (There are no empty Groups)
-#: - All RRefs in the same Group have the same Context
+#: A type for [RRefGroup](#pylightnix.type.RRefGroup) name.
 Group = NewType('Group', str)
 
-#: A group of tagged realization references. There should always be at least one
-#: 'out' tag per group.
+#: RRefGroup unites [tagged](#pylightnix.types.Tag) realizations. For
+#: example, there may be a Group containing tags ['out',log'] and another Group
+#: containing realizations tagged with ['out','log','docs']. Each group must
+#: contain at least one realization tagged with tag 'out' Only 'out'
+#: realizations are subjects for [matching](#pylightnix.types.Matcher).
+#:
+#: Group invariants:
+#: - There are no empty Groups
+#: - Each realization belongs to exactly one Group
+#: - All realizations of a Group originates from the same derivation
+#: - All realizations of a Group have the same Context
+#: - At least one realization of a group hase tag 'out'
+#: - All realizations of a Group have different tags
 RRefGroup = Dict[Tag,RRef]
 
 #: Context type is an alias for Python dict which maps
@@ -202,34 +201,37 @@ RRefGroup = Dict[Tag,RRef]
 Context=Dict[DRef,List[RRef]]
 
 #: Matcher is a type of user-defined functions which select required
-#: realizations from the set of possible realizations.
+#: realizations from the set of all realizations tagged with tag 'out'.
 #:
-#: Matchers take a derivation reference and a context. They are to determine
-#: the possible realizations (see [store_rrefs](#pylightnix.core.store_rrefs)
-#: and return either a subset of this set or None which would be a signal to
+#: A Matcher should take a derivation reference and a context as its arguments.
+#: Its task is to read find out which realizations are available and return
+#: some subset of this set (see [store_rrefs](#pylightnix.core.store_rrefs)).
+#: Alternatively, matcher could return None which would be a signal for
 #: Pylightnix to produce more realizations.
 #:
-#: When the matching is doen, Pylightnix updates the context with new
-#: `(DRef,List[RRef])` pair and use it to e.g. resolve downstream realizations.
+#: Matchers may return an empty set. In contrast to `None`, this would instruct
+#: Pylightnix to leave the derivation without realizations.
 #:
-#: Matchers should follow the below rules:
+#: Pylightnix calls matchers during the realizaiton. Matching results are
+#: cached in form of `(DRef,List[RRef])` tuple. Pylightnix use it to e.g.
+#: resolve downstream realizations.
 #:
-#: - Matchers should be **pure**. It's output should depend only on the existing
-#:   build artifacts of available realizations.
+#: Matchers must follow the below rules:
+#:
+#: - Matchers should be **pure**. It's output should depend only on the
+#:   existing build artifacts of available realizations.
 #: - Matchers should be **satisfiable** by realizers of their stages. If matcher
 #:   returns None, the core calls realizer and re-run the matcher only once.
 #:
-#: Matchers may return an empty list and by that instruct Pylightnix to leave it's
-#: derivation without realizations.
-#:
-#: Pylightnix provides a set of built-in matchers:
+#: Pylightnix includes a set of built-in matchers:
 #:
 #: - [match](#pylightnix.core.match) is a generic matcher with rich sorting and
 #:   filtering API.
 #: - [match_n](#pylightnix.core.match_n) is it's version for fixed number of matches
 #: - [match_best](#pylightnix.core.match_best) decision is made based on a named
 #:   build artifact
-#: - [match_all](#pylightnix.core.match_all) matches any number of realizations, including zero.
+#: - [match_all](#pylightnix.core.match_all) matches any number of
+#:   realizations, including zero.
 #: - [match_some](#pylightnix.core.match_some) matches any existing realizations
 #: - [match_only](#pylightnix.core.match_only) matches exactly one existing
 #:   realization (asserts if there are more than one realizations)

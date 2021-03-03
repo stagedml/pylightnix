@@ -2,19 +2,19 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir,
                         dirhash, assert_valid_dref, assert_valid_rref,
                         store_deps, store_deepdeps, store_gc,
                         assert_valid_hash, assert_valid_config, Manager,
-                        mkcontext, mkrgroup, store_rrefs, mkdref,
-                        mkrref, unrref, undref, realize, rref2dref,
-                        store_config, mkconfig, Build, Context, build_outpath,
-                        match_only, mkdrv, store_deref, store_rref2path,
-                        store_rrefs_, config_cattrs, mksymlink, store_cattrs,
-                        build_deref, build_path, mkrefpath, build_config,
-                        alldrefs, store_rrefs, build_wrapper, build_cattrs,
-                        build_name, match_best, tryread, trywrite, match,
-                        latest, best, exact, Key, match_latest, match_all,
-                        match_some, match_n, realizeMany, build_outpaths,
-                        scanref_dict, config_dict, promise, mklens, isrref,
-                        Config, RConfig, build_setoutpaths, partial, path2rref,
-                        Tag, Group, RRefGroup, concat, linkrrefs, instantiate_,
+                        mkcontext, mkrgroup, store_rrefs, mkdref, mkrref,
+                        unrref, undref, realize, rref2dref, store_config,
+                        mkconfig, Build, Context, build_outpath, match_only,
+                        mkdrv, store_deref, store_rref2path, store_rrefs_,
+                        config_cattrs, mksymlink, store_cattrs, build_deref,
+                        build_path, mkrefpath, build_config, alldrefs,
+                        store_rrefs, build_wrapper, build_cattrs, build_name,
+                        match_best, tryread, trywrite, match, latest, best,
+                        exact, Key, match_latest, match_all, match_some,
+                        match_n, realizeMany, build_outpaths, scanref_dict,
+                        config_dict, promise, mklens, isrref, Config, RConfig,
+                        build_setoutpaths, partial, path2rref, Tag, Group,
+                        RRefGroup, concat, linkrrefs, instantiate_,
                         store_dref2path, path2dref, linkdref, storage,
                         store_deepdepRrefs, drefrrefs, allrrefs)
 
@@ -24,9 +24,8 @@ from tests.imports import (given, Any, Callable, join, Optional, islink,
 
 from tests.generators import (rrefs, drefs, configs, dicts, rootstages)
 
-from tests.setup import ( ShouldHaveFailed, setup_testpath, setup_storage,
-                         setup_storage2, mkstage,
-                         mkstage, pipe_stdout )
+from tests.setup import ( ShouldHaveFailed, setup_storage, setup_storage2,
+                         mkstage, mkstage, pipe_stdout )
 
 
 @given(d=dicts())
@@ -115,13 +114,13 @@ def test_repeated_realize()->None:
   with setup_storage2('test_repeated_realize') as (T,S):
     def _setting(m:Manager)->DRef:
       return mkstage(m, {'a':'1'})
-    dref=instantiate(_setting,S=S)
-    rref1=realize(dref)
-    rref2=realize(dref)
-    rref3=realize(dref, force_rebuild=[instantiate(_setting,S=S).dref])
+    clo=instantiate(_setting,S=S)
+    rref1=realize(clo)
+    rref2=realize(clo)
+    rref3=realize(clo, force_rebuild=[clo.dref])
     assert rref1==rref2 and rref2==rref3
     try:
-      rref3=realize(dref, force_rebuild='Foobar') # type:ignore
+      rref3=realize(clo, force_rebuild='Foobar') # type:ignore
       raise ShouldHaveFailed
     except AssertionError:
       pass
@@ -267,8 +266,7 @@ def test_config_ro():
 
 def test_mksymlink()->None:
   with setup_storage2('test_mksymlink') as (T,S):
-    tp=setup_testpath('test_mksymlink')
-    print(tp)
+    tp=T
 
     def _setting1(m:Manager)->DRef:
       return mkstage(m, {'a':'1'}, lambda: 33, buildtime=False)
@@ -600,27 +598,4 @@ def test_linkrrefs()->None:
     assert islink(join(S,'result-1'))
     l=linkrrefs([rref1], destdir=S, withtime=True, S=S)
     assert S in l[0]
-
-@given(stages=rootstages())
-def test_union_of_root_derivations(stages):
-  """ Union of dep.closures of root derivations must be equal to the set of all
-  derivations. """
-  with setup_storage2('test_union_of_root_derivations') as (T,S):
-    deps=set()
-    for stage in stages:
-      clo=instantiate(stage,S=S)
-      deps |= store_deepdeps([clo.dref],S) | set([clo.dref])
-    assert deps==set(alldrefs(S))
-
-
-@given(stages=rootstages())
-def test_union_of_root_realizations(stages):
-  """ Union of dep.closures of root realizations must be equal to the set of all
-  realizations. """
-  with setup_storage2('test_union_of_root_realizations') as (T,S):
-    deps=set()
-    for stage in stages:
-      rrefs=realizeMany(instantiate(stage,S=S))
-      deps|=store_deepdepRrefs(rrefs,S) | set(rrefs)
-    assert deps==set(allrrefs(S))
 
