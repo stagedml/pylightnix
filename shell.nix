@@ -12,6 +12,7 @@ let
     coverage
     python-language-server
     pyyaml
+    wheel
   ]);
 
   nr-types = pkgs.python37Packages.buildPythonPackage rec {
@@ -62,7 +63,7 @@ let
            scheme-medium = mytexlive.scheme-medium;
            inherit (mytexlive) fvextra upquote xstring pgfopts currfile
            collection-langcyrillic makecell ftnxtra minted catchfile framed
-           pdflscape environ trimspaces mdframed zref needspace;
+           pdflscape environ trimspaces mdframed zref needspace import;
          }
       )
     ]);
@@ -70,6 +71,8 @@ let
     shellHook = with pkgs; ''
       export PYTHONPATH=`pwd`/src:$PYTHONPATH
       export MYPYPATH=`pwd`/src:`pwd`/tests
+      # 1980 workaround https://github.com/NixOS/nixpkgs/issues/270#issuecomment-467583872
+      export SOURCE_DATE_EPOCH=315532800
     '';
   };
 in
