@@ -2,6 +2,7 @@
 VERSION = $(shell python3 setup.py --version)
 WHEEL = dist/pylightnix-$(VERSION)-py3-none-any.whl
 SRC = $(shell find src -name '*\.py')
+TEX = $(shell find docs -name '*\.tex')
 TESTS = $(shell find tests -name '*\.py')
 
 .stamp_check: $(SRC) $(TESTS) docs/demos/MNIST.pmd
@@ -35,8 +36,8 @@ docs-reference: ./docs/Reference.md
 
 .PHONY: docs-quickstart
 docs-quickstart: docs/QuickStart.pdf
-docs/QuickStart.pdf: docs/QuickStart.tex
-	/bin/sh ./docs/compile.sh $<
+docs/QuickStart.pdf: ${TEX} .stamp_check
+	/bin/sh ./docs/compile.sh docs/QuickStart.tex
 
 .coverage.xml: $(SRC) $(TESTS) .stamp_check
 	rm coverage.xml || true
@@ -90,11 +91,11 @@ docs/demos/HELLO.py: docs/demos/HELLO.pmd $(SRC) .stamp_check
 .PHONY: demo_hello
 demo_hello: docs/demos/HELLO.md docs/demos/HELLO.py
 
-docs/demos/REPL.md: docs/demos/REPL.pmd $(SRC) .stamp_check
+docs/demos/REPL.md: docs/demos/REPL.pmd $(SRC) .stamp_check_$(HOSTNAME)
 	pweave -f markdown $<
 	! cat $@ | grep -i traceback | tail -n +2 | grep -i traceback
 
-docs/demos/REPL.py: docs/demos/REPL.pmd $(SRC) .stamp_check
+docs/demos/REPL.py: docs/demos/REPL.pmd $(SRC) .stamp_check_$(HOSTNAME)
 	ptangle $<
 
 .PHONY: demo_repl
@@ -110,20 +111,23 @@ $(WHEEL): $(SRC) $(TESTS)
 
 .PHONY: wheel
 wheel: $(WHEEL)
-	@echo "To install, run \`sudo -H make install\` or"
-	@echo "> sudo -H pip3 install --force $(WHEEL)"
+	@echo "To install, run \`sudo -H make install\`"
+
+.PHONY: version
+version:
+	@echo $(VERSION)
 
 .PHONY: install
 install: # To be run by root
 	test "$(shell whoami)" = "root"
 	test -f $(WHEEL) || ( echo 'run `make wheels` first'; exit 1; )
 	pip3 install --force $(WHEEL)
-	pip3 hash $(WHEEL) > .install-stamp-$(HOSTNAME)
+	pip3 hash $(WHEEL) > .stamp_installhash_$(HOSTNAME)
 
 .PHONY: check
 check: $(WHEEL)
-	pip3 hash $(WHEEL) > .check-stamp-$(HOSTNAME)
-	@diff -u .check-stamp-$(HOSTNAME) .install-stamp-$(HOSTNAME) || ( \
+	pip3 hash $(WHEEL) > .stamp_piphash_$(HOSTNAME)
+	@diff -u .stamp_piphash_$(HOSTNAME) .stamp_installhash_$(HOSTNAME) || ( \
 		echo 'Did you install pylightnix systemwide by running `sudo -H make install` ?' ; exit 1 ; )
 
 .PHONY: all
