@@ -2,19 +2,19 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir,
                         dirhash, assert_valid_dref, assert_valid_rref,
                         store_deps, store_deepdeps, store_gc,
                         assert_valid_hash, assert_valid_config, Manager,
-                        mkcontext, mkrgroup, store_rrefs, mkdref,
-                        mkrref, unrref, undref, realize, rref2dref,
-                        store_config, mkconfig, Build, Context, build_outpath,
-                        match_only, mkdrv, store_deref, store_rref2path,
-                        store_rrefs_, config_cattrs, mksymlink, store_cattrs,
-                        build_deref, build_path, mkrefpath, build_config,
-                        alldrefs, store_rrefs, build_wrapper, build_cattrs,
-                        build_name, match_best, tryread, trywrite, match,
-                        latest, best, exact, Key, match_latest, match_all,
-                        match_some, match_n, realizeMany, build_outpaths,
-                        scanref_dict, config_dict, promise, mklens, isrref,
-                        Config, RConfig, build_setoutpaths, partial, path2rref,
-                        Tag, Group, RRefGroup, concat, linkrrefs, instantiate_,
+                        mkcontext, mkrgroup, store_rrefs, mkdref, mkrref,
+                        unrref, undref, realize, rref2dref, store_config,
+                        mkconfig, Build, Context, build_outpath, match_only,
+                        mkdrv, store_deref, store_rref2path, store_rrefs_,
+                        config_cattrs, mksymlink, store_cattrs, build_deref,
+                        build_path, mkrefpath, build_config, alldrefs,
+                        store_rrefs, build_wrapper, build_cattrs, build_name,
+                        match_best, tryread, trywrite, match, latest, best,
+                        exact, Key, match_latest, match_all, match_some,
+                        match_n, realizeMany, build_outpaths, scanref_dict,
+                        config_dict, promise, mklens, isrref, Config, RConfig,
+                        build_setoutpaths, partial, path2rref, Tag, Group,
+                        RRefGroup, concat, linkrrefs, instantiate_,
                         store_dref2path, path2dref, linkdref, storage,
                         store_deepdepRrefs, drefrrefs, allrrefs)
 
@@ -24,16 +24,15 @@ from tests.imports import (given, Any, Callable, join, Optional, islink,
 
 from tests.generators import (rrefs, drefs, configs, dicts, rootstages)
 
-from tests.setup import ( ShouldHaveFailed, setup_testpath, setup_storage,
-                         setup_storage2, mktestnode_nondetermenistic,
-                         mktestnode, pipe_stdout )
+from tests.setup import ( ShouldHaveFailed, setup_storage, setup_storage2,
+                         mkstage, mkstage, pipe_stdout )
 
 
 @given(d=dicts())
 def test_realize_base(d)->None:
-  with setup_storage2('test_realize_base') as S:
+  with setup_storage2('test_realize_base') as (T,S):
     m=Manager(storage(S))
-    mktestnode(m, d)
+    mkstage(m, d)
     dref=list(m.builders.values())[-1].dref
     assert_valid_dref(dref)
     assert len(list(store_rrefs(dref, mkcontext(), S))) == 0
@@ -50,15 +49,15 @@ def test_realize_base(d)->None:
 
 
 def test_realize_dependencies()->None:
-  with setup_storage2('test_realize_dependencies') as S:
+  with setup_storage2('test_realize_dependencies') as (T,S):
     n1=None; n2=None; n3=None; toplevel=None
 
     def _setup(m):
       nonlocal n1,n2,n3,toplevel
-      n1=mktestnode(m, {'a':1})
-      n2=mktestnode(m, {'parent1':n1})
-      n3=mktestnode(m, {'parent2':n1})
-      toplevel=mktestnode(m, {'n2':n2,'n3':n3})
+      n1=mkstage(m, {'a':1})
+      n2=mkstage(m, {'parent1':n1})
+      n3=mkstage(m, {'parent2':n1})
+      toplevel=mkstage(m, {'n2':n2,'n3':n3})
       return toplevel
 
     rref=realize(instantiate(_setup,S=S))
@@ -84,24 +83,24 @@ def test_realize_dependencies()->None:
 
 # def test_detect_rref_deps()->None:
 #   with setup_storage('test_detect_rref_deps'):
-#     rref=realize(instantiate(mktestnode,{'a':1}))
-#     clo=instantiate(mktestnode,{'a':1,'maman':rref})
+#     rref=realize(instantiate(mkstage,{'a':1}))
+#     clo=instantiate(mkstage,{'a':1,'maman':rref})
 #     _,rrefs=scanref_dict(config_dict(store_config(clo.dref)))
 #     assert len(rrefs)>0
 
 def test_no_dref_deps_without_realizers()->None:
-  with setup_storage2('test_no_dref_deps_without_realizers') as S:
+  with setup_storage2('test_no_dref_deps_without_realizers') as (T,S):
     try:
-      clo=instantiate(mktestnode,{'a':1},S=S)
-      _=realize(instantiate(mktestnode,{'maman':clo.dref},S=S))
+      clo=instantiate(mkstage,{'a':1},S=S)
+      _=realize(instantiate(mkstage,{'maman':clo.dref},S=S))
       raise ShouldHaveFailed("We shouldn't share DRefs across managers")
     except AssertionError:
       pass
 
 def test_repeated_instantiate()->None:
-  with setup_storage2('test_repeated_instantiate') as S:
+  with setup_storage2('test_repeated_instantiate') as (T,S):
     def _setting(m:Manager)->DRef:
-      return mktestnode(m, {'a':'1'})
+      return mkstage(m, {'a':'1'})
 
     cl1 = instantiate(_setting,S=S)
     cl2 = instantiate(_setting,S=S)
@@ -112,23 +111,23 @@ def test_repeated_instantiate()->None:
 
 
 def test_repeated_realize()->None:
-  with setup_storage2('test_repeated_realize') as S:
+  with setup_storage2('test_repeated_realize') as (T,S):
     def _setting(m:Manager)->DRef:
-      return mktestnode(m, {'a':'1'})
-    dref=instantiate(_setting,S=S)
-    rref1=realize(dref)
-    rref2=realize(dref)
-    rref3=realize(dref, force_rebuild=[instantiate(_setting,S=S).dref])
+      return mkstage(m, {'a':'1'})
+    clo=instantiate(_setting,S=S)
+    rref1=realize(clo)
+    rref2=realize(clo)
+    rref3=realize(clo, force_rebuild=[clo.dref])
     assert rref1==rref2 and rref2==rref3
     try:
-      rref3=realize(dref, force_rebuild='Foobar') # type:ignore
+      rref3=realize(clo, force_rebuild='Foobar') # type:ignore
       raise ShouldHaveFailed
     except AssertionError:
       pass
 
 def test_realize_readonly()->None:
-  with setup_storage2('test_realize_readonly') as S:
-    rref1 = realize(instantiate(mktestnode, {'a':'1'},S=S))
+  with setup_storage2('test_realize_readonly') as (T,S):
+    rref1 = realize(instantiate(mkstage, {'a':'1'},S=S))
 
     try:
       with open(join(store_rref2path(rref1,S),'newfile'),'w') as f:
@@ -154,15 +153,15 @@ def test_realize_readonly()->None:
 
 
 def test_minimal_closure()->None:
-  with setup_storage2('test_minimal_closure') as S:
+  with setup_storage2('test_minimal_closure') as (T,S):
 
     def _somenode(m):
-      return mktestnode(m,{'a':0})
+      return mkstage(m,{'a':0})
 
     def _anothernode(m):
-      n1=mktestnode(m,{'a':1})
+      n1=mkstage(m,{'a':1})
       n2=_somenode(m)
-      n3=mktestnode(m,{'maman':n1,'papa':n2})
+      n3=mkstage(m,{'maman':n1,'papa':n2})
       return n3
 
     rref1=realize(instantiate(_somenode,S=S))
@@ -174,7 +173,7 @@ def test_minimal_closure()->None:
       '''
 
 def test_realize_nondetermenistic()->None:
-  with setup_storage2('test_realize_nondetermenistic') as S:
+  with setup_storage2('test_realize_nondetermenistic') as (T,S):
     DATA:int; n1:DRef; n2:DRef; n3:DRef
 
     def _gen()->int:
@@ -183,9 +182,9 @@ def test_realize_nondetermenistic()->None:
 
     def _setup(m):
       nonlocal n1, n2, n3
-      n1 = mktestnode(m, {'a':'1'})
-      n2 = mktestnode_nondetermenistic(m,{'maman':n1},_gen)
-      n3 = mktestnode(m,{'papa':n2})
+      n1 = mkstage(m, {'a':'1'})
+      n2 = mkstage(m,{'maman':n1},_gen)
+      n3 = mkstage(m,{'papa':n2})
       return n3
 
     DATA = 1
@@ -204,10 +203,10 @@ def test_realize_nondetermenistic()->None:
 
 
 def test_no_foreign_dref_deps()->None:
-  with setup_storage2('test_no_foreign_dref_deps') as S:
+  with setup_storage2('test_no_foreign_dref_deps') as (T,S):
     def _setup(m):
-      clo=instantiate(mktestnode, {'foo':'bar'})
-      return mktestnode(m,{'bogus':clo.dref})
+      clo=instantiate(mkstage, {'foo':'bar'})
+      return mkstage(m,{'bogus':clo.dref})
     try:
       dref = instantiate(_setup,S=S)
       raise ShouldHaveFailed(f"Should fail, but got {dref}")
@@ -216,10 +215,10 @@ def test_no_foreign_dref_deps()->None:
 
 
 def test_no_rref_deps()->None:
-  with setup_storage2('test_no_rref_deps') as S:
+  with setup_storage2('test_no_rref_deps') as (T,S):
     def _setup(m):
-      rref=realize(instantiate(mktestnode, {'foo':'bar'}))
-      n2 = mktestnode(m,{'bogus':rref})
+      rref=realize(instantiate(mkstage, {'foo':'bar'}))
+      n2 = mkstage(m,{'bogus':rref})
       return n2
     try:
       dref = instantiate(_setup,S=S)
@@ -229,10 +228,10 @@ def test_no_rref_deps()->None:
 
 
 def test_no_recursive_instantiate_with_same_manager()->None:
-  with setup_storage2('test_no_recursive_instantiate_with_same_manager') as S:
+  with setup_storage2('test_no_recursive_instantiate_with_same_manager') as (T,S):
     def _setup(m):
       derivs = instantiate_(m,_setup)
-      n2 = mktestnode(m,{'bogus':derivs.dref})
+      n2 = mkstage(m,{'bogus':derivs.dref})
       return n2
     try:
       dref = instantiate(_setup,S=S)
@@ -242,14 +241,14 @@ def test_no_recursive_instantiate_with_same_manager()->None:
 
 
 def test_recursive_realize_with_another_manager()->None:
-  with setup_storage2('test_recursive_realize_with_another_manager') as S:
+  with setup_storage2('test_recursive_realize_with_another_manager') as (T,S):
     rref_inner=None
     def _setup_inner(m):
-      return mktestnode(m,{'foo':'bar'})
+      return mkstage(m,{'foo':'bar'})
     def _setup_outer(m):
       nonlocal rref_inner
       rref_inner=realize(instantiate(_setup_inner,S=S))
-      return mktestnode(m,{'baz':mklens(rref_inner,S=S).foo.val})
+      return mkstage(m,{'baz':mklens(rref_inner,S=S).foo.val})
     rref=realize(instantiate(_setup_outer,S=S))
     assert len(store_deepdeps([rref2dref(rref)],S=S))==0
     assert len(store_deepdeps([rref2dref(rref_inner)],S=S))==0
@@ -266,14 +265,13 @@ def test_config_ro():
 
 
 def test_mksymlink()->None:
-  with setup_storage2('test_mksymlink') as S:
-    tp=setup_testpath('test_mksymlink')
-    print(tp)
+  with setup_storage2('test_mksymlink') as (T,S):
+    tp=T
 
     def _setting1(m:Manager)->DRef:
-      return mktestnode_nondetermenistic(m, {'a':'1'}, lambda: 33, buildtime=False)
+      return mkstage(m, {'a':'1'}, lambda: 33, buildtime=False)
     def _setting2(m:Manager)->DRef:
-      return mktestnode_nondetermenistic(m, {'a':'1'}, lambda: 42, buildtime=True)
+      return mkstage(m, {'a':'1'}, lambda: 42, buildtime=True)
 
     clo=instantiate(_setting1,S=S)
     rref=realize(clo)
@@ -300,14 +298,14 @@ def test_mksymlink()->None:
     assert s3==s
 
 def test_ignored_stage()->None:
-  with setup_storage2('test_ignored_stage') as S:
+  with setup_storage2('test_ignored_stage') as (T,S):
     n1:DRef; n2:DRef; n3:DRef; n4:DRef
     def _setting(m:Manager)->DRef:
       nonlocal n1, n2, n3, n4
-      n1 = mktestnode(m, {'a':'1'})
-      n2 = mktestnode(m, {'b':'2'}) # this one should not be realized
-      n3 = mktestnode(m, {'c':'3', 'maman':n1})
-      n4 = mktestnode(m, {'c':'4', 'papa':n3}) # neither this one
+      n1 = mkstage(m, {'a':'1'})
+      n2 = mkstage(m, {'b':'2'}) # this one should not be realized
+      n3 = mkstage(m, {'c':'3', 'maman':n1})
+      n4 = mkstage(m, {'c':'4', 'papa':n3}) # neither this one
       return n3
 
     cl=instantiate(_setting,S=S)
@@ -322,13 +320,13 @@ def test_ignored_stage()->None:
 
 
 def test_overwrite_realizer()->None:
-  with setup_storage2('test_overwrite_realizer') as S:
+  with setup_storage2('test_overwrite_realizer') as (T,S):
     n1:DRef; n2:DRef; n3:DRef; n4:DRef
     def _setting(m:Manager)->DRef:
       nonlocal n1, n2, n3, n4
-      n1 = mktestnode_nondetermenistic(m, {'a':'1'}, lambda:33)
-      n2 = mktestnode(m, {'maman':n1})
-      n3 = mktestnode_nondetermenistic(m, {'a':'1'}, lambda:42)
+      n1 = mkstage(m, {'a':'1'}, lambda:33)
+      n2 = mkstage(m, {'maman':n1})
+      n3 = mkstage(m, {'a':'1'}, lambda:42)
       assert n1 == n3
       return n2
 
@@ -340,7 +338,7 @@ def test_overwrite_realizer()->None:
     assert open(join(store_rref2path(rref_n3, S),'artifact'),'r').read() == '42'
 
 def test_match_only()->None:
-  with setup_storage2('test_match_only') as S:
+  with setup_storage2('test_match_only') as (T,S):
 
     build:int = 0
     def _setting(m:Manager)->DRef:
@@ -365,7 +363,7 @@ def test_match_only()->None:
 
 
 def test_match_best()->None:
-  with setup_storage2('test_match_best') as S:
+  with setup_storage2('test_match_best') as (T,S):
     fname:str='score'
     score:str='0'
     def _mklrg(m, cfg, matcher):
@@ -416,9 +414,8 @@ def test_match_best()->None:
     # baz: 6d2909ed88f980f2241835f0f5d76e8b31dbdc90c22d8fb7e446ffe4647eb8f2
     # group.txt: 0554aac0dbae2d80f67e7d280ab331a44c55f0b63f674a3a278411620fbede12
     clo1=instantiate(_mklrg, {'a':1},
-      matcher=match([exact([
-        RRef('rref:3e8dfe0bf20b217f96590a4f7c7a5a01-a76762e9bc54e47c09455bdb226e2388-unnamed')])]),
-                     S=S)
+      matcher=match([
+        exact([RRef('rref:d86d09f2769885bae2e76763f2bcd9f8-a76762e9bc54e47c09455bdb226e2388-unnamed')])]), S=S)
     rref1e=realize(clo1)
     assert isfile(join(store_rref2path(rref1e,S),'baz'))
     assert len(list(drefrrefs(clo1.dref,S))) == 4
@@ -429,46 +426,47 @@ def test_match_best()->None:
     assert tryread(Path(join(store_rref2path(rref1,S),'score')))=='1'
 
 
-def test_match_latest()->None:
-  def _mknode(m, cfg, matcher, nouts:int, data=0, buildtime=True):
-    def _realize(b:Build)->None:
-      build_setoutpaths(b,nouts)
-      for i,out in enumerate(build_outpaths(b)):
-        assert trywrite(Path(join(out,'artifact')),str(data)+'_'+str(i))
-    return mkdrv(m, Config(cfg), matcher,
-                    build_wrapper(_realize, buildtime=buildtime))
-
-  with setup_storage2('test_match_latest') as S:
-    clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=1, S=S)
-    rref1=realize(clo)
-    assert len(list(drefrrefs(clo.dref,S)))==1
-    sleep(0.01)
-    clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=2, S=S)
-    rref2=realize(clo, force_rebuild=[clo.dref])
-    assert len(list(drefrrefs(clo.dref,S)))==2
-    assert tryread(Path(join(store_rref2path(rref2,S),'artifact')))==str('2_0')
-
-  with setup_storage2('test_match_latest') as S:
-    clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=1, S=S)
-    rref1=realize(clo)
-    assert len(list(drefrrefs(clo.dref,S)))==1
-    sleep(0.01)
-    clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=2, buildtime=False, S=S)
-    rref2=realize(clo, force_rebuild=[clo.dref])
-    assert len(list(drefrrefs(clo.dref,S)))==2
-    assert tryread(Path(join(store_rref2path(rref2,S),'artifact')))==str('1_0')
-
-  for i in range(10):
-    with setup_storage2('test_match_latest') as S:
-      nouts=randint(1,10)
-      ntop=randint(1,10)
-      try:
-        clo=instantiate(_mknode, {'a':0}, match_latest(ntop), nouts, S=S)
-        rrefs=realizeMany(clo)
-        times=set([tryread(Path(join(store_rref2path(rref,S),'__buildtime__.txt'))) for rref in rrefs])
-        assert len(list(times))==1
-      except AssertionError:
-        assert ntop>nouts
+# FIXME: repair this test
+# def test_match_latest()->None:
+#   def _mknode(m, cfg, matcher, nouts:int, data=0, buildtime=True):
+#     def _realize(b:Build)->None:
+#       build_setoutpaths(b,nouts)
+#       for i,out in enumerate(build_outpaths(b)):
+#         assert trywrite(Path(join(out,'artifact')),str(data)+'_'+str(i))
+#     return mkdrv(m, Config(cfg), matcher,
+#                     build_wrapper(_realize, buildtime=buildtime))
+#
+#   with setup_storage2('test_match_latest') as (T,S):
+#     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=1, S=S)
+#     rref1=realize(clo)
+#     assert len(list(drefrrefs(clo.dref,S)))==1
+#     sleep(0.01)
+#     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=2, S=S)
+#     rref2=realize(clo, force_rebuild=[clo.dref])
+#     assert len(list(drefrrefs(clo.dref,S)))==2
+#     assert tryread(Path(join(store_rref2path(rref2,S),'artifact')))==str('2_0')
+#
+#   with setup_storage2('test_match_latest') as (T,S):
+#     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=1, S=S)
+#     rref1=realize(clo)
+#     assert len(list(drefrrefs(clo.dref,S)))==1
+#     sleep(0.01)
+#     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=2, buildtime=False, S=S)
+#     rref2=realize(clo, force_rebuild=[clo.dref])
+#     assert len(list(drefrrefs(clo.dref,S)))==2
+#     assert tryread(Path(join(store_rref2path(rref2,S),'artifact')))==str('1_0')
+#
+#   for i in range(10):
+#     with setup_storage2('test_match_latest') as (T,S):
+#       nouts=randint(1,10)
+#       ntop=randint(1,10)
+#       try:
+#         clo=instantiate(_mknode, {'a':0}, match_latest(ntop), nouts, S=S)
+#         rrefs=realizeMany(clo)
+#         times=set([tryread(Path(join(store_rref2path(rref,S),'__buildtime__.txt'))) for rref in rrefs])
+#         assert len(list(times))==1
+#       except AssertionError:
+#         assert ntop>nouts
 
 
 def test_match_all()->None:
@@ -480,7 +478,7 @@ def test_match_all()->None:
         assert trywrite(Path(join(out,'artifact')),str(nouts+i))
     return mkdrv(m, Config(cfg), matcher, build_wrapper(_realize))
 
-  with setup_storage2('test_match_all_empty') as S:
+  with setup_storage2('test_match_all_empty') as (T,S):
     clo=instantiate(_mknode, {'a':1}, match_all(), 5, S=S)
     rrefs=realizeMany(clo)
     assert len(rrefs)==0
@@ -488,7 +486,7 @@ def test_match_all()->None:
   for i in range(10):
     data=randint(1,10)
     nouts=randint(1,10)
-    with setup_storage2('test_match_all') as S:
+    with setup_storage2('test_match_all') as (T,S):
       clo=instantiate(_mknode, {'a':data}, match_n(1), nouts, S=S)
       rrefs_1=realizeMany(clo)
       assert len(rrefs_1)==1
@@ -497,7 +495,7 @@ def test_match_all()->None:
       assert len(rrefs_all)==nouts
 
 def test_match_some()->None:
-  with setup_storage2('test_match_some') as S:
+  with setup_storage2('test_match_some') as (T,S):
     def _mknode(m, cfg, nouts:int, top:int):
       def _realize(b:Build)->None:
         build_setoutpaths(b,nouts)
@@ -517,13 +515,13 @@ def test_match_some()->None:
 
 
 def test_gc()->None:
-  with setup_storage2('test_gc') as S:
+  with setup_storage2('test_gc') as (T,S):
     def _node1(m:Manager)->DRef:
-      return mktestnode(m, {'name':'1'})
+      return mkstage(m, {'name':'1'})
     def _node2(m:Manager)->DRef:
-      return mktestnode(m, {'name':'2', 'maman':_node1(m)})
+      return mkstage(m, {'name':'2', 'maman':_node1(m)})
     def _node3(m:Manager)->DRef:
-      return mktestnode(m, {'name':'3', 'maman':_node1(m)})
+      return mkstage(m, {'name':'3', 'maman':_node1(m)})
 
     r1=realize(instantiate(_node1,S=S))
     r2=realize(instantiate(_node2,S=S))
@@ -534,9 +532,9 @@ def test_gc()->None:
     assert rm_rrefs=={x for x in [r3]}
 
 def test_promise()->None:
-  with setup_storage2('test_promise') as S:
+  with setup_storage2('test_promise') as (T,S):
     def _setting(m:Manager, fullfill:bool)->DRef:
-      n1=mktestnode(m, {'name':'1', 'promise':[promise,'artifact']})
+      n1=mkstage(m, {'name':'1', 'promise':[promise,'artifact']})
       def _realize(b:Build):
         o=build_outpath(b)
         c=build_cattrs(b)
@@ -563,8 +561,8 @@ def test_promise()->None:
     assert_valid_rref(rref)
 
 def test_path2rref()->None:
-  with setup_storage2('test_path2rref') as S:
-    s1=partial(mktestnode, config={'name':'1', 'promise':[promise,'artifact']})
+  with setup_storage2('test_path2rref') as (T,S):
+    s1=partial(mkstage, config={'name':'1', 'promise':[promise,'artifact']})
     rref1=realize(instantiate(s1,S=S))
     rref2=path2rref(store_rref2path(rref1,S))
     assert rref1==rref2
@@ -576,8 +574,8 @@ def test_path2rref()->None:
       assert x is None
 
 def test_path2dref()->None:
-  with setup_storage2('test_path2dref') as S:
-    s1=partial(mktestnode, config={'name':'1', 'promise':[promise,'artifact']})
+  with setup_storage2('test_path2dref') as (T,S):
+    s1=partial(mkstage, config={'name':'1', 'promise':[promise,'artifact']})
     clo1=instantiate(s1,S=S)
     dref1=clo1.dref
     rref1=realize(clo1)
@@ -591,8 +589,8 @@ def test_path2dref()->None:
       assert x is None
 
 def test_linkrrefs()->None:
-  with setup_storage2('test_linkrefs') as S:
-    s1=partial(mktestnode, config={'name':'1', 'promise':[promise,'artifact']})
+  with setup_storage2('test_linkrefs') as (T,S):
+    s1=partial(mkstage, config={'name':'1', 'promise':[promise,'artifact']})
     rref1=realize(instantiate(s1,S=S))
     l=linkrrefs([rref1, rref1], destdir=S, S=S)
     assert len(l)==2
@@ -600,27 +598,4 @@ def test_linkrrefs()->None:
     assert islink(join(S,'result-1'))
     l=linkrrefs([rref1], destdir=S, withtime=True, S=S)
     assert S in l[0]
-
-@given(stages=rootstages())
-def test_union_of_root_derivations(stages):
-  """ Union of dep.closures of root derivations must be equal to the set of all
-  derivations. """
-  with setup_storage2('test_union_of_root_derivations') as S:
-    deps=set()
-    for stage in stages:
-      clo=instantiate(stage,S=S)
-      deps |= store_deepdeps([clo.dref],S) | set([clo.dref])
-    assert deps==set(alldrefs(S))
-
-
-@given(stages=rootstages())
-def test_union_of_root_realizations(stages):
-  """ Union of dep.closures of root realizations must be equal to the set of all
-  realizations. """
-  with setup_storage2('test_union_of_root_realizations') as S:
-    deps=set()
-    for stage in stages:
-      rrefs=realizeMany(instantiate(stage,S=S))
-      deps|=store_deepdepRrefs(rrefs,S) | set(rrefs)
-    assert deps==set(allrrefs(S))
 

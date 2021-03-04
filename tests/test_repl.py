@@ -14,17 +14,16 @@ from tests.imports import (
 from tests.generators import (
     configs, dicts, artifacts )
 
-from tests.setup import (
-    setup_testpath, setup_storage, setup_inplace_reset,
-    mktestnode_nondetermenistic, mktestnode, ShouldHaveFailed )
+from tests.setup import ( setup_storage, setup_inplace_reset, mkstage, mkstage,
+                         ShouldHaveFailed )
 
 # def test_repl_null():
 #   with setup_storage('test_repl_null'):
 
 #   def _setting(m:Manager)->DRef:
 #     nonlocal n1,n2
-#     n1 = mktestnode(m, {'a':'1'})
-#     n2 = mktestnode(m, {'maman':n1})
+#     n1 = mkstage(m, {'a':'1'})
+#     n2 = mkstage(m, {'maman':n1})
 #     return n2
 
 def test_repl_basic():
@@ -33,8 +32,8 @@ def test_repl_basic():
     n1:DRef; n2:DRef
     def _setting(m:Manager)->DRef:
       nonlocal n1,n2
-      n1 = mktestnode(m, {'a':'1'})
-      n2 = mktestnode(m, {'maman':n1})
+      n1 = mkstage(m, {'a':'1'})
+      n2 = mkstage(m, {'maman':n1})
       return n2
 
     clo=instantiate(_setting)
@@ -55,8 +54,8 @@ def test_repl_race():
   with setup_storage('test_repl_recursion'):
 
     def _setting(m:Manager)->DRef:
-      n1 = mktestnode(m, {'a':'1'})
-      n2 = mktestnode(m, {'maman':n1})
+      n1 = mkstage(m, {'a':'1'})
+      n2 = mkstage(m, {'maman':n1})
       return n2
 
     clo=instantiate(_setting)
@@ -77,8 +76,8 @@ def test_repl_override():
     n1:DRef; n2:DRef
     def _setting(m:Manager)->DRef:
       nonlocal n1,n2
-      n1 = mktestnode_nondetermenistic(m, {'a':'1'}, lambda: 33)
-      n2 = mktestnode_nondetermenistic(m, {'maman':n1}, lambda: 42)
+      n1 = mkstage(m, {'a':'1'}, lambda: 33)
+      n2 = mkstage(m, {'maman':n1}, lambda: 42)
       return n2
 
     clo=instantiate(_setting)
@@ -102,8 +101,8 @@ def test_repl_globalHelper():
     n1:DRef; n2:DRef
     def _setting(m:Manager)->DRef:
       nonlocal n1,n2
-      n1 = mktestnode(m, {'a':'1'})
-      n2 = mktestnode(m, {'maman':n1})
+      n1 = mkstage(m, {'a':'1'})
+      n2 = mkstage(m, {'maman':n1})
       return n2
 
     rh=repl_realize(instantiate(_setting), force_interrupt=True)
@@ -123,8 +122,8 @@ def test_repl_globalCancel():
     n1:DRef; n2:DRef
     def _setting(m:Manager)->DRef:
       nonlocal n1,n2
-      n1 = mktestnode(m, {'a':'1'})
-      n2 = mktestnode(m, {'maman':n1})
+      n1 = mkstage(m, {'a':'1'})
+      n2 = mkstage(m, {'maman':n1})
       return n2
 
     rh=repl_realize(instantiate(_setting), force_interrupt=True)
@@ -138,7 +137,7 @@ def test_repl_globalCancel():
 def test_repl_realizeInval():
   with setup_storage('test_repl_realizeInval'):
     try:
-      repl_realize(instantiate(mktestnode, {'a':1}), force_interrupt=33) #type:ignore
+      repl_realize(instantiate(mkstage, {'a':1}), force_interrupt=33) #type:ignore
       raise ShouldHaveFailed('wrong force_interrupt value')
     except AssertionError:
       pass

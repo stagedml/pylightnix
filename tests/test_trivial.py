@@ -12,8 +12,7 @@ from tests.imports import (
 from tests.generators import (
     configs, dicts, artifacts )
 
-from tests.setup import (
-    setup_testpath, setup_storage, ShouldHaveFailed )
+from tests.setup import ( setup_storage, ShouldHaveFailed )
 
 
 

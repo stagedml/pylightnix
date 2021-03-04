@@ -22,7 +22,7 @@ from pylightnix.imports import (sha256, deepcopy, isdir, islink, makedirs,
                                 mkdtemp, replace, environ, split, re_match,
                                 ENOTEMPTY, get_ident, contextmanager,
                                 OrderedDict, lstat, maxsize, readlink, chain,
-                                getLogger)
+                                getLogger, scandir)
 
 from pylightnix.utils import (dirhash, assert_serializable, assert_valid_dict,
                               dicthash, scanref_dict, scanref_list, forcelink,
@@ -50,6 +50,9 @@ warning=logger.warning
 #: Tracks the version of pylightnix storage
 PYLIGHTNIX_STORE_VERSION=0
 
+def storagename():
+  return f"store-v{PYLIGHTNIX_STORE_VERSION}"
+
 #: `PYLIGHTNIX_ROOT` contains the path to the root of pylightnix shared data folder.
 #:
 #: Default is `~/_pylightnix` or `/var/run/_pylightnix` if no `$HOME` is available.
@@ -63,11 +66,19 @@ PYLIGHTNIX_ROOT=environ.get('PYLIGHTNIX_ROOT',
 #: `$PYLIGHTNIX_ROOT/tmp`.
 PYLIGHTNIX_TMP=environ.get('PYLIGHTNIX_TMP', join(PYLIGHTNIX_ROOT,'tmp'))
 
+def tempdir(tmp:Optional[Path]=None)->Path:
+  if tmp is None:
+    assert isinstance(PYLIGHTNIX_TMP, str), \
+      f"Default temp folder location is not a string: {PYLIGHTNIX_TMP}"
+    return Path(PYLIGHTNIX_TMP)
+  else:
+    return tmp
+
 #: `PYLIGHTNIX_STORE` contains the path to the main pylightnix store folder.
 #:
 #: By default, the store is located in `$PYLIGHTNIX_ROOT/store-vXX` folder.
 #: Setting `PYLIGHTNIX_STORE` environment variable overwrites the defaults.
-PYLIGHTNIX_STORE=join(PYLIGHTNIX_ROOT, f'store-v{PYLIGHTNIX_STORE_VERSION}')
+PYLIGHTNIX_STORE=join(PYLIGHTNIX_ROOT, storagename())
 
 def storage(S:Optional[SPath]=None)->SPath:
   """ Returns the location to Pylightnix storage, defaulting to
@@ -85,6 +96,11 @@ PYLIGHTNIX_NAMEPAT="[a-zA-Z0-9_-]"
 #: Reserved file names are treated specially be the core. Users should
 #: not normally create or alter files with this names.
 PYLIGHTNIX_RESERVED=['context.json','group.json']
+
+def reserved(folder:Path, name:str)->Path:
+  assert name in PYLIGHTNIX_RESERVED, \
+    f"File name '{name}' expected to be reserved"
+  return Path(join(folder,name))
 
 #  ____       __
 # |  _ \ ___ / _|___
@@ -154,7 +170,7 @@ def path2rref(p:Path)->Optional[RRef]:
 
 def mktag(s:str)->Tag:
   for c in ['\n',' ']:
-    assert c not in s
+    assert c not in s, f"Invalid symbol '{c}' in tag '{s}'"
   return Tag(s)
 
 def tag_out()->Tag:
@@ -175,8 +191,15 @@ def mkgroup(s:str)->Group:
 
 
 def mkconfig(d:dict)->Config:
-  """ FIXME: Should we assert on invalid Config here? """
-  return Config(assert_valid_dict(d,'dict'))
+  """ Create Config object out of config dictionary. Asserts if the dictionary
+  is not JSON-compatible. As a handy hack, filter out `m:Manager` variable
+  which likely is an utility [Manager](#pylightnix.types.Manager) object.
+
+  FIXME: Should we assert on invalid Config here?
+  """
+  return Config(assert_valid_dict(
+    {k:v for k,v in d.items()
+     if not (k=='m' and 'Manager' in str(type(v)))},'dict'))
 
 def config_dict(cp:Config)->dict:
   return deepcopy(cp.val)
@@ -237,10 +260,10 @@ def assert_store_initialized(S:SPath)->None:
   assert isdir(storage(S)), \
     (f"Looks like the Pylightnix store ('{PYLIGHTNIX_STORE}') is not initialized. Did "
      f"you call `store_initialize`?")
-  assert isdir(PYLIGHTNIX_TMP), \
-    (f"Looks like the Pylightnix tmp ('{PYLIGHTNIX_TMP}') is not initialized. Did "
+  assert isdir(tempdir()), \
+    (f"Looks like the Pylightnix tmp ('{tempdir()}') is not initialized. Did "
      f"you call `store_initialize`?")
-  assert lstat((storage(S))).st_dev == lstat(PYLIGHTNIX_TMP).st_dev, \
+  assert lstat((storage(S))).st_dev == lstat(tempdir()).st_dev, \
     (f"Looks like Pylightnix store and tmp directories belong to different filesystems. "
      f"This case is not supported yet. Consider setting PYLIGHTNIX_TMP to be on the same "
      f"device with PYLIGHTNIX_STORE")
@@ -337,7 +360,8 @@ def store_depRrefs(rrefs:Iterable[RRef],S=None)->Set[RRef]:
   for rref in rrefs:
     dref=rref2dref(rref)
     for dref_dep in store_deps([dref],S):
-      acc|=set(store_deref(rref,dref_dep,S).values())
+      for rg in store_deref_(rref,dref_dep,S):
+        acc|=set(rg.values())
   return acc
 
 def store_deepdeps(drefs:Iterable[DRef], S=None)->Set[DRef]:
@@ -389,14 +413,23 @@ def rootdrefs(S:Optional[SPath]=None)->Set[DRef]:
   return dagroots(kahntsort(alldrefs(S), _inb), _inb)
 
 def rootrrefs(S:Optional[SPath]=None)->Set[RRef]:
-  """ Return root DRefs of the storage `S` as a set """
+  """ Return root RRefs of the storage `S` as a set """
   def _inb(x):
     return store_depRrefs([x],S)
   return dagroots(kahntsort(allrrefs(S), _inb), _inb)
 
+def rrefdata(rref:RRef,S=None)->Iterable[Tuple[str,List[str],List[str]]]:
+  root=store_rref2path(rref,S)
+  for fd in scandir(root):
+    if not (fd.is_file() and fd.name in PYLIGHTNIX_RESERVED):
+      yield Path(join(root, fd.name))
+
 def rrefs2groups(rrefs:Iterable[RRef], S=None)->List[RRefGroup]:
   """ Split RRefs to a set of [Groups](#pylightnix.types.Group), according to
-  their [Tags](#pylightnix.types.Tag) """
+  their [Tags](#pylightnix.types.Tag)
+
+  FIXME: re-implement with a complexity better than O(N^2)
+  """
   return [({store_tag(rref,S):rref for rref in rrefs if store_group(rref,S)==g})
     for g in sorted({store_group(rref,S) for rref in rrefs})]
 
@@ -426,7 +459,7 @@ def store_rrefs(dref:DRef, context:Context, S=None)->List[RRefGroup]:
   [context](#pylightnix.types.Context). Sorting order is unspecified. """
   rgs:List[RRefGroup]=[]
   for rg in store_rrefs_(dref,S):
-    context2=store_context(rg[Tag('out')],S)
+    context2=store_context(rg[tag_out()],S)
     if context_eq(context,context2):
       rgs.append(rg)
   return rgs
@@ -452,16 +485,18 @@ def store_buildtime(rref:RRef, S=None)->Optional[str]:
 
   Buildtime is the time when the realization process has started. Some
   realizations may not provide this information. """
-  return tryread(Path(join(store_rref2path(rref,S),'__buildtime__.txt')))
+  return tryread(join(store_rref2path(rref,S),'__buildtime__.txt'))
 
 def store_tag(rref:RRef,S=None)->Tag:
   """ Return the [Tag](#pylightnix.types.tag) of a Realization. Default Tag
   name is 'out'. """
-  return mktag(tryreadjson_def(Path(join(store_rref2path(rref,S),'group.json')),{}).get('tag','out'))
+  return mktag(tryreadjson_def(
+    reserved(store_rref2path(rref,S),'group.json'),{}).get('tag','out'))
 
 def store_group(rref:RRef,S=None)->Group:
   """ Return group identifier of the realization """
-  return mkgroup(tryreadjson_def(Path(join(store_rref2path(rref,S),'group.json')),{}).get('group',rref))
+  return mkgroup(tryreadjson_def(
+    reserved(store_rref2path(rref,S),'group.json'),{}).get('group',rref))
 
 def store_gc(keep_drefs:List[DRef],
              keep_rrefs:List[RRef],
@@ -507,7 +542,7 @@ def mkdrv_(c:Config,S:SPath)->DRef:
 
   dref=mkdref(trimhash(dhash),refname)
 
-  o=Path(mkdtemp(prefix=refname, dir=PYLIGHTNIX_TMP))
+  o=Path(mkdtemp(prefix=refname, dir=tempdir()))
   with open(join(o,'config.json'), 'w') as f:
     f.write(config_serialize(c))
 
@@ -537,9 +572,10 @@ def mkrealization(dref:DRef, l:Context, o:Path,
   - `o:Path`: Path to temporal (build) folder which contains artifacts,
     prepared by the [Realizer](#pylightnix.types.Realizer).
   - `leader`: Tag name and Group identifier of the Group leader. By default,
-    name `out` and own RRef are used.
+    we use name `out` and derivation's own rref.
 
   FIXME: Assert or handle possible but improbable hash collision[*]
+  FIXME: Consider(not sure) writing group.json for all realizations[**]
   """
   c=store_config(dref,S)
   assert_valid_config(c)
@@ -555,12 +591,12 @@ def mkrealization(dref:DRef, l:Context, o:Path,
        f"This name is reserved, please use another name. List of reserved "
        f"names: {PYLIGHTNIX_RESERVED}")
 
-  with open(join(o,'context.json'), 'w') as f:
+  with open(reserved(o,'context.json'), 'w') as f:
     f.write(context_serialize(l))
 
-  if leader is not None:
+  if leader is not None: # [**]
     tag,group_rref=leader
-    with open(join(o,'group.json'), 'w') as f:
+    with open(reserved(o,'group.json'), 'w') as f:
       json_dump({'tag':tag,'group':group_rref},f)
 
   rhash=dirhash(o)
@@ -591,10 +627,10 @@ def mkrgroup(dref:DRef, ctx:Context,
   """ Create [realization group](#pylightnix.types.Group) in storage `S` by
   iteratively calling [mkrealization](#pylightnix.core.mkrealization). """
   rrefg={}
-  rrefg[Tag('out')]=mkrealization(dref,ctx,og[Tag('out')],leader=None,S=S)
+  rrefg[tag_out()]=mkrealization(dref,ctx,og[tag_out()],leader=None,S=S)
   for tag,o in og.items():
-    if tag!=Tag('out'):
-      rrefg[tag]=mkrealization(dref,ctx,o,leader=(tag,rrefg[Tag('out')]),S=S)
+    if tag!=tag_out():
+      rrefg[tag]=mkrealization(dref,ctx,o,leader=(tag,rrefg[tag_out()]),S=S)
   return rrefg
 
 #   ____            _            _
@@ -611,14 +647,13 @@ def mkcontext()->Context:
 def context_eq(a:Context,b:Context)->bool:
   return json_dumps(a)==json_dumps(b)
 
-def context_add(context:Context, dref:DRef, rrefs:List[RRef])->Context:
-  assert dref not in context, (
+def context_add(ctx:Context, dref:DRef, rrefs:List[RRef])->Context:
+  assert dref not in ctx, (
     f"Attempting to re-introduce DRef {dref} to context with a "
     f"different realization.\n"
-    f" * Old realization: {context[dref]}\n"
+    f" * Old realization: {ctx[dref]}\n"
     f" * New realization: {rrefs}\n" )
-  context[dref]=rrefs
-  return context
+  return dict(sorted([(dref,list(sorted(rrefs)))]+list(ctx.items())))
 
 def context_deref(context:Context, dref:DRef, S=None)->List[RRefGroup]:
   assert dref in context, (
@@ -707,7 +742,7 @@ def mkdrv(m:Manager,
       outgroups=realizer(S,dref,ctx,rarg)
       for key,refpath in config_promises(store_config_(dref,S),dref):
         for g in outgroups:
-          assert_promise_fulfilled(key,refpath,g[Tag('out')])
+          assert_promise_fulfilled(key,refpath,g[tag_out()])
       return outgroups
     return _realizer
 
@@ -749,31 +784,23 @@ def realize(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
   assert len(rrefs)==1, (
       f"`realize` is to be used with single-output derivations. Derivation "
       f"{closure.dref} has {len(rrefs)} outputs:\n{rrefs}\n"
-      f"Consider calling `realizeMany` with it." )
+      f"Consider using `realizeMany` or `realizeGroups`." )
   return rrefs[0]
 
-def realizeMany(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
-                                 assert_realized:List[DRef]=[],
-                                 realize_args:Dict[DRef,RealizeArg]={})->List[RRef]:
-  """ Obtain one or more realizations of a stage's
-  [Closure](#pylightnix.types.Closure).
+def realizeGroups(closure:Closure,
+                 force_rebuild:Union[List[DRef],bool]=[],
+                 assert_realized:List[DRef]=[],
+                 realize_args:Dict[DRef,RealizeArg]={})->List[RRefGroup]:
+  """ Obtain one or more [Closure](#pylightnix.types.Closure) realizations of a
+  stage.
 
-  If [matching](#pylightnix.types.Matcher) realizations do exist in the
-  storage, and if user doesn't ask to forcebly rebuild the stage, `realizeMany`
-  returns the references immediately.
+  Returned value is a collection of tagged
+  [realizations](#pylightnix.types.RRef) references.
 
-  Otherwize, it calls [Realizers](#pylightnix.types.Realizer) of the Closure to
-  get desired realizations of the closure top-level derivation.
+  The function returns [matching](#pylightnix.types.Matcher) realizations
+  immediately if they are exist.
 
-  Returned value is a list realization references
-  [realizations](#pylightnix.types.RRef). Every RRef may be [converted
-  to system path](#pylightnix.core.store_rref2path) of the folder which
-  contains build artifacts.
-
-  In order to create each realization, realizeMany moves it's build artifacts
-  into the storage by executing `os.replace` function which are assumed to be
-  atomic. `realizeMany` also assumes that derivation's config is present in the
-  storage at this moment (See e.g. [rmref](#pylightnix.bashlike.rmref))
+  Otherwize, a number of [Realizers](#pylightnix.types.Realizer) are called.
 
   Example:
   ```python
@@ -782,11 +809,11 @@ def realizeMany(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
     return mkdrv(m, ...)
 
   clo:Closure=instantiate(mystage)
-  rrefs:List[RRef]=realizeMany(clo)
-  print('Available realizations:', [store_rref2path(rref) for rref in rrefs])
+  rrefgs:List[RRefGroup]=realizeGroups(clo)
+  print([mklen(rref).syspath for grp[tag_out()] in rrefgs])
   ```
 
-  `realizeMany` has the following analogs:
+  Pylightnix contains the following alternatives to `realizeGroup`:
 
   * [realize](#pylightnix.core.realize) - A single-output version
   * [repl_realize](#pylightnix.repl.repl_realize) - A REPL-friendly version
@@ -816,7 +843,14 @@ def realizeMany(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
       gen.send((None,False)) # Ask for default action
   except StopIteration as e:
     res=e.value
-  return groups2rrefs(res)
+  return res
+
+def realizeMany(closure:Closure,
+                force_rebuild:Union[List[DRef],bool]=[],
+                assert_realized:List[DRef]=[],
+                realize_args:Dict[DRef,RealizeArg]={})->List[RRef]:
+  return groups2rrefs(realizeGroups(
+    closure, force_rebuild, assert_realized, realize_args))
 
 def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
                                 assert_realized:List[DRef]=[],
@@ -852,24 +886,30 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
           f"Unfortunately, it is not the case. Config:\n"
           f"{store_config(dref)}"
           )
+        rrefgs_existed=store_rrefs(dref,dref_context,S)
         gpaths:List[Dict[Tag,Path]]=drv.realizer(S,dref,dref_context,realize_args.get(dref,{}))
         rrefgs_built=[mkrgroup(dref,dref_context,g,S) for g in gpaths]
+        if sum(len(g.values()) for g in gpaths)!=len(set.union(*[set(g.values()) for g in rrefgs_built])):
+          warning(f"Several {dref} realizations resolved to the same filesystem object")
         rrefgs_matched=drv.matcher(S,dref,dref_context)
         assert rrefgs_matched is not None, (
-          f"Matcher of {dref} repeatedly asked the core to realize. "
-          f"Probably, it's realizer doesn't work well with it's matcher. "
-          f"The follwoing just-built RRefs were marked as unmatched: "
-          f"{rrefgs_built}" )
+          f"The matcher of {dref} is not satisfied with its realizatons. "
+          f"The following newly obtained realizations were ignored:\n"
+          f"  {rrefgs_built}\n"
+          f"The following realizations already existed:\n"
+          f"  {rrefgs_existed}")
         if (set(groups2rrefs(rrefgs_built)) & set(groups2rrefs(rrefgs_matched))) == set() and \
            (set(groups2rrefs(rrefgs_built)) | set(groups2rrefs(rrefgs_matched))) != set():
-          warning(f"None of the newly obtained realizations of "
-                  f"{dref} were matched by the matcher. To capture those "
+          warning(f"None of the newly obtained {dref} realizations "
+                  f"were matched by the matcher. To capture those "
                   f"realizations explicitly, try `matcher([exact(..)])`")
         rrefgs=rrefgs_matched
       context_acc=context_add(context_acc,dref,groups2rrefs(rrefgs))
   assert rrefgs is not None
   return rrefgs
 
+def evaluate(stage, *args, **kwargs)->RRef:
+  return realize(instantiate(stage,*args,**kwargs))
 
 def linkrref(rref:RRef,
              destdir:Optional[Path]=None,
@@ -944,28 +984,29 @@ def match(keys:List[Key],
   with at least one matched realization.
 
   Arguments:
-  - `keys`: List of [Key](#pylightnix.types.Key) functions. Defaults ot
+  - `keys`: A list of [Key](#pylightnix.types.Key) functions.
   - `rmin`: An integer selecting the minimum number of realizations to accept.
-    If non-None, Realizer is expected to produce at least this number of
-    realizations.
-  - `rmax`: An integer selecting the maximum number of realizations to return
+      If non-None, Pylightnix will be asked to run the Realizer **if** the number
+      of matching keys is less than this number.
+  - `rmax`: An integer selecting the maximum number of realizations to match
     (realizer is free to produce more realizations)
   - `exclusive`: If true, asserts if the number of realizations exceeds `rmax`
   """
   assert (rmin or 0) <= (rmax or maxsize)
-  assert not (len(keys)>0 and (rmax is None)), (
-    "Specifying non-default sorting keys has no effect without specifying `rmax`.")
+  # FIXME: Figure out why did we need such an assert
+  # assert not (len(keys)>0 and (rmax is None)), (
+  #   "Specifying non-default sorting keys has no effect without specifying `rmax`.")
   assert not ((rmax is None) and exclusive), (
     "Specifying `exclusive` has no effect without specifying `rmax`.")
   keys=keys+[texthash()]
   def _matcher(S:SPath, dref:DRef, context:Context)->Optional[List[RRefGroup]]:
-    # Find 'out' RRefs in each group
-    grefs={gr[Tag('out')]:gr for gr in store_rrefs(dref,context,S)}
+    # Find realizations tagged with 'out' among the available realizations
+    grefs={gr[tag_out()]:gr for gr in store_rrefs(dref,context,S)}
 
-    # Match only among realizations tagged as 'out'
+    # Calculate the metrics for all "out" realizations
     keymap={rref:[k(rref,S) for k in keys] for rref in grefs.keys()}
 
-    # Apply filters and filter outputs
+    # Filter None results and sort the remaining rrefs according to keys
     res:List[RRef]=sorted(filter(lambda rref: None not in keymap[rref], grefs.keys()),
                           key=lambda rref:keymap[rref], reverse=True)
     # Filter by range

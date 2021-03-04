@@ -1,5 +1,6 @@
-from pylightnix import (Manager, SPath, RConfig, datahash, PYLIGHTNIX_NAMEPAT, mkdref,
-                        mkrref, trimhash, encode, instantiate_, dagroots)
+from pylightnix import (Manager, SPath, RConfig, datahash, PYLIGHTNIX_NAMEPAT,
+                        mkdref, mkrref, trimhash, encode, instantiate_,
+                        dagroots, tag_out)
 
 from tests.imports import (given, assume, example, note, settings, text,
                            decimals, integers, rmtree, characters, gettempdir,
@@ -10,7 +11,7 @@ from tests.imports import (given, assume, example, note, settings, text,
                            permutations, sampled_from, partial)
 
 
-from tests.setup import (mktestnode)
+from tests.setup import (mkstage)
 
 #   ____                           _
 #  / ___| ___ _ __   ___ _ __ __ _| |_ ___  _ __ ___
@@ -90,16 +91,37 @@ def intdags_permutations(draw):
   topologically sorted """
   return draw(lists(permutations(draw(intdags())),min_size=3,max_size=3))
 
+@composite
+def tagsets(draw):
+  N=draw(integers(min_value=1,max_value=3))
+  acc=[]
+  for ngroup in range(N):
+    ntags=draw(integers(min_value=1,max_value=3))
+    acc.append([f"tag{n}" for n in range(ntags-1)]+[tag_out()])
+  return acc
 
 @composite
 def rootstages(draw):
   dag=draw(intdags().filter(lambda dag: len(dag)>0))
   roots=dagroots([n[0] for n in dag], lambda n:dag[n][1])
+  tss={n[0]:draw(tagsets()) for n in dag}
+  # tss={n[0]:[[tag_out()], [tag_out()]] for n in dag}
+  # print(tss)
+  nmatches={n[0]:draw(integers(min_value=1,max_value=2)) for n in dag}
+  # nmatches={n[0]:99 for n in dag}
+  # print('NNNNNNNNN',nmatches)
+  note(f"DAG: {dag}")
+  note(f"Tags: {tss}")
+  note(f"NMatches: {nmatches}")
+
   def _stage(m, root):
     drefs:dict={}
     for n,deps in list(dag):
-      drefs[n]=mktestnode(m, config={'name':f'node_{n}',
-                                     'parents':[drefs[d] for d in deps]})
+      drefs[n]=mkstage(m,
+                       config={'name':f'node_{n}',
+                               'parents':[drefs[d] for d in deps]},
+                       tagset=tss[n],
+                       nmatch=nmatches[n])
     return drefs[root]
   return [partial(_stage, root=root) for root in roots]
 

@@ -3,9 +3,9 @@ from stat import S_IEXEC, S_IWRITE, S_IREAD
 from os.path import (basename, join, isfile, isdir, islink, relpath, abspath,
                      dirname )
 from shutil import rmtree
-from tempfile import gettempdir
 
-from hypothesis import given, assume, example, note, settings, event, HealthCheck
+from hypothesis import (given, assume, example, note, settings, event,
+                        HealthCheck, reproduce_failure, Phase)
 from hypothesis.strategies import (text, decimals, integers, characters,
                                    from_regex, dictionaries, one_of, lists,
                                    recursive, none, booleans, floats,
@@ -21,7 +21,7 @@ from re import compile as re_compile
 from typing import Any, List, Optional, Callable, Dict
 from contextlib import contextmanager
 
-from tempfile import TemporaryDirectory
+from tempfile import TemporaryDirectory, gettempdir, mkdtemp
 
 from time import strftime, strptime, gmtime
 from calendar import timegm

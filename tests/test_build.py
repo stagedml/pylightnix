@@ -22,8 +22,7 @@ from tests.imports import ( given, Any, Callable, join, Optional, islink,
 from tests.generators import (
     rrefs, drefs, configs, dicts )
 
-from tests.setup import ( ShouldHaveFailed, setup_testpath, setup_storage,
-                         mktestnode_nondetermenistic, mktestnode )
+from tests.setup import ( ShouldHaveFailed, setup_storage, mkstage, mkstage )
 
 
 
@@ -45,8 +44,8 @@ def test_build_deref()->None:
       return mkdrv(m, _instantiate(), match_only(), build_wrapper(_realize))
 
     def _setting(m:Manager)->DRef:
-      n1 = mktestnode_nondetermenistic(m, {'a':'1'}, lambda : 42)
-      n2 = mktestnode(m, {'b':'2'})
+      n1 = mkstage(m, {'a':'1'}, lambda : 42)
+      n2 = mkstage(m, {'b':'2'})
       n3 = _depuser(m, {'maman':mkrefpath(n1,['artifact']), 'papa':n2})
       return n3
 

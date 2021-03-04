@@ -20,15 +20,13 @@ from pylightnix import (instantiate, DRef, RRef, Path, Build, Manager, mklens,
                         build_outpath, build_path, mkconfig, assert_valid_rref,
                         isrefpath, isclosure)
 
-from tests.imports import ( given, Any, Callable, join, Optional, islink,
-    isfile, List, randint, sleep, rmtree, system, S_IWRITE, S_IREAD, S_IEXEC,
-    isdir )
+from tests.imports import (given, Any, Callable, join, Optional, islink,
+                           isfile, List, randint, sleep, rmtree, system,
+                           S_IWRITE, S_IREAD, S_IEXEC, isdir)
 
-from tests.generators import (
-    rrefs, drefs, configs, dicts )
+from tests.generators import (rrefs, drefs, configs, dicts)
 
-from tests.setup import ( ShouldHaveFailed, setup_testpath, setup_storage,
-    mktestnode_nondetermenistic, mktestnode )
+from tests.setup import (ShouldHaveFailed, setup_storage, mkstage)
 
 
 
@@ -36,8 +34,8 @@ from tests.setup import ( ShouldHaveFailed, setup_testpath, setup_storage,
 def test_lens():
   with setup_storage('test_lens'):
     def _setting(m:Manager)->DRef:
-      n1=mktestnode(m, {'name':'1', 'promise':[promise,'artifact']})
-      n2=mktestnode(m, {'name':'2', 'promise':[promise,'artifact'],
+      n1=mkstage(m, {'name':'1', 'promise':[promise,'artifact']})
+      n2=mkstage(m, {'name':'2', 'promise':[promise,'artifact'],
                         'dict':{'d1':1} })
 
       def _realize(b:Build):
@@ -46,6 +44,7 @@ def test_lens():
         assert isrefpath(mklens(b).maman.promise.refpath)
         assert isfile(mklens(b).papa.promise.syspath)
         assert o in mklens(b).promise.syspath
+        assert o == mklens(b).syspath
         assert mklens(b).papa.name.val == '2'
         assert mklens(b).papa.dref == c.papa
 
@@ -55,7 +54,7 @@ def test_lens():
       return mkdrv(m,
         mkconfig({'name':'3', 'maman':n1, 'papa':n2,
                   'promise':[promise,'artifact'],
-                 }),
+                  }),
                  matcher=match_only(),
                  realizer=build_wrapper(_realize))
 
@@ -69,17 +68,21 @@ def test_lens():
     assert mklens(rref).rref == rref
     assert isrefpath(mklens(rref).papa.promise.refpath)
     assert mklens(rref).papa.dict.d1.val == 1
+    assert mklens(rref).dref == clo.dref
     assert isdir(mklens(rref).syspath)
+
     try:
       print(mklens(clo.dref).maman.promise.syspath)
       raise ShouldHaveFailed()
     except AssertionError:
       pass
+
     try:
       print(mklens(rref).papa.dict.d1.get('xxx'))
       raise ShouldHaveFailed()
     except AssertionError:
       pass
+
     try:
       print(mklens(rref).papa.dict.d1.syspath)
       raise ShouldHaveFailed()
@@ -107,9 +110,9 @@ def test_lens():
 def test_lens_closures():
   with setup_storage('test_lens_closures'):
     def _setting(m:Manager)->DRef:
-      n1=mktestnode(m, {'name':'1', 'x':33, 'promise':[promise,'artifact']})
-      n2=mktestnode(m, {'name':'2', 'papa':n1, 'dict':{'d1':1} })
-      n3=mktestnode(m, {'name':'3', 'maman':n2 })
+      n1=mkstage(m, {'name':'1', 'x':33, 'promise':[promise,'artifact']})
+      n2=mkstage(m, {'name':'2', 'papa':n1, 'dict':{'d1':1} })
+      n3=mkstage(m, {'name':'3', 'maman':n2 })
       return n3
 
     clo=instantiate(_setting)

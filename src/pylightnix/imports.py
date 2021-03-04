@@ -21,7 +21,7 @@ from calendar import timegm
 from errno import EEXIST
 from os import (
     mkdir, makedirs, replace, listdir, rmdir, symlink, rename, remove, environ,
-    walk, lstat, chmod, stat, readlink )
+    walk, lstat, chmod, stat, readlink, scandir )
 from os.path import (
     basename, join, isfile, isdir, islink, relpath, abspath, dirname, split,
     getsize, isabs, splitext )
@@ -30,7 +30,7 @@ from stat import ( S_IWRITE, S_IREAD, S_IRGRP, S_IROTH, S_IXUSR, S_IXGRP,
 from hashlib import sha1, sha256
 from copy import deepcopy
 from tempfile import mkdtemp
-from shutil import rmtree, copyfile, copytree
+from shutil import rmtree, copyfile, copytree, copy as shutil_copy
 from unicodedata import normalize
 from re import sub as re_sub, match as re_match
 from distutils.spawn import find_executable

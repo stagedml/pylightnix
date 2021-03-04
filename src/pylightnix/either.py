@@ -41,7 +41,8 @@ def either_wrapper(f:Realizer)->Realizer:
         if exception is not None:
           writestr(join(o,'exception.txt'), exception)
 
-    # Scan all immediate dependecnies of this build, propagate 'LEFT' status
+    # Scan all immediate dependecnies of this build, propagate the 'LEFT' status
+    # if any of them has it.
     for dref_dep in store_deps([dref],S):
       for rg in context_deref(ctx, dref_dep,S):
         rref = rg[tag_out()]

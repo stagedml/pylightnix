@@ -5,21 +5,37 @@
 \usepackage[russian,english]{babel}
 \usepackage{minted}
 \renewcommand{\MintedPygmentize}{/nix/store/9r8n35slzprv3q4hfdnc0fz3r70z2y64-python3.7-Pygments-2.7.2/bin/pygmentize}
-\usepackage[rerun=always, pygopt={texcomments=true}]{pythontex}
+\usepackage[gobble=auto, rerun=always, pygopt={texcomments=true}]{pythontex}
 \usepackage{lscape}
 \usepackage[a4paper]{geometry}
 \usepackage{pdflscape}
 \usepackage{longtable}
 \usepackage{hyperref}
+\usepackage{mdframed}
 
 \begin{document}
 
+\fvset{breaklines, breakafter=0123456789-/}
+\setpythontexfv{breaklines, breakafter=0123456789-/, commandchars=\\\{\}}
+
 \newenvironment{shellcode}
-  {\VerbatimEnvironment\begin{minted}[escapeinside=!!, breaklines, breakafter=0123456789-]{sh}}
+  {\VerbatimEnvironment\begin{minted}[escapeinside=!!, breaklines, breakafter=0123456789-/]{sh}}
   {\end{minted}}
 \newenvironment{pythoncode}
-  {\VerbatimEnvironment\begin{minted}[escapeinside=!!, breaklines, breakafter=0123456789-]{python}}
+  {\VerbatimEnvironment\begin{minted}[escapeinside=!!, breaklines, breakafter=0123456789-/]{python}}
   {\end{minted}}
+
+\newenvironment{pythontexcode}
+  {\VerbatimEnvironment\begin{mdframed}[leftline=false,rightline=false]\begin{pyblock}[stdout][numbers=left]}
+  {\end{pyblock}\end{mdframed}}
+
+\newcommand{\mystdout}{\begin{mdframed}\small{\texttt{\stdoutpythontex[verbatim][breaklines,breakafter=0123456789-/]}}\end{mdframed}}
+
+\newcommand{\mysmallstdout}{\begin{mdframed}\footnotesize{\texttt{\stdoutpythontex[verbatim][breaklines,breakafter=0123456789-/]}}\end{mdframed}}
+
+
+
+
 
 \selectlanguage{english}
 
@@ -31,71 +47,56 @@
 
 \begin{abstract}
 
-Pylightnix is a Python-based DSL library for manipulating filesystem-based
-immutable data objects, inspired by the \href{https://nixos.org}{Nix} package
-manager and \href{https://edolstra.github.io/pubs/phd-thesis.pdf}{Purely
-Functional Software Deployment Model thesis by Eelco Dolstra}.
+Pylightnix is a Python domain specific language library for managing
+filesystem-based immutable data objects, inspired by
+\href{https://edolstra.github.io/pubs/phd-thesis.pdf}{Purely Functional
+Software Deployment Model thesis by Eelco Dolstra} and the
+\href{https://nixos.org}{Nix} package manager. In contrast to Nix, Pylightnix
+is primarily focused on managing the data for computer science experiments.
+Traditional use case of domain-specific package management, as well as other
+\href{https://en.wikipedia.org/wiki/Blackboard_design_pattern}{blackboard
+application use cases} are also supported.
 
-Pylightnix provides a generic Python API, allowing programmers to:
+With the help of Pylightnix API, applications
 \begin{itemize}
-  \item Define immutable linked data objects by specifying how to create them
-    and how to operate on them.
-  \item Actually create (build) such objects in a filesystem-based storage,
-    access its data, inspect dependencies, and remove them as needed.
-  \item Special attention is paid to the support of non-deterministic build
-    processes.
+  \item Store the data in form of linked immutable filesystem objects here
+    called \textbf{stages}.
+  \item Create (in our terms, \textbf{realize}) such objects, access its
+    data, navigate through dependencies.
+  \item Re-run realization algorithms whenever inputs change. Pylightnix
+    may decide to re-create either a whole or a part of the stage object
+    collection according to the changes in prerequisites.
+  \item Manage the outcomes of \textbf{non-deterministic} stage realizations.
+    As one example, users may define a Pylightnix stage to depend (in a
+    user-defined sense) on top-10 random instances of a trained machine learning
+    model.
 \end{itemize}
-
-Pylightnix originally appeared as a core module of
-\href{https://github.com/stagedml/stagedml}{StagedML} library, later it was
-moved into a separate project.
 
 \end{abstract}
 
-
 \section{Features}
 
-Logic:
-
+We tried to meet high development standards. In particular, Pylightnix:
 \begin{itemize}
-  \item Pylightnix allows us to Create, query and maintain linked objects,
-    called here **stages**.
-  \item Creation of stages includes two passes: At the **instantiation** pass we
-    check configurations of the whole graph of linked objects. At the
-    **realization** pass we decide whether to take existing realization or to
-    run the constructors to get new ones.
-  \item Pylightnix is focused on non-deterministic build processes such as
-    machine learning. We formalize comparison and selection of competing results
-    of such processes.
-  \item The possible applications of Pylightnix include:
-    \begin{itemize}
-      \item Data science / Machine learning experiments (see
-        \href{https://github.com/stagedml/stagedml}{StagedML})
-      \item Domain-specific package managers
-      \item Other applications which fit into blackboard design pattern
-        \href{https://en.wikipedia.org/wiki/Blackboard_design_pattern}{wiki}.
-    \end{itemize}
-\end{itemize}
-
-Implementation:
-
-\begin{itemize}
-  \item Written in Python 3.6. \href{http://mypy-lang.org/}{Mypy} typing
-    information is provided.
-  \item Is well-tested
-  \item Includes no third-party Python dependencies. We do require
-    \href{https://www.gnu.org/software/wget/}{wget} and
-    \href{https://www.nongnu.org/atool/}{atool} system packages.
-  \item Alas, Pylightnix is not a production-ready yet! Nor parallelism, neither
-    network synchronization are supported out of the box. Also, we didn't check
-    Pylightnix on any operating system besides Linux.
-    \begin{itemize}
-      \item We tried our best to make Pylightnix' operations on storage atomic.
-        Among other benefits, this design allows running multiple instances of
-        the library on a single storage at once.
-      \item Synchronization of different machines should be possible by
-        exclusively running `rsync` tool on their storages.
-    \end{itemize}
+  \item Is written in Python 3.7. \href{http://mypy-lang.org/}{Mypy} typing is
+    used whenever possible.
+  \item Is tested using \href{https://pypi.org/project/hypothesis/}{Hypothesis}.
+  \item Documentation is written in a
+    \href{https://en.wikipedia.org/wiki/Literate_programming}{literate
+    programming} style. Most of the code examples shown in this manual were
+    checked and evaluated inline by
+    \href{https://github.com/gpoore/pythontex}{PythonTex} tool.
+  \item Core modules depend solely on the Python standard library. Optional
+    modules do depend on \href{https://curl.se/}{Curl} and
+    \href{https://www.gnu.org/software/wget/}{Wget} for accessing the Internet
+    and on \href{https://www.nongnu.org/atool/}{Atool} for dealing with
+    compressed files.
+  \item Alas, Pylightnix is not a production-ready yet! No means of parallelism
+    are provided, network synchronization is yet under development.  We didn't
+    check Pylightnix on any operating system besides Linux. We tried our best
+    to make Pylightnix' storage operations atomic. Among other benefits,
+    this allows running several instances of the library on a single
+    storage at once.
 \end{itemize}
 
 \section{Related work}
@@ -110,6 +111,12 @@ Implementation:
 \end{itemize}
 
 \section{Install}
+
+Pylightnix could be installed either by running Pip package manager as usual or
+by bundling the package from source. Since we are in deep betas, you probably
+should prefer source-based installation. We will also need
+\href{https://curl.se/}{Curl} and \href{https://www.nongnu.org/atool/}{ATool}
+system packages later in this manual.
 
 \subsection{Install with Pip}
 
@@ -134,8 +141,8 @@ $ pip3 install pylightnix
       Now you could import pylightnix from your applications.
     \item Build and install pylightnix wheel.
       \begin{shellcode}
-       $ make wheels
-       $ sudo -H pip3 install --force dist/*whl
+      $ make wheels
+      $ sudo -H pip3 install --force dist/*whl
       \end{shellcode}
     \item Nix users may refer to \href{../default.nix}{default.nix} and
       \href{../shell.nix}{shell.nix} expressions.
@@ -145,36 +152,270 @@ $ pip3 install pylightnix
 \item (Optional) Build the demos
 \end{enumerate}
 
-\section{Quick start} Pylightnix could be used as a lightweight build system
-(rather unsafe one, because it lacks built-in build isolation). This guide
-illustrates it by defining a couple of objects ("stages") which are required  to
-build the GNU Hello program.
+\subsection{Install recommended system packages}
 
-Below operations typically require only a pure Python environment with
-Pylightnix library installed.
+Pylightnix utilities rely on Curl and ATool system packages. Installing them
+is highly advised.
 
-\begin{enumerate}
+\begin{shellcode}
+$ apt-get install -y curl atool      # Use your system's package manager here!
+...
+$ curl --version | head -n1
+curl 7.70.0
+$ aunpack --version | head -n1
+atool 0.39.0
+\end{shellcode}
 
-  \item Install development version of Pylightnix and an interactive shell.
-    \begin{shellcode}
-    $ pip install ipython git+https://github.com/stagedml/pylightnix
-    $ ipython
-    \end{shellcode}
-    Subsequent steps may be copypasted into the IPython shell
+\subsection{Make sure GNU Autotools are available}
 
-  \item Make sure that the storage is initialized
-    \begin{pythoncode}
-    from pylightnix import store_initialize
-    store_initialize()
-    \end{pythoncode}
+We will also need GNU Autotools for the sake of demonstration. Make sure they
+are installed in the system.
 
-\end{enumerate}
+\section{Quick start}
+
+In this section we illustrate basic principles by defining Pylightnix
+\textbf{stages} required to build \href{https://www.gnu.org/software/hello/}{GNU
+Hello} program. Resulting code could be used as a part of e.g. a
+project-specific build system (but rather unsafe one, since Pylightnix lacks
+build isolation).
+
+\subsection{Preparations}
+
+Follow the Install section above.
+
+\subsection{Fetch stage}
+
+Define a stage for fetching the GNU Hello source tarball. Downloading files
+from the Internet is a common task, here we just call a pre-defined API
+function \texttt{fetchurl} which does all the work for us.
+
+\begin{pythontexcode}
+from pylightnix import (Manager, DRef, RRef, evaluate, fetchurl)
+
+hello_version = '2.10'
+
+def stage_fetch(m:Manager)->DRef: # DRef \label{DREF}
+  return fetchurl(m,
+    name='hello-src',
+    url=f'http://ftp.gnu.org/gnu/hello/hello-{hello_version}.tar.gz',
+    sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b')
+
+fetch_rref:RRef = evaluate(stage_fetch)  # RRef \label{RREF}
+print(fetch_rref)
+\end{pythontexcode}
+
+Output:
+
+\mysmallstdout
+
+\begin{itemize}
+
+  \item At line \ref{DREF} we define a \textbf{stage function} for
+    downloadeing the GNU Hello sources. We
+    call a pre-defind API function \texttt{fetchurl} with the right
+    arguments and hide the details behind a \texttt{stage\_fetch} name.
+
+  \item All Pylightnix stages take a dependency-resolution \textbf{Manager}
+    context as their first arguments. Managers don't have much meaning for
+    the end-user but play the role of a context token. Stages may depend on
+    each other only if the share the same Manager.
+
+  \item All Pylightnix stage functions return \textbf{derivation
+    references}. Derivation references could be used to introduce
+    dependencies between stages to Pylightnix. The stage which includes a
+    derivation reference into its prerequisites is said to depend on the
+    stage which created this reference.
+
+  \item At line \ref{RREF} we \textbf{evaluate} our new stage. Pylightnix will
+    run the realization algorithm if no matching realization exists.
+    Fetchurl's realizer instructs the Pylightnix to run \texttt{curl} and
+    \texttt{aunpack} system applications. As a result, GNU Hello source folder
+    appears in system in form of a new \textbf{Realization} object. A unique
+    \textbf{Realization reference} is returned to the user.
+
+\end{itemize}
+
+Lets examine how to access the information referenced by the
+\texttt{fetch\_rref} reference. We will use a helper entity called
+\textbf{Lens} which is a Pylightnix 'swiss army knife' for navigating through
+the Pylightnix storage.
+
+\begin{pythontexcode}
+from pylightnix import mklens
+from os.path import join, isdir
+print(mklens(fetch_rref).val)      # Interpret as Python value
+print(mklens(fetch_rref).rref)     # Interpret as RRef (same result)
+print(mklens(fetch_rref).dref)     # Interpret as DRef
+print(mklens(fetch_rref).syspath)  # Interpret as a filesystem path
+assert isdir(join(mklens(fetch_rref).syspath,
+             f"hello-{hello_version}"))  # SRC \label{SRC}
+print(mklens(fetch_rref).name.val) # Access prerequisite 'name' variable
+                                   # and interpret it as a Python value
+print(mklens(fetch_rref).url.val)  # Same for 'url' variable
+print(mklens(fetch_rref).sha256.val)  # Same for 'sha256' variable
+\end{pythontexcode}
+
+Output:
+
+\mysmallstdout
+
+\begin{itemize}
+  \item Realization reference could be interpreted both as a
+    hash-containing identifier string and as a local filesystem path to a
+    folder containing realization artifacts. The main realization artifact
+    of \texttt{stage\_fetch} is the unpacked folder containing the GNU
+    Hello sources. We check its existence at line \ref{SRC}.
+  \item We will clarify how to define and use prerequisites in the next
+    section.
+\end{itemize}
+
+\pagebreak
+
+\subsection{Build stage}
+
+Next we use the sources to configure and build the GNU Hello
+application. Below we define a Pylightnix stage called
+\texttt{stage\_build} using the API function \textbf{mkdrv}.
+
+\begin{pythontexcode}
+from tempfile import TemporaryDirectory
+from shutil import copytree
+from os import getcwd, chdir, system
+from pylightnix import (Config, Path, Build, mkconfig, mkdrv,
+  build_wrapper, match_only, dirrw, promise, build_setoutpaths)
+
+def stage_build(m:Manager)->DRef:                            # ST \label{ST}
+  def _config()->Config:                                     # CFG \label{CFG}
+    name:str = 'hello-bin'
+    fetch_ref:DRef = stage_fetch(m)                          # DEP \label{DEP}
+    src:RefPath = [fetch_ref, f'hello-{hello_version}']      # RP1 \label{RP1}
+    bin:RefPath = [promise, 'usr', 'bin', 'hello']           # RP2 \label{RP2}
+    return mkconfig(locals())                                # LOC \label{LOC}
+  def _realize(b:Build)->None:                               # RE \label{RE}
+    build_setoutpaths(b,1)                                   # OP \label{OP}
+    with TemporaryDirectory() as tmp:
+      copytree(mklens(b).src.syspath, join(tmp,'src'))       # LE \label{LE}
+      dirrw(Path(join(tmp,'src')))
+      cwd = getcwd()
+      try:
+        print(f"Building {mklens(b).name.val}")
+        chdir(join(tmp,'src'))
+        system(f'./configure --prefix=/usr')
+        system(f'make')
+        system(f'make install DESTDIR={mklens(b).syspath}')
+      finally:
+        chdir(cwd)
+  return mkdrv(m, config=_config(),
+                  matcher=match_only(),
+                  realizer=build_wrapper(_realize))          # DRV \label{DRV}
+
+build_rref:RRef = evaluate(stage_build)
+print(build_rref)
+\end{pythontexcode}
+
+Output:
+
+\mysmallstdout
 
 
-\section{Documentation}
-bla
-\section{Frequently Asked Questions}
-bla
+\begin{itemize}
+  \item At line \ref{ST} we define a stage function. Similar to
+    \texttt{stage\_fetch}, it doesn't take any arguments besides the
+    Manager utility object.
+  \item It is more convenient to start reading the stage code from the end.
+    At line \ref{DRV} we see the \textbf{mkdrv} function call which
+    introduces our stage to Pylightnix. Its three named arguments represent
+    three main components of Pylightnix stages:
+    \begin{itemize}
+      \item A \textbf{Config} dictionary-like object represents stage's
+        prerequisites. Configs may contain any JSON-serializable fields,
+        that is strings, numbers, booleans, other lists or dicts which
+        match the same rules, etc. Derivation references are represented
+        with Python strings and thus could also be included.
+      \item A \textbf{Matcher} lets Pylightnix decide whether an
+        existing stage object matches its Config specification. As a result
+        the library may either run stage's realizer or re-use existing
+        object or objects.
+      \item A \textbf{Realizer} function knows how to create a new
+        stage object out of its Config prerequisites.
+    \end{itemize}
+    In this example we expect exactly one outcome so we use a
+    \textbf{match\_only} matcher which either returns the only existing
+    stage object or asks Pylightnix for a realization.
+
+  \item At line \ref{CFG} we define a dictionary containing stage's build
+    prerequisites. For convenience we user a Python trick: define fields as
+    a variables of a \texttt{\_config} function and then use
+    \textbf{locals()} to collect them into a dict. Pylightnix remembers
+    stage prerequisites. Changing any of them would trigger rebuilding.
+
+  \item At lines \ref{RP1} and \ref{RP2} we define \textbf{RefPath}s lists
+    which both represent relative paths in the filesystem. A first item of
+    a RefPath should be either a \textbf{DRef} derivation reference or
+    a \textbf{promise} marker. A promise will be resolved to a future
+    realization path of the stage that makes it.
+
+  \item By including derivation reference to \texttt{stage\_fetch} into
+    the config at line \ref{RP1}, we introduce a dependency from
+    \texttt{stage\_build} to \texttt{stage\_fetch}! The dependency would
+    make Pylightnix notice changes in \texttt{stage\_fetch} and rebuild all
+    the dependent stage as expected.
+
+  \item \texttt{mklens} can navigate through dependency reference fields
+    transparently. The definition at line \ref{DEP} allows us to write:
+
+    \begin{pythontexcode}
+    print(mklens(build_rref).fetch_ref.rref)
+    print(mklens(build_rref).fetch_ref.url.val)
+    \end{pythontexcode}
+
+    Output:
+
+    \mysmallstdout
+
+\end{itemize}
+
+
+\pagebreak
+\subsection{Execute}
+
+Finally, we locate the GNU Hello binary among the build stage artifacts and
+run it.
+
+\begin{pythontexcode}
+from subprocess import run, PIPE
+print(run([mklens(build_rref).bin.syspath], stdout=PIPE).stdout.decode('utf-8'))
+\end{pythontexcode}
+
+Output:
+
+\mystdout
+
+\section{Rationale}
+
+\subsection{Why Nix-based?}
+
+There are many solutions in the area of software deployment.
+Besides Nix, we know all the traditional package managers, Docker, AppImage,
+VirtualBox and so on. One property of Nix we want to highlight is it's low
+system requirements. Basically, Nix core needs only a basic file system API
+in order to work. Here we try to follow the trend of keeping the number of
+dependencies, and still provide a competitive set of features.
+
+\subsection{Why functional-style API?}
+
+Several reasones:
+\begin{itemize}
+  \item We think that this way we could track the API changes more easier. We
+    are trying to avoid changes in functions which are already published. We
+    tend to import functions by name to let Python notify us whenever the API is
+    changed.
+  \item Class-based APIs of Python often mislead users into thinking that they
+    could extend it by sub-classing. We don't support extention by-subclassing
+    and so we don't need classes.
+  \item Class-based API wrappers may be created as a standalone module. A one
+    example of such a wrapper is the \textbf{Lens} module.
+\end{itemize}
 
 \end{document}
 

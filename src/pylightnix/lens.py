@@ -41,8 +41,8 @@ def val2dict(v:Any, ctx:LensContext)->Optional[dict]:
     return config_dict(store_config(rref2dref(RRef(v)),S))
   elif isrefpath(v):
     j=tryreadjson(val2path(v, ctx))
-    assert j is not None, f"Refpath {v} doesn't contain valid JSON"
-    assert isinstance(j, dict), f"Refpath {v} doesn't contain valid JSON dict"
+    assert j is not None, f"RefPath {v} doesn't belong to a valid JSON file"
+    assert isinstance(j, dict), f"A file with RefPath {v} doesn't contain valid JSON dict"
     return j
   elif isinstance(v,Build):
     return config_dict(build_config(v))
@@ -88,6 +88,9 @@ def val2path(v:Any, ctx:LensContext)->Path:
       assert False, f"Lens couldn't resolve '{refpath}' without a context"
   elif isinstance(v, Closure):
     return val2path(v.dref, ctx)
+  elif isinstance(v, Build):
+    assert ctx.build_path is not None, f"Lens can't access build path of '{v}'"
+    return ctx.build_path
   else:
     assert False, f"Lens doesn't know how to resolve '{v}'"
 
@@ -208,8 +211,12 @@ class Lens:
     """ Check that the current value of Lens is a `DRef` and return it """
     r=lens_repr(self,'dref')
     v=traverse(self, r)
-    assert isdref(v), f"Lens {r} expected DRef, but got '{v}'"
-    return DRef(v)
+    if isdref(v):
+      return DRef(v)
+    elif isrref(v):
+      return rref2dref(v)
+    else:
+      assert isdref(v), f"Lens {r} expected a DRef-like object, got '{v}'"
 
   @property
   def syspath(self)->Path:
