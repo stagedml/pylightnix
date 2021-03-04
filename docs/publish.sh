@@ -20,9 +20,11 @@ cd /tmp/pylightnix_publish
 
 git clone https://github.com/stagedml/pylightnix-docs
 cd pylightnix-docs
+rm "$FT" || true
 cp "$FS" "$FT"
-ln -s -f "$FT" "$FL"
+rm "$FL" || true
+cp "$FT" "$FL"
 git add "$FT"
-git add "$FL" || true
+git add "$FL"
 git commit -m "Add $FT"
 git push

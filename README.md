@@ -25,8 +25,8 @@ With the help of Pylightnix API, applications
 Documentation
 -------------
 
-QuickStart [[PDF]](https://github.com/stagedml/pylightnix-docs/blob/master/Pylightnix-QuickStart-latest.pdf) |
-Manual [[PDF]](https://github.com/stagedml/pylightnix-docs/blob/master/Pylightnix-Manual-latest.pdf) |
+QuickStart [[PDF]](https://raw.github.com/stagedml/pylightnix-docs/master/Pylightnix-QuickStart-latest.pdf) |
+Manual [[PDF]](https://raw.github.com/stagedml/pylightnix-docs/master/Pylightnix-Manual-latest.pdf) |
 API Referece [[MD]](./docs/Reference.md)
 
 Demos:
