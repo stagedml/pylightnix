@@ -22,8 +22,8 @@ With the help of Pylightnix API, applications
   As one example, users may define a Pylightnix stage to depend on top-10 (in
   a user-defined sense) random instances of a trained machine learning model.
 
-Implementation
---------------
+Features
+--------
 
 We tried to meet high development standards. In particular, Pylightnix:
 * Is written in Python 3.7. [Mypy](http://mypy-lang.org/) typing is

@@ -26,12 +26,17 @@ TESTS = $(shell find tests -name '*\.py')
 		--modules \
 			pylightnix.types pylightnix.core pylightnix.build \
 			pylightnix.inplace pylightnix.repl pylightnix.stages \
-			pylightnix.bashlike pylightnix.lens \
-		--search-path  \
-			src /usr/lib/python3.6/ > $@
+			pylightnix.bashlike pylightnix.lens pylightnix.either \
+		--search-path \
+			$(shell python3 -c "import sys; print(' '.join(sys.path))") >$@  # "
 
-.PHONY: docs
-docs: ./docs/Reference.md
+.PHONY: docs-reference
+docs-reference: ./docs/Reference.md
+
+.PHONY: docs-quickstart
+docs-quickstart: docs/QuickStart.pdf
+docs/QuickStart.pdf: docs/QuickStart.tex
+	/bin/sh ./docs/compile.sh $<
 
 .coverage.xml: $(SRC) $(TESTS) .stamp_check
 	rm coverage.xml || true
@@ -97,11 +102,6 @@ demo_repl: docs/demos/REPL.md docs/demos/REPL.py
 
 .PHONY: demos
 demos: demo_mnist demo_hello demo_repl
-
-.PHONY: docs-quickstart
-docs-quickstart: docs/QuickStart.pdf
-docs/QuickStart.pdf: docs/QuickStart.tex
-	/bin/sh ./docs/compile.sh $<
 
 $(WHEEL): $(SRC) $(TESTS)
 	rm -rf build dist || true
