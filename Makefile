@@ -36,8 +36,12 @@ docs-reference: ./docs/Reference.md
 
 .PHONY: docs-quickstart
 docs-quickstart: docs/QuickStart.pdf
-docs/QuickStart.pdf: ${TEX} .stamp_check
+docs/QuickStart.pdf: $(SRC) $(TEX) ./docs/compile.sh .stamp_check
 	/bin/sh ./docs/compile.sh docs/QuickStart.tex
+
+.PHONY: publish-quickstart
+publish-quickstart: docs/QuickStart.pdf
+	/bin/sh ./docs/publish.sh docs/QuickStart.pdf $(VERSION)
 
 .coverage.xml: $(SRC) $(TESTS) .stamp_check
 	rm coverage.xml || true
