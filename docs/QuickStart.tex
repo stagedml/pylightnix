@@ -67,8 +67,9 @@ With the help of Pylightnix API, applications
     may decide to re-create either a whole or a part of the stage object
     collection according to the changes in prerequisites.
   \item Manage the outcomes of \textbf{non-deterministic} stage realizations.
-    As one example, users may define a Pylightnix stage to depend on top-10 (in
-    user-defined sense) random instances of a trained machine learning model.
+    As one example, users may define a Pylightnix stage to depend (in a
+    user-defined sense) on top-10 random instances of a trained machine learning
+    model.
 \end{itemize}
 
 \end{abstract}
@@ -77,7 +78,7 @@ With the help of Pylightnix API, applications
 
 We tried to meet high development standards. In particular, Pylightnix:
 \begin{itemize}
-  \item Is written in Python 3.6. \href{http://mypy-lang.org/}{Mypy} typing is
+  \item Is written in Python 3.7. \href{http://mypy-lang.org/}{Mypy} typing is
     used whenever possible.
   \item Is tested using \href{https://pypi.org/project/hypothesis/}{Hypothesis}.
   \item Documentation is written in a
@@ -85,10 +86,11 @@ We tried to meet high development standards. In particular, Pylightnix:
     programming} style. Most of the code examples shown in this manual were
     checked and evaluated inline by
     \href{https://github.com/gpoore/pythontex}{PythonTex} tool.
-  \item Depends solely on the Python standard library. Optional modules
-    do depend on \href{https://curl.se/}{Curl},
-    \href{https://www.gnu.org/software/wget/}{wget} and
-    \href{https://www.nongnu.org/atool/}{atool} system packages.
+  \item Core modules depend solely on the Python standard library. Optional
+    modules do depend on \href{https://curl.se/}{Curl} and
+    \href{https://www.gnu.org/software/wget/}{Wget} for accessing the Internet
+    and on \href{https://www.nongnu.org/atool/}{Atool} for dealing with
+    compressed files.
   \item Alas, Pylightnix is not a production-ready yet! No means of parallelism
     are provided, network synchronization is yet under development.  We didn't
     check Pylightnix on any operating system besides Linux. We tried our best
@@ -239,18 +241,18 @@ Lets examine how to access the information referenced by the
 the Pylightnix storage.
 
 \begin{pythontexcode}
-  from pylightnix import mklens
-  from os.path import join, isdir
-  print(mklens(fetch_rref).val)      # Interpret as Python value
-  print(mklens(fetch_rref).rref)     # Interpret as RRef (same result)
-  print(mklens(fetch_rref).dref)     # Interpret as DRef
-  print(mklens(fetch_rref).syspath)  # Interpret as a filesystem path
-  assert isdir(join(mklens(fetch_rref).syspath,
-               f"hello-{hello_version}"))  # SRC \label{SRC}
-  print(mklens(fetch_rref).name.val) # Access prerequisite 'name' variable
-                                     # and interpret it as a Python value
-  print(mklens(fetch_rref).url.val)  # Same for 'url' variable
-  print(mklens(fetch_rref).sha256.val)  # Same for 'sha256' variable
+from pylightnix import mklens
+from os.path import join, isdir
+print(mklens(fetch_rref).val)      # Interpret as Python value
+print(mklens(fetch_rref).rref)     # Interpret as RRef (same result)
+print(mklens(fetch_rref).dref)     # Interpret as DRef
+print(mklens(fetch_rref).syspath)  # Interpret as a filesystem path
+assert isdir(join(mklens(fetch_rref).syspath,
+             f"hello-{hello_version}"))  # SRC \label{SRC}
+print(mklens(fetch_rref).name.val) # Access prerequisite 'name' variable
+                                   # and interpret it as a Python value
+print(mklens(fetch_rref).url.val)  # Same for 'url' variable
+print(mklens(fetch_rref).sha256.val)  # Same for 'sha256' variable
 \end{pythontexcode}
 
 Output:
@@ -363,8 +365,8 @@ Output:
     transparently. The definition at line \ref{DEP} allows us to write:
 
     \begin{pythontexcode}
-      print(mklens(build_rref).fetch_ref.rref)
-      print(mklens(build_rref).fetch_ref.url.val)
+    print(mklens(build_rref).fetch_ref.rref)
+    print(mklens(build_rref).fetch_ref.url.val)
     \end{pythontexcode}
 
     Output:
@@ -377,7 +379,7 @@ Output:
 \pagebreak
 \subsection{Execute}
 
-Finally, we locate the GNU Hello binary among the build stage's artifacts and
+Finally, we locate the GNU Hello binary among the build stage artifacts and
 run it.
 
 \begin{pythontexcode}
@@ -389,9 +391,31 @@ Output:
 
 \mystdout
 
-\section{Frequently Asked Questions}
+\section{Rationale}
 
-bla
+\subsection{Why Nix-based?}
+
+There are many solutions in the area of software deployment.
+Besides Nix, we know all the traditional package managers, Docker, AppImage,
+VirtualBox and so on. One property of Nix we want to highlight is it's low
+system requirements. Basically, Nix core needs only a basic file system API
+in order to work. Here we try to follow the trend of keeping the number of
+dependencies, and still provide a competitive set of features.
+
+\subsection{Why functional-style API?}
+
+Several reasones:
+\begin{itemize}
+  \item We think that this way we could track the API changes more easier. We
+    are trying to avoid changes in functions which are already published. We
+    tend to import functions by name to let Python notify us whenever the API is
+    changed.
+  \item Class-based APIs of Python often mislead users into thinking that they
+    could extend it by sub-classing. We don't support extention by-subclassing
+    and so we don't need classes.
+  \item Class-based API wrappers may be created as a standalone module. A one
+    example of such a wrapper is the \textbf{Lens} module.
+\end{itemize}
 
 \end{document}
 
