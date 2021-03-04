@@ -63,13 +63,3 @@ Reference:
 
 * [API Reference](./docs/Reference.md)
 * [Tests](./tests)
-
-
-Rationale
----------
-
-
-( TODO )
-
-
-
