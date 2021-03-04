@@ -1,0 +1,26 @@
+\section{Rationale}
+
+\subsection{Why Nix-based?}
+
+There are many solutions in the area of software deployment.
+Besides Nix, we know all the traditional package managers, Docker, AppImage,
+VirtualBox and so on. One property of Nix we want to highlight is it's low
+system requirements. Basically, Nix core needs only a basic file system API
+in order to work. Here we try to follow the trend of keeping the number of
+dependencies, and still provide a competitive set of features.
+
+\subsection{Why functional-style API?}
+
+There are several reasones:
+\begin{itemize}
+  \item We think that this way we could track the API changes more easier. We
+    are trying to avoid changes in functions which are already published. We
+    tend to import functions by name to let Python notify us whenever the API is
+    changed.
+  \item Class-based APIs of Python often mislead users into thinking that they
+    could extend it by sub-classing. We don't support extention by-subclassing
+    and so we don't need classes.
+  \item Class-based API wrappers may be created as a standalone module. A one
+    example of such a wrapper is the \textbf{Lens} module.
+\end{itemize}
+

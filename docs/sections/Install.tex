@@ -1,0 +1,62 @@
+\section{Install}
+
+Pylightnix could be installed either by running Pip package manager as usual or
+by bundling the package from source. Since we are in deep betas, you probably
+should prefer source-based installation. We will also need
+\href{https://curl.se/}{Curl} and \href{https://www.nongnu.org/atool/}{ATool}
+system packages later in this manual.
+
+\subsection{Install with Pip}
+
+\begin{shellcode}
+$ pip3 install pylightnix
+\end{shellcode}
+
+\subsection{Build from source}
+
+\begin{enumerate}
+\item Clone the repo
+  \begin{shellcode}
+  $ git clone https://github.com/stagedml/pylightnix
+  $ cd pylightnix
+  \end{shellcode}
+\item Either
+  \begin{itemize}
+    \item Setup `PYTHONPATH` to point to the sources.
+      \begin{shellcode}
+      $ export PYTHONPATH="`pwd`/src:$PYTHONPATH"
+      \end{shellcode}
+      Now you could import pylightnix from your applications.
+    \item Build and install pylightnix wheel.
+      \begin{shellcode}
+      $ make wheels
+      $ sudo -H pip3 install --force dist/*whl
+      \end{shellcode}
+    \item Nix users may refer to \href{../default.nix}{default.nix} and
+      \href{../shell.nix}{shell.nix} expressions.
+  \end{itemize}
+\item (Optional) Run the tests.
+\item (Optional) Make docs
+\item (Optional) Build the demos
+\end{enumerate}
+
+\subsection{Install recommended system packages}
+
+Pylightnix utilities rely on Curl and ATool system packages. Installing them
+is highly advised.
+
+\begin{shellcode}
+$ apt-get install -y curl atool      # Use your system's package manager here!
+...
+$ curl --version | head -n1
+curl 7.70.0
+$ aunpack --version | head -n1
+atool 0.39.0
+\end{shellcode}
+
+\subsection{Make sure GNU Autotools are available}
+
+We will also need GNU Autotools for the sake of demonstration. Make sure they
+are installed in the system.
+
+

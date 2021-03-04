@@ -1,0 +1,210 @@
+\section{Quick start}
+
+In this section we illustrate basic principles by defining Pylightnix
+\textbf{stages} required to build \href{https://www.gnu.org/software/hello/}{GNU
+Hello} program. Resulting code could be used as a part of e.g. a
+project-specific build system (but rather unsafe one, since Pylightnix lacks
+build isolation).
+
+\subsection{Defining a simple stage}
+
+The following code defines a Pylightnix \textbf{Stage} entity named
+\texttt{stage\_fetch} containing a sources of GNU Hello program. We call a
+pre-defined \texttt{fetchurl} finction which binds some name, URL, and the
+SHA256 hash string with a built-in algorithm calling well-known \texttt{Wget}
+utility followed by a call to \texttt{Aunpack} script.
+
+\begin{pythontexcode}
+from pylightnix import (Manager, DRef, RRef, fetchurl)
+
+hello_version = '2.10'
+
+def stage_fetch(m:Manager)->DRef: # DRef \label{DREF}
+  return fetchurl(m,
+    name='hello-src',
+    url=f'http://ftp.gnu.org/gnu/hello/hello-{hello_version}.tar.gz',
+    sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b')
+\end{pythontexcode}
+
+\begin{itemize}
+
+  \item Pylightnix stages are Python functions. Calling a stage function
+    \textbf{instantiates} the stage by binding some algorithm with its
+    prerequsites and returns its \textbf{derivation references}. Derivation
+    references may be used to introduce dependencies between stages. Including
+    a derivation reference of one stage into a prerequisites of another stage
+    means that the second stage depends on the first one.
+
+  \item Stage functions take a dependency-resolution \textbf{Manager} context as
+    their first arguments. Managers holds the information about instantiated
+    stages. Users don't need to operate on Managers directly. Instead, they are
+    to pass the top-level stage to one of \texttt{instantiate-} functions.
+    Returned value would include instantiations of all the stage collection.
+
+\end{itemize}
+
+\pagebreak
+\subsection{Accessing stage data}
+
+We want stage data to appeare in the filesystem so we call
+\texttt{instantiate} function first and then pass its result to \texttt{realize}
+function. Realize function realizes a stage or a sequence of stages and returns
+the \textbf{realization reference} describing the realization outcomes.
+
+Pylightnix API defines the \texttt{Lens} 'swiss army knife' for navigating
+through realization data.
+
+\begin{pythontexcode}
+from pylightnix import instantiate, realize, mklens
+from os.path import join, isdir
+
+fetch_rref:RRef = realize(instantiate(stage_fetch))  # RRef \label{RREF}
+print(fetch_rref)
+
+print(mklens(fetch_rref).val)      # Interpret as Python value
+print(mklens(fetch_rref).rref)     # Interpret as RRef (same result)
+print(mklens(fetch_rref).dref)     # Interpret as DRef
+print(mklens(fetch_rref).syspath)  # Interpret as a filesystem path
+assert isdir(join(mklens(fetch_rref).syspath,
+             f"hello-{hello_version}"))  # SRC \label{SRC}
+print(mklens(fetch_rref).name.val) # Access prerequisite 'name' variable
+                                   # and interpret it as a Python value
+print(mklens(fetch_rref).url.val)  # Same for 'url' variable
+print(mklens(fetch_rref).sha256.val)  # Same for 'sha256' variable
+\end{pythontexcode}
+
+Output:
+
+\mysmallstdout
+
+\begin{itemize}
+
+  \item At line \ref{RREF} we \texttt{instantiate} and \texttt{realize} our
+    custom stage to get its realization reference.
+
+  \item Realization is a hash-containing identifier string which could be
+    interpreted as a local filesystem path to a folder containing stage
+    artifacts. The main artifact of \texttt{stage\_fetch} is the unpacked folder
+    containing the sources of GNU Hello application. At line \ref{SRC} we check
+    that this folder does indeed exist.
+
+\end{itemize}
+
+\pagebreak
+\subsection{Defining custom stage}
+
+We define a custom Pylightnix stage named \texttt{stage\_build} to configure
+and build the GNU Hello application out of its sources.
+
+\begin{pythontexcode}
+from tempfile import TemporaryDirectory
+from shutil import copytree
+from os import getcwd, chdir, system
+from pylightnix import (Config, Path, Build, mkconfig, mkdrv,
+  build_wrapper, match_only, dirrw, promise, build_setoutpaths)
+
+def stage_build(m:Manager)->DRef:                            # ST \label{ST}
+  def _config()->Config:                                     # CFG \label{CFG}
+    name:str = 'hello-bin'
+    fetch_ref:DRef = stage_fetch(m)                          # DEP \label{DEP}
+    src:RefPath = [fetch_ref, f'hello-{hello_version}']      # RP1 \label{RP1}
+    bin:RefPath = [promise, 'usr', 'bin', 'hello']           # RP2 \label{RP2}
+    return mkconfig(locals())                                # LOC \label{LOC}
+  def _realize(b:Build)->None:                               # RE \label{RE}
+    build_setoutpaths(b,1)                                   # OP \label{OP}
+    with TemporaryDirectory() as tmp:
+      copytree(mklens(b).src.syspath, join(tmp,'src'))       # LE \label{LE}
+      dirrw(Path(join(tmp,'src')))
+      cwd = getcwd()
+      try:
+        print(f"Building {mklens(b).name.val}")
+        chdir(join(tmp,'src'))
+        system(f'./configure --prefix=/usr')
+        system(f'make')
+        system(f'make install DESTDIR={mklens(b).syspath}')
+      finally:
+        chdir(cwd)
+  return mkdrv(m, config=_config(),
+                  matcher=match_only(),
+                  realizer=build_wrapper(_realize))          # DRV \label{DRV}
+
+build_rref:RRef = realize(instantiate(stage_build))
+print(build_rref)
+\end{pythontexcode}
+
+Output:
+
+\mysmallstdout
+
+\begin{itemize}
+  \item At line \ref{ST} we define a stage function. Similar to
+    \texttt{stage\_fetch}, it doesn't take any arguments besides the
+    Manager utility object.
+  \item It is more convenient to start reading the stage code from the end.
+    At line \ref{DRV} we see the \textbf{mkdrv} function call which
+    introduces our stage to Pylightnix. Its three named arguments represent
+    three main components of Pylightnix stages:
+    \begin{itemize}
+      \item A \textbf{Config} dictionary-like object represents stage's
+        prerequisites. Configs may contain any JSON-serializable fields,
+        that is strings, numbers, booleans, other lists or dicts which
+        match the same rules, etc. Derivation references are represented
+        with Python strings and thus could also be included.
+      \item A \textbf{Matcher} lets Pylightnix decide whether an
+        existing stage object matches its Config specification. As a result
+        the library may either run stage's realizer or re-use existing
+        object or objects.
+      \item A \textbf{Realizer} function knows how to create a new
+        stage object out of its Config prerequisites.
+    \end{itemize}
+    In this example we expect exactly one outcome so we use a
+    \textbf{match\_only} matcher which either returns the only existing
+    stage object or asks Pylightnix for a realization.
+
+  \item At line \ref{CFG} we define a dictionary containing stage's build
+    prerequisites. For convenience we user a Python trick: define fields as
+    a variables of a \texttt{\_config} function and then use
+    \textbf{locals()} to collect them into a dict. Pylightnix remembers
+    stage prerequisites. Changing any of them would trigger rebuilding.
+
+  \item At lines \ref{RP1} and \ref{RP2} we define \textbf{RefPath}s lists
+    which both represent relative paths in the filesystem. A first item of
+    a RefPath should be either a \textbf{DRef} derivation reference or
+    a \textbf{promise} marker. A promise will be resolved to a future
+    realization path of the stage that makes it.
+
+  \item By including derivation reference to \texttt{stage\_fetch} into
+    the config at line \ref{RP1}, we introduce a dependency from
+    \texttt{stage\_build} to \texttt{stage\_fetch}! The dependency would
+    make Pylightnix notice changes in \texttt{stage\_fetch} and rebuild all
+    the dependent stage as expected.
+
+  \item \texttt{mklens} can navigate through dependency reference fields
+    transparently. The definition at line \ref{DEP} allows us to write:
+
+    \begin{pythontexcode}
+    print(mklens(build_rref).fetch_ref.rref)
+    print(mklens(build_rref).fetch_ref.url.val)
+    \end{pythontexcode}
+
+    Output:
+
+    \mysmallstdout
+
+\end{itemize}
+
+\pagebreak
+\subsection{Execute}
+
+Finally, we locate the GNU Hello binary and run it.
+
+\begin{pythontexcode}
+from subprocess import run, PIPE
+print(run([mklens(build_rref).bin.syspath], stdout=PIPE).stdout.decode('utf-8'))
+\end{pythontexcode}
+
+Output:
+
+\mystdout
+
+

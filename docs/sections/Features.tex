@@ -1,0 +1,25 @@
+\section{Features}
+
+We tried to meet high development standards. In particular, Pylightnix:
+\begin{itemize}
+  \item Is written in Python 3.7. \href{http://mypy-lang.org/}{Mypy} typing is
+    used whenever possible.
+  \item Is tested using \href{https://pypi.org/project/hypothesis/}{Hypothesis}.
+  \item Documentation is written in a
+    \href{https://en.wikipedia.org/wiki/Literate_programming}{literate
+    programming} style. Most of the code examples shown in this manual were
+    checked and evaluated inline by
+    \href{https://github.com/gpoore/pythontex}{PythonTex} tool.
+  \item Core modules depend solely on the Python standard library. Optional
+    modules do depend on \href{https://curl.se/}{Curl} and
+    \href{https://www.gnu.org/software/wget/}{Wget} for accessing the Internet
+    and on \href{https://www.nongnu.org/atool/}{Atool} for dealing with
+    compressed files.
+  \item Alas, Pylightnix is not a production-ready yet! No means of parallelism
+    are provided, network synchronization is yet under development.  We didn't
+    check Pylightnix on any operating system besides Linux. We tried our best
+    to make Pylightnix' storage operations atomic. Among other benefits,
+    this allows running several instances of the library on a single
+    storage at once.
+\end{itemize}
+
