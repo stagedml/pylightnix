@@ -1,5 +1,5 @@
 { pkgs ?  import <nixpkgs> {}
-, python ? pkgs.python36
+, python ? pkgs.python37
 , doCheck ? true
 } :
 
