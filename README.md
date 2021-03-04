@@ -22,32 +22,12 @@ With the help of Pylightnix API, applications
   As one example, users may define a Pylightnix stage to depend on top-10 (in
   a user-defined sense) random instances of a trained machine learning model.
 
-Features
---------
-
-We tried to meet high development standards. In particular, Pylightnix:
-* Is written in Python 3.7. [Mypy](http://mypy-lang.org/) typing is
-  used whenever possible.
-* Is tested using [Hypothesis](https://pypi.org/project/hypothesis/).
-* Documentation is written in a [literate
-  programming](ttps://en.wikipedia.org/wiki/Literate_programming) style. Most of
-  the code examples shown in this manual were checked and evaluated inline by
-  [PythonTex](https://github.com/gpoore/pythontex) tool.
-* Core modules depends solely on the Python standard library. Optional modules
-  do depend on [Curl](https://curl.se/),
-  [Wget](https://www.gnu.org/software/wget/) system packages for downloading
-  files from the Internet and on
-  [Atool](https://www.nongnu.org/atool/) system package for working with
-  archives.
-* Alas, Pylightnix is not a production-ready yet! No means of parallelism
-  are provided, network synchronization is yet under development. We didn't
-  check Pylightnix on any operating system besides Linux. We tried our best
-  to make Pylightnix' storage operations atomic. Among other benefits,
-  this allows running several instances of the library on a single
-  storage at once.
-
 Documentation
 -------------
+
+QuickStart [[PDF]](https://github.com/stagedml/pylightnix-docs/QuickStart.pdf) |
+Manual [[PDF]](https://github.com/stagedml/pylightnix-docs/Manual.pdf) |
+API Referece [[MD]](./docs/Reference.md)
 
 Demos:
 
@@ -56,10 +36,4 @@ Demos:
   managing experiments.
 * [MNIST demo](./docs/demos/MNIST.md) shows machine learning specifics.
 * [REPL demo](./docs/demos/REPL.md) illustrates how to debug stages using
-  Read-Eval-Print-friendly routines
-  [(wiki)](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop).
 
-Reference:
-
-* [API Reference](./docs/Reference.md)
-* [Tests](./tests)
