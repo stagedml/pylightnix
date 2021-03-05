@@ -3,14 +3,14 @@
 Pylightnix
 ==========
 
-Pylightnix is a Python domain specific language library for managing
+Pylightnix is a Python domain-specific language library for managing
 filesystem-based immutable data objects, inspired by
 [Purely Functional Software Deployment Model thesis by Eelco Dolstra](https://edolstra.github.io/pubs/phd-thesis.pdf) and the [Nix](https://nixos.org) package manager. In contrast to Nix, Pylightnix
 is primarily focused on managing the data for computer science experiments.
 Traditional use case of domain-specific package management, as well as other
 [blackboard application use cases](https://en.wikipedia.org/wiki/Blackboard_design_pattern) are also supported.
+Pylightnix applications:
 
-With the help of Pylightnix API, applications
 * Store the data in form of linked immutable filesystem objects here
   called **stages**.
 * Create (in our terms, **realize**) such objects, access its
