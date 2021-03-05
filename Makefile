@@ -134,7 +134,7 @@ version:
 .PHONY: install
 install: # To be run by root
 	test "$(shell whoami)" = "root"
-	test -f $(WHEEL) || ( echo 'run `make wheels` first'; exit 1; )
+	test -f $(WHEEL) || ( echo 'run `make wheel` first'; exit 1; )
 	pip3 install --force $(WHEEL)
 	pip3 hash $(WHEEL) > .stamp_installhash_$(HOSTNAME)
 

@@ -15,32 +15,33 @@ $ pip3 install pylightnix
 \subsection{Build from source}
 
 \begin{enumerate}
-\item Clone the repo
-  \begin{shellcode}
-  $ git clone https://github.com/stagedml/pylightnix
-  $ cd pylightnix
-  \end{shellcode}
-\item Either
-  \begin{itemize}
-    \item Setup `PYTHONPATH` to point to the sources.
-      \begin{shellcode}
-      $ export PYTHONPATH="`pwd`/src:$PYTHONPATH"
-      \end{shellcode}
-      Now you could import pylightnix from your applications.
-    \item Build and install pylightnix wheel.
-      \begin{shellcode}
-      $ make wheels
-      $ sudo -H pip3 install --force dist/*whl
-      \end{shellcode}
-    \item Nix users may refer to \href{../default.nix}{default.nix} and
-      \href{../shell.nix}{shell.nix} expressions.
-  \end{itemize}
-\item (Optional) Run the tests.
-\item (Optional) Make docs
-\item (Optional) Build the demos
+  \item Clone the repo
+    \begin{shellcode}
+    $ git clone https://github.com/stagedml/pylightnix
+    $ cd pylightnix
+    \end{shellcode}
+  \item Either
+    \begin{itemize}
+      \item Setup `PYTHONPATH` to point to the sources.
+        \begin{shellcode}
+        $ export PYTHONPATH="`pwd`/src:$PYTHONPATH"
+        \end{shellcode}
+      \item Build and install pylightnix wheel.
+        \begin{shellcode}
+        $ make wheel
+        $ sudo -H make install
+        \end{shellcode}
+      \item Nix users may refer to \texttt{default.nix} and
+        \texttt{shell.nix} expressions.
+    \end{itemize}
+  % \item (Optional) Run the tests.
+  % \item (Optional) Make docs
+  % \item (Optional) Build the demos
 \end{enumerate}
 
-\subsection{Install recommended system packages}
+\subsection{Open the development environment}
+
+\subsection{Install the recommended system packages}
 
 Pylightnix utilities rely on Curl and ATool system packages. Installing them
 is highly advised.
