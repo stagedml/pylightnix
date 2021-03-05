@@ -15,8 +15,8 @@
 """ Functions for moving parts of the storage to and from archives.  """
 
 from pylightnix.imports import (Popen, dirname, basename, remove, join,
-                                relpath, rename, splitext, mkdtemp, basename,
-                                isfile, isdir, shutil_copy)
+                                relpath, rename, splitext, mkdtemp, isfile,
+                                isdir, shutil_copy)
 from pylightnix.types import (RRef, List, Dict, Path, Iterable, Optional,
                               SPath, Manager, DRef, Config, RConfig, Build,
                               RRefGroup)
