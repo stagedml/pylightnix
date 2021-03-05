@@ -1,18 +1,23 @@
 \section{Quick start}
 
-In this section we illustrate basic principles by defining Pylightnix
-\textbf{stages} required to build \href{https://www.gnu.org/software/hello/}{GNU
-Hello} program. Resulting code could be used as a part of e.g. a
-project-specific build system (but rather unsafe one, since Pylightnix lacks
-build isolation).
+We illustrate Pylightnix principles by showing how to use it as a Nix-like build
+system. We will define two \textbf{stages} required to build
+\href{https://www.gnu.org/software/hello/}{GNU Hello} application.
 
-\subsection{Defining a simple stage}
+Note that despite using similar approaches, Pylightnix doesn't aim to be a
+direct Nix replacement. It lacks many features you would probably expect of a
+OS-level package management tool. It has no multiprocessing support neither it
+has a build isolation. In contrast, Pylightnix is a bare-bone library you could
+easily integrate into packages to handle project-level data management
+problems.
 
-The following code defines a Pylightnix \textbf{Stage} entity named
-\texttt{stage\_fetch} containing a sources of GNU Hello program. We call a
-pre-defined \texttt{fetchurl} finction which binds some name, URL, and the
-SHA256 hash string with a built-in algorithm calling well-known \texttt{Wget}
-utility followed by a call to \texttt{Aunpack} script.
+\subsection{Defining a Stage}
+
+The following Python function defines a Pylightnix \textbf{Stage} entity named
+\texttt{stage\_fetch}. In its body we use a pre-defined \texttt{fetchurl}
+finction which binds some name, URL, and the SHA256 hash string with a built-in
+algorithm calling \texttt{Wget} and \texttt{Aunpack} tools to download GNU Hello
+sources from the Internet.
 
 \begin{pythontexcode}
 from pylightnix import (Manager, DRef, RRef, fetchurl)
@@ -28,31 +33,35 @@ def stage_fetch(m:Manager)->DRef: # DRef \label{DREF}
 
 \begin{itemize}
 
-  \item Pylightnix stages are Python functions. Calling a stage function
-    \textbf{instantiates} the stage by binding some algorithm with its
-    prerequsites and returns its \textbf{derivation references}. Derivation
-    references may be used to introduce dependencies between stages. Including
-    a derivation reference of one stage into a prerequisites of another stage
-    means that the second stage depends on the first one.
+  \item Indeed, Pylightnix stages are Python functions. By calling a stage
+    function we register or \textbf{instantiate} this stage, that is, we bind
+    some realization algorithm with its input arguments here called
+    prerequisites.
 
-  \item Stage functions take a dependency-resolution \textbf{Manager} context as
-    their first arguments. Managers holds the information about instantiated
-    stages. Users don't need to operate on Managers directly. Instead, they are
-    to pass the top-level stage to one of \texttt{instantiate-} functions.
-    Returned value would include instantiations of all the stage collection.
+  \item Stage function takes a dependency-resolution \textbf{Manager} context as
+    its first arguments. The Manager holds the information about instantiated
+    stages. Users normally shouldn't operate on Managers or call stage functions
+    directly. Instead, they are to pass the top-level stage to one of Pylightnix
+    top-level \texttt{instantiate-} functions.
+
+  \item The return value of a stage function is a \textbf{derivation reference}.
+    The primary role of derivation references is to introduce new dependencies
+    between stages. By including a derivation reference of one stage into
+    prerequisites of another stage we say that the second stage depends on the
+    first stage.
+
 
 \end{itemize}
 
 \pagebreak
-\subsection{Accessing stage data}
+\subsection{Accessing the Data}
 
-We want stage data to appeare in the filesystem so we call
-\texttt{instantiate} function first and then pass its result to \texttt{realize}
-function. Realize function realizes a stage or a sequence of stages and returns
-the \textbf{realization reference} describing the realization outcomes.
-
-Pylightnix API defines the \texttt{Lens} 'swiss army knife' for navigating
-through realization data.
+The primary method of accessing stage data is to call \texttt{realize} function,
+passing the \texttt{instantiated} stage as its argument. Pylightnix either runs
+the algorithm associated with a stage or re-uses existing realization. In both
+cases, a \textbf{realization reference} handle is returned. We then use a
+\texttt{Lens} helper which is a 'swiss army knife' for navigating through the
+Pylihgtnix storage.
 
 \begin{pythontexcode}
 from pylightnix import instantiate, realize, mklens
@@ -82,19 +91,19 @@ Output:
   \item At line \ref{RREF} we \texttt{instantiate} and \texttt{realize} our
     custom stage to get its realization reference.
 
-  \item Realization is a hash-containing identifier string which could be
-    interpreted as a local filesystem path to a folder containing stage
-    artifacts. The main artifact of \texttt{stage\_fetch} is the unpacked folder
-    containing the sources of GNU Hello application. At line \ref{SRC} we check
-    that this folder does indeed exist.
+  \item Realization reference is a string identifier which could be converted to
+    a local filesystem path within the storage. This path contains the sources
+    of GNU Hello application. At line \ref{SRC} we check that this path is
+    valid.
 
 \end{itemize}
 
 \pagebreak
-\subsection{Defining custom stage}
+\subsection{Defining a Custom Stage}
 
-We define a custom Pylightnix stage named \texttt{stage\_build} to configure
-and build the GNU Hello application out of its sources.
+In this section we define a custom Pylightnix stage named \texttt{stage\_build}.
+In its algoritm we provide instructions how to build the GNU Hello application
+out of its sources.
 
 \begin{pythontexcode}
 from tempfile import TemporaryDirectory
@@ -137,50 +146,54 @@ Output:
 \mysmallstdout
 
 \begin{itemize}
-  \item At line \ref{ST} we define a stage function. Similar to
-    \texttt{stage\_fetch}, it doesn't take any arguments besides the
-    Manager utility object.
-  \item It is more convenient to start reading the stage code from the end.
-    At line \ref{DRV} we see the \textbf{mkdrv} function call which
-    introduces our stage to Pylightnix. Its three named arguments represent
-    three main components of Pylightnix stages:
+  \item At line \ref{ST} we define a stage function.
+
+  \item It is more convenient to start reading the stage code from the end.  At
+    line \ref{DRV} we call the \textbf{mkdrv} stage constructor. The function
+    has the following arguments:
+
     \begin{itemize}
-      \item A \textbf{Config} dictionary-like object represents stage's
-        prerequisites. Configs may contain any JSON-serializable fields,
-        that is strings, numbers, booleans, other lists or dicts which
-        match the same rules, etc. Derivation references are represented
-        with Python strings and thus could also be included.
-      \item A \textbf{Matcher} lets Pylightnix decide whether an
-        existing stage object matches its Config specification. As a result
-        the library may either run stage's realizer or re-use existing
-        object or objects.
-      \item A \textbf{Realizer} function knows how to create a new
-        stage object out of its Config prerequisites.
+
+      \item \textbf{Manager} utility object. Just pass the Manager we get from
+        the stage function arguments.
+
+      \item \textbf{Config} should be a dictionary-like object representing
+        stage's prerequisites. Configs may only contain JSON-serializable
+        fields, that is strings, numbers, booleans, lists or other dictionaries.
+
+      \item \textbf{Matcher} function lets Pylightnix decide whether to run
+        realizer or to re-use an existing object or objects.
+
+      \item \textbf{Realizer} function knows how to create a new stage object
+        out of prerequisites.
+
     \end{itemize}
-    In this example we expect exactly one outcome so we use a
-    \textbf{match\_only} matcher which either returns the only existing
-    stage object or asks Pylightnix for a realization.
 
-  \item At line \ref{CFG} we define a dictionary containing stage's build
-    prerequisites. For convenience we user a Python trick: define fields as
-    a variables of a \texttt{\_config} function and then use
-    \textbf{locals()} to collect them into a dict. Pylightnix remembers
-    stage prerequisites. Changing any of them would trigger rebuilding.
+    In this example we expect to get exactly one outcome. We use a simple
+    \textbf{match\_only} matcher which ensures that our stage has only one
+    realization.
 
-  \item At lines \ref{RP1} and \ref{RP2} we define \textbf{RefPath}s lists
-    which both represent relative paths in the filesystem. A first item of
-    a RefPath should be either a \textbf{DRef} derivation reference or
-    a \textbf{promise} marker. A promise will be resolved to a future
-    realization path of the stage that makes it.
+  \item At line \ref{CFG} we define our stage's build prerequisites. For
+    convenience we user a Python lifehack - call \texttt{local()} to convert
+    local variables of \texttt{\_config()} into a dictionary.
 
-  \item By including derivation reference to \texttt{stage\_fetch} into
-    the config at line \ref{RP1}, we introduce a dependency from
-    \texttt{stage\_build} to \texttt{stage\_fetch}! The dependency would
-    make Pylightnix notice changes in \texttt{stage\_fetch} and rebuild all
-    the dependent stage as expected.
+  \item At line \ref{RP1} we define a \textbf{RefPath}, a path, relative to a
+    stage realization folder. This particular path refers to a GNU hello source
+    folder which we expect to see among \texttt{stage\_fetch}'s data.
+    \texttt{mklens} knows how to convert such paths into a regulat system paths.
 
-  \item \texttt{mklens} can navigate through dependency reference fields
-    transparently. The definition at line \ref{DEP} allows us to write:
+  \item At line \ref{RP2} we also define a \textbf{Promise Path}. Pylightnix
+    will replace promise markers with a derivation reference of the stage
+    being built and checks that said object does really exist in the filesystem.
+
+  \item By mentioning derivation \texttt{fetch\_ref} at line \ref{DEP}, we say
+    that \texttt{stage\_build} depends on \texttt{stage\_fetch}. Later we use
+    this dependency at line \ref{LE} to access the \texttt{stage\_fetch}'s
+    output data.
+
+  \item With \texttt{mklens} we could explore dependencies in-depth. The
+    definition at line \ref{DEP} allows us to read the parent's prerequisites as
+    follows:
 
     \begin{pythontexcode}
     print(mklens(build_rref).fetch_ref.rref)
