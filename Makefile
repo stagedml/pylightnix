@@ -39,9 +39,19 @@ docs-quickstart: docs/QuickStart.pdf
 docs/QuickStart.pdf: $(SRC) $(TEX) ./docs/compile.sh .stamp_check
 	/bin/sh ./docs/compile.sh docs/QuickStart.tex
 
+.PHONY: docs-manual
+docs-manual: docs/Manual.pdf
+docs/Manual.pdf: $(SRC) $(TEX) ./docs/compile.sh .stamp_check
+	/bin/sh ./docs/compile.sh docs/Manual.tex
+
 .PHONY: publish-quickstart
 publish-quickstart: docs/QuickStart.pdf
 	/bin/sh ./docs/publish.sh docs/QuickStart.pdf $(VERSION)
+
+.PHONY: publish-manual
+publish-manual: docs/Manual.pdf
+	/bin/sh ./docs/publish.sh docs/Manual.pdf $(VERSION)
+
 
 .coverage.xml: $(SRC) $(TESTS) .stamp_check
 	rm coverage.xml || true

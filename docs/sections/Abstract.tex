@@ -8,18 +8,16 @@ Software Deployment Model thesis by Eelco Dolstra} and the
 is primarily focused on managing the data for computer science experiments.
 Traditional use case of domain-specific package management, as well as other
 \href{https://en.wikipedia.org/wiki/Blackboard_design_pattern}{blackboard
-application use cases} are also supported.
+application use cases} are supported. Pylightnix applications:
 
-With the help of Pylightnix API, applications
 \begin{itemize}
   \item Store the data in form of linked immutable filesystem objects here
     called \textbf{stages}.
-  \item Create (in our terms, \textbf{realize}) such objects, access its
+  \item Create (or, in our terms, \textbf{realize}) such objects, access its
     data, navigate through dependencies.
-  \item Re-run realization algorithms whenever inputs change. Pylightnix
-    may decide to re-create either a whole or a part of the stage object
-    collection according to the changes in prerequisites.
-  \item Manage the outcomes of \textbf{non-deterministic} stage realizations.
+  \item Manage multiple object instances by setting up the \textbf{match}
+    logic.
+  \item Handle the outcomes of \textbf{non-deterministic} stage realizations.
     As one example, users may define a Pylightnix stage to depend (in a
     user-defined sense) on top-10 random instances of a trained machine learning
     model.
