@@ -3,14 +3,18 @@
 } :
 let
   mypython = pkgs.python37.withPackages (
-    pp: with pp; [
+    pp: let
+      pyls = pp.python-language-server.override { providers=["pycodestyle"]; };
+      pyls-mypy = pp.pyls-mypy.override { python-language-server=pyls; };
+    in with pp; [
     ipython
     hypothesis
     pytest
     pytest-mypy
     Pweave
     coverage
-    python-language-server
+    pyls
+    pyls-mypy
     pyyaml
     wheel
   ]);
@@ -41,9 +45,6 @@ let
     };
   };
 
-  pyls = mypython.pkgs.python-language-server.override { providers=["pycodestyle"]; };
-  pyls-mypy = mypython.pkgs.pyls-mypy.override { python-language-server=pyls; };
-
   env = stdenv.mkDerivation {
     name = "buildenv";
     buildInputs =
@@ -52,8 +53,6 @@ let
     [
       gnumake
       mypython
-      pyls
-      pyls-mypy
       pydoc-markdown
 
       (let
