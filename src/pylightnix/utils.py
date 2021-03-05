@@ -128,7 +128,7 @@ def dirhash(path:Path, verbose:bool=False)->Hash:
   """
   assert isdir(path), f"dirhash() expects directory path, not '{path}'"
 
-  def _iter()->Iterable[bytes]:
+  def _iter()->Iterable[Tuple[str,bytes]]:
     for root, dirs, filenames in walk(abspath(path), topdown=True):
       for filename in sorted(filenames):
         if len(filename)>0 and filename[0] != '_':
@@ -330,9 +330,9 @@ def readjson(json_path:str)->Any:
   with open(json_path, "r") as f:
     return json_load(f)
 
-A=TypeVar('A')
-B=TypeVar('B')
-def trycatch(f:Callable[[],A], default:A, mp:Callable[[A],B]=lambda x:x)->B:
+_A=TypeVar('_A')
+_B=TypeVar('_B')
+def trycatch(f:Callable[[],_A], default:_A, mp:Callable[[_A],_B])->_B:
   """ FIXME: don't handle all exceptions, handle only string-related ones """
   try:
     return mp(f())
@@ -342,50 +342,52 @@ def trycatch(f:Callable[[],A], default:A, mp:Callable[[A],B]=lambda x:x)->B:
     return mp(default)
 
 def tryreadjson(json_path:str)->Optional[Any]:
-  return trycatch(partial(readjson,json_path=json_path),None)
+  none:Optional[Any]=None
+  return trycatch(partial(readjson,json_path=json_path),none,lambda x:x)
 
 C=TypeVar('C')
 def maybereadjson(path:str,default:Any,mp:Callable[[Any],C])->C:
   return trycatch(partial(readjson,json_path=path),default,mp)
 
 def tryreadstr(path:str)->Optional[str]:
-  return trycatch(partial(readstr, path=path),None)
+  none:Optional[str]=None
+  return trycatch(partial(readstr, path=path),none,lambda x:x)
 
 D=TypeVar('D')
 def maybereadstr(path:str,default:str,mp:Callable[[str],D])->D:
   return trycatch(partial(readstr, path=path),default,mp)
 
 def tryreadjson_def(json_path:str, default:Any)->Any:
-  return trycatch(partial(readjson,json_path=json_path),default)
+  return trycatch(partial(readjson,json_path=json_path),default,lambda x:x)
 
 def tryreadstr_def(path:str, default:str)->str:
-  return trycatch(partial(readstr, path=path),default)
+  return trycatch(partial(readstr, path=path),default,lambda x:x)
 
 def tryread(path:Path)->Optional[str]:
-  return trycatch(partial(readstr,path=path),None)
+  none:Optional[str]=None
+  return trycatch(partial(readstr,path=path),none,lambda x:x)
 
 def tryread_def(path:Path, default:str)->str:
-  return trycatch(partial(readstr,path=path),default)
+  return trycatch(partial(readstr,path=path),default,lambda x:x)
 
 def trywrite(path:Path, data:str)->bool:
   def _do():
     writestr(path,data)
     return True
-  return trycatch(_do,False)
+  return trycatch(_do,False,lambda x:x)
 
 def try_executable(name:str,
                    envname:str,
                    not_found_message:Optional[str],
-                   not_found_warning:Optional[str])->Callable[[],Optional[str]]:
+                   not_found_warning:Optional[str])->Callable[[],str]:
   e=environ.get(envname)
   if e is None:
     e=find_executable(name)
   if e is None:
     warning(not_found_message)
     warning(not_found_warning)
-    def _err():
+    def _err()->str:
       assert False, not_found_message
-      return None
     return _err
   else:
     info(f"Using {name} system executable: {e}")
@@ -431,7 +433,7 @@ def kahntsort(nodes:Iterable[Any],
 
   return None if cnt>sz else acc
 
-def dagroots(sorted_nodes:Iterable[Any],
+def dagroots(sorted_nodes:List[Any],
              inbounds:Callable[[Any],Set[Any]])->Set[Any]:
   """ Return a set og root nodes of a DAG."""
   nonroots=set()

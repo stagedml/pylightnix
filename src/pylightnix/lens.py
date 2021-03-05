@@ -216,7 +216,7 @@ class Lens:
     elif isrref(v):
       return rref2dref(v)
     else:
-      assert isdref(v), f"Lens {r} expected a DRef-like object, got '{v}'"
+      assert False, f"Lens {r} expected a DRef-like object, got '{v}'"
 
   @property
   def syspath(self)->Path:

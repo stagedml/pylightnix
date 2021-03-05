@@ -480,5 +480,5 @@ R = TypeVar('R',bound=SupportsAbs[DRef])
 Stage = Callable[[Manager],R]
 
 
-Key = Callable[[RRef],Optional[Union[int,float,str]]]
+Key = Callable[[RRef,SPath],Optional[Union[int,float,str]]]
 

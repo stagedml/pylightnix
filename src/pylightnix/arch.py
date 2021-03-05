@@ -27,7 +27,8 @@ from pylightnix.core import (store_deepdeps, store_deepdepRrefs,
                              match_all, mkdrv, realize, realizeMany,
                              instantiate, rrefs2groups, store_deref, rrefdata,
                              config_name, tag_out, store_deref_, realizeGroups,
-                             match, exact, groups2rrefs)
+                             match, exact, groups2rrefs,
+                             config_substitutePromises)
 from pylightnix.build import (build_setoutgroups, build_wrapper)
 from pylightnix.utils import (try_executable, dirrm)
 
@@ -55,7 +56,6 @@ def pack(roots:List[RRef], out:Path, S=None)->None:
     pass
   rrefs=store_deepdepRrefs(roots,S)
   store_holder=dirname(storage(S))
-  retcode=0
   done=False
   try:
     for rref in rrefs | set(roots):
@@ -105,9 +105,9 @@ def copyclosure(rrefgs_S:Iterable[RRefGroup], S:SPath, D:Optional[SPath]=None)->
 
     dref_S:DRef=rref2dref(rrefg_S[tag_out()])
 
-    def _stage(m:Manager, dref:DRef, cfg:RConfig)->DRef:
+    def _stage(m:Manager, dref:DRef, cfg:Config)->DRef:
       # print(f"Instantiating {config_name(cfg)}")
-      for dep_dref in config_deps(cfg):
+      for dep_dref in config_deps(config_substitutePromises(cfg,dref)):
         dep=_stage(m, dep_dref, store_config_(dep_dref,S=S))
         assert dep==dep_dref, f"{dep} != {dep_dref}"
 

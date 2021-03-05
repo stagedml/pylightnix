@@ -84,10 +84,9 @@ def mkbuild(S:SPath, dref:DRef, context:Context, buildtime:bool=True)->Build:
   timeprefix=timestring() if buildtime else None
   return Build(mkbuildargs(S,dref,context,timeprefix,{},{}))
 
-B=TypeVar('B')
-
-def build_wrapper_(f:Callable[[B],None],
-                   ctr:Callable[[BuildArgs],B],
+_B=TypeVar('_B')
+def build_wrapper_(f:Callable[[_B],None],
+                   ctr:Callable[[BuildArgs],_B],
                    starttime:Optional[str]=None,
                    stoptime:Optional[str]=None)->Realizer:
   """ Build Adapter which convers user-defined realizers which use
@@ -176,7 +175,7 @@ def build_markstop(b:Build, buildstop:Optional[str])->None:
 
 def store_buildelta(rref:RRef,S=None)->Optional[float]:
   def _gettime(fn)->Optional[float]:
-    ts=tryread(join(store_rref2path(rref,S),fn))
+    ts=tryread(Path(join(store_rref2path(rref,S),fn)))
     return parsetime(ts) if ts is not None else None
   bb=_gettime('__buildtime__.txt')
   be=_gettime('__buildstop__.txt')

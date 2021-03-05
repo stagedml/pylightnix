@@ -306,7 +306,7 @@ def store_initialize(custom_store:Optional[str]=None,
     PYLIGHTNIX_TMP=custom_tmp
   makedirs(PYLIGHTNIX_TMP, exist_ok=True)
 
-  assert_store_initialized(PYLIGHTNIX_STORE)
+  assert_store_initialized(SPath(PYLIGHTNIX_STORE))
 
 def store_dref2path(r:DRef,S=None)->Path:
   (dhash,nm)=undref(r)
@@ -410,15 +410,24 @@ def rootdrefs(S:Optional[SPath]=None)->Set[DRef]:
   """ Return root DRefs of the storage `S` as a set """
   def _inb(x):
     return store_deps([x],S)
-  return dagroots(kahntsort(alldrefs(S), _inb), _inb)
+  topsorted=kahntsort(alldrefs(S), _inb)
+  assert topsorted is not None, (
+    f"Falied to topologically sort the derivations of {S}. This "
+    f"probably means that the storage is damaged")
+  return dagroots(topsorted, _inb)
 
 def rootrrefs(S:Optional[SPath]=None)->Set[RRef]:
   """ Return root RRefs of the storage `S` as a set """
   def _inb(x):
     return store_depRrefs([x],S)
-  return dagroots(kahntsort(allrrefs(S), _inb), _inb)
+  topsorted=kahntsort(allrrefs(S), _inb)
+  assert topsorted is not None, (
+    f"Falied to topologically sort the realizations of {S}. This "
+    f"probably means that the storage is damaged")
+  return dagroots(topsorted, _inb)
 
-def rrefdata(rref:RRef,S=None)->Iterable[Tuple[str,List[str],List[str]]]:
+def rrefdata(rref:RRef,S=None)->Iterable[Path]:
+  """ Return the paths of top-level artifacts """
   root=store_rref2path(rref,S)
   for fd in scandir(root):
     if not (fd.is_file() and fd.name in PYLIGHTNIX_RESERVED):
@@ -485,7 +494,7 @@ def store_buildtime(rref:RRef, S=None)->Optional[str]:
 
   Buildtime is the time when the realization process has started. Some
   realizations may not provide this information. """
-  return tryread(join(store_rref2path(rref,S),'__buildtime__.txt'))
+  return tryread(Path(join(store_rref2path(rref,S),'__buildtime__.txt')))
 
 def store_tag(rref:RRef,S=None)->Tag:
   """ Return the [Tag](#pylightnix.types.tag) of a Realization. Default Tag

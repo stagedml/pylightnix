@@ -100,14 +100,14 @@ def fetchurl2(m:Manager,
 
   if sha256 is None and sha1 is None:
     if isfile(url):
-      sha256=filehash(url)
+      sha256=filehash(Path(url))
       url=f'file://{url}'
     else:
       assert False, ("Either `sha256` or `sha1` arguments should be specified "
                      "for URLs")
 
   def _config()->dict:
-    args={'name':name}
+    args:dict={'name':name}
     if sha1 is not None:
       args.update({'sha1':sha1})
     if sha256 is not None:

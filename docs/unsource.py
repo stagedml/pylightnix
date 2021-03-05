@@ -3,15 +3,16 @@
 import collections
 import pathlib
 import sys
+from typing import Dict, List
 
-sources = collections.defaultdict(list)
+sources:Dict[str,List[str]] = collections.defaultdict(list)
 
 pytxcode = sys.argv[1]
 dstsource = sys.argv[2] if len(sys.argv)==3 else "pythontex_sources"
 with open(pytxcode, encoding='utf8') as f:
   in_source = False
   spaces_to_trim = None
-  source_name = None
+  source_name = 'source'
   for line in f:
     if line.startswith('=>PYTHONTEX#'):
       in_source = True

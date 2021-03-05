@@ -47,7 +47,7 @@ def test_pack1()->None:
       return s3
 
     rref3=realize(instantiate(_stage,S=S))
-    arch_path=join(T,'archive.zip')
+    arch_path=Path(join(T,'archive.zip'))
     pack([rref3], arch_path, S=S)
     unpack(arch_path, S=S)
     assert isfile(arch_path)
@@ -65,7 +65,7 @@ def test_pack2(stages)->None:
     for nstage,stage in enumerate(stages):
       rgs=realizeGroups(instantiate(stage,S=S1))
       for ngroup,rg in enumerate(rgs):
-        ap=join(T1,f'archive_{nstage:02d}_{ngroup:02d}.zip')
+        ap=Path(join(T1,f'archive_{nstage:02d}_{ngroup:02d}.zip'))
         print(f'Packing {ap}')
         pack(groups2rrefs([rg]), ap, S=S1)
         archives.append(ap)
@@ -76,7 +76,7 @@ def test_pack2(stages)->None:
   with setup_storage2('test_pack_dst') as (T2,S2):
     for ap in archives:
       print(f'Unpacking {ap}')
-      unpack(ap, S=S2)
+      unpack(Path(ap), S=S2)
 
   assert set(alldrefs(S=S1)) == set(alldrefs(S=S2))
   assert set(allrrefs(S=S1)) == set(allrrefs(S=S2))

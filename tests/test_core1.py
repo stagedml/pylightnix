@@ -250,6 +250,7 @@ def test_recursive_realize_with_another_manager()->None:
       rref_inner=realize(instantiate(_setup_inner,S=S))
       return mkstage(m,{'baz':mklens(rref_inner,S=S).foo.val})
     rref=realize(instantiate(_setup_outer,S=S))
+    assert rref_inner is not None
     assert len(store_deepdeps([rref2dref(rref)],S=S))==0
     assert len(store_deepdeps([rref2dref(rref_inner)],S=S))==0
     assert mklens(rref_inner,S=S).foo.val=='bar'
