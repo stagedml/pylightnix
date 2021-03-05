@@ -56,6 +56,7 @@ def test_union_of_root_realizations(stages):
     assert deps<=set(allrrefs(S))
 
 
+@settings(deadline=None)
 @given(stages=rootstages())
 def test_group_invariants(stages):
   """ Group invariants should be fulfilled. """
