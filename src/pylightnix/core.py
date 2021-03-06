@@ -1064,13 +1064,38 @@ def mapmin(minN:int, ma:Matcher)->Matcher:
   return mappred(lambda grps:len(grps)>=minN,ma)
 
 def mapsome(ma:Matcher)->Matcher:
-  """ Call for a realizer if the number of matches is below the number """
+  """ Call for a realizer if the number of matches is zero. """
   return mapmin(1,ma)
 
+def maponly(ma:Matcher)->Matcher:
+  def _matcher(S:SPath, dref:DRef, ctx:Context)->Optional[List[RRefGroup]]:
+    grps=ma(S,dref,ctx)
+    if grps is None:
+      return None
+    assert len(grps)==1, (
+      f"Matcher expects exactly one realization, but there are {len(grps)}:\n"
+      f"{grps}")
+    return grps
+  return _matcher
+
+def match_all()->Matcher:
+  """ [Match](#pylightnix.types.Matcher) **all** the available realizations,
+  including zero. Never call to a realizer. """
+  return mkmatch([])
+
 def match_some(minN:int=1)->Matcher:
-  return mapmin(minN, mkmatch([]))
+  """ Call to a realizer if there are less than `minN` realizations in storage.
+  Matche `minN` or more realizations. """
+  return mapmin(minN, match_all())
+
+def match_only()->Matcher:
+  """ Matches one or more realizations, but asserts if there are more than one
+  realizations matched. """
+  return maponly(match_some(minN=1))
 
 def match_latest(minN:int=1, topN:int=1)->Matcher:
+  """ Match `minN` oldest realizations. Call to a realizer if there are less
+  than `minN` realizations available. """
   return mapmin(minN, mkmatch([latest()],topN=topN))
 
 def match_best(filename:str, minN:int=1, topN:int=1)->Matcher:
@@ -1079,24 +1104,8 @@ def match_best(filename:str, minN:int=1, topN:int=1)->Matcher:
   return mapmin(minN,mkmatch([best(filename)],topN=topN))
 
 def match_exact(grps:List[RRefGroup])->Matcher:
+  """ Match exact these groups. Call to a realizer if no groups were seen."""
   return mapmin(1,mkmatch([exact(grps)],1))
-
-def match_all()->Matcher:
-  """ [Match](#pylightnix.types.Matcher) **all** the available realizations,
-  including zero.  Never call to a realizer. """
-  return mkmatch([])
-
-# def match_n(n:int=1, keys=[])->Matcher:
-#   """ Return a [Matcher](#pylightnix.types.Matcher) which matchs with any
-#   number of realizations which is greater or equal than `n`. """
-#   return match(keys, rmin=n, rmax=n, exclusive=False)
-
-# def match_only()->Matcher:
-#   """ Return a [Matcher](#pylightnix.types.Matcher) which expects no more than
-#   one realization for every [derivation](#pylightnix.types.DRef), given the
-#   [context](#pylightnix.types.Context). """
-#   return match([], rmin=1, rmax=1, exclusive=True)
-
 
 #     _                      _
 #    / \   ___ ___  ___ _ __| |_ ___
