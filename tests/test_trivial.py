@@ -1,6 +1,6 @@
 from pylightnix import ( Manager, DRef, RRef, Path, mklogdir, dirhash, mknode,
     store_deps, store_deepdeps, store_rref2path, Manager, mkcontext, instantiate,
-    realize, mkfile, Name, realized, build_wrapper, Build, mkconfig, match_only,
+    realize, mkfile, Name, realized, build_wrapper, Build, mkconfig, match_some,
     mkdrv, build_outpath, redefine, tryread, mklens, promise )
 
 from tests.imports import (
@@ -74,7 +74,7 @@ def test_realized()->None:
         if assume_realized:
           raise ShouldHaveFailed('Should not call the real realizer')
         return build_outpath(b)
-      return mkdrv(m, mkconfig({'name':'1'}), match_only(), build_wrapper(_realize))
+      return mkdrv(m, mkconfig({'name':'1'}), match_some(), build_wrapper(_realize))
 
     dref=instantiate(realized(_setting), assume_realized=True)
     try:

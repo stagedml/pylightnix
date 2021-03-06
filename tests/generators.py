@@ -104,12 +104,15 @@ def tagsets(draw):
 def rootstages(draw):
   dag=draw(intdags().filter(lambda dag: len(dag)>0))
   roots=dagroots([n[0] for n in dag], lambda n:dag[n][1])
+  # Signature: (NodeID -> ListOfOuts[ListOfTags]])
   tss={n[0]:draw(tagsets()) for n in dag}
   # tss={n[0]:[[tag_out()], [tag_out()]] for n in dag}
   # print(tss)
   nmatches={n[0]:draw(integers(min_value=1,max_value=2)) for n in dag}
   # nmatches={n[0]:99 for n in dag}
   # print('NNNNNNNNN',nmatches)
+  # Signature: (NodeID -> (OutID -> NonDetValue))
+  nondets={n[0]:{i:draw(integers(min_value=1,max_value=5)) for i in range(len(tss[n]))} for n in dag}
   note(f"DAG: {dag}")
   note(f"Tags: {tss}")
   note(f"NMatches: {nmatches}")
@@ -121,6 +124,7 @@ def rootstages(draw):
                        config={'name':f'node_{n}',
                                'parents':[drefs[d] for d in deps]},
                        tagset=tss[n],
+                       nondet=lambda i,tag: nondets[n][i],
                        nmatch=nmatches[n])
     return drefs[root]
   return [partial(_stage, root=root) for root in roots]

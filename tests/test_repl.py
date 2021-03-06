@@ -76,8 +76,8 @@ def test_repl_override():
     n1:DRef; n2:DRef
     def _setting(m:Manager)->DRef:
       nonlocal n1,n2
-      n1 = mkstage(m, {'a':'1'}, lambda: 33)
-      n2 = mkstage(m, {'maman':n1}, lambda: 42)
+      n1 = mkstage(m, {'a':'1'}, lambda i,tag: 33)
+      n2 = mkstage(m, {'maman':n1}, lambda i,tag: 42)
       return n2
 
     clo=instantiate(_setting)

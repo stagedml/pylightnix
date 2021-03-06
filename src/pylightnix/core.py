@@ -447,6 +447,15 @@ def groups2rrefs(grs:List[RRefGroup])->List[RRef]:
   list of RRefs """
   return list(chain.from_iterable([gr.values() for gr in grs]))
 
+def grouprref(gr:RRefGroup)->RRef:
+  return gr[tag_out()]
+
+def group2sign(grp:RRefGroup)->List[Tuple[RRef,Tag]]:
+  return list(sorted([(rref,tag) for tag,rref in grp.items()]))
+
+def group_in(grp:RRefGroup, grps:List[RRefGroup])->bool:
+  return group2sign(grp) in set({group2sign(gr) for gr in grps})
+
 def drefrrefs(dref:DRef,S=None)->List[RRef]:
   """ Iterate over all realizations of a derivation `dref`. The sort order is
   unspecified. Matching is not taken into account. """
@@ -979,11 +988,7 @@ def mksymlink(rref:RRef, tgtpath:Path, name:str, withtime:bool=True, S=None)->Pa
 # | |  | | (_| | || (__| | | |  __/ |  \__ \
 # |_|  |_|\__,_|\__\___|_| |_|\___|_|  |___/
 
-
-def match(keys:List[Key],
-          rmin:Optional[int]=1,
-          rmax:Optional[int]=1,
-          exclusive:bool=False)->Matcher:
+def mkmatch(keys:List[Key], topN:Optional[int]=None)->Matcher:
   """ Create a [Matcher](#pylightnix.types.Matcher) by combining different
   sorting keys and selecting a top-n threshold.
 
@@ -994,63 +999,43 @@ def match(keys:List[Key],
 
   Arguments:
   - `keys`: A list of [Key](#pylightnix.types.Key) functions.
-  - `rmin`: An integer selecting the minimum number of realizations to accept.
-      If non-None, Pylightnix will be asked to run the Realizer **if** the number
-      of matching keys is less than this number.
-  - `rmax`: An integer selecting the maximum number of realizations to match
-    (realizer is free to produce more realizations)
-  - `exclusive`: If true, asserts if the number of realizations exceeds `rmax`
+  - `topN`: Limits the number of best matches to thin number.
   """
-  assert (rmin or 0) <= (rmax or maxsize)
-  # FIXME: Figure out why did we need such an assert
-  # assert not (len(keys)>0 and (rmax is None)), (
-  #   "Specifying non-default sorting keys has no effect without specifying `rmax`.")
-  assert not ((rmax is None) and exclusive), (
-    "Specifying `exclusive` has no effect without specifying `rmax`.")
   keys=keys+[texthash()]
   def _matcher(S:SPath, dref:DRef, context:Context)->Optional[List[RRefGroup]]:
     # Find realizations tagged with 'out' among the available realizations
-    grefs={gr[tag_out()]:gr for gr in store_rrefs(dref,context,S)}
-
-    # Calculate the metrics for all "out" realizations
-    keymap={rref:[k(rref,S) for k in keys] for rref in grefs.keys()}
-
-    # Filter None results and sort the remaining rrefs according to keys
-    res:List[RRef]=sorted(filter(lambda rref: None not in keymap[rref], grefs.keys()),
-                          key=lambda rref:keymap[rref], reverse=True)
-    # Filter by range
-    if rmin is not None:
-      if not rmin<=len(res):
-        return None
-    if rmax is not None:
-      if not len(res)<=rmax:
-        assert not exclusive
-        res=res[:rmax]
-
-    # Return matched groups
-    return [grefs[rref] for rref in res]
+    grps={grouprref(gr):gr for gr in store_rrefs(dref,context,S)}
+    # Calculate a list of keys for every group
+    keymap:Dict[RRef,List[Optional[Union[int,float,str]]]]=\
+      {rref:[k(gr,S) for k in keys] for rref,gr in grps.items()}
+    # Filter-out None results and sort the remaining groups by keys
+    goodkeys=\
+      sorted(filter(lambda rref: None not in keymap[rref], grps.keys()),
+             key=lambda rref:keymap[rref], reverse=True)
+    # Return topN best matches
+    return [grps[gk] for gk in goodkeys][:topN]
   return _matcher
 
+def exact(grps:List[RRefGroup])->Key:
+  signs=[group2sign(g) for g in grps]
+  def _key(grp:RRefGroup,S=None)->Optional[Union[int,float,str]]:
+    return 1 if group2sign(grp) in signs else None
+  return _key
 
 def latest()->Key:
-  def _key(rref:RRef,S=None)->Optional[Union[int,float,str]]:
+  def _key(gr:RRefGroup,S=None)->Optional[Union[int,float,str]]:
     try:
-      with open(join(store_rref2path(rref,S),'__buildtime__.txt'),'r') as f:
+      with open(join(store_rref2path(grouprref(gr),S),'__buildtime__.txt'),'r') as f:
         t=parsetime(f.read())
         return float(0 if t is None else t)
     except OSError:
       return float(0)
   return _key
 
-def exact(expected:List[RRef])->Key:
-  def _key(rref:RRef,S=None)->Optional[Union[int,float,str]]:
-    return 1 if rref in expected else None
-  return _key
-
 def best(filename:str)->Key:
-  def _key(rref:RRef,S=None)->Optional[Union[int,float,str]]:
+  def _key(gr:RRefGroup,S=None)->Optional[Union[int,float,str]]:
     try:
-      with open(join(store_rref2path(rref,S),filename),'r') as f:
+      with open(join(store_rref2path(grouprref(gr),S),filename),'r') as f:
         return float(f.readline())
     except OSError:
       return float('-inf')
@@ -1058,42 +1043,59 @@ def best(filename:str)->Key:
       return float('-inf')
   return _key
 
-
 def texthash()->Key:
-  def _key(rref:RRef,S=None)->Optional[Union[int,float,str]]:
-    return str(unrref(rref)[0])
+  def _key(gr:RRefGroup,S=None)->Optional[Union[int,float,str]]:
+    return str(unrref(grouprref(gr))[0])
   return _key
 
-def match_n(n:int=1, keys=[])->Matcher:
-  """ Return a [Matcher](#pylightnix.types.Matcher) which matchs with any
-  number of realizations which is greater or equal than `n`. """
-  return match(keys, rmin=n, rmax=n, exclusive=False)
+def mappred(pred:Callable[[List[RRefGroup]],bool], ma:Matcher)->Matcher:
+  """ Calls for a realizer if the number of matches is below the minimum """
+  def _matcher(S:SPath, dref:DRef, ctx:Context)->Optional[List[RRefGroup]]:
+    grps=ma(S,dref,ctx)
+    if grps is None:
+      return None
+    if not pred(grps):
+      return None
+    return grps
+  return _matcher
 
-def match_latest(n:int=1)->Matcher:
-  return match_n(n, keys=[latest()])
+def mapmin(minN:int, ma:Matcher)->Matcher:
+  """ Call for a realizer if the number of matches is below the number """
+  return mappred(lambda grps:len(grps)>=minN,ma)
 
-def match_best(filename:str, n:int=1)->Matcher:
-  """ Return a [Matcher](#pylightnix.types.Matcher) which checks contexts of
-  realizations and then compares them based on stage-specific scores. For each
-  realization, score is read from artifact file named `filename` that should
-  contain a single float number. Realization with largest score wins.  """
-  return match_n(n, keys=[best(filename)])
+def mapsome(ma:Matcher)->Matcher:
+  """ Call for a realizer if the number of matches is below the number """
+  return mapmin(1,ma)
+
+def match_some(minN:int=1)->Matcher:
+  return mapmin(minN, mkmatch([]))
+
+def match_latest(minN:int=1, topN:int=1)->Matcher:
+  return mapmin(minN, mkmatch([latest()],topN=topN))
+
+def match_best(filename:str, minN:int=1, topN:int=1)->Matcher:
+  """ [Match](#pylightnix.types.Matcher) top-N best matches, but not less than
+  minN. The score is expected to reside in a file named `filename`. """
+  return mapmin(minN,mkmatch([best(filename)],topN=topN))
+
+def match_exact(grps:List[RRefGroup])->Matcher:
+  return mapmin(1,mkmatch([exact(grps)],1))
 
 def match_all()->Matcher:
-  """ Return a [Matcher](#pylightnix.types.Matcher) which matchs with **ANY**
-  number of realizations, including zero. """
-  return match([], rmin=None, rmax=None, exclusive=False)
+  """ [Match](#pylightnix.types.Matcher) **all** the available realizations,
+  including zero.  Never call to a realizer. """
+  return mkmatch([])
 
-def match_some(n:int=1)->Matcher:
-  """ Return a [Matcher](#pylightnix.types.Matcher) which matchs with any
-  number of realizations which is greater or equal than `n`. """
-  return match([], rmin=n, rmax=None, exclusive=False)
+# def match_n(n:int=1, keys=[])->Matcher:
+#   """ Return a [Matcher](#pylightnix.types.Matcher) which matchs with any
+#   number of realizations which is greater or equal than `n`. """
+#   return match(keys, rmin=n, rmax=n, exclusive=False)
 
-def match_only()->Matcher:
-  """ Return a [Matcher](#pylightnix.types.Matcher) which expects no more than
-  one realization for every [derivation](#pylightnix.types.DRef), given the
-  [context](#pylightnix.types.Context). """
-  return match([], rmin=1, rmax=1, exclusive=True)
+# def match_only()->Matcher:
+#   """ Return a [Matcher](#pylightnix.types.Matcher) which expects no more than
+#   one realization for every [derivation](#pylightnix.types.DRef), given the
+#   [context](#pylightnix.types.Context). """
+#   return match([], rmin=1, rmax=1, exclusive=True)
 
 
 #     _                      _

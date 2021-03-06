@@ -200,28 +200,24 @@ RRefGroup = Dict[Tag,RRef]
 #: derivations to realizations.
 Context=Dict[DRef,List[RRef]]
 
-#: Matcher is a type of user-defined functions which select required
-#: realizations from the set of all realizations tagged with tag 'out'.
+#: Matcher functions serves two purposes:
+#: 1. Decides whether to launch a new realization or re-use existing
+#:    realizations.
+#: 2. Filters a matched subset of realization groups out of the set of
+#:    available realizations.
 #:
-#: A Matcher should take a derivation reference and a context as its arguments.
-#: Its task is to read find out which realizations are available and return
-#: some subset of this set (see [store_rrefs](#pylightnix.core.store_rrefs)).
-#: Alternatively, matcher could return None which would be a signal for
-#: Pylightnix to produce more realizations.
+#: Matchers must be a pure functions. They answer 'yes' to the first question
+#: by returning None. Non-none value specifies the matched set of groups.
+#: Returning an empty list asks Pylightnix to leave the derivation without
+#: realizations.
 #:
-#: Matchers may return an empty set. In contrast to `None`, this would instruct
-#: Pylightnix to leave the derivation without realizations.
+#: Matcher invariants are:
 #:
-#: Pylightnix calls matchers during the realizaiton. Matching results are
-#: cached in form of `(DRef,List[RRef])` tuple. Pylightnix use it to e.g.
-#: resolve downstream realizations.
-#:
-#: Matchers must follow the below rules:
-#:
-#: - Matchers should be **pure**. It's output should depend only on the
-#:   existing build artifacts of available realizations.
-#: - Matchers should be **satisfiable** by realizers of their stages. If matcher
-#:   returns None, the core calls realizer and re-run the matcher only once.
+#: - Matchers must be **pure**. Its outputs must only depend on the
+#:   immutable realizations passed as inputs.
+#: - Matchers must be **satisfiable**. If the matcher returns None, the core
+#:   re-runs runs the realization and calls the matcher once again. Returning
+#:   None again would be an error.
 #:
 #: Pylightnix includes a set of built-in matchers:
 #:
@@ -480,5 +476,5 @@ R = TypeVar('R',bound=SupportsAbs[DRef])
 Stage = Callable[[Manager],R]
 
 
-Key = Callable[[RRef,SPath],Optional[Union[int,float,str]]]
+Key = Callable[[RRefGroup,SPath],Optional[Union[int,float,str]]]
 

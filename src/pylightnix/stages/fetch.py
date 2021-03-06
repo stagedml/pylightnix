@@ -18,7 +18,7 @@ from pylightnix.imports import (sha256 as sha256sum, sha1 as sha1sum, urlparse,
     Popen, remove, basename, join, rename, isfile, copyfile, environ, getLogger )
 from pylightnix.types import ( DRef, Manager, Build, Context, Name,
     Path, Optional, List, Config )
-from pylightnix.core import ( mkconfig, mkdrv, match_only, promise )
+from pylightnix.core import ( mkconfig, mkdrv, match_some, promise )
 from pylightnix.build import ( mkbuild, build_outpath, build_setoutpaths,
     build_paths, build_deref_, build_cattrs, build_wrapper, build_wrapper )
 from pylightnix.utils import ( try_executable, makedirs )
@@ -165,7 +165,7 @@ def fetchurl(m:Manager,
       error(f"Keeping temporary directory {o}")
       raise
 
-  return mkdrv(m, _instantiate(), match_only(), build_wrapper(_realize),
+  return mkdrv(m, _instantiate(), match_some(), build_wrapper(_realize),
                   check_promises=check_promises)
 
 
@@ -245,5 +245,5 @@ def fetchlocal(m:Manager, sha256:str,
       error(f"Keeping temporary directory {o}")
       raise
 
-  return mkdrv(m, _instantiate(), match_only(), build_wrapper(_realize))
+  return mkdrv(m, _instantiate(), match_some(), build_wrapper(_realize))
 

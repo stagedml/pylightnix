@@ -16,10 +16,10 @@
 
 from pylightnix.imports import (join, deepcopy, dirname, makedirs, isfile,
                                 isdir, defaultdict)
-from pylightnix.core import (mkdrv, mkconfig, match_only, assert_valid_name,
-                             datahash, config_dict, store_config, match_some,
+from pylightnix.core import (mkdrv, mkconfig, assert_valid_name,
+                             datahash, config_dict, store_config,
                              assert_valid_refpath, store_rref2path,
-                             store_config_, promise, storage)
+                             store_config_, promise, storage, match_some)
 from pylightnix.build import (mkbuild, build_outpath, build_setoutpaths,
                               build_paths, build_deref_, build_cattrs,
                               build_wrapper)
@@ -45,7 +45,7 @@ def mknode(m:Manager,
     for an,av in artifacts.items():
       with open(join(o,an),'wb') as f:
         f.write(av)
-  return mkdrv(m, mkconfig(config), match_only(), build_wrapper(_realize))
+  return mkdrv(m, mkconfig(config), match_some(), build_wrapper(_realize))
 
 
 def mkfile(m:Manager,
