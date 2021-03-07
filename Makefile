@@ -120,6 +120,7 @@ demos: demo_mnist demo_hello demo_repl
 
 $(WHEEL): $(SRC) $(TESTS)
 	rm -rf build dist || true
+	echo $(VERSION) >VERSION
 	python3 setup.py sdist bdist_wheel
 	test -f $@
 
