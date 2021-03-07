@@ -22,24 +22,23 @@ $ pip3 install pylightnix
     \end{shellcode}
   \item Either
     \begin{itemize}
-      \item Setup `PYTHONPATH` to point to the sources.
+      \item Set the \texttt{PYTHONPATH} environment variable to import
+        Pylightnix in-place.
         \begin{shellcode}
         $ export PYTHONPATH="`pwd`/src:$PYTHONPATH"
         \end{shellcode}
-      \item Build and install pylightnix wheel.
+      \item Build and install the wheel package.
         \begin{shellcode}
         $ make wheel
         $ sudo -H make install
         \end{shellcode}
-      \item Nix users may refer to \texttt{default.nix} and
-        \texttt{shell.nix} expressions.
+      \item See the Development section of the Manual for guidance on operating
+        a development environment.
     \end{itemize}
   % \item (Optional) Run the tests.
   % \item (Optional) Make docs
   % \item (Optional) Build the demos
 \end{enumerate}
-
-\subsection{Open the development environment}
 
 \subsection{Install the recommended system packages}
 
@@ -55,9 +54,9 @@ $ aunpack --version | head -n1
 atool 0.39.0
 \end{shellcode}
 
-\subsection{Make sure GNU Autotools are available}
+\subsection{Make sure GCC and GNU Autotools are available}
 
-We will also need GNU Autotools for the sake of demonstration. Make sure they
-are installed in the system.
+Some demonstration code from this manual also uses GCC and GNU Autotools. Make
+sure they are installed.
 
 
