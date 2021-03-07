@@ -11,7 +11,7 @@ from tests.imports import ( isdir, environ, chmod, stat, TemporaryDirectory,
 
 def test_bashlike():
   with setup_storage('test_bashlike'):
-    clo=instantiate(mkstage, {'a':1}, lambda:42)
+    clo=instantiate(mkstage, {'a':1}, lambda i,t:42)
     rref1=realize(clo, force_rebuild=[clo.dref])
     rref2=realize(clo, force_rebuild=[clo.dref])
     assert 'artifact' in lsref(rref1)
@@ -36,7 +36,7 @@ def test_bashlike():
 
 def test_rmdref():
   with setup_storage('test_rmdref') as s:
-    clo=instantiate(mkstage, {'a':1}, lambda:42)
+    clo=instantiate(mkstage, {'a':1}, lambda i,t:42)
     drefpath=store_dref2path(clo.dref)
     rref1=realize(clo, force_rebuild=[clo.dref])
     rrefpath=store_rref2path(rref1)
@@ -82,7 +82,7 @@ def test_du():
   with setup_storage('test_du') as s:
     usage=du()
     assert usage=={}
-    clo=instantiate(mkstage, {'name':'1'}, lambda:42)
+    clo=instantiate(mkstage, {'name':'1'}, lambda i,t:42)
     usage=du()
     assert clo.dref in usage
     assert usage[clo.dref][0]>0
@@ -94,8 +94,8 @@ def test_du():
 
 def test_find():
   with setup_storage('test_find') as s:
-    s1=partial(mkstage, config={'name':'1'}, nondet=lambda:42)
-    s2=partial(mkstage, config={'name':'2'}, nondet=lambda:33)
+    s1=partial(mkstage, config={'name':'1'}, nondet=lambda i,t:42)
+    s2=partial(mkstage, config={'name':'2'}, nondet=lambda i,t:33)
     rref1=realize(instantiate(s1))
     sleep(0.1)
     now=parsetime(timestring())
@@ -113,8 +113,8 @@ def test_find():
 
 def test_diff():
   with setup_storage('test_find') as s:
-    s1=partial(mkstage, config={'name':'1'}, nondet=lambda:42)
-    s2=partial(mkstage, config={'name':'2'}, nondet=lambda:33)
+    s1=partial(mkstage, config={'name':'1'}, nondet=lambda i,t:42)
+    s2=partial(mkstage, config={'name':'2'}, nondet=lambda i,t:33)
     dref1=instantiate(s1).dref
     rref2=realize(instantiate(s2))
     diff(dref1, rref2)
