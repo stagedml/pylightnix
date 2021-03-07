@@ -73,10 +73,10 @@ def artifacts(draw):
   return {n:v for n,v in zip(ns,vals)}
 
 @composite
-def intdags(draw):
+def intdags(draw, min_size:int=1, max_size:int=10):
   """ Return random DAG as List[Tuple[int,Set[int]]]. Returned DAGs are
   topologically sorted by construction. """
-  N=draw(integers(min_value=1,max_value=10))
+  N=draw(integers(min_value=min_size,max_value=max_size))
   seen:list=[]
   acc:list=[]
   for n in range(N):
@@ -101,26 +101,43 @@ def tagsets(draw):
   return acc
 
 @composite
-def rootstages(draw):
-  dag=draw(intdags().filter(lambda dag: len(dag)>0))
-  roots=dagroots([n[0] for n in dag], lambda n:dag[n][1])
-  tss={n[0]:draw(tagsets()) for n in dag}
+def rootstages(draw, min_size:int=1, max_size:int=10, partial_matches:bool=True):
+  dag=draw(intdags(min_size=min_size,
+                   max_size=max_size).filter(lambda dag: len(dag)>0))
+  note(f"DAG: {dag}")
+  roots=dagroots([n for n,_ in dag], lambda n:dag[n][1])
+  # Signature: (NodeID -> ListOfGroups[ListOfTags]])
+  tss={n:draw(tagsets()) for n,_ in dag}
+  note(f"Tagset: {tss}")
   # tss={n[0]:[[tag_out()], [tag_out()]] for n in dag}
   # print(tss)
-  nmatches={n[0]:draw(integers(min_value=1,max_value=2)) for n in dag}
+  if partial_matches:
+    nmatches={n:draw(integers(min_value=1,max_value=2)) for n,_ in dag}
+  else:
+    nmatches={n:len(tss[n]) for n,_ in dag}
   # nmatches={n[0]:99 for n in dag}
-  # print('NNNNNNNNN',nmatches)
-  note(f"DAG: {dag}")
-  note(f"Tags: {tss}")
-  note(f"NMatches: {nmatches}")
+  note(f"NMatches {nmatches}")
+  # Signature: (NodeID -> (GroupID -> NonDetValue))
+  nondets={n:{i:draw(integers(min_value=1,max_value=5)) for i in range(len(tss[n]))} for n,_ in dag}
+  note(f"nondets: {nondets}")
+  # print(tss)
+  # nondets={n[0]:{i:0 for i in range(len(tss[n[0]]))} for n in dag}
 
   def _stage(m, root):
     drefs:dict={}
     for n,deps in list(dag):
+
+      def _nondet(ngroup,tag,nn):
+        a=nondets[nn]
+        # note(str(({nn:(a,'[',ngroup,']')})))
+        return a[ngroup]
+
       drefs[n]=mkstage(m,
                        config={'name':f'node_{n}',
                                'parents':[drefs[d] for d in deps]},
                        tagset=tss[n],
+                       # nondet=lambda i,tag: nondets[n][i],
+                       nondet=partial(_nondet,nn=n),
                        nmatch=nmatches[n])
     return drefs[root]
   return [partial(_stage, root=root) for root in roots]

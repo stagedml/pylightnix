@@ -15,7 +15,7 @@
 """ Simple functions imitating unix shell tools.  """
 
 from pylightnix import (instantiate, DRef, RRef, Path, Build, Manager, mklens,
-                        mkdrv, promise, match_only, build_wrapper, instantiate,
+                        mkdrv, promise, match_some, build_wrapper, instantiate,
                         realize, isrref, isdref, store_cattrs, build_cattrs,
                         build_outpath, build_path, mkconfig, assert_valid_rref,
                         isrefpath, isclosure)
@@ -55,7 +55,7 @@ def test_lens():
         mkconfig({'name':'3', 'maman':n1, 'papa':n2,
                   'promise':[promise,'artifact'],
                   }),
-                 matcher=match_only(),
+                 matcher=match_some(),
                  realizer=build_wrapper(_realize))
 
     clo=instantiate(_setting)

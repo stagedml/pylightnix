@@ -4,19 +4,19 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir,
                         assert_valid_hash, assert_valid_config, Manager,
                         mkcontext, mkrgroup, store_rrefs, mkdref, mkrref,
                         unrref, undref, realize, rref2dref, store_config,
-                        mkconfig, Build, Context, build_outpath, match_only,
+                        mkconfig, Build, Context, build_outpath,
                         mkdrv, store_deref, store_rref2path, store_rrefs_,
                         config_cattrs, mksymlink, store_cattrs, build_deref,
                         build_path, mkrefpath, build_config, alldrefs,
                         store_rrefs, build_wrapper, build_cattrs, build_name,
-                        match_best, tryread, trywrite, match, latest, best,
-                        exact, Key, match_latest, match_all, match_some,
-                        match_n, realizeMany, build_outpaths, scanref_dict,
+                        match_best, tryread, trywrite, mkmatch, latest, best,
+                        exact, Key, match_latest, match_all, match_exact,
+                        realizeMany, build_outpaths, scanref_dict,
                         config_dict, promise, mklens, isrref, Config, RConfig,
                         build_setoutpaths, partial, path2rref, Tag, Group,
                         RRefGroup, concat, linkrrefs, instantiate_,
                         store_dref2path, path2dref, linkdref, storage,
-                        store_deepdepRrefs, drefrrefs, allrrefs)
+                        store_deepdepRrefs, drefrrefs, allrrefs, match_some)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink,
                            isfile, islink, List, randint, sleep, rmtree, system,
@@ -147,7 +147,7 @@ def test_realize_readonly()->None:
         f.write('#!/bin/sh\necho "Fooo"')
       chmod(join(build_outpath(b),'exe'), S_IWRITE|S_IREAD|S_IEXEC)
     rref2=realize(instantiate(mkdrv, Config({}),
-                              match_only(), build_wrapper(_realize),S=S))
+                              match_some(), build_wrapper(_realize),S=S))
     assert pipe_stdout([join(store_rref2path(rref2,S),'exe')])=='Fooo\n', \
       "Did we lost exec permission?"
 
@@ -176,7 +176,7 @@ def test_realize_nondetermenistic()->None:
   with setup_storage2('test_realize_nondetermenistic') as (T,S):
     DATA:int; n1:DRef; n2:DRef; n3:DRef
 
-    def _gen()->int:
+    def _gen(i,tag)->int:
       nonlocal DATA
       return DATA
 
@@ -270,9 +270,9 @@ def test_mksymlink()->None:
     tp=T
 
     def _setting1(m:Manager)->DRef:
-      return mkstage(m, {'a':'1'}, lambda: 33, buildtime=False)
+      return mkstage(m, {'a':'1'}, lambda i,tag:33, buildtime=False)
     def _setting2(m:Manager)->DRef:
-      return mkstage(m, {'a':'1'}, lambda: 42, buildtime=True)
+      return mkstage(m, {'a':'1'}, lambda i,tag:42, buildtime=True)
 
     clo=instantiate(_setting1,S=S)
     rref=realize(clo)
@@ -325,9 +325,9 @@ def test_overwrite_realizer()->None:
     n1:DRef; n2:DRef; n3:DRef; n4:DRef
     def _setting(m:Manager)->DRef:
       nonlocal n1, n2, n3, n4
-      n1 = mkstage(m, {'a':'1'}, lambda:33)
+      n1 = mkstage(m, {'a':'1'}, lambda i,t:33)
       n2 = mkstage(m, {'maman':n1})
-      n3 = mkstage(m, {'a':'1'}, lambda:42)
+      n3 = mkstage(m, {'a':'1'}, lambda i,t:42)
       assert n1 == n3
       return n2
 
@@ -338,181 +338,6 @@ def test_overwrite_realizer()->None:
     rref_n3=store_deref(rref_n2, store_cattrs(rref_n2, S).maman, S)[Tag('out')]
     assert open(join(store_rref2path(rref_n3, S),'artifact'),'r').read() == '42'
 
-def test_match_only()->None:
-  with setup_storage2('test_match_only') as (T,S):
-
-    build:int = 0
-    def _setting(m:Manager)->DRef:
-      def _realize(b:Build)->None:
-        nonlocal build
-        with open(join(build_outpath(b),'artifact'),'w') as f:f.write(str(build))
-        build+=1
-      return mkdrv(m, mkconfig({'a':1}), match_only(), build_wrapper(_realize))
-
-    closure = instantiate(_setting,S=S)
-    assert len(list(drefrrefs(closure.dref,S))) == 0
-    rref = realize(closure)
-    assert len(list(drefrrefs(closure.dref,S))) == 1
-    rref = realize(closure)
-    assert len(list(drefrrefs(closure.dref,S))) == 1
-    try:
-      rref = realize(closure, force_rebuild=[closure.dref])
-      raise ShouldHaveFailed('Should have failed in match_only assertion')
-    except AssertionError as e:
-      pass
-    assert len(list(drefrrefs(closure.dref,S))) == 2
-
-
-def test_match_best()->None:
-  with setup_storage2('test_match_best') as (T,S):
-    fname:str='score'
-    score:str='0'
-    def _mklrg(m, cfg, matcher):
-      def _instantiate()->Config:
-        return mkconfig(cfg)
-      def _realize(b:Build)->None:
-        nonlocal score, fname, matcher
-        with open(join(build_outpath(b),fname),'w') as f:
-          f.write(score)
-      return mkdrv(m, _instantiate(), matcher, build_wrapper(_realize))
-
-    clo1=instantiate(_mklrg, {'a':1}, matcher=match_best('score'), S=S)
-    score='0'
-    rref1a=realize(clo1)
-    assert isfile(join(store_rref2path(rref1a,S),'score'))
-    assert len(list(drefrrefs(clo1.dref,S))) == 1
-    assert tryread(Path(join(store_rref2path(rref1a,S),'score')))=='0'
-    score='non-integer'
-    rref1b=realize(clo1, force_rebuild=[clo1.dref])
-    assert isfile(join(store_rref2path(rref1b,S),'score'))
-    assert len(list(drefrrefs(clo1.dref,S))) == 2
-    assert tryread(Path(join(store_rref2path(rref1b,S),'score')))=='0'
-    score='1'
-    rref1c=realize(clo1, force_rebuild=[clo1.dref])
-    assert isfile(join(store_rref2path(rref1c,S),'score'))
-    assert len(list(drefrrefs(clo1.dref,S))) == 3
-    assert tryread(Path(join(store_rref2path(rref1c,S),'score')))=='1'
-    # Here we refuse to create 'score' file altogether. `match_best` should
-    # ignore this realization.
-    score='100500'
-    fname='baz'
-    rref1d=realize(clo1, force_rebuild=[clo1.dref])
-    assert not isfile(join(store_rref2path(rref1d,S),'baz'))
-    assert len(list(drefrrefs(clo1.dref,S))) == 4
-
-    # This test case did flicker. The last fix was to sort filenames in
-    # `dirhash`.
-    #
-    # To check, run:
-    # 1. `logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)`
-    # 2. `dirhash('/tmp/test_match_best/a76762e9bc54e47c09455bdb226e2388-unnamed/'
-    #             '0554aac0dbae2d80f67e7d280ab331a4',
-    #             verbose=True)`
-    #
-    # Current output:
-    # context.json: 44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a
-    # tag.txt: 0b20b35d367ea15c3b95476337549e5add5973dab18f0fc1b3391c40ba82cf8a
-    # baz: 6d2909ed88f980f2241835f0f5d76e8b31dbdc90c22d8fb7e446ffe4647eb8f2
-    # group.txt: 0554aac0dbae2d80f67e7d280ab331a44c55f0b63f674a3a278411620fbede12
-    clo1=instantiate(_mklrg, {'a':1},
-      matcher=match([
-        exact([RRef('rref:d86d09f2769885bae2e76763f2bcd9f8-a76762e9bc54e47c09455bdb226e2388-unnamed')])]), S=S)
-    rref1e=realize(clo1)
-    assert isfile(join(store_rref2path(rref1e,S),'baz'))
-    assert len(list(drefrrefs(clo1.dref,S))) == 4
-
-    clo1=instantiate(_mklrg, {'a':1}, matcher=match_best('score'),S=S)
-    rref1=realize(clo1)
-    assert isfile(join(store_rref2path(rref1,S),'score'))
-    assert tryread(Path(join(store_rref2path(rref1,S),'score')))=='1'
-
-
-# FIXME: repair this test
-# def test_match_latest()->None:
-#   def _mknode(m, cfg, matcher, nouts:int, data=0, buildtime=True):
-#     def _realize(b:Build)->None:
-#       build_setoutpaths(b,nouts)
-#       for i,out in enumerate(build_outpaths(b)):
-#         assert trywrite(Path(join(out,'artifact')),str(data)+'_'+str(i))
-#     return mkdrv(m, Config(cfg), matcher,
-#                     build_wrapper(_realize, buildtime=buildtime))
-#
-#   with setup_storage2('test_match_latest') as (T,S):
-#     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=1, S=S)
-#     rref1=realize(clo)
-#     assert len(list(drefrrefs(clo.dref,S)))==1
-#     sleep(0.01)
-#     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=2, S=S)
-#     rref2=realize(clo, force_rebuild=[clo.dref])
-#     assert len(list(drefrrefs(clo.dref,S)))==2
-#     assert tryread(Path(join(store_rref2path(rref2,S),'artifact')))==str('2_0')
-#
-#   with setup_storage2('test_match_latest') as (T,S):
-#     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=1, S=S)
-#     rref1=realize(clo)
-#     assert len(list(drefrrefs(clo.dref,S)))==1
-#     sleep(0.01)
-#     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=2, buildtime=False, S=S)
-#     rref2=realize(clo, force_rebuild=[clo.dref])
-#     assert len(list(drefrrefs(clo.dref,S)))==2
-#     assert tryread(Path(join(store_rref2path(rref2,S),'artifact')))==str('1_0')
-#
-#   for i in range(10):
-#     with setup_storage2('test_match_latest') as (T,S):
-#       nouts=randint(1,10)
-#       ntop=randint(1,10)
-#       try:
-#         clo=instantiate(_mknode, {'a':0}, match_latest(ntop), nouts, S=S)
-#         rrefs=realizeMany(clo)
-#         times=set([tryread(Path(join(store_rref2path(rref,S),'__buildtime__.txt'))) for rref in rrefs])
-#         assert len(list(times))==1
-#       except AssertionError:
-#         assert ntop>nouts
-
-
-def test_match_all()->None:
-  """ match_all() should match all the references """
-  def _mknode(m,cfg, matcher, nouts:int):
-    def _realize(b:Build)->None:
-      build_setoutpaths(b,nouts)
-      for i,out in enumerate(build_outpaths(b)):
-        assert trywrite(Path(join(out,'artifact')),str(nouts+i))
-    return mkdrv(m, Config(cfg), matcher, build_wrapper(_realize))
-
-  with setup_storage2('test_match_all_empty') as (T,S):
-    clo=instantiate(_mknode, {'a':1}, match_all(), 5, S=S)
-    rrefs=realizeMany(clo)
-    assert len(rrefs)==0
-
-  for i in range(10):
-    data=randint(1,10)
-    nouts=randint(1,10)
-    with setup_storage2('test_match_all') as (T,S):
-      clo=instantiate(_mknode, {'a':data}, match_n(1), nouts, S=S)
-      rrefs_1=realizeMany(clo)
-      assert len(rrefs_1)==1
-      clo=instantiate(_mknode, {'a':data}, match_all(), nouts, S=S)
-      rrefs_all=realizeMany(clo)
-      assert len(rrefs_all)==nouts
-
-def test_match_some()->None:
-  with setup_storage2('test_match_some') as (T,S):
-    def _mknode(m, cfg, nouts:int, top:int):
-      def _realize(b:Build)->None:
-        build_setoutpaths(b,nouts)
-        for i,out in enumerate(build_outpaths(b)):
-          assert trywrite(Path(join(out,'artifact')),str(nouts+i))
-      return mkdrv(m, mkconfig(cfg), match_some(n=top), build_wrapper(_realize))
-
-    for i in range(10):
-      nouts=randint(1,10)
-      top=randint(1,10)
-      clo=instantiate(_mknode, {'a':randint(0,1000)}, nouts, top, S=S)
-      try:
-        rrefs=realizeMany(clo, force_rebuild=[clo.dref])
-        assert top<=nouts
-      except AssertionError:
-        assert top>nouts
 
 
 def test_gc()->None:
@@ -550,7 +375,7 @@ def test_promise()->None:
       return mkdrv(m, mkconfig({'name':'2', 'maman':n1,
                                 'promise':[promise,'uber-artifact'],
                                 'maman_promise':[n1,'artifact']}),
-                      matcher=match_only(),
+                      matcher=match_some(),
                       realizer=build_wrapper(_realize))
 
     try:

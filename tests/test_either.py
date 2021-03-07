@@ -1,6 +1,6 @@
 from pylightnix import (instantiate, DRef, RRef, assert_valid_rref, Manager,
                         Build, realize, mklens, either_wrapper, claim, readstr,
-                        mkconfig, mkdrv, match_only, build_wrapper,
+                        mkconfig, mkdrv, build_wrapper,
                         build_setoutpaths, either_status, either_isRight,
                         either_isLeft, realizeMany, store_rref2path, match_some,
                         writestr)
@@ -15,7 +15,7 @@ from tests.setup import (ShouldHaveFailed, setup_storage, mkstage, mkstage)
 
 
 def mkeither(m, source, should_fail=False):
-  def _mutate():
+  def _mutate(i,tag):
     if should_fail:
       raise ValueError('Expected test error')
     else:
@@ -47,7 +47,7 @@ def test_either_success()->None:
         build_setoutpaths(b, 1)
         assert mklens(b).name.val=='n2'
       return mkdrv(m, mkconfig({'name':'n2', 'maman':n1}),
-                   match_only(), either_wrapper(build_wrapper(_make)))
+                   match_some(), either_wrapper(build_wrapper(_make)))
 
     rref = realize(instantiate(_setting))
     assert_valid_rref(rref)
@@ -65,7 +65,7 @@ def test_either_builderror()->None:
           writestr(join(p,'artifact.txt'), p)
         raise ValueError('Ooops (an intended test failure)')
       return mkdrv(m, mkconfig({'name':'pigfood'}),
-                   match_some(n=2), either_wrapper(build_wrapper(_make)))
+                   match_some(2), either_wrapper(build_wrapper(_make)))
 
     rrefs = realizeMany(instantiate(_setting))
     assert len(rrefs)==2

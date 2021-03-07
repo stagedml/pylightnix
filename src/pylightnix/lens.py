@@ -68,7 +68,7 @@ def val2path(v:Any, ctx:LensContext)->Path:
         return Path(store_rref2path(rgs[0][tag_out()]))
     return store_dref2path(dref)
   elif isrref(v):
-    return store_rref2path(RRef(v))
+    return store_rref2path(RRef(v),S)
   elif isrefpath(v):
     refpath=list(v) # RefPath is list
     bpath=ctx.build_path

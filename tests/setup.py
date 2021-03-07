@@ -66,7 +66,7 @@ def setup_inplace_reset()->None:
 
 def mkstage(m:Manager,
             config:dict,
-            nondet:Callable[[],int]=lambda:0,
+            nondet:Callable[[int,Tag],int]=lambda n,t:0,
             buildtime:bool=True,
             realize_wrapper=None,
             promise_strength=promise,
@@ -74,8 +74,8 @@ def mkstage(m:Manager,
             nmatch:int=1)->DRef:
   """ Create a test stage.
 
-  Parameters:
-  - `nondet`: emulates non-deterministic build outcomes
+  Some parameters:
+  - `nondet`: may emulate non-deterministic build outcome
   """
   def _config()->Config:
     c=deepcopy(config)
@@ -88,18 +88,19 @@ def mkstage(m:Manager,
       assert tag_out() in g.keys()
       for tag,o in g.items():
         with open(join(o,'artifact'),'w') as f:
-          f.write(str(nondet()))
+          f.write(str(nondet(i,tag)))
         with open(join(o,'group'),'w') as f:
           f.write(str(i))
         with open(join(o,'tag'),'w') as f:
           f.write(str(tag))
     return b.outgroups
   def _match(S:SPath, dref:DRef, context:Context)->Optional[List[RRefGroup]]:
-    """ Selects top-`nmatch` maximum values of the artifact """
+    # Get the available groups
     grps=store_rrefs(dref, context, S)
+    # Sort the output groups by the value of artifact
     values=list(sorted([(maybereadstr(join(store_rref2path(gr[tag_out()], S),'artifact'),'0',int),gr)
                         for gr in grps], key=lambda x:x[0]))
-    # print(len(values),nmatch)
+    # Return `top-n` matched groups
     return [tup[1] for tup in values[-nmatch:]] if len(values)>0 else None
 
   rw=(lambda x:x) if realize_wrapper is None else realize_wrapper
