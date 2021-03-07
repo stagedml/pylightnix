@@ -109,18 +109,18 @@ def test_match_some(stages,n):
 
 @settings(max_examples=30,print_blob=True)
 @given(stages=rootstages(max_size=3, partial_matches=False),
-       n=integers(min_value=1, max_value=3))
-def test_match_best(stages,n):
+       topN=integers(min_value=1, max_value=3))
+def test_match_best(stages,topN):
   with setup_storage2('test_match_best') as (T,S):
     def _artifact(rg)->float:
       return float(readstr(join(mklens(rg[tag_out()],S=S).syspath,"artifact")))
     for stage in stages:
       artsM=[_artifact(g) for g in realizeGroups(
              instantiate(
-               redefine(stage,new_matcher=match_best("artifact", topN=n)), S=S))]
+               redefine(stage,new_matcher=match_best("artifact", topN=topN)), S=S))]
       arts=[_artifact(g) for g in realizeGroups(
              instantiate(stage, S=S))]
-      event(f'match_best topN {n}')
+      event(f'match_best topN {topN}')
       event(f'match_best ngroups {len(arts)}')
       assert sorted(artsM)==sorted(arts)[-len(artsM):]
 
@@ -142,6 +142,21 @@ def test_match_exact(stages,subs):
         assert actual==desired
       except AssertionError:
         assert len(subset)==0
+
+@settings(max_examples=30,print_blob=True)
+@given(stages=rootstages(max_size=3, partial_matches=False))
+def test_match_all(stages):
+  with setup_storage2('test_match_all') as (T,S):
+    for stage in stages:
+        grs=realizeGroups(
+              instantiate(
+                redefine(stage,new_matcher=match_all()), S=S))
+        assert len(grs)==0
+        grs2=realizeGroups(instantiate(stage, S=S))
+        grs3=realizeGroups(
+              instantiate(
+                redefine(stage,new_matcher=match_all()), S=S))
+        assert len(grs3)==len(grs2)
 
 # FIXME: repair this test
 # def test_match_latest()->None:
@@ -184,31 +199,3 @@ def test_match_exact(stages,subs):
 #         assert len(list(times))==1
 #       except AssertionError:
 #         assert ntop>nouts
-
-
-# FIXME: repair this test
-# def test_match_all()->None:
-#   """ match_all() should match all the references """
-#   def _mknode(m,cfg, matcher, nouts:int):
-#     def _realize(b:Build)->None:
-#       build_setoutpaths(b,nouts)
-#       for i,out in enumerate(build_outpaths(b)):
-#         assert trywrite(Path(join(out,'artifact')),str(nouts+i))
-#     return mkdrv(m, Config(cfg), matcher, build_wrapper(_realize))
-
-#   with setup_storage2('test_match_all_empty') as (T,S):
-#     clo=instantiate(_mknode, {'a':1}, match_all(), 5, S=S)
-#     rrefs=realizeMany(clo)
-#     assert len(rrefs)==0
-
-#   for i in range(10):
-#     data=randint(1,10)
-#     nouts=randint(1,10)
-#     with setup_storage2('test_match_all') as (T,S):
-#       clo=instantiate(_mknode, {'a':data}, match_n(1), nouts, S=S)
-#       rrefs_1=realizeMany(clo)
-#       assert len(rrefs_1)==1
-#       clo=instantiate(_mknode, {'a':data}, match_all(), nouts, S=S)
-#       rrefs_all=realizeMany(clo)
-#       assert len(rrefs_all)==nouts
-

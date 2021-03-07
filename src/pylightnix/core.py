@@ -1095,14 +1095,16 @@ def match_only()->Matcher:
   return maponly(match_some(minN=1))
 
 def match_latest(minN:int=1, topN:int=1)->Matcher:
-  """ Match `minN` oldest realizations. Call to a realizer if there are less
-  than `minN` realizations available. """
+  """ Match up to `topN` oldest realizations. Call to a realizer if there are
+  less than `minN` realizations available. """
+  # assert topN>=minN, "Invalid match_latest arguments, should be topN>=minN"
   return mapmin(minN, mkmatch([latest()],topN=topN))
 
 def match_best(filename:str, minN:int=1, topN:int=1)->Matcher:
-  """ [Match](#pylightnix.types.Matcher) top-N best matches, but not less than
-  minN. The score is expected to reside in a file named `filename`. """
-  assert topN>=minN, "Invalid match_best arguments, should be topN>=minN"
+  """ [Match](#pylightnix.types.Matcher) up to `topN` best matches, but not
+  less than minN. The score is expected to reside in a file named `filename`.
+  """
+  # assert topN>=minN, "Invalid match_best arguments, should be topN>=minN"
   return mapmin(minN,mkmatch([best(filename)],topN=topN))
 
 def match_exact(grps:List[RRefGroup])->Matcher:
