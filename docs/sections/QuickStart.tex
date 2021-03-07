@@ -110,7 +110,8 @@ from tempfile import TemporaryDirectory
 from shutil import copytree
 from os import getcwd, chdir, system
 from pylightnix import (Config, Path, Build, mkconfig, mkdrv,
-  build_wrapper, match_only, dirrw, promise, build_setoutpaths)
+  build_wrapper, match_only, dirrw, promise, build_setoutpaths,
+  __version__ as pylightnix_version)
 
 def stage_build(m:Manager)->DRef:                            # ST \label{ST}
   def _config()->Config:                                     # CFG \label{CFG}
@@ -118,6 +119,7 @@ def stage_build(m:Manager)->DRef:                            # ST \label{ST}
     fetch_ref:DRef = stage_fetch(m)                          # DEP \label{DEP}
     src:RefPath = [fetch_ref, f'hello-{hello_version}']      # RP1 \label{RP1}
     bin:RefPath = [promise, 'usr', 'bin', 'hello']           # RP2 \label{RP2}
+    built_with = pylightnix_version
     return mkconfig(locals())                                # LOC \label{LOC}
   def _realize(b:Build)->None:                               # RE \label{RE}
     build_setoutpaths(b,1)                                   # OP \label{OP}
