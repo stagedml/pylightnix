@@ -908,7 +908,7 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
         gpaths:List[Dict[Tag,Path]]=drv.realizer(S,dref,dref_context,realize_args.get(dref,{}))
         rrefgs_built=[mkrgroup(dref,dref_context,g,S) for g in gpaths]
         if sum(len(g.values()) for g in gpaths)!=len(set.union(*[set(g.values()) for g in rrefgs_built])):
-          warning(f"Several {dref} realizations resolved to the same filesystem object")
+          warning(f"Realizer of {dref} produced duplicated realizations")
         rrefgs_matched=drv.matcher(S,dref,dref_context)
         assert rrefgs_matched is not None, (
           f"The matcher of {dref} is not satisfied with its realizatons. "

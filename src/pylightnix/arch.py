@@ -106,10 +106,11 @@ def copyclosure(rrefgs_S:Iterable[RRefGroup], S:SPath, D:Optional[SPath]=None)->
     dref_S:DRef=rref2dref(rrefg_S[tag_out()])
 
     def _stage(m:Manager, dref:DRef, cfg:Config)->DRef:
-      # print(f"Instantiating {config_name(cfg)}")
+      # print(f"Instantiating {cfg}")
       for dep_dref in config_deps(config_substitutePromises(cfg,dref)):
-        dep=_stage(m, dep_dref, store_config_(dep_dref,S=S))
-        assert dep==dep_dref, f"{dep} != {dep_dref}"
+        if dep_dref!=dref:
+          dep=_stage(m, dep_dref, store_config_(dep_dref,S=S))
+          assert dep==dep_dref, f"{dep} != {dep_dref}"
 
       def _make(b:Build)->None:
         """ 'Realize' the derivation in `D` by copying its contents from `S` """

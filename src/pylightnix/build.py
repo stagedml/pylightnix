@@ -292,17 +292,14 @@ def build_environ(b:Build, env:Optional[Any]=None)->dict:
 #   With this wrapper, stages could become either LEFT (if rasied an error) or
 #   RIGHT (after normal completion). If the stage turns LEFT, then so will be any
 #   of it's dependant stages. """
-
 #   def _either(b:Build)->None:
 #     build_setoutpaths(b, nouts)
-
 #     # Write the specified build status to every output
 #     def _mark_status(status:str, e:Optional[str]=None)->None:
 #       for o in build_outpaths(b):
 #         writestr(join(o,'status_either.txt'), status)
 #         if e is not None:
 #           writestr(join(o,'exception.txt'), e)
-
 #     # Scan all immediate dependecnies of this build, propagate 'LEFT' status
 #     for dref in store_deps([b.dref]):
 #       for rg in context_deref(b.context, dref):
@@ -315,7 +312,6 @@ def build_environ(b:Build, env:Optional[Any]=None)->dict:
 #           return
 #         else:
 #           assert False, f"Invalid either status {status}"
-
 #     # Execute the original build
 #     try:
 #       f(b)
@@ -324,7 +320,6 @@ def build_environ(b:Build, env:Optional[Any]=None)->dict:
 #       raise
 #     except Exception:
 #       _mark_status('LEFT', format_exc())
-
 #   realizer=build_wrapper_(_either, ctr, buildtime)
 #   return realizer
 
