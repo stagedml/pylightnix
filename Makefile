@@ -44,6 +44,10 @@ docs-manual: docs/Manual.pdf
 docs/Manual.pdf: $(SRC) $(TEX) ./docs/compile.sh .stamp_check
 	/bin/sh ./docs/compile.sh docs/Manual.tex
 
+.PHONY: docs
+docs: docs-manual docs-quickstart docs-reference
+
+
 .PHONY: publish-quickstart
 publish-quickstart: docs/QuickStart.pdf
 	/bin/sh ./docs/publish.sh docs/QuickStart.pdf $(VERSION)
@@ -52,6 +56,8 @@ publish-quickstart: docs/QuickStart.pdf
 publish-manual: docs/Manual.pdf
 	/bin/sh ./docs/publish.sh docs/Manual.pdf $(VERSION)
 
+.PHONY: publish-docs
+publish-docs: publish-manual publish-quickstart
 
 .coverage.xml: $(SRC) $(TESTS) .stamp_check
 	rm coverage.xml || true

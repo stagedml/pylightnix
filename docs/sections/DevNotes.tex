@@ -1,4 +1,66 @@
-\section{Development notes}
+\section{Development}
+
+\subsection{Environment setup}
+
+The \href{https://nixos.org/nix}{Nix} package manager is required to setup the
+development environment. While Pylightnix enjoys minimum run-time dependencies,
+it does require lots of development dependencies to be installed. All the
+requirements are encoded as Nix expressions:
+
+\begin{itemize}
+
+  \item File \texttt{default.nix} contains the expression to builds the final
+    Python package from source. To run the build, execute in the project's root
+    folder:
+
+    \begin{shellcode}
+    $ nix-build
+    \end{shellcode}
+
+    The result would appear under the symbolic link \texttt{./result} in the
+    current folder.
+
+  \item In \texttt{shell.nix} we specify how to prepare the development shell.
+    To open the shell, execute
+
+    \begin{shellcode}
+    $ nix-shell
+    \end{shellcode}
+
+    Inside the development shell, one could use \texttt{GNU Make} to complete
+    various development tasks. The most important Make targets are
+
+    \begin{itemize}
+      \item \texttt{make tc} - Typechecks the project using MyPy
+      \item \texttt{make coverage} and \texttt{make test} (a synonym) - Run
+        Pylightnix test and prepare the coverage reports.
+      \item \texttt{make wheel} - Builds the wheel pip package
+      \item \texttt{make docs} - Builds the Tex documentation, including this
+        one.
+      \item \texttt{make docs} - Builds the documentation, including this
+        one.
+    \end{itemize}
+
+    Utilitary targets listed below rely on various sorts of private account
+    information. One may want to change change settings to make those rules work
+    for they.
+
+    \begin{itemize}
+
+      \item \texttt{make publish-docs} - Commits documentation PDFs to
+        Author's docs repository. Change the repository URL in the Makefile
+        before using this target.
+
+      \item \texttt{make coverage-uploade} Uploads the test coverage report to
+        the Author's CodeCov account. There must be a file \texttt{.codecovrc}
+        containing the CodeCov access token.
+
+    \end{itemize}
+
+\end{itemize}
+
+
+\subsection{References}
 
 \begin{itemize}
   \item Python:
@@ -7,10 +69,9 @@
         \href{https://packaging.python.org/guides/single-sourcing-package-version/}{Approaches}
         to versioning
       \item
-        \href{https://pypi.org/project/setuptools-scm/}{Setuptool-scm} verisoning
+        \href{https://pypi.org/project/setuptools-scm/}{Setuptool-scm} versioning
       \item
-        \href{https://docs.python.org/3.7/distutils/sourcedist.html#manifest-template}{On
-        Manifests}. Manifests seem to be useless in our case.
+        \href{https://docs.python.org/3.7/distutils/sourcedist.html#manifest-template}{On Manifests}. Manifests seem to be useless in our case.
     \end{itemize}
 \end{itemize}
 
