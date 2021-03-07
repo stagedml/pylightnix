@@ -1,7 +1,7 @@
 .DEFAULT_GOAL = all
 VERSION = $(shell python3 setup.py --version)
 WHEEL = dist/pylightnix-$(VERSION)-py3-none-any.whl
-SRC = $(shell find src -name '*\.py')
+SRC = $(shell find src -name '*\.py' | grep -v version.py)
 TEX = $(shell find docs -name '*\.tex')
 TESTS = $(shell find tests -name '*\.py')
 
@@ -79,7 +79,7 @@ test: coverage
 		echo "Go and get it at https://codecov.io/gh/stagedml/pylightnix/settings" >&2 ;\
 		exit 1 ;\
 	fi
-	codecov -t `cat .codecovrc` -f $<
+	codecov --required -t `cat .codecovrc` -f $<
 	touch $@
 
 .PHONY: coverage-upload
@@ -145,7 +145,7 @@ check: $(WHEEL)
 		echo 'Did you install pylightnix systemwide by running `sudo -H make install` ?' ; exit 1 ; )
 
 .PHONY: all
-all: wheels coverage demos docs
+all: coverage docs wheel
 
 
 
