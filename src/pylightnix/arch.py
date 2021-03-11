@@ -19,7 +19,7 @@ from pylightnix.imports import (Popen, dirname, basename, remove, join,
                                 isdir, shutil_copy)
 from pylightnix.types import (RRef, List, Dict, Path, Iterable, Optional,
                               SPath, Manager, DRef, Config, RConfig, Build,
-                              RRefGroup)
+                              RRefGroup, Set)
 from pylightnix.core import (store_deepdeps, store_deepdepRrefs,
                              store_rref2path, store_dref2path, storage,
                              tempdir, storagename, alldrefs, rootdrefs,
@@ -102,15 +102,18 @@ def copyclosure(rrefgs_S:Iterable[RRefGroup], S:SPath, D:Optional[SPath]=None)->
   TODO: Implement a non-recursive version.
   """
   for rrefg_S in rrefgs_S:
+    visited_drefs:Set[DRef]=set()
 
     dref_S:DRef=rref2dref(rrefg_S[tag_out()])
 
-    def _stage(m:Manager, dref:DRef, cfg:Config)->DRef:
+    def _stage(m:Manager, dref:DRef)->DRef:
+      nonlocal visited_drefs
+      cfg=store_config_(dref,S=S)
       # print(f"Instantiating {cfg}")
-      for dep_dref in config_deps(config_substitutePromises(cfg,dref)):
-        if dep_dref!=dref:
-          dep=_stage(m, dep_dref, store_config_(dep_dref,S=S))
-          assert dep==dep_dref, f"{dep} != {dep_dref}"
+      if dref not in visited_drefs:
+        for dep_dref in config_deps(config_substitutePromises(cfg,dref)):
+          if dep_dref!=dref:
+            _stage(m, dep_dref)
 
       def _make(b:Build)->None:
         """ 'Realize' the derivation in `D` by copying its contents from `S` """
@@ -127,9 +130,12 @@ def copyclosure(rrefgs_S:Iterable[RRefGroup], S:SPath, D:Optional[SPath]=None)->
 
       rrefgs_S1=deref_(rrefg_S, dref, S=S)
       # print(f"Expecting to get: {rrefgs_S1}")
-      return mkdrv(m, cfg, match_exact(rrefgs_S1), build_wrapper(_make))
+      dref2=mkdrv(m, cfg, match_exact(rrefgs_S1), build_wrapper(_make))
+      visited_drefs.add(dref2)
+      assert dref==dref2, f"{dref} != {dref2}"
+      return dref2
 
-    rrefgs_D=realizeGroups(instantiate(_stage, dref_S, store_config_(dref_S,S=S), S=D))
+    rrefgs_D=realizeGroups(instantiate(_stage, dref_S, S=D))
     assert len(rrefgs_D)==1, f"{rrefgs_D}"
     assert rrefgs_D[0]==rrefg_S, f"{rrefgs_D[0]}!={rrefg_S}"
 
