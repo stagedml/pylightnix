@@ -231,7 +231,7 @@ Context=Dict[DRef,List[RRef]]
 #: - [match_some](#pylightnix.core.match_some) matches any existing realizations
 #: - [match_only](#pylightnix.core.match_only) matches exactly one existing
 #:   realization (asserts if there are more than one realizations)
-Matcher = Callable[[SPath,DRef,Context],Optional[List[RRefGroup]]]
+Matcher = Callable[[SPath,DRef,Context],Optional[List[RRef]]]
 
 InstantiateArg=Dict[str,Any]
 RealizeArg=Dict[str,Any]
@@ -274,7 +274,7 @@ RealizeArg=Dict[str,Any]
 #:   ...
 #:   return mkdrv(m, ...,  _realize)
 #: ```
-Realizer = Callable[[SPath,DRef,Context,RealizeArg],List[Dict[Tag,Path]]]
+Realizer = Callable[[SPath,DRef,Context,RealizeArg],List[Path]]
 
 #: Derivation is the core type of Pylightnix. It keeps all the information about
 #: a stage:

@@ -168,20 +168,6 @@ def path2rref(p:Path)->Optional[RRef]:
   h2,nm=undref(dref)
   return mkrref(HashPart(h1),HashPart(h2),mkname(nm))
 
-def mktag(s:str)->Tag:
-  for c in ['\n',' ']:
-    assert c not in s, f"Invalid symbol '{c}' in tag '{s}'"
-  return Tag(s)
-
-def tag_out()->Tag:
-  """ Pre-defined default Tag name """
-  return mktag('out')
-
-def mkgroup(s:str)->Group:
-  for c in ['\n',' ']:
-    assert c not in s
-  return Group(s)
-
 #   ____             __ _
 #  / ___|___  _ __  / _(_) __ _
 # | |   / _ \| '_ \| |_| |/ _` |
@@ -433,29 +419,6 @@ def rrefdata(rref:RRef,S=None)->Iterable[Path]:
     if not (fd.is_file() and fd.name in PYLIGHTNIX_RESERVED):
       yield Path(join(root, fd.name))
 
-def rrefs2groups(rrefs:Iterable[RRef], S=None)->List[RRefGroup]:
-  """ Split RRefs to a set of [Groups](#pylightnix.types.Group), according to
-  their [Tags](#pylightnix.types.Tag)
-
-  FIXME: re-implement with a complexity better than O(N^2)
-  """
-  return [({store_tag(rref,S):rref for rref in rrefs if store_group(rref,S)==g})
-    for g in sorted({store_group(rref,S) for rref in rrefs})]
-
-def groups2rrefs(grs:List[RRefGroup])->List[RRef]:
-  """ Merges several [Groups](#pylightnix.types.Group) of RRefs into a plain
-  list of RRefs """
-  return list(chain.from_iterable([gr.values() for gr in grs]))
-
-def grouprref(gr:RRefGroup)->RRef:
-  return gr[tag_out()]
-
-def group2sign(grp:RRefGroup)->List[Tuple[RRef,Tag]]:
-  return list(sorted([(rref,tag) for tag,rref in grp.items()]))
-
-def group_in(grp:RRefGroup, grps:List[RRefGroup])->bool:
-  return group2sign(grp) in set({group2sign(gr) for gr in grps})
-
 def drefrrefs(dref:DRef,S=None)->List[RRef]:
   """ Iterate over all realizations of a derivation `dref`. The sort order is
   unspecified. Matching is not taken into account. """
@@ -467,20 +430,30 @@ def drefrrefs(dref:DRef,S=None)->List[RRef]:
       rrefs.append(mkrref(HashPart(f), dhash, nm))
   return rrefs
 
-def store_rrefs_(dref:DRef,S=None)->List[RRefGroup]:
-  """ Iterate over all realizations of a derivation `dref`. The sort order is
-  unspecified. """
-  return rrefs2groups(drefrrefs(dref,S),S)
+# def store_rrefs_(dref:DRef,S=None)->List[RRefGroup]:
+#   """ Iterate over all realizations of a derivation `dref`. The sort order is
+#   unspecified. """
+#   return rrefs2groups(drefrrefs(dref,S),S)
 
-def store_rrefs(dref:DRef, context:Context, S=None)->List[RRefGroup]:
-  """ Iterate over realizations of a derivation `dref` which match a specified
+def drefrrefsC(dref:DRef, context:Context, S=None)->Iterable[RRef]:
+  """ Iterate over realizations of a derivation `dref` that match a specified
   [context](#pylightnix.types.Context). Sorting order is unspecified. """
-  rgs:List[RRefGroup]=[]
-  for rg in store_rrefs_(dref,S):
-    context2=store_context(rg[tag_out()],S)
+  for rref in drefrrefs(dref,S):
+    context2=store_context(rref,S)
     if context_eq(context,context2):
-      rgs.append(rg)
-  return rgs
+      yield rref
+
+# def store_rrefs(dref:DRef, context:Context, S=None)->List[RRefGroup]:
+#   """ Iterate over realizations of a derivation `dref` which match a specified
+#   [context](#pylightnix.types.Context). Sorting order is unspecified.
+#   DEPRECATED
+#   """
+#   rgs:List[RRefGroup]=[]
+#   for rg in store_rrefs_(dref,S):
+#     context2=store_context(rg[tag_out()],S)
+#     if context_eq(context,context2):
+#       rgs.append(rg)
+#   return rgs
 
 def store_deref_(context_holder:RRef, dref:DRef, S=None)->List[RRefGroup]:
   return context_deref(store_context(context_holder,S),dref,S)
@@ -505,17 +478,6 @@ def store_buildtime(rref:RRef, S=None)->Optional[str]:
   realizations may not provide this information. """
   return tryread(Path(join(store_rref2path(rref,S),'__buildtime__.txt')))
 
-def store_tag(rref:RRef,S=None)->Tag:
-  """ Return the [Tag](#pylightnix.types.tag) of a Realization. Default Tag
-  name is 'out'. """
-  return mktag(tryreadjson_def(
-    reserved(store_rref2path(rref,S),'group.json'),{}).get('tag','out'))
-
-def store_group(rref:RRef,S=None)->Group:
-  """ Return group identifier of the realization """
-  return mkgroup(tryreadjson_def(
-    reserved(store_rref2path(rref,S),'group.json'),{}).get('group',rref))
-
 def store_gc(keep_drefs:List[DRef],
              keep_rrefs:List[RRef],
              S:SPath)->Tuple[Set[DRef],Set[RRef]]:
@@ -535,10 +497,9 @@ def store_gc(keep_drefs:List[DRef],
   for dref in alldrefs(S):
     if dref not in closure_drefs:
       remove_drefs.add(dref)
-    for rg in store_rrefs_(dref,S):
-      for rref in rg.values():
-        if rref not in closure_rrefs:
-          remove_rrefs.add(rref)
+    for rref in drefrrefs(dref,S):
+      if rref not in closure_rrefs:
+        remove_rrefs.add(rref)
   return remove_drefs,remove_rrefs
 
 
@@ -757,8 +718,8 @@ def mkdrv(m:Manager,
 
   def _promise_aware(realizer)->Realizer:
     def _realizer(S:SPath,dref:DRef,ctx:Context,rarg:RealizeArg)->List[Dict[Tag,Path]]:
-      outgroups=realizer(S,dref,ctx,rarg)
-      for key,refpath in config_promises(store_config_(dref,S),dref):
+      outpaths=realizer(S,dref,ctx,rarg)
+      for key,path in config_promises(store_config_(dref,S),dref):
         for g in outgroups:
           assert_promise_fulfilled(key,refpath,g[tag_out()])
       return outgroups
@@ -791,8 +752,8 @@ def instantiate(stage:Any, *args, S=None, **kwargs)->Closure:
   return instantiate_(Manager(storage(S)), stage, *args, **kwargs)
 
 RealizeSeqGen = Generator[Tuple[SPath,DRef,Context,Derivation,RealizeArg],
-                          Tuple[Optional[List[RRefGroup]],bool],
-                          List[RRefGroup]]
+                          Tuple[Optional[List[RRef]],bool],
+                          List[RRef]]
 
 def realize(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
                              assert_realized:List[DRef]=[])->RRef:
@@ -805,15 +766,13 @@ def realize(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
       f"Consider using `realizeMany` or `realizeGroups`." )
   return rrefs[0]
 
-def realizeGroups(closure:Closure,
-                 force_rebuild:Union[List[DRef],bool]=[],
-                 assert_realized:List[DRef]=[],
-                 realize_args:Dict[DRef,RealizeArg]={})->List[RRefGroup]:
+
+def realizeMany(closure:Closure,
+                force_rebuild:Union[List[DRef],bool]=[],
+                assert_realized:List[DRef]=[],
+                realize_args:Dict[DRef,RealizeArg]={})->List[RRef]:
   """ Obtain one or more [Closure](#pylightnix.types.Closure) realizations of a
   stage.
-
-  Returned value is a collection of tagged
-  [realizations](#pylightnix.types.RRef) references.
 
   The function returns [matching](#pylightnix.types.Matcher) realizations
   immediately if they are exist.
@@ -831,7 +790,7 @@ def realizeGroups(closure:Closure,
   print([mklen(rref).syspath for grp[tag_out()] in rrefgs])
   ```
 
-  Pylightnix contains the following alternatives to `realizeGroup`:
+  Pylightnix contains the following alternatives to `realizeMany`:
 
   * [realize](#pylightnix.core.realize) - A single-output version
   * [repl_realize](#pylightnix.repl.repl_realize) - A REPL-friendly version
@@ -843,7 +802,6 @@ def realizeGroups(closure:Closure,
   - FIXME: Update derivation's matcher after forced rebuilds. Matchers should
     remember and reproduce user's preferences.
   """
-  res:List[RRefGroup]
   force_interrupt:List[DRef]=[]
   if isinstance(force_rebuild,bool):
     if force_rebuild:
@@ -853,22 +811,13 @@ def realizeGroups(closure:Closure,
   else:
     assert False, "Ivalid type of `force_rebuild` argument"
   try:
-    gen=realizeSeq(closure,force_interrupt=force_interrupt,
-                           assert_realized=assert_realized,
-                           realize_args=realize_args)
+    gen=realizeSeq(closure, force_interrupt, assert_realized, realize_args)
     next(gen)
     while True:
       gen.send((None,False)) # Ask for default action
   except StopIteration as e:
     res=e.value
   return res
-
-def realizeMany(closure:Closure,
-                force_rebuild:Union[List[DRef],bool]=[],
-                assert_realized:List[DRef]=[],
-                realize_args:Dict[DRef,RealizeArg]={})->List[RRef]:
-  return groups2rrefs(realizeGroups(
-    closure, force_rebuild, assert_realized, realize_args))
 
 def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
                                 assert_realized:List[DRef]=[],
@@ -888,43 +837,44 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
   target_deps=store_deepdeps([target_dref],S)
   for drv in closure.derivations:
     dref=drv.dref
-    rrefgs:Optional[List[RRefGroup]]
+    rrefs:Optional[List[RRef]]
     if dref in target_deps or dref==target_dref:
       dref_deps=store_deepdeps([dref],S)
       dref_context={k:v for k,v in context_acc.items() if k in dref_deps} # I
       if dref in force_interrupt_:
-        rrefgs,abort=yield (S,dref,dref_context,drv,realize_args.get(dref,{}))
+        rrefs,abort=yield (S,dref,dref_context,drv,realize_args.get(dref,{}))
         if abort:
           return []
       else:
-        rrefgs=drv.matcher(S,dref,dref_context)
-      if rrefgs is None:
+        rrefs=drv.matcher(S,dref,dref_context)
+      if rrefs is None:
         assert dref not in assert_realized, (
           f"Stage '{dref}' was assumed to be already realized. "
           f"Unfortunately, it is not the case. Config:\n"
           f"{store_config(dref)}"
           )
-        rrefgs_existed=store_rrefs(dref,dref_context,S)
-        gpaths:List[Dict[Tag,Path]]=drv.realizer(S,dref,dref_context,realize_args.get(dref,{}))
-        rrefgs_built=[mkrgroup(dref,dref_context,g,S) for g in gpaths]
-        if sum(len(g.values()) for g in gpaths)!=len(set.union(*[set(g.values()) for g in rrefgs_built])):
+        rrefs_existed=drefrrefsC(dref,dref_context,S)
+        rpaths:List[Path]=drv.realizer(S,dref,dref_context,realize_args.get(dref,{}))
+        rrefs_built:List[RRef]=[mkrealization(dref,dref_context,rp,None,S) for rp in rpaths]
+        if len(rpaths)!=len(set(rrefs_built)):
           warning(f"Realizer of {dref} produced duplicated realizations")
-        rrefgs_matched=drv.matcher(S,dref,dref_context)
-        assert rrefgs_matched is not None, (
+        rrefs_matched=drv.matcher(S,dref,dref_context)
+        assert rrefs_matched is not None, (
           f"The matcher of {dref} is not satisfied with its realizatons. "
           f"The following newly obtained realizations were ignored:\n"
-          f"  {rrefgs_built}\n"
+          f"  {rrefs_built}\n"
           f"The following realizations already existed:\n"
-          f"  {rrefgs_existed}")
-        if (set(groups2rrefs(rrefgs_built)) & set(groups2rrefs(rrefgs_matched))) == set() and \
-           (set(groups2rrefs(rrefgs_built)) | set(groups2rrefs(rrefgs_matched))) != set():
+          f"  {rrefs_existed}")
+        if (set(rrefs_built) & set(rrefs_matched)) == set() and \
+           (set(rrefs_built) | set(rrefs_matched)) != set():
           warning(f"None of the newly obtained {dref} realizations "
                   f"were matched by the matcher. To capture those "
                   f"realizations explicitly, try `matcher([exact(..)])`")
-        rrefgs=rrefgs_matched
-      context_acc=context_add(context_acc,dref,groups2rrefs(rrefgs))
-  assert rrefgs is not None
-  return rrefgs
+        rrefs=rrefs_matched
+      assert rrefs is not None
+      context_acc=context_add(context_acc,dref,rrefs)
+  assert rrefs is not None
+  return rrefs
 
 def evaluate(stage, *args, **kwargs)->RRef:
   return realize(instantiate(stage,*args,**kwargs))
@@ -982,134 +932,6 @@ def mksymlink(rref:RRef, tgtpath:Path, name:str, withtime:bool=True, S=None)->Pa
   assert isdir(tgtpath), f"Target link directory doesn't exist: '{tgtpath}'"
   return linkrref(rref, destdir=tgtpath, name=name, withtime=withtime, S=S)
 
-#  __  __       _       _
-# |  \/  | __ _| |_ ___| |__   ___ _ __ ___
-# | |\/| |/ _` | __/ __| '_ \ / _ \ '__/ __|
-# | |  | | (_| | || (__| | | |  __/ |  \__ \
-# |_|  |_|\__,_|\__\___|_| |_|\___|_|  |___/
-
-def mkmatch(keys:List[Key], topN:Optional[int]=None)->Matcher:
-  """ Create a [Matcher](#pylightnix.types.Matcher) by combining different
-  sorting keys and selecting a top-n threshold.
-
-  Only realizations which have [tag](#pylightnix.types.Tag) 'out' (which is a
-  default tag name) participate in matching. After the matching, Pylightnix
-  adds all non-'out' realizations which share [group](#pylightnix.types.Group)
-  with at least one matched realization.
-
-  Arguments:
-  - `keys`: A list of [Key](#pylightnix.types.Key) functions.
-  - `topN`: Limits the number of best matches to thin number.
-  """
-  keys=keys+[texthash()]
-  def _matcher(S:SPath, dref:DRef, context:Context)->Optional[List[RRefGroup]]:
-    # Find realizations tagged with 'out' among the available realizations
-    grps={grouprref(gr):gr for gr in store_rrefs(dref,context,S)}
-    # Calculate a list of keys for every group
-    keymap:Dict[RRef,List[Optional[Union[int,float,str]]]]=\
-      {rref:[k(gr,S) for k in keys] for rref,gr in grps.items()}
-    # Filter-out None results and sort the remaining groups by keys
-    goodkeys=\
-      sorted(filter(lambda rref: None not in keymap[rref], grps.keys()),
-             key=lambda rref:keymap[rref], reverse=True)
-    # Return topN best matches
-    return [grps[gk] for gk in goodkeys][:topN]
-  return _matcher
-
-def exact(grps:List[RRefGroup])->Key:
-  signs=[group2sign(g) for g in grps]
-  def _key(grp:RRefGroup,S=None)->Optional[Union[int,float,str]]:
-    return 1 if group2sign(grp) in signs else None
-  return _key
-
-def latest()->Key:
-  def _key(gr:RRefGroup,S=None)->Optional[Union[int,float,str]]:
-    try:
-      with open(join(store_rref2path(grouprref(gr),S),'__buildtime__.txt'),'r') as f:
-        t=parsetime(f.read())
-        return float(0 if t is None else t)
-    except OSError:
-      return float(0)
-  return _key
-
-def best(filename:str)->Key:
-  def _key(gr:RRefGroup,S=None)->Optional[Union[int,float,str]]:
-    try:
-      with open(join(store_rref2path(grouprref(gr),S),filename),'r') as f:
-        return float(f.readline())
-    except OSError:
-      return float('-inf')
-    except ValueError:
-      return float('-inf')
-  return _key
-
-def texthash()->Key:
-  def _key(gr:RRefGroup,S=None)->Optional[Union[int,float,str]]:
-    return str(unrref(grouprref(gr))[0])
-  return _key
-
-def mappred(pred:Callable[[List[RRefGroup]],bool], ma:Matcher)->Matcher:
-  """ Calls for a realizer if the number of matches is below the minimum """
-  def _matcher(S:SPath, dref:DRef, ctx:Context)->Optional[List[RRefGroup]]:
-    grps=ma(S,dref,ctx)
-    if grps is None:
-      return None
-    if not pred(grps):
-      return None
-    return grps
-  return _matcher
-
-def mapmin(minN:int, ma:Matcher)->Matcher:
-  """ Call for a realizer if the number of matches is below the number """
-  return mappred(lambda grps:len(grps)>=minN,ma)
-
-def mapsome(ma:Matcher)->Matcher:
-  """ Call for a realizer if the number of matches is zero. """
-  return mapmin(1,ma)
-
-def maponly(ma:Matcher)->Matcher:
-  def _matcher(S:SPath, dref:DRef, ctx:Context)->Optional[List[RRefGroup]]:
-    grps=ma(S,dref,ctx)
-    if grps is None:
-      return None
-    assert len(grps)==1, (
-      f"Matcher expects exactly one realization, but there are {len(grps)}:\n"
-      f"{grps}")
-    return grps
-  return _matcher
-
-def match_all()->Matcher:
-  """ [Match](#pylightnix.types.Matcher) **all** the available realizations,
-  including zero. Never call to a realizer. """
-  return mkmatch([])
-
-def match_some(minN:int=1)->Matcher:
-  """ Call to a realizer if there are less than `minN` realizations in storage.
-  Matche `minN` or more realizations. """
-  assert minN>=0, f"Arguement of match_some should be >=0, not {minN}"
-  return mapmin(minN, match_all())
-
-def match_only()->Matcher:
-  """ Matches one or more realizations, but asserts if there are more than one
-  realizations matched. """
-  return maponly(match_some(minN=1))
-
-def match_latest(minN:int=1, topN:int=1)->Matcher:
-  """ Match up to `topN` oldest realizations. Call to a realizer if there are
-  less than `minN` realizations available. """
-  # assert topN>=minN, "Invalid match_latest arguments, should be topN>=minN"
-  return mapmin(minN, mkmatch([latest()],topN=topN))
-
-def match_best(filename:str, minN:int=1, topN:int=1)->Matcher:
-  """ [Match](#pylightnix.types.Matcher) up to `topN` best matches, but not
-  less than minN. The score is expected to reside in a file named `filename`.
-  """
-  # assert topN>=minN, "Invalid match_best arguments, should be topN>=minN"
-  return mapmin(minN,mkmatch([best(filename)],topN=topN))
-
-def match_exact(grps:List[RRefGroup])->Matcher:
-  """ Match exact these groups. Call to a realizer if no groups were seen."""
-  return mapmin(1,mkmatch([exact(grps)]))
 
 #     _                      _
 #    / \   ___ ___  ___ _ __| |_ ___
