@@ -41,7 +41,7 @@ from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional, Iterable,
 
 from pylightnix.core import (assert_valid_config, config_cattrs,
                              config_hash, config_name, context_deref,
-                             assert_valid_refpath, store_rref2path, store_deps,
+                             assert_valid_refpath, store_rref2path, drefdeps1,
                              config_dict, drefcfg)
 
 from pylightnix.repl import (ReplHelper, repl_continue, ERR_INVALID_RH,
@@ -303,7 +303,7 @@ def repl_build(rh:Optional[ReplHelper]=None, buildtime:bool=True)->Build:
 #         if e is not None:
 #           writestr(join(o,'exception.txt'), e)
 #     # Scan all immediate dependecnies of this build, propagate 'LEFT' status
-#     for dref in store_deps([b.dref]):
+#     for dref in drefdeps1([b.dref]):
 #       for rg in context_deref(b.context, dref):
 #         rref = rg[Tag('out')]
 #         status=tryreadstr_def(join(store_rref2path(rref),'status_either.txt'), 'RIGHT')

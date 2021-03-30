@@ -1,21 +1,18 @@
-from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir,
-                        dirhash, assert_valid_dref, assert_valid_rref,
-                        store_deps, store_deepdeps, store_gc,
-                        assert_valid_hash, assert_valid_config, Manager,
+from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir, dirhash,
+                        assert_valid_dref, assert_valid_rref, drefdeps1,
+                        drefdeps, store_gc, assert_valid_config, Manager,
                         mkcontext, allrrefs, mkdref, mkrref, unrref, undref,
-                        realize, rref2dref, drefcfg, mkconfig, Build,
-                        Context, build_outpath, mkdrv, store_rref2path,
-                        config_cattrs, mksymlink, drefattrs, build_deref,
-                        build_path, mkrefpath, build_config, alldrefs,
-                        build_wrapper, build_cattrs, build_name,
-                        tryread, trywrite,
-                        realizeMany,
-                        scanref_dict, config_dict, mklens,
-                        isrref, Config, RConfig, build_setoutpaths, partial,
-                        path2rref, concat, linkrrefs, instantiate_,
-                        store_dref2path, path2dref, linkdref, storage,
-                        store_deepdepRrefs, drefrrefs, allrrefs, match_only,
-                        drefrrefs, drefrrefsC, drefrrefsCR, rrefattrs )
+                        realize, rref2dref, drefcfg, mkconfig, Build, Context,
+                        build_outpath, mkdrv, store_rref2path, config_cattrs,
+                        mksymlink, drefattrs, build_deref, build_path,
+                        mkrefpath, build_config, alldrefs, build_wrapper,
+                        build_cattrs, build_name, tryread, trywrite,
+                        realizeMany, scanref_dict, config_dict, mklens, isrref,
+                        Config, RConfig, build_setoutpaths, partial, path2rref,
+                        concat, linkrrefs, instantiate_, store_dref2path,
+                        path2dref, linkdref, storage, rrefdeps,
+                        drefrrefs, allrrefs, match_only, drefrrefs, drefrrefsC,
+                        drefrrefsCR, rrefattrs )
 
 from tests.imports import (given, Any, Callable, join, Optional, islink,
                            isfile, islink, List, randint, sleep, rmtree, system,
@@ -72,13 +69,13 @@ from tests.setup import ( ShouldHaveFailed, setup_storage, setup_storage2,
 #     assert_valid_dref(getattr(cro,'n2'))
 #     assert_valid_dref(getattr(cro,'n3'))
 
-#     assert set(store_deps([n1],S)) == set([])
-#     assert set(store_deps([n2,n3],S)) == set([n1])
-#     assert set(store_deps([toplevel],S)) == set([n2,n3])
+#     assert set(drefdeps1([n1],S)) == set([])
+#     assert set(drefdeps1([n2,n3],S)) == set([n1])
+#     assert set(drefdeps1([toplevel],S)) == set([n2,n3])
 
-#     assert store_deepdeps([n1],S) == set([])
-#     assert store_deepdeps([n2,n3],S) == set([n1])
-#     assert store_deepdeps([toplevel],S) == set([n1,n2,n3])
+#     assert drefdeps([n1],S) == set([])
+#     assert drefdeps([n2,n3],S) == set([n1])
+#     assert drefdeps([toplevel],S) == set([n1,n2,n3])
 
 # def test_detect_rref_deps()->None:
 #   with setup_storage('test_detect_rref_deps'):
@@ -251,8 +248,8 @@ def test_recursive_realize_with_another_manager()->None:
       return mkstage(m,{'baz':mklens(rref_inner,S=S).foo.val})
     rref=realize(instantiate(_setup_outer,S=S))
     assert rref_inner is not None
-    assert len(store_deepdeps([rref2dref(rref)],S=S))==0
-    assert len(store_deepdeps([rref2dref(rref_inner)],S=S))==0
+    assert len(drefdeps([rref2dref(rref)],S=S))==0
+    assert len(drefdeps([rref2dref(rref_inner)],S=S))==0
     assert mklens(rref_inner,S=S).foo.val=='bar'
     assert mklens(rref,S=S).baz.val=='bar'
 

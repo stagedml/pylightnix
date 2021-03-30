@@ -323,7 +323,7 @@ def rrefattrs(r:RRef, S=None)->Any:
   functions do the same thing. """
   return drefattrs(rref2dref(r),S)
 
-def store_deps(drefs:Iterable[DRef],S=None)->Set[DRef]:
+def drefdeps1(drefs:Iterable[DRef],S=None)->Set[DRef]:
   """ Return a list of reference's immediate dependencies, not including `drefs`
   themselves. """
   acc=set()
@@ -331,28 +331,28 @@ def store_deps(drefs:Iterable[DRef],S=None)->Set[DRef]:
     acc.update(config_deps(drefcfg_(dref,S)))
   return acc
 
-def store_depRrefs(rrefs:Iterable[RRef],S=None)->Set[RRef]:
+def rrefdeps1(rrefs:Iterable[RRef],S=None)->Set[RRef]:
   acc=set()
   for rref in rrefs:
     dref=rref2dref(rref)
-    for dref_dep in store_deps([dref],S):
+    for dref_dep in drefdeps1([dref],S):
       acc|=set(drefrrefsCR(dref_dep,context_holder=rref,S=S))
   return acc
 
-def store_deepdeps(drefs:Iterable[DRef], S=None)->Set[DRef]:
+def drefdeps(drefs:Iterable[DRef], S=None)->Set[DRef]:
   """ Return the complete set of `drefs`'s dependencies, not including `drefs`
   themselves. """
-  frontier=store_deps(drefs,S)
+  frontier=drefdeps1(drefs,S)
   processed=set()
   while frontier:
     ref = frontier.pop()
     processed.add(ref)
-    for dep in store_deps([ref],S):
+    for dep in drefdeps1([ref],S):
       if dep not in processed:
         frontier.add(dep)
   return processed
 
-def store_deepdepRrefs(rrefs:Iterable[RRef],S=None)->Set[RRef]:
+def rrefdeps(rrefs:Iterable[RRef],S=None)->Set[RRef]:
   """ Return the complete set of rrefs's dependencies, not including `rrefs`
   themselves.
 
@@ -384,7 +384,7 @@ def allrrefs(S=None)->Iterable[RRef]:
 def rootdrefs(S:Optional[SPath]=None)->Set[DRef]:
   """ Return root DRefs of the storage `S` as a set """
   def _inb(x):
-    return store_deps([x],S)
+    return drefdeps1([x],S)
   topsorted=kahntsort(alldrefs(S), _inb)
   assert topsorted is not None, (
     f"Falied to topologically sort the derivations of {S}. This "
@@ -394,7 +394,7 @@ def rootdrefs(S:Optional[SPath]=None)->Set[DRef]:
 def rootrrefs(S:Optional[SPath]=None)->Set[RRef]:
   """ Return root RRefs of the storage `S` as a set """
   def _inb(x):
-    return store_depRrefs([x],S)
+    return rrefdeps1([x],S)
   topsorted=kahntsort(allrrefs(S), _inb)
   assert topsorted is not None, (
     f"Falied to topologically sort the realizations of {S}. This "
@@ -475,8 +475,8 @@ def store_gc(keep_drefs:List[DRef],
   assert_store_initialized(S)
   keep_rrefs_=set(keep_rrefs)
   keep_drefs_=set(keep_drefs)
-  closure_rrefs=store_deepdepRrefs(keep_rrefs_,S) | keep_rrefs_
-  closure_drefs=store_deepdeps(keep_drefs_,S) | keep_drefs_ | {rref2dref(rref) for rref in closure_rrefs}
+  closure_rrefs=rrefdeps(keep_rrefs_,S) | keep_rrefs_
+  closure_drefs=drefdeps(keep_drefs_,S) | keep_drefs_ | {rref2dref(rref) for rref in closure_rrefs}
   remove_drefs=set()
   remove_rrefs=set()
   for dref in alldrefs(S):
@@ -744,7 +744,7 @@ def realizeMany(closure:Closure,
     version which uses a global derivation Manager.
 
   - FIXME: Stage's context is calculated inefficiently. Maybe one should track
-    dep.tree to avoid calling `store_deepdeps` within the cycle.
+    dep.tree to avoid calling `drefdeps` within the cycle.
   - FIXME: Update derivation's matcher after forced rebuilds. Matchers should
     remember and reproduce user's preferences.
   """
@@ -780,12 +780,12 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
   force_interrupt_:Set[DRef]=set(force_interrupt)
   context_acc:Context={}
   target_dref=closure.dref
-  target_deps=store_deepdeps([target_dref],S)
+  target_deps=drefdeps([target_dref],S)
   for drv in closure.derivations:
     dref=drv.dref
     rrefs:Optional[List[RRef]]
     if dref in target_deps or dref==target_dref:
-      dref_deps=store_deepdeps([dref],S)
+      dref_deps=drefdeps([dref],S)
       dref_context={k:v for k,v in context_acc.items() if k in dref_deps} # I
       if dref in force_interrupt_:
         rrefs,abort=yield (S,dref,dref_context,drv,realize_args.get(dref,{}))
@@ -958,7 +958,7 @@ def assert_rref_deps(c:Config)->None:
 
 def assert_have_realizers(m:Manager, drefs:List[DRef])->None:
   have_drefs=set(m.builders.keys())
-  need_drefs=store_deepdeps(drefs,m.storage) | set(drefs)
+  need_drefs=drefdeps(drefs,m.storage) | set(drefs)
   missing=list(need_drefs-have_drefs)
   assert len(missing)==0, (
     f"The following derivations don't have realizers associated with them:\n"

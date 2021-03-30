@@ -1,8 +1,8 @@
-from pylightnix import (
-    Manager, DRef, RRef, Path, mklogdir, dirhash, store_deps,
-    store_deepdeps, store_rref2path, Manager, mkcontext, instantiate, realize,
-    instantiate_inplace, realize_inplace, assert_valid_rref, drefrrefs,
-    alldrefs, assert_valid_dref )
+from pylightnix import ( Manager, DRef, RRef, Path, mklogdir, dirhash,
+                        drefdeps1, store_rref2path, Manager, mkcontext,
+                        instantiate, realize, instantiate_inplace,
+                        realize_inplace, assert_valid_rref, drefrrefs, alldrefs,
+                        assert_valid_dref )
 
 from tests.imports import (
     given, assume, example, note, settings, text, decimals, integers, rmtree,

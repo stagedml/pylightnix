@@ -20,7 +20,7 @@ from pylightnix.imports import (Popen, dirname, basename, remove, join,
 from pylightnix.types import (RRef, List, Dict, Path, Iterable, Optional,
                               SPath, Manager, DRef, Config, RConfig, Build,
                               RRefGroup, Set)
-from pylightnix.core import (store_deepdeps, store_deepdepRrefs,
+from pylightnix.core import (drefdeps, rrefdeps,
                              store_rref2path, store_dref2path, storage,
                              tempdir, storagename, alldrefs, rootdrefs,
                              rootrrefs, rref2dref, config_deps, drefcfg_,
@@ -54,7 +54,7 @@ def pack(roots:List[RRef], out:Path, S=None)->None:
     raise
   except Exception:
     pass
-  rrefs=store_deepdepRrefs(roots,S)
+  rrefs=rrefdeps(roots,S)
   store_holder=dirname(storage(S))
   done=False
   try:

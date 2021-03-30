@@ -1,6 +1,6 @@
 from pylightnix import (instantiate, DRef, RRef, Path, mklogdir, dirhash,
-                        assert_valid_dref, assert_valid_rref, store_deps,
-                        store_deepdeps, store_gc, assert_valid_hash,
+                        assert_valid_dref, assert_valid_rref, drefdeps1,
+                        drefdeps, store_gc, assert_valid_hash,
                         assert_valid_config, Manager, mkcontext, mkrgroup,
                         store_rrefs, mkdref, mkrref, unrref, undref, realize,
                         rref2dref, store_config, mkconfig, Build, Context,

@@ -1282,11 +1282,11 @@ def store_deps(drefs: Iterable[DRef], S=None) -> Set[DRef]
 Return a list of reference's immediate dependencies, not including `drefs`
 themselves.
 
-<a name="pylightnix.core.store_depRrefs"></a>
-## `store_depRrefs()`
+<a name="pylightnix.core.rrefdeps1"></a>
+## `rrefdeps1()`
 
 ```python
-def store_depRrefs(rrefs: Iterable[RRef], S=None) -> Set[RRef]
+def rrefdeps1(rrefs: Iterable[RRef], S=None) -> Set[RRef]
 ```
 
 

@@ -1,6 +1,6 @@
 from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir,
                         dirhash, assert_valid_dref, assert_valid_rref,
-                        store_deps, store_deepdeps, store_gc,
+                        drefdeps1, drefdeps, store_gc,
                         assert_valid_hash, assert_valid_config, Manager,
                         mkcontext, allrrefs, mkdref, mkrref,
                         unrref, undref, realize, rref2dref, drefcfg,
@@ -15,7 +15,7 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir,
                         mklens, isrref, Config, RConfig, build_setoutpaths,
                         partial, path2rref, Tag, Group, RRefGroup, concat,
                         linkrrefs, instantiate_, store_dref2path, path2dref,
-                        linkdref, storage, store_deepdepRrefs, drefrrefs,
+                        linkdref, storage, rrefdeps, drefrrefs,
                         allrrefs, realizeGroups, tag_out, groups2rrefs,
                         redefine, match_only, readstr, match_exact, group2sign)
 
@@ -40,7 +40,7 @@ def test_union_of_root_derivations(stages):
     deps=set()
     for stage in stages:
       clo=instantiate(stage,S=S)
-      deps |= store_deepdeps([clo.dref],S) | set([clo.dref])
+      deps |= drefdeps([clo.dref],S) | set([clo.dref])
     assert deps==set(alldrefs(S))
 
 # @reproduce_failure('5.30.0', b'AAABAAAA')
@@ -54,7 +54,7 @@ def test_union_of_root_realizations(stages):
     deps=set()
     for stage in stages:
       rrefs=realizeMany(instantiate(stage,S=S))
-      deps|=store_deepdepRrefs(rrefs,S) | set(rrefs)
+      deps|=rrefdeps(rrefs,S) | set(rrefs)
     assert deps<=set(allrrefs(S))
 
 @settings(deadline=None)
