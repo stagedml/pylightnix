@@ -297,7 +297,7 @@ def store_rref2path(r:RRef, S=None)->Path:
 def store_cfgpath(r:DRef,S=None)->Path:
   return Path(join(store_dref2path(r,S),'config.json'))
 
-def store_context(r:RRef, S=None)->Context:
+def drefctx(r:RRef, S=None)->Context:
   """
   FIXME: Either do `context_add(ctx, rref2dref(r), [r])` or document it's absense
   """
@@ -362,7 +362,7 @@ def store_deepdepRrefs(rrefs:Iterable[RRef],S=None)->Set[RRef]:
   """
   acc:Set=set()
   for rref in rrefs:
-    for rref_deps in store_context(rref,S).values():
+    for rref_deps in drefctx(rref,S).values():
       acc|=set(rref_deps)
   return acc
 
@@ -428,7 +428,7 @@ def drefrrefsC(dref:DRef, context:Context, S=None)->Iterable[RRef]:
   """ Iterate over realizations of a derivation `dref` that match a specified
   [context](#pylightnix.types.Context). Sorting order is unspecified. """
   for rref in drefrrefs(dref,S):
-    context2=store_context(rref,S)
+    context2=drefctx(rref,S)
     if context_eq(context,context2):
       yield rref
 
@@ -439,7 +439,7 @@ def drefrrefsC(dref:DRef, context:Context, S=None)->Iterable[RRef]:
 #   """
 #   rgs:List[RRefGroup]=[]
 #   for rg in store_rrefs_(dref,S):
-#     context2=store_context(rg[tag_out()],S)
+#     context2=drefctx(rg[tag_out()],S)
 #     if context_eq(context,context2):
 #       rgs.append(rg)
 #   return rgs
@@ -449,7 +449,7 @@ def drefrrefsCR(dref:DRef, context_holder:RRef, S=None)->List[RRef]:
   """ Return realizations of `dref` in the `context_holder`'s context.  Previous
   name is store_deref_
   FIXME: rename to drefderef or alike """
-  return context_deref(store_context(context_holder,S),dref)
+  return context_deref(drefctx(context_holder,S),dref)
 
 
 def store_buildtime(rref:RRef, S=None)->Optional[str]:

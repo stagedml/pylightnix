@@ -21,7 +21,7 @@ from pylightnix.types import (Any, Dict, List, Build, DRef, RRef, Optional,
                               Context, Closure, SPath )
 from pylightnix.utils import (isrefpath, isdref, isrref, tryreadjson )
 from pylightnix.core import (rref2dref, store_rref2path, config_dict,
-                             store_dref2path, store_context, context_deref,
+                             store_dref2path, drefctx, context_deref,
                              context_add, storage, drefcfg)
 from pylightnix.build import (build_outpaths, build_config, build_context)
 
@@ -310,9 +310,9 @@ def mklens(x:Any, o:Optional[Path]=None,
   if ctx is None and isinstance(x,Build):
     ctx=build_context(x)
   if ctx is None and rref is not None:
-    ctx=store_context(rref,S)
+    ctx=drefctx(rref,S)
   if ctx is None and isrref(x):
-    ctx=context_add(store_context(RRef(x),S), rref2dref(RRef(x)), [RRef(x)])
+    ctx=context_add(drefctx(RRef(x),S), rref2dref(RRef(x)), [RRef(x)])
   if o is None and b is not None:
     o=build_outpaths(b)[build_output_idx]
   if o is None and isinstance(x,Build):
