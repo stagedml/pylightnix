@@ -1,9 +1,9 @@
 from pylightnix import (instantiate, DRef, RRef, assert_valid_rref, Manager,
-                        Build, realize, mklens, either_wrapper, claim, readstr,
+                        Build, realize, mklens, either_wrapper, readstr,
                         mkconfig, mkdrv, build_wrapper,
                         build_setoutpaths, either_status, either_isRight,
-                        either_isLeft, realizeMany, store_rref2path, match_some,
-                        writestr)
+                        either_isLeft, realizeMany, store_rref2path, match_only,
+                        writestr, match_some)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink,
                            isfile, List, randint, sleep, rmtree, system,
@@ -11,17 +11,16 @@ from tests.imports import (given, Any, Callable, join, Optional, islink,
 
 from tests.generators import (drefs, configs, dicts)
 
-from tests.setup import (ShouldHaveFailed, setup_storage, mkstage, mkstage)
+from tests.setup import (ShouldHaveFailed, setup_storage, mkstage)
 
 
 def mkeither(m, source, should_fail=False):
-  def _mutate(i,tag):
+  def _mutate(i):
     if should_fail:
       raise ValueError('Expected test error')
     else:
       return 33
-  return mkstage(m, source, realize_wrapper=either_wrapper, nondet=_mutate,
-                 promise_strength=claim)
+  return mkstage(m, source, realize_wrapper=either_wrapper, nondet=_mutate)
 
 def test_either()->None:
   with setup_storage('test_either'):
@@ -47,7 +46,7 @@ def test_either_success()->None:
         build_setoutpaths(b, 1)
         assert mklens(b).name.val=='n2'
       return mkdrv(m, mkconfig({'name':'n2', 'maman':n1}),
-                   match_some(), either_wrapper(build_wrapper(_make)))
+                   match_only(), either_wrapper(build_wrapper(_make)))
 
     rref = realize(instantiate(_setting))
     assert_valid_rref(rref)

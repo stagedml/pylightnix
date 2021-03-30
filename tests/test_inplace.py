@@ -1,7 +1,7 @@
 from pylightnix import (
-    Manager, DRef, RRef, Path, mklogdir, dirhash, mknode, store_deps,
+    Manager, DRef, RRef, Path, mklogdir, dirhash, store_deps,
     store_deepdeps, store_rref2path, Manager, mkcontext, instantiate, realize,
-    instantiate_inplace, realize_inplace, assert_valid_rref, store_rrefs_,
+    instantiate_inplace, realize_inplace, assert_valid_rref, drefrrefs,
     alldrefs, assert_valid_dref )
 
 from tests.imports import (
@@ -33,8 +33,8 @@ def test_inplace():
 
     all_drefs = list(alldrefs())
     assert len(all_drefs)==4
-    assert len(list(store_rrefs_(n1)))==1
-    assert len(list(store_rrefs_(n2)))==0
-    assert len(list(store_rrefs_(n3)))==1
-    assert len(list(store_rrefs_(n4)))==0
+    assert len(list(drefrrefs(n1)))==1
+    assert len(list(drefrrefs(n2)))==0
+    assert len(list(drefrrefs(n3)))==1
+    assert len(list(drefrrefs(n4)))==0
 

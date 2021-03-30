@@ -23,7 +23,7 @@ from pylightnix.types import (RRef, List, Dict, Path, Iterable, Optional,
 from pylightnix.core import (store_deepdeps, store_deepdepRrefs,
                              store_rref2path, store_dref2path, storage,
                              tempdir, storagename, alldrefs, rootdrefs,
-                             rootrrefs, rref2dref, config_deps, store_config_,
+                             rootrrefs, rref2dref, config_deps, drefcfg_,
                              mkdrv, realize, realizeMany,
                              instantiate, rrefs2groups, store_deref, rrefdata,
                              config_name, tag_out, store_deref_, realizeGroups,
@@ -108,7 +108,7 @@ def copyclosure(rrefgs_S:Iterable[RRefGroup], S:SPath, D:Optional[SPath]=None)->
 
     def _stage(m:Manager, dref:DRef)->DRef:
       nonlocal visited_drefs
-      cfg=store_config_(dref,S=S)
+      cfg=drefcfg_(dref,S=S)
       # print(f"Instantiating {cfg}")
       if dref not in visited_drefs:
         for dep_dref in config_deps(config_substitutePromises(cfg,dref)):

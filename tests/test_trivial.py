@@ -1,7 +1,9 @@
 from pylightnix import ( Manager, DRef, RRef, Path, mklogdir, dirhash, mknode,
-    store_deps, store_deepdeps, store_rref2path, Manager, mkcontext, instantiate,
-    realize, mkfile, Name, realized, build_wrapper, Build, mkconfig, match_some,
-    mkdrv, build_outpath, redefine, tryread, mklens, promise )
+                        store_deps, store_deepdeps, store_rref2path, Manager,
+                        mkcontext, instantiate, realize, mkfile, Name,
+                        realized, build_wrapper, Build, mkconfig, match_some,
+                        mkdrv, build_outpath, redefine, tryread, mklens,
+                        promise )
 
 from tests.imports import (
     given, assume, example, note, settings, text, decimals, integers, rmtree,

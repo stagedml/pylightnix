@@ -15,14 +15,15 @@
 """ Simple functions imitating unix shell tools.  """
 
 from pylightnix.types import ( Iterable, List, Union, Optional, DRef, RRef,
-    Dict, Tuple, Path, Build, Stage, Tag )
+    Dict, Tuple, Path, Stage )
 from pylightnix.imports import ( isfile, isdir, listdir, join, rmtree, environ,
     Popen, rename, getsize, fnmatch, dirname )
 from pylightnix.core import ( store_dref2path, store_rref2path, isrref, isdref,
-    alldrefs, store_rrefs_, store_config, config_name, store_buildtime,
+    alldrefs, drefrrefs, drefcfg_, config_name,
     instantiate, store_cfgpath, rref2dref )
 from pylightnix.utils import ( dirchmod, dirrm, dirsize, parsetime, timestring )
 
+from pylightnix.build import (Build)
 
 def lsdref_(r:DRef)->Iterable[str]:
   p=store_dref2path(r)
@@ -78,7 +79,7 @@ def rmref(r:Union[RRef,DRef])->None:
   else:
     assert False, f"Invalid reference {r}"
 
-def shell(r:Union[Build,RRef,DRef,Path,str,None]=None)->None:
+def shell(r:Union[RRef,DRef,Build,Path,str,None]=None)->None:
   """ Open the Unix Shell in the directory associated with the argument passed.
   Path to the shell executable is read from the `SHELL` environment variable,
   defaulting to `/bin/sh`. If `r` is None, open the shell in the root of the
@@ -95,9 +96,9 @@ def shell(r:Union[Build,RRef,DRef,Path,str,None]=None)->None:
   elif isdref(r):
     cwd=store_dref2path(DRef(r))
   elif isinstance(r,Build):
-    assert len(r.outgroups)>0, (
+    assert len(r.outpaths)>0, (
       "Shell function requires at least one build output path to be defined" )
-    cwd=r.outgroups[0][Tag('out')]
+    cwd=r.outpaths[0]
   elif isdir(r):
     cwd=str(r)
   elif isfile(r):
@@ -107,6 +108,7 @@ def shell(r:Union[Build,RRef,DRef,Path,str,None]=None)->None:
       f"Expecting `RRef`, `DRef`, a directory or file path (either a string or "
       f"a `Path`), or None. Got {r}")
   Popen([environ.get('SHELL','/bin/sh')], shell=False, cwd=cwd).wait()
+
 
 def shellref(r:Union[RRef,DRef,None]=None)->None:
   """ Alias for [shell](#pylightnix.bashlike.shell). Deprecated. """
@@ -121,11 +123,10 @@ def du()->Dict[DRef,Tuple[int,Dict[RRef,int]]]:
   for dref in alldrefs():
     rref_res={}
     dref_total=0
-    for gr in store_rrefs_(dref):
-      for rref in gr.values():
-        usage=dirsize(store_rref2path(rref))
-        rref_res[rref]=usage
-        dref_total+=usage
+    for rref in drefrrefs(dref):
+      usage=dirsize(store_rref2path(rref))
+      rref_res[rref]=usage
+      dref_total+=usage
     dref_total+=getsize(join(store_dref2path(dref),'config.json'))
     res[dref]=(dref_total,rref_res)
   return res
@@ -156,28 +157,28 @@ def find(name:Optional[Union[Stage,str]]=None, newer:Optional[float]=None)->List
       name_=name
     else:
       stage=name
-      name_=config_name(store_config(instantiate(stage).dref))
+      name_=config_name(drefcfg_(instantiate(stage).dref))
   for dref in alldrefs():
-    for gr in store_rrefs_(dref):
-      for rref in gr.values():
-        if name_ is not None:
-          if not fnmatch(config_name(store_config(rref)),name_):
-            continue
-        if newer is not None:
-          if newer<=0:
-            reftime=parsetime(timestring())
-            assert reftime is not None
-            reftime-=abs(newer)
-          else:
-            reftime=newer
-          btstr=store_buildtime(rref)
-          if btstr is None:
-            continue
-          btime=parsetime(btstr) if btstr is not None else None
-          if btime is not None:
-            if btime < reftime:
-              continue
-        rrefs.append(rref)
+    for rref in drefrrefs(dref):
+      if name_ is not None:
+        if not fnmatch(config_name(drefcfg_(rref2dref(rref))),name_):
+          continue
+      if newer is not None:
+        if newer<=0:
+          reftime=parsetime(timestring())
+          assert reftime is not None
+          reftime-=abs(newer)
+        else:
+          reftime=newer
+        # FIXME: repair buildtime search
+        # btstr=store_buildtime(rref)
+        # if btstr is None:
+        #   continue
+        # btime=parsetime(btstr) if btstr is not None else None
+        # if btime is not None:
+        #   if btime < reftime:
+        #     continue
+      rrefs.append(rref)
   return rrefs
 
 def diff(stageA:Union[RRef,DRef,Stage], stageB:Union[RRef,DRef,Stage])->None:

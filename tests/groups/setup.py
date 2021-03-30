@@ -1,9 +1,9 @@
 from pylightnix import (Manager, Path, store_initialize, DRef, Context,
                         Optional, mkbuild, build_outpath, allrrefs, RRef,
                         mkconfig, Name, mkdrv, store_rref2path, dirchmod,
-                        Config, RealizeArg, drefrrefsC, tryreadstr_def, SPath,
-                        storage, storagename, deepcopy, build_setoutpaths,
-                        maybereadstr, selfref)
+                        promise, Config, RealizeArg, drefrrefsC,
+                        tryreadstr_def, SPath, storage, storagename, deepcopy,
+                        build_setoutgroups, tag_out, maybereadstr)
 
 from tests.imports import (rmtree, join, makedirs, listdir, Callable,
                            contextmanager, List, Dict,  Popen, PIPE,
@@ -66,10 +66,11 @@ def setup_inplace_reset()->None:
 
 def mkstage(m:Manager,
             config:dict,
-            nondet:Callable[[int],int]=lambda n:0,
+            nondet:Callable[[int,Tag],int]=lambda n,t:0,
             buildtime:bool=True,
             realize_wrapper=None,
-            nrrefs:int=1,
+            promise_strength=promise,
+            tagset:List[List[Tag]]=[[Tag('out')]],
             nmatch:int=1)->DRef:
   """ Create a test stage.
 
@@ -78,17 +79,21 @@ def mkstage(m:Manager,
   """
   def _config()->Config:
     c=deepcopy(config)
-    c['artifact']=[selfref,'artifact']
+    c['artifact']=[promise_strength,'artifact']
     return mkconfig(c)
   def _realize(S:SPath, dref:DRef, context:Context, ra:RealizeArg)->List[Path]:
     b=mkbuild(S, dref, context, buildtime=buildtime)
-    paths=build_setoutpaths(b,nrrefs)
-    for i,o in enumerate(paths):
-      with open(join(o,'artifact'),'w') as f:
-        f.write(str(nondet(i)))
-      with open(join(o,'id'),'w') as f:
-        f.write(str(i))
-    return b.outpaths
+    grps=build_setoutgroups(b,tagset)
+    for i,g in enumerate(grps):
+      assert tag_out() in g.keys()
+      for tag,o in g.items():
+        with open(join(o,'artifact'),'w') as f:
+          f.write(str(nondet(i,tag)))
+        with open(join(o,'group'),'w') as f:
+          f.write(str(i))
+        with open(join(o,'tag'),'w') as f:
+          f.write(str(tag))
+    return b.outgroups
   def _match(S:SPath, dref:DRef, context:Context)->Optional[List[RRef]]:
     # Get the available groups
     rrefs=drefrrefsC(dref, context, S)
@@ -104,4 +109,5 @@ def mkstage(m:Manager,
 
 def pipe_stdout(args:List[str], **kwargs)->str:
   return Popen(args, stdout=PIPE, **kwargs).stdout.read().decode() # type:ignore
+
 

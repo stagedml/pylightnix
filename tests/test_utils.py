@@ -2,7 +2,7 @@ from pylightnix import (instantiate, DRef, RRef, Path, mklogdir, dirhash,
                         assert_valid_dref, assert_valid_rref, mknode,
                         store_deps, store_deepdeps, store_gc,
                         assert_valid_hash, assert_valid_config, Manager,
-                        mkcontext, store_rrefs, mkdref, mkrref, unrref, undref,
+                        mkcontext, mkdref, mkrref, unrref, undref,
                         realize, rref2dref, store_initialize, mkconfig,
                         timestring, parsetime, traverse_dict, isrref, isdref,
                         scanref_dict, filehash, readjson, writejson, kahntsort)

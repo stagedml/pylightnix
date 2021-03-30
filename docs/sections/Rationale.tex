@@ -11,16 +11,22 @@ dependencies, and still provide a competitive set of features.
 
 \subsection{Why functional-style API?}
 
-There are several reasones:
+There are several reasons:
 \begin{itemize}
   \item We think that this way we could track the API changes more easier. We
     are trying to avoid changes in functions which are already published. We
     tend to import functions by name to let Python notify us whenever the API is
     changed.
   \item Class-based APIs of Python often mislead users into thinking that they
-    could extend it by sub-classing. We don't support extention by-subclassing
+    could extend it by sub-classing. We don't support extension by-subclassing
     and so we don't need classes.
   \item Class-based API wrappers may be created as a standalone module. A one
     example of such a wrapper is the \textbf{Lens} module.
 \end{itemize}
+
+\subsection{What is the idea behind the promises?}
+
+Promises plays a role of a 'type-checker' which notice erroneous realizations
+before they appear in the Storage just like the regular type-checkers make sure
+that no erroneous programs appear as binaries.
 

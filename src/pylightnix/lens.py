@@ -15,20 +15,21 @@
 """ Lens module defines the `Lens` helper class, which offers quick navigation
 through the dependent configurations """
 
-from pylightnix.imports import ( join )
+from pylightnix.imports import (join)
 from pylightnix.types import (Any, Dict, List, Build, DRef, RRef, Optional,
-                              RefPath, Tuple, Union, Path, Context, Tag,
-                              NamedTuple, Context, Closure, SPath )
+                              RefPath, Tuple, Union, Path, Context, NamedTuple,
+                              Context, Closure, SPath )
 from pylightnix.utils import (isrefpath, isdref, isrref, tryreadjson )
-from pylightnix.core import (store_deref, store_config, rref2dref, store_rref2path,
-                             config_dict, store_dref2path, store_context,
-                             context_deref, context_add, tag_out, storage )
-from pylightnix.build import (build_outpaths, build_config, build_context )
+from pylightnix.core import (rref2dref, store_rref2path, config_dict,
+                             store_dref2path, store_context, context_deref,
+                             context_add, storage, drefcfg)
+from pylightnix.build import (build_outpaths, build_config, build_context)
 
-LensContext = NamedTuple('LensContext', [('storage',SPath),
-                                         ('build_path',Optional[Path]),
-                                         ('context',Optional[Context]),
-                                         ('closure',Optional[Closure])])
+
+LensContext = NamedTuple('LensContext',[('storage',SPath),
+                                        ('build_path',Optional[Path]),
+                                        ('context',Optional[Context]),
+                                        ('closure',Optional[Closure])])
 
 
 def val2dict(v:Any, ctx:LensContext)->Optional[dict]:
@@ -36,9 +37,9 @@ def val2dict(v:Any, ctx:LensContext)->Optional[dict]:
   the dictionary allows for creating new lenses """
   S:SPath=ctx.storage
   if isdref(v):
-    return config_dict(store_config(DRef(v), S))
+    return config_dict(drefcfg(DRef(v), S))
   elif isrref(v):
-    return config_dict(store_config(rref2dref(RRef(v)),S))
+    return config_dict(drefcfg(rref2dref(RRef(v)),S))
   elif isrefpath(v):
     j=tryreadjson(val2path(v, ctx))
     assert j is not None, f"RefPath {v} doesn't belong to a valid JSON file"
@@ -54,18 +55,40 @@ def val2dict(v:Any, ctx:LensContext)->Optional[dict]:
     return None
 
 
+def val2rref(v:Any, ctx:LensContext)->RRef:
+  S=ctx.storage
+  if isdref(v):
+    dref=DRef(v)
+    context=ctx.context
+    if context is not None:
+      if dref in context:
+        rrefs=context_deref(context, dref)
+        assert len(rrefs)==1, "Lens doesn't support multirealization dependencies"
+        return rrefs[0]
+      else:
+        assert False, f"Can't convert {dref} into RRef because it is not in context"
+    else:
+      assert False, f"Lens couldn't resolve '{dref}' without a context"
+  elif isinstance(v,Closure):
+    return val2rref(v.dref, ctx)
+  else:
+    assert isrref(v), f"Lens expected RRef, but got '{v}'"
+    return RRef(v)
+
 def val2path(v:Any, ctx:LensContext)->Path:
   """ Resolve the current value of Lens into system path. Assert if it is not
-  possible or if the result is associated with multiple paths."""
+  possible or if the result is associated with multiple paths.
+
+  FIXME: re-use val2rref here """
   S:SPath=ctx.storage
   if isdref(v):
     dref=DRef(v)
     context=ctx.context
     if context is not None:
       if dref in context:
-        rgs=context_deref(context, dref)
-        assert len(rgs)==1, "Lens doesn't support multirealization dependencies"
-        return Path(store_rref2path(rgs[0][tag_out()]))
+        rrefs=context_deref(context,dref)
+        assert len(rrefs)==1, "Lens doesn't support multirealization dependencies"
+        return Path(store_rref2path(rrefs[0]))
     return store_dref2path(dref)
   elif isrref(v):
     return store_rref2path(RRef(v),S)
@@ -75,9 +98,9 @@ def val2path(v:Any, ctx:LensContext)->Path:
     context=ctx.context
     if context is not None:
       if refpath[0] in context:
-        rgs=context_deref(context,refpath[0],S)
-        assert len(rgs)==1, "Lens doesn't support multirealization dependencies"
-        return Path(join(store_rref2path(rgs[0][Tag('out')],S), *refpath[1:]))
+        rrefs=context_deref(context,refpath[0])
+        assert len(rrefs)==1, "Lens doesn't support multirealization dependencies"
+        return Path(join(store_rref2path(rrefs[0],S), *refpath[1:]))
       else:
         if bpath is not None:
           # FIXME: should we assert on refpath[0]==build.dref ?
@@ -93,26 +116,6 @@ def val2path(v:Any, ctx:LensContext)->Path:
     return ctx.build_path
   else:
     assert False, f"Lens doesn't know how to resolve '{v}'"
-
-def val2rref(v:Any, ctx:LensContext)->RRef:
-  S=ctx.storage
-  if isdref(v):
-    dref=DRef(v)
-    context=ctx.context
-    if context is not None:
-      if dref in context:
-        rgs=context_deref(context, dref, S)
-        assert len(rgs)==1, "Lens doesn't support multirealization dependencies"
-        return rgs[0][Tag('out')]
-      else:
-        assert False, f"Can't convert {dref} into RRef because it is not in context"
-    else:
-      assert False, f"Lens couldn't resolve '{dref}' without a context"
-  elif isinstance(v,Closure):
-    return val2rref(v.dref, ctx)
-  else:
-    assert isrref(v), f"Lens expected RRef, but got '{v}'"
-    return RRef(v)
 
 def traverse(l:"Lens", hint:str)->Any:
   val=l.start

@@ -1,9 +1,10 @@
-from pylightnix import ( Manager, DRef, RRef, Path, mklogdir, dirhash, mknode,
-    store_deps, store_deepdeps, store_rref2path, Manager, mkcontext, instantiate,
-    realize, instantiate_inplace, realize_inplace, assert_valid_rref,
-    store_rrefs_, alldrefs, assert_valid_dref, repl_realize, repl_cancel,
-    repl_continue, repl_rref, repl_build, ReplHelper, build_outpath,
-    store_deref, tryread, repl_continueBuild, isrref, Tag, Group, RRefGroup )
+from pylightnix import ( Manager, DRef, RRef, Path, mklogdir, dirhash,
+                        store_rref2path, Manager, mkcontext, instantiate,
+                        realize, instantiate_inplace, realize_inplace,
+                        assert_valid_rref, alldrefs, assert_valid_dref,
+                        repl_realize, repl_cancel, repl_continue, repl_rref,
+                        repl_build, ReplHelper, build_outpath, tryread,
+                        repl_continueBuild, isrref, drefrrefsCR )
 
 from tests.imports import (
     given, assume, example, note, settings, text, decimals, integers, rmtree,
@@ -76,8 +77,8 @@ def test_repl_override():
     n1:DRef; n2:DRef
     def _setting(m:Manager)->DRef:
       nonlocal n1,n2
-      n1 = mkstage(m, {'a':'1'}, lambda i,tag: 33)
-      n2 = mkstage(m, {'maman':n1}, lambda i,tag: 42)
+      n1 = mkstage(m, {'a':'1'}, lambda i: 33)
+      n2 = mkstage(m, {'maman':n1}, lambda i: 42)
       return n2
 
     clo=instantiate(_setting)
@@ -86,11 +87,11 @@ def test_repl_override():
     b=repl_build(rh)
     with open(join(build_outpath(b),'artifact'),'w') as f:
       f.write('777')
-    repl_continue(b.outgroups, rh=rh)
+    repl_continue(b.outpaths, rh=rh)
     rref=repl_rref(rh)
     assert rref is not None
 
-    rrefn1=store_deref(rref, n1)[Tag('out')]
+    rrefn1=drefrrefsCR(n1,rref)[0]
     assert tryread(Path(join(store_rref2path(rrefn1),'artifact'))) == '777'
 
 

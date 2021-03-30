@@ -123,74 +123,8 @@ class Name(str):
 #: [build_path](#pylightnix.core.build_path) helper function.
 RefPath = List[Any]
 
-#: *Do not change!*
-#: A tag to mark the start of [PromisePaths](#pylightnix.types.PromisePath).
-PYLIGHTNIX_PROMISE_TAG = "__promise__"
-
-#: *Do not change!*
-#: A tag to mark the start of [PromisePaths](#pylightnix.types.PromisePath). In
-#: contrast to promises, Pylightnix doesn't check the claims
-PYLIGHTNIX_CLAIM_TAG = "__claim__"
-
-#: PromisePath is an alias for Python list of strings. The first item is a
-#: special tag (the [promise](#pylightnix.core.promise) or the
-#: [claim](#pylightnix.core.claim)) and the subsequent
-#: items should represent a file or directory path parts. PromisePaths are
-#: typically fields of [Configs](#pylightnix.types.Config). They represent
-#: paths to the artifacts which we promise will be created by the derivation
-#: being currently configured.
-#:
-#: PromisePaths do exist only at the time of instantiation. Pylightnix converts
-#: them into [RefPath](#pylightnix.types.RefPath) before the realization
-#: starts. Converted configs change their type to
-#: [RConfig](#pylightnix.type.RConfig)
-#:
-#: Example:
-#: ```python
-#: from pylightnix import mkconfig, mkdrv, promise
-#: def myconfig()->Config:
-#:   name = "config-of-some-stage"
-#:   promise_binary = [promise, 'usr','bin','hello']
-#:   other_params = 42
-#:   return mkconfig(locals())
-#: dref=mkdrv(..., config=myconfig(), ...)
-#: ```
-PromisePath = List[Any]
-
-#: Realization Tag is a user-defined string without spaces and newline symbols.
-#: There is a special tag named 'out' which is used by default. Users may choose
-#: to introduce other tags, like 'doc','man' or 'checkpoint'. User-tagged
-#: realizations should refer to some specific 'out' realization.  For
-#: realizations, Having the same tag would mean that those realizations share
-#: some functionality, e.g. contain documentation or are ML model checkpoints.
-#:
-#: Every 'out' realization plus zero-to-many other tagged realizations form a
-#: [Group](#pylightnix.types.Group). The group behaves as a whole during
-#: [Matching](#pylightnix.types.Matcher).
-#:
-#: Tag invariants:
-#: - Each RRef has its Tag, the default tag name is 'out'
-#: - Several realization of a derivation may have the same tag. That means they
-#:   contain functionally equivalent artifacts.
-Tag = NewType('Tag', str)
-
-#: A type for [RRefGroup](#pylightnix.type.RRefGroup) name.
-Group = NewType('Group', str)
-
-#: RRefGroup unites [tagged](#pylightnix.types.Tag) realizations. For
-#: example, there may be a Group containing tags ['out',log'] and another Group
-#: containing realizations tagged with ['out','log','docs']. Each group must
-#: contain at least one realization tagged with tag 'out' Only 'out'
-#: realizations are subjects for [matching](#pylightnix.types.Matcher).
-#:
-#: Group invariants:
-#: - There are no empty Groups
-#: - Each realization belongs to exactly one Group
-#: - All realizations of a Group originates from the same derivation
-#: - All realizations of a Group have the same Context
-#: - At least one realization of a group hase tag 'out'
-#: - All realizations of a Group have different tags
-RRefGroup = Dict[Tag,RRef]
+#: Placeholder for self-reference
+PYLIGHTNIX_SELF_TAG = "__self__"
 
 #: Context type is an alias for Python dict which maps
 #: [DRefs](#pylightnix.types.DRef) into one or many
@@ -231,6 +165,9 @@ Context=Dict[DRef,List[RRef]]
 #: - [match_some](#pylightnix.core.match_some) matches any existing realizations
 #: - [match_only](#pylightnix.core.match_only) matches exactly one existing
 #:   realization (asserts if there are more than one realizations)
+#:
+#: TODO: Splitting Matcher into two parts would allow us to rid of
+#: `force_interrupt` argument.
 Matcher = Callable[[SPath,DRef,Context],Optional[List[RRef]]]
 
 InstantiateArg=Dict[str,Any]
@@ -289,6 +226,9 @@ Realizer = Callable[[SPath,DRef,Context,RealizeArg],List[Path]]
 #:
 #: Derivations normally appear as a result of [mkdrv](#pylightnix.core.mkdrv)
 #: call.
+#:
+#: TODO: Think about saving Stage function here as well. This would allow us to
+#: organize catamorphism-like mappers.
 Derivation = NamedTuple('Derivation', [('dref',DRef),
                                        ('matcher',Matcher),
                                        ('realizer',Realizer)])
@@ -306,15 +246,18 @@ Closure = NamedTuple('Closure', [('dref',DRef),
                                  ('storage',SPath)])
 
 class Config:
-  """ Config is a JSON-serializable dict which contains user-defined attributes
-  of Pylightnix stage. Together with Realizers and Matchers, Configs determine
-  stage's realization process.
+  """ Config is a JSON-serializable dict-like entity containing user-defined
+  attributes of a Pylightnix stage. Together with Realizers and Matchers,
+  Configs define Pylightnix stage objects.
 
   Configs should match the requirements of `assert_valid_config`. Typically,
   it's `val` dictionary should only contain JSON-serializable types: strings,
   string aliases such as [DRefs](#pylightnix.types.DRef), bools, ints, floats,
   lists or other dicts. No bytes, `numpy.float32` or lambdas are allowed. Tuples
   are also forbidden because they are not preserved (decoded into lists).
+
+  Config of a derivation can't include the Derivation reference of this
+  derivation.
 
   Some fields of a config have a special meaning for Pylightnix:
 
@@ -353,8 +296,7 @@ class Config:
 
 class RConfig(Config):
   """ `RConfig` is a [Config](#pylightnix.types.Config) where all
-  [Claims](#pylightnix.types.PYLIGHTNIX_CLAIM_TAG) and
-  [Promises](#pylightnix.types.PYLIGHTNIX_PROMISE_TAG) are resolved.  RConfig
+  [Self-referenes](#pylightnix.types.PYLIGHTNIX_SELF_TAG) are resolved. RConfig
   stands for 'Resolved Config'.  """
   pass
 
@@ -429,7 +371,7 @@ class Build:
     self.iarg=ba.iarg
     self.rarg=ba.rarg
     self.timeprefix=ba.timeprefix
-    self.outgroups:List[Dict[Tag,Path]]=[]
+    self.outpaths:List[Path]=[]
     self.cattrs_cache:Optional[ConfigAttrs]=None
 
 
@@ -475,6 +417,4 @@ R = TypeVar('R',bound=SupportsAbs[DRef])
 #: We use `type:ignore` pragmas when we need to pass `**kwargs`.
 Stage = Callable[[Manager],R]
 
-
-Key = Callable[[RRefGroup,SPath],Optional[Union[int,float,str]]]
 

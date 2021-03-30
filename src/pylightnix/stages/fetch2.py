@@ -20,10 +20,10 @@ from pylightnix.imports import (sha256 as sha256sum, sha1 as sha1sum, urlparse,
                                 splitext, re_sub )
 from pylightnix.types import ( DRef, Manager, Build, Context, Name,
     Path, Optional, List, Config )
-from pylightnix.core import ( mkconfig, mkdrv, match_only, promise,
-                             PYLIGHTNIX_NAMEPAT )
+from pylightnix.core import ( mkconfig, mkdrv, match_only,
+                             PYLIGHTNIX_NAMEPAT, config_cattrs )
 from pylightnix.build import ( mkbuild, build_outpath, build_setoutpaths,
-    build_paths, build_deref_, build_cattrs, build_wrapper, build_wrapper )
+    build_paths, build_deref_, build_config, build_wrapper, build_wrapper )
 from pylightnix.utils import ( try_executable, makedirs, filehash )
 from pylightnix.lens import ( mklens )
 
@@ -112,12 +112,13 @@ def fetchurl2(m:Manager,
       args.update({'sha1':sha1})
     if sha256 is not None:
       args.update({'sha256':sha256})
-    args.update({'out':[promise, filename_]})
+    # FIXME: repair promises
+    # args.update({'out':[promise, filename_]})
     args.update(**kwargs)
     return args
 
   def _make(b:Build)->None:
-    c=build_cattrs(b)
+    c=config_cattrs(build_config(b))
     o=build_outpath(b)
 
     download_dir=o if force_download else tmpfetchdir

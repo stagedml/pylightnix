@@ -1,12 +1,12 @@
 from pylightnix.imports import (join, mkdtemp, format_exc)
-from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional, Config,
-                              Realizer, DRef, Context, RealizeArg, RRef, Tag,
-                              Path, SPath)
 
-from pylightnix.core import (assert_valid_config, store_config, config_cattrs,
+from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional, Config,
+                              Realizer, DRef, Context, RealizeArg, RRef, Path,
+                              SPath)
+
+from pylightnix.core import (assert_valid_config, drefcfg_, config_cattrs,
                              config_hash, config_name, context_deref,
-                             assert_valid_refpath, store_rref2path, tag_out,
-                             store_deps)
+                             assert_valid_refpath, store_rref2path, store_deps)
 
 from pylightnix.utils import (readstr, writestr, readstr, tryreadstr_def)
 
@@ -30,13 +30,12 @@ def either_wrapper(f:Realizer)->Realizer:
   import pylightnix.core
   tmp=pylightnix.core.PYLIGHTNIX_TMP
 
-  def _either(S:SPath, dref:DRef, ctx:Context, ra:RealizeArg)->List[Dict[Tag,Path]]:
+  def _either(S:SPath, dref:DRef, ctx:Context, ra:RealizeArg)->List[Path]:
     # Write the specified build status to every output
-    def _mark_status(outpaths:List[Dict[Tag,Path]],
+    def _mark_status(outpaths:List[Path],
                      status:str,
                      exception:Optional[str]=None)->None:
-      for rg in outpaths:
-        o=rg[tag_out()]
+      for o in outpaths:
         writestr(join(o,'status_either.txt'), status)
         if exception is not None:
           writestr(join(o,'exception.txt'), exception)
@@ -44,13 +43,12 @@ def either_wrapper(f:Realizer)->Realizer:
     # Scan all immediate dependecnies of this build, propagate the 'LEFT' status
     # if any of them has it.
     for dref_dep in store_deps([dref],S):
-      for rg in context_deref(ctx, dref_dep,S):
-        rref = rg[tag_out()]
+      for rref in context_deref(ctx,dref_dep):
         status=tryreadstr_def(join(store_rref2path(rref,S),'status_either.txt'), 'RIGHT')
         if status=='RIGHT':
           continue
         elif status=='LEFT':
-          outpaths=[{tag_out(): Path(mkdtemp(prefix="either_tmp", dir=tmp))}]
+          outpaths=[Path(mkdtemp(prefix="either_tmp", dir=tmp))]
           _mark_status(outpaths, 'LEFT')
           return outpaths
         else:
@@ -62,11 +60,12 @@ def either_wrapper(f:Realizer)->Realizer:
       _mark_status(outpaths, 'RIGHT')
     except KeyboardInterrupt:
       raise
-    except BuildError as be:
-      outpaths=be.outgroups
-      _mark_status(outpaths, 'LEFT', format_exc())
+    # FIXME: repair build
+    # except BuildError as be:
+    #   outpaths=be.outgroups
+    #   _mark_status(outpaths, 'LEFT', format_exc())
     except Exception:
-      outpaths=[{tag_out(): Path(mkdtemp(prefix="either_tmp", dir=tmp))}]
+      outpaths=[Path(mkdtemp(prefix="either_tmp", dir=tmp))]
       _mark_status(outpaths, 'LEFT', format_exc())
 
     # Return either valid artifacts or a LEFT-substitute
