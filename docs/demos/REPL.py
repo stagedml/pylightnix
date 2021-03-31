@@ -13,11 +13,11 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 from pylightnix import ( Matcher, Build, Path, RefPath, Config, Manager, RRef,
     DRef, Context, build_path, build_outpath, build_cattrs, mkdrv, rref2path,
     mkconfig, mkbuild, match_best, build_wrapper_, tryread, fetchurl,
-    store_initialize, realize, instantiate )
+    initialize, realize, instantiate )
 
 from typing import Any
 
-store_initialize()
+initialize()
 
 
 def fetchmnist(m:Manager)->DRef:

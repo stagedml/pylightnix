@@ -18,7 +18,7 @@ from pylightnix.imports import (join, deepcopy, dirname, makedirs, isfile,
                                 isdir, defaultdict)
 from pylightnix.core import (mkdrv, mkconfig, assert_valid_name,
                              datahash, config_dict,
-                             assert_valid_refpath, store_rref2path,
+                             assert_valid_refpath, rref2path,
                              drefcfg_, storage, match_only)
 from pylightnix.build import (mkbuild, build_outpath, build_setoutpaths,
                               build_paths, build_deref_, build_wrapper)

@@ -20,8 +20,8 @@ from pylightnix.types import (Any, Dict, List, Build, DRef, RRef, Optional,
                               RefPath, Tuple, Union, Path, Context, NamedTuple,
                               Context, Closure, SPath )
 from pylightnix.utils import (isrefpath, isdref, isrref, tryreadjson )
-from pylightnix.core import (rref2dref, store_rref2path, config_dict,
-                             store_dref2path, drefctx, context_deref,
+from pylightnix.core import (rref2dref, rref2path, config_dict,
+                             dref2path, rrefctx, context_deref,
                              context_add, storage, drefcfg)
 from pylightnix.build import (build_outpaths, build_config, build_context)
 
@@ -88,10 +88,10 @@ def val2path(v:Any, ctx:LensContext)->Path:
       if dref in context:
         rrefs=context_deref(context,dref)
         assert len(rrefs)==1, "Lens doesn't support multirealization dependencies"
-        return Path(store_rref2path(rrefs[0]))
-    return store_dref2path(dref)
+        return Path(rref2path(rrefs[0]))
+    return dref2path(dref)
   elif isrref(v):
-    return store_rref2path(RRef(v),S)
+    return rref2path(RRef(v),S)
   elif isrefpath(v):
     refpath=list(v) # RefPath is list
     bpath=ctx.build_path
@@ -100,7 +100,7 @@ def val2path(v:Any, ctx:LensContext)->Path:
       if refpath[0] in context:
         rrefs=context_deref(context,refpath[0])
         assert len(rrefs)==1, "Lens doesn't support multirealization dependencies"
-        return Path(join(store_rref2path(rrefs[0],S), *refpath[1:]))
+        return Path(join(rref2path(rrefs[0],S), *refpath[1:]))
       else:
         if bpath is not None:
           # FIXME: should we assert on refpath[0]==build.dref ?
@@ -310,9 +310,9 @@ def mklens(x:Any, o:Optional[Path]=None,
   if ctx is None and isinstance(x,Build):
     ctx=build_context(x)
   if ctx is None and rref is not None:
-    ctx=drefctx(rref,S)
+    ctx=rrefctx(rref,S)
   if ctx is None and isrref(x):
-    ctx=context_add(drefctx(RRef(x),S), rref2dref(RRef(x)), [RRef(x)])
+    ctx=context_add(rrefctx(RRef(x),S), rref2dref(RRef(x)), [RRef(x)])
   if o is None and b is not None:
     o=build_outpaths(b)[build_output_idx]
   if o is None and isinstance(x,Build):

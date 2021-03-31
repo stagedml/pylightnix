@@ -4,7 +4,7 @@ from pylightnix.types import (Any, DRef, RRef, Dict, List, Union, RealizeArg,
                               Realizer, Closure, Iterable, Optional, Matcher,
                               SPath, Context, Tuple, Callable, Config, Path)
 
-from pylightnix.core import (realizeSeq, drefrrefsC, store_rref2path, unrref,
+from pylightnix.core import (realizeSeq, drefrrefsC, rref2path, unrref,
                              reserved, config_dict, store_config_,
                              mkrealization)
 

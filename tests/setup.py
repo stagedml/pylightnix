@@ -1,6 +1,6 @@
-from pylightnix import (Manager, Path, store_initialize, DRef, Context,
+from pylightnix import (Manager, Path, initialize, DRef, Context,
                         Optional, mkbuild, build_outpath, allrrefs, RRef,
-                        mkconfig, Name, mkdrv, store_rref2path, dirchmod,
+                        mkconfig, Name, mkdrv, rref2path, dirchmod,
                         Config, RealizeArg, drefrrefsC, tryreadstr_def, SPath,
                         storage, storagename, deepcopy, build_setoutpaths,
                         maybereadstr, selfref)
@@ -24,7 +24,7 @@ def setup_storage(tn:str):
     rmtree(storepath)
   except FileNotFoundError:
     pass
-  store_initialize(custom_store=storepath,
+  initialize(custom_store=storepath,
                    custom_tmp=join(gettempdir(),'pylightnix_tmp'))
   assert 0==len(listdir(storepath))
   try:
@@ -49,7 +49,7 @@ def setup_storage2(tn:str):
     rmtree(testroot)
   except FileNotFoundError:
     pass
-  # store_initialize(custom_store=storepath, custom_tmp=gettempdir())
+  # initialize(custom_store=storepath, custom_tmp=gettempdir())
   makedirs(storepath, exist_ok=False)
   makedirs(tmppath, exist_ok=False)
   pylightnix.core.PYLIGHTNIX_TMP=tmppath # type:ignore
@@ -93,7 +93,7 @@ def mkstage(m:Manager,
     # Get the available groups
     rrefs=drefrrefsC(dref, context, S)
     # Sort the output groups by the value of artifact
-    values=list(sorted([(maybereadstr(join(store_rref2path(rref, S),'artifact'),'0',int),rref)
+    values=list(sorted([(maybereadstr(join(rref2path(rref, S),'artifact'),'0',int),rref)
                         for rref in rrefs], key=lambda x:x[0]))
     # Return `top-n` matched groups
     return [tup[1] for tup in values[-nmatch:]] if len(values)>0 else None

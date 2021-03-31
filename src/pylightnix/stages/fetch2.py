@@ -80,7 +80,7 @@ def fetchurl2(m:Manager,
       sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b')
 
   rref:RRef=realize(instantiate(hello_src))
-  print(store_rref2path(rref))
+  print(rref2path(rref))
   ```
   """
 

@@ -1,5 +1,5 @@
 from pylightnix import ( Manager, DRef, RRef, Path, mklogdir, dirhash,
-                        store_rref2path, Manager, mkcontext, instantiate,
+                        rref2path, Manager, mkcontext, instantiate,
                         realize, instantiate_inplace, realize_inplace,
                         assert_valid_rref, alldrefs, assert_valid_dref,
                         repl_realize, repl_cancel, repl_continue, repl_rref,
@@ -92,7 +92,7 @@ def test_repl_override():
     assert rref is not None
 
     rrefn1=drefrrefsCR(n1,rref)[0]
-    assert tryread(Path(join(store_rref2path(rrefn1),'artifact'))) == '777'
+    assert tryread(Path(join(rref2path(rrefn1),'artifact'))) == '777'
 
 
 
@@ -114,7 +114,7 @@ def test_repl_globalHelper():
     repl_continueBuild(b)
     rref=repl_rref(rh)
     assert rref is not None
-    assert isfile(join(store_rref2path(rref),'artifact.txt'))
+    assert isfile(join(rref2path(rref),'artifact.txt'))
 
 
 def test_repl_globalCancel():

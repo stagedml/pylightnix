@@ -6,9 +6,9 @@ from tempfile import TemporaryDirectory
 from typing import Any
 from subprocess import Popen, PIPE
 
-from pylightnix import Path, store_initialize, dirrm
+from pylightnix import Path, initialize, dirrm
 dirrm(Path('/tmp/pylightnix_hello_demo'))
-store_initialize(custom_store='/tmp/pylightnix_hello_demo', custom_tmp='/tmp')
+initialize(custom_store='/tmp/pylightnix_hello_demo', custom_tmp='/tmp')
 
 from pylightnix import DRef, instantiate_inplace, fetchurl, promise
 

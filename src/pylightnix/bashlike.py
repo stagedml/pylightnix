@@ -18,22 +18,22 @@ from pylightnix.types import ( Iterable, List, Union, Optional, DRef, RRef,
     Dict, Tuple, Path, Stage )
 from pylightnix.imports import ( isfile, isdir, listdir, join, rmtree, environ,
     Popen, rename, getsize, fnmatch, dirname )
-from pylightnix.core import ( store_dref2path, store_rref2path, isrref, isdref,
+from pylightnix.core import ( dref2path, rref2path, isrref, isdref,
     alldrefs, drefrrefs, drefcfg_, config_name,
-    instantiate, store_cfgpath, rref2dref )
+    instantiate, drefcfgpath, rref2dref )
 from pylightnix.utils import ( dirchmod, dirrm, dirsize, parsetime, timestring )
 
 from pylightnix.build import (Build)
 
 def lsdref_(r:DRef)->Iterable[str]:
-  p=store_dref2path(r)
+  p=dref2path(r)
   for d in listdir(p):
     p2=join(d,p)
     if isdir(p2):
       yield d
 
 def lsrref_(r:RRef, fn:List[str]=[])->Iterable[str]:
-  p=join(store_rref2path(r),*fn)
+  p=join(rref2path(r),*fn)
   for d in listdir(p):
     yield d
 
@@ -52,7 +52,7 @@ def lsref(r:Union[RRef,DRef])->List[str]:
     assert False, f"Invalid reference {r}"
 
 def catrref_(r:RRef, fn:List[str])->Iterable[str]:
-  with open(join(store_rref2path(r),*fn),'r') as f:
+  with open(join(rref2path(r),*fn),'r') as f:
     for l in f.readlines():
       yield l
 
@@ -73,9 +73,9 @@ def rmref(r:Union[RRef,DRef])->None:
   care of possible race conditions.
   """
   if isrref(r):
-    dirrm(store_rref2path(RRef(r)))
+    dirrm(rref2path(RRef(r)))
   elif isdref(r):
-    dirrm(store_dref2path(DRef(r)))
+    dirrm(dref2path(DRef(r)))
   else:
     assert False, f"Invalid reference {r}"
 
@@ -92,9 +92,9 @@ def shell(r:Union[RRef,DRef,Build,Path,str,None]=None)->None:
     import pylightnix.core
     cwd=pylightnix.core.PYLIGHTNIX_STORE
   elif isrref(r):
-    cwd=store_rref2path(RRef(r))
+    cwd=rref2path(RRef(r))
   elif isdref(r):
-    cwd=store_dref2path(DRef(r))
+    cwd=dref2path(DRef(r))
   elif isinstance(r,Build):
     assert len(r.outpaths)>0, (
       "Shell function requires at least one build output path to be defined" )
@@ -124,10 +124,10 @@ def du()->Dict[DRef,Tuple[int,Dict[RRef,int]]]:
     rref_res={}
     dref_total=0
     for rref in drefrrefs(dref):
-      usage=dirsize(store_rref2path(rref))
+      usage=dirsize(rref2path(rref))
       rref_res[rref]=usage
       dref_total+=usage
-    dref_total+=getsize(join(store_dref2path(dref),'config.json'))
+    dref_total+=getsize(join(dref2path(dref),'config.json'))
     res[dref]=(dref_total,rref_res)
   return res
 
@@ -171,7 +171,7 @@ def find(name:Optional[Union[Stage,str]]=None, newer:Optional[float]=None)->List
         else:
           reftime=newer
         # FIXME: repair buildtime search
-        # btstr=store_buildtime(rref)
+        # btstr=rrefbtime(rref)
         # if btstr is None:
         #   continue
         # btime=parsetime(btstr) if btstr is not None else None
@@ -189,11 +189,11 @@ def diff(stageA:Union[RRef,DRef,Stage], stageB:Union[RRef,DRef,Stage])->None:
   """
   def _cfgpathof(s)->Path:
     if isrref(s):
-      return store_cfgpath(rref2dref(RRef(s)))
+      return drefcfgpath(rref2dref(RRef(s)))
     elif isdref(s):
-      return store_cfgpath(DRef(s))
+      return drefcfgpath(DRef(s))
     else:
-      return store_cfgpath(instantiate(s).dref)
+      return drefcfgpath(instantiate(s).dref)
 
   Popen(['diff', '-u', _cfgpathof(stageA), _cfgpathof(stageB)],
         shell=False, cwd='/').wait()

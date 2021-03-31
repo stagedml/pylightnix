@@ -1,5 +1,5 @@
 from pylightnix import ( DRef, RRef, lsref, catref, instantiate, realize,
-    unrref, rmref, store_dref2path, store_rref2path, shellref, shell, rref2dref, du,
+    unrref, rmref, dref2path, rref2path, shellref, shell, rref2dref, du,
     repl_realize, repl_cancelBuild, repl_build, build_outpath, find, partial,
     diff, timestring, parsetime )
 
@@ -37,9 +37,9 @@ def test_bashlike():
 def test_rmdref():
   with setup_storage('test_rmdref') as s:
     clo=instantiate(mkstage, {'a':1}, lambda i,t:42)
-    drefpath=store_dref2path(clo.dref)
+    drefpath=dref2path(clo.dref)
     rref1=realize(clo, force_rebuild=[clo.dref])
-    rrefpath=store_rref2path(rref1)
+    rrefpath=rref2path(rref1)
     assert isdir(rrefpath)
     rmref(rref1)
     assert not isdir(rrefpath)
@@ -65,7 +65,7 @@ def test_shellref():
       shellref(rref)
       shellref(rref2dref(rref))
       shellref()
-      shell(store_rref2path(rref))
+      shell(rref2path(rref))
       repl_realize(instantiate(mkstage, {'n':1}), force_interrupt=True)
       b=repl_build()
       o=build_outpath(b)

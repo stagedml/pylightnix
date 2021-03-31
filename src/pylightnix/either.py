@@ -6,7 +6,7 @@ from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional, Config,
 
 from pylightnix.core import (assert_valid_config, drefcfg_, config_cattrs,
                              config_hash, config_name, context_deref,
-                             assert_valid_refpath, store_rref2path, drefdeps1)
+                             assert_valid_refpath, rref2path, drefdeps1)
 
 from pylightnix.utils import (readstr, writestr, readstr, tryreadstr_def)
 
@@ -44,7 +44,7 @@ def either_wrapper(f:Realizer)->Realizer:
     # if any of them has it.
     for dref_dep in drefdeps1([dref],S):
       for rref in context_deref(ctx,dref_dep):
-        status=tryreadstr_def(join(store_rref2path(rref,S),'status_either.txt'), 'RIGHT')
+        status=tryreadstr_def(join(rref2path(rref,S),'status_either.txt'), 'RIGHT')
         if status=='RIGHT':
           continue
         elif status=='LEFT':
@@ -74,7 +74,7 @@ def either_wrapper(f:Realizer)->Realizer:
   return _either
 
 def either_status(rref:RRef,S=None)->str:
-  return readstr(join(store_rref2path(rref,S),'status_either.txt'))
+  return readstr(join(rref2path(rref,S),'status_either.txt'))
 
 def either_isRight(rref:RRef,S=None)->bool:
   return either_status(rref,S)=='RIGHT'

@@ -5,7 +5,7 @@ from pylightnix.types import (Any, DRef, RRef, Dict, List, Union, RealizeArg,
                               SPath, Context, Tuple, Callable, Config, Path,
                               RConfig, Manager, Set, Hash, NewType, TypeVar)
 
-from pylightnix.core import (realizeSeq, drefrrefsC, store_rref2path, unrref,
+from pylightnix.core import (realizeSeq, drefrrefsC, rref2path, unrref,
                              reserved, config_dict, store_config_,
                              mkrealization, rref2dref, mkdrv, context_deref)
 
@@ -112,7 +112,7 @@ def checkpromise(ma:GMatcher)->GMatcher:
       return None
     for key,promisepath in config_promises(store_config_(dref,S),dref):
       for g in grps:
-        assert_promise_fulfilled(key,promisepath,store_rref2path(groupmain(g),S))
+        assert_promise_fulfilled(key,promisepath,rref2path(groupmain(g),S))
     return grps
   return _matcher
 
@@ -220,7 +220,7 @@ def tag_out()->Tag:
 #   """ Return the [Tag](#pylightnix.types.tag) of a Realization. Default Tag
 #   name is 'out'. """
 #   return mktag(tryreadjson_def(
-#     reserved(store_rref2path(rref,S),'group.json'),{}).get('tag','out'))
+#     reserved(rref2path(rref,S),'group.json'),{}).get('tag','out'))
 
 def pathginfo(path:Path)->List[GInfo]:
   """ Return group identifier of the realization """
@@ -228,7 +228,7 @@ def pathginfo(path:Path)->List[GInfo]:
 
 def rrefgroups(rref:RRef,S=None)->List[GInfo]:
   """ Return group identifier of the realization """
-  return pathginfo(store_rref2path(rref,S))
+  return pathginfo(rref2path(rref,S))
 
 
 _A3 = TypeVar('_A3')
@@ -249,7 +249,7 @@ def paths2groups(paths:Iterable[Path])->List[Dict[Path,Tag]]:
   return vals2groups_(paths, lambda x:x)
 
 def rrefs2groups(rrefs:Iterable[RRef],S=None)->List[RRefGroup]:
-  return vals2groups_(rrefs, lambda rref:store_rref2path(rref,S=S))
+  return vals2groups_(rrefs, lambda rref:rref2path(rref,S=S))
 
   # return [({store_tag(rref,S):rref for rref in rrefs if store_group(rref,S)==g})
   #   for g in sorted({store_group(rref,S) for rref in rrefs})]
@@ -375,7 +375,7 @@ def exact(grps:List[RRefGroup])->Key:
 def latest()->Key:
   def _key(gr:RRefGroup,S=None)->Optional[Union[int,float,str]]:
     try:
-      with open(join(store_rref2path(groupmain(gr),S),'__buildtime__.txt'),'r') as f:
+      with open(join(rref2path(groupmain(gr),S),'__buildtime__.txt'),'r') as f:
         t=parsetime(f.read())
         return float(0 if t is None else t)
     except OSError:
@@ -386,7 +386,7 @@ def latest()->Key:
 def best(filename:str)->Key:
   def _key(gr:RRefGroup,S=None)->Optional[Union[int,float,str]]:
     try:
-      with open(join(store_rref2path(groupmain(gr),S),filename),'r') as f:
+      with open(join(rref2path(groupmain(gr),S),filename),'r') as f:
         return float(f.readline())
     except OSError:
       return float('-inf')

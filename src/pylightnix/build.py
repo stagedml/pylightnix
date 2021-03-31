@@ -41,7 +41,7 @@ from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional, Iterable,
 
 from pylightnix.core import (assert_valid_config, config_cattrs,
                              config_hash, config_name, context_deref,
-                             assert_valid_refpath, store_rref2path, drefdeps1,
+                             assert_valid_refpath, rref2path, drefdeps1,
                              config_dict, drefcfg)
 
 from pylightnix.repl import (ReplHelper, repl_continue, ERR_INVALID_RH,
@@ -175,7 +175,7 @@ def build_markstop(b:Build, buildstop:Optional[str])->None:
 
 def store_buildelta(rref:RRef,S=None)->Optional[float]:
   def _gettime(fn)->Optional[float]:
-    ts=tryread(Path(join(store_rref2path(rref,S),fn)))
+    ts=tryread(Path(join(rref2path(rref,S),fn)))
     return parsetime(ts) if ts is not None else None
   bb=_gettime('__buildtime__.txt')
   be=_gettime('__buildstop__.txt')
@@ -224,7 +224,7 @@ def build_paths(b:Build, refpath:RefPath)->List[Path]:
       "`build_setoutpath(b,num)` first to set their number." )
     return [Path(join(path, *refpath[1:])) for path in b.outpaths]
   else:
-    return [Path(join(store_rref2path(rref,b.storage), *refpath[1:]))
+    return [Path(join(rref2path(rref,b.storage), *refpath[1:]))
             for rref in build_deref_(b, refpath[0])]
 
 def build_path(b:Build, refpath:RefPath)->Path:
@@ -306,7 +306,7 @@ def repl_build(rh:Optional[ReplHelper]=None, buildtime:bool=True)->Build:
 #     for dref in drefdeps1([b.dref]):
 #       for rg in context_deref(b.context, dref):
 #         rref = rg[Tag('out')]
-#         status=tryreadstr_def(join(store_rref2path(rref),'status_either.txt'), 'RIGHT')
+#         status=tryreadstr_def(join(rref2path(rref),'status_either.txt'), 'RIGHT')
 #         if status=='RIGHT':
 #           continue
 #         elif status=='LEFT':

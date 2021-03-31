@@ -21,7 +21,7 @@ from pylightnix.types import (RRef, List, Dict, Path, Iterable, Optional,
                               SPath, Manager, DRef, Config, RConfig, Build,
                               RRefGroup, Set)
 from pylightnix.core import (drefdeps, rrefdeps,
-                             store_rref2path, store_dref2path, storage,
+                             rref2path, dref2path, storage,
                              tempdir, storagename, alldrefs, rootdrefs,
                              rootrrefs, rref2dref, config_deps, drefcfg_,
                              mkdrv, realize, realizeMany,
@@ -60,8 +60,8 @@ def pack(roots:List[RRef], out:Path, S=None)->None:
   try:
     for rref in rrefs | set(roots):
       p=Popen([APACK(), '-q', tmp,
-               relpath(store_dref2path(rref2dref(rref),S), start=store_holder),
-               relpath(store_rref2path(rref,S), start=store_holder)],
+               relpath(dref2path(rref2dref(rref),S), start=store_holder),
+               relpath(rref2path(rref,S), start=store_holder)],
               cwd=store_holder)
       p.wait()
       assert p.returncode==0, f"Failed to pack {rref}. Retcode is {p.returncode}"

@@ -3,13 +3,13 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir, dirhash,
                         drefdeps, store_gc, assert_valid_config, Manager,
                         mkcontext, allrrefs, mkdref, mkrref, unrref, undref,
                         realize, rref2dref, drefcfg, mkconfig, Build, Context,
-                        build_outpath, mkdrv, store_rref2path, config_cattrs,
+                        build_outpath, mkdrv, rref2path, config_cattrs,
                         mksymlink, drefattrs, build_deref, build_path,
                         mkrefpath, build_config, alldrefs, build_wrapper,
                         build_cattrs, build_name, tryread, trywrite,
                         realizeMany, scanref_dict, config_dict, mklens, isrref,
                         Config, RConfig, build_setoutpaths, partial, path2rref,
-                        concat, linkrrefs, instantiate_, store_dref2path,
+                        concat, linkrrefs, instantiate_, dref2path,
                         path2dref, linkdref, storage, rrefdeps,
                         drefrrefs, allrrefs, match_only, drefrrefs, drefrrefsC,
                         drefrrefsCR, rrefattrs )
@@ -126,14 +126,14 @@ def test_realize_readonly()->None:
     rref1 = realize(instantiate(mkstage, {'a':'1'},S=S))
 
     try:
-      with open(join(store_rref2path(rref1,S),'newfile'),'w') as f:
+      with open(join(rref2path(rref1,S),'newfile'),'w') as f:
         f.write('foo')
       raise ShouldHaveFailed('No write-protection??')
     except OSError:
       pass
 
     try:
-      rmtree(store_rref2path(rref1,S))
+      rmtree(rref2path(rref1,S))
       raise ShouldHaveFailed('No remove-protection??')
     except OSError:
       pass
@@ -144,7 +144,7 @@ def test_realize_readonly()->None:
       chmod(join(build_outpath(b),'exe'), S_IWRITE|S_IREAD|S_IEXEC)
     rref2=realize(instantiate(mkdrv, Config({}),
                               match_only(), build_wrapper(_realize),S=S))
-    assert pipe_stdout([join(store_rref2path(rref2,S),'exe')])=='Fooo\n', \
+    assert pipe_stdout([join(rref2path(rref2,S),'exe')])=='Fooo\n', \
       "Did we lost exec permission?"
 
 
@@ -333,7 +333,7 @@ def test_overwrite_realizer()->None:
     assert len(all_drefs)==2
 
     rref_n3=drefrrefsCR(rrefattrs(rref_n2, S).maman, rref_n2, S)[0]
-    assert open(join(store_rref2path(rref_n3, S),'artifact'),'r').read() == '42'
+    assert open(join(rref2path(rref_n3, S),'artifact'),'r').read() == '42'
 
 
 
@@ -387,7 +387,7 @@ def test_gc()->None:
 #   with setup_storage2('test_path2rref') as (T,S):
 #     s1=partial(mkstage, config={'name':'1', 'promise':[promise,'artifact']})
 #     rref1=realize(instantiate(s1,S=S))
-#     rref2=path2rref(store_rref2path(rref1,S))
+#     rref2=path2rref(rref2path(rref1,S))
 #     assert rref1==rref2
 #     l=mksymlink(rref1, S, 'result', S=S)
 #     assert path2rref(Path(l))==rref1
@@ -402,7 +402,7 @@ def test_gc()->None:
 #     clo1=instantiate(s1,S=S)
 #     dref1=clo1.dref
 #     rref1=realize(clo1)
-#     dref2=path2dref(store_dref2path(rref2dref(rref1),S=S))
+#     dref2=path2dref(dref2path(rref2dref(rref1),S=S))
 #     assert dref1==dref2
 #     l=linkdref(dref1, S, 'result_dref', S=S)
 #     assert path2dref(Path(l))==dref1

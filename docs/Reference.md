@@ -67,11 +67,11 @@
     * [config\_substitutePromises](#pylightnix.core.config_substitutePromises)
     * [config\_promises](#pylightnix.core.config_promises)
     * [mkrefpath](#pylightnix.core.mkrefpath)
-    * [assert\_store\_initialized](#pylightnix.core.assert_store_initialized)
-    * [store\_initialize](#pylightnix.core.store_initialize)
-    * [store\_dref2path](#pylightnix.core.store_dref2path)
-    * [store\_rref2path](#pylightnix.core.store_rref2path)
-    * [store\_cfgpath](#pylightnix.core.store_cfgpath)
+    * [assert\_store\_initialized](#pylightnix.core.assert_initialized)
+    * [store\_initialize](#pylightnix.core.initialize)
+    * [store\_dref2path](#pylightnix.core.dref2path)
+    * [store\_rref2path](#pylightnix.core.rref2path)
+    * [store\_cfgpath](#pylightnix.core.drefcfgpath)
     * [store\_config\_](#pylightnix.core.store_config_)
     * [store\_config](#pylightnix.core.store_config)
     * [store\_context](#pylightnix.core.store_context)
@@ -324,7 +324,7 @@ Realization reference is obtained from the process called
 
 Valid realization references may be dereferenced down to system paths of
 *build artifacts* by calling
-[store_rref2path](#pylightnix.core.store_rref2path).
+[rref2path](#pylightnix.core.store_rref2path).
 
 <a name="pylightnix.types.Name"></a>
 ## `Name` Objects
@@ -358,7 +358,7 @@ generally have to perform the following basic actions:
 [store_deref](#pylightnix.core.store_deref) or
 [build_deref](#pylightnix.core.build_deref).
 2. Convert the realization reference into system path with
-[store_rref2path](#pylightnix.core.store_rref2path)
+[rref2path](#pylightnix.core.store_rref2path)
 3.  Join the system path with `[1:]` part of RefPath to get the real filename.
 
 The algorithm described above is implemented as
@@ -1171,19 +1171,19 @@ def mkrefpath(r: DRef, items: List[str] = []) -> RefPath
 Construct a [RefPath](#pylightnix.types.RefPath) out of a reference `ref`
 and a path within the stage's realization
 
-<a name="pylightnix.core.assert_store_initialized"></a>
-## `assert_store_initialized()`
+<a name="pylightnix.core.assert_initialized"></a>
+## `assert_initialized()`
 
 ```python
-def assert_store_initialized(S: SPath) -> None
+def assert_initialized(S: SPath) -> None
 ```
 
 
-<a name="pylightnix.core.store_initialize"></a>
-## `store_initialize()`
+<a name="pylightnix.core.initialize"></a>
+## `initialize()`
 
 ```python
-def store_initialize(custom_store: Optional[str] = None, custom_tmp: Optional[str] = None, check_not_exist: bool = False) -> None
+def initialize(custom_store: Optional[str] = None, custom_tmp: Optional[str] = None, check_not_exist: bool = False) -> None
 ```
 
 Create the storage and temp direcories if they don't exist. Default
@@ -1199,37 +1199,37 @@ Parameters:
 - `check_not_exist:bool=False`: Set to True to assert on already existing
   storages. Good to become sure that newly created storage is empty.
 
-See also [assert_store_initialized](#pylightnix.core.assert_store_initialized).
+See also [assert_initialized](#pylightnix.core.assert_initialized).
 
 Example:
 ```python
 import pylightnix.core
 pylightnix.core.PYLIGHTNIX_STORE='/tmp/custom_pylightnix_storage'
 pylightnix.core.PYLIGHTNIX_TMP='/tmp/custom_pylightnix_tmp'
-pylightnix.core.store_initialize()
+pylightnix.core.initialize()
 ```
 
-<a name="pylightnix.core.store_dref2path"></a>
-## `store_dref2path()`
+<a name="pylightnix.core.dref2path"></a>
+## `dref2path()`
 
 ```python
-def store_dref2path(r: DRef, S=None) -> Path
-```
-
-
-<a name="pylightnix.core.store_rref2path"></a>
-## `store_rref2path()`
-
-```python
-def store_rref2path(r: RRef, S=None) -> Path
+def dref2path(r: DRef, S=None) -> Path
 ```
 
 
-<a name="pylightnix.core.store_cfgpath"></a>
-## `store_cfgpath()`
+<a name="pylightnix.core.rref2path"></a>
+## `rref2path()`
 
 ```python
-def store_cfgpath(r: DRef, S=None) -> Path
+def rref2path(r: RRef, S=None) -> Path
+```
+
+
+<a name="pylightnix.core.drefcfgpath"></a>
+## `drefcfgpath()`
+
+```python
+def drefcfgpath(r: DRef, S=None) -> Path
 ```
 
 
@@ -1461,7 +1461,7 @@ See also [build_deref](#pylightnix.core.build_deref)
 ## `store_buildtime()`
 
 ```python
-def store_buildtime(rref: RRef, S=None) -> Optional[str]
+def rrefbtime(rref: RRef, S=None) -> Optional[str]
 ```
 
 Return the buildtime of the current RRef in a format specified by the
@@ -2681,7 +2681,7 @@ def hello_src(m:Manager)->DRef:
     sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b')
 
 rref:RRef=realize(instantiate(hello_src))
-print(store_rref2path(rref))
+print(rref2path(rref))
 ```
 
 <a name="pylightnix.stages.fetch"></a>
@@ -2782,7 +2782,7 @@ def hello_src(m:Manager)->DRef:
     sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b')
 
 rref:RRef=realize(instantiate(hello_src))
-print(store_rref2path(rref))
+print(rref2path(rref))
 ```
 
 <a name="pylightnix.stages.fetch.fetchlocal"></a>

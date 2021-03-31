@@ -5,7 +5,7 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir,
                         mkcontext, allrrefs, mkdref, mkrref,
                         unrref, undref, realize, rref2dref, drefcfg,
                         mkconfig, Build, Context, build_outpath, match_some,
-                        mkdrv, store_deref, store_rref2path, store_rrefs_,
+                        mkdrv, store_deref, rref2path, store_rrefs_,
                         config_cattrs, mksymlink, store_cattrs, build_deref,
                         build_path, mkrefpath, build_config, alldrefs,
                         store_rrefs, build_wrapper, build_cattrs, build_name,
@@ -14,7 +14,7 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir,
                         build_outpaths, scanref_dict, config_dict, promise,
                         mklens, isrref, Config, RConfig, build_setoutpaths,
                         partial, path2rref, Tag, Group, RRefGroup, concat,
-                        linkrrefs, instantiate_, store_dref2path, path2dref,
+                        linkrrefs, instantiate_, dref2path, path2dref,
                         linkdref, storage, rrefdeps, drefrrefs,
                         allrrefs, realizeGroups, tag_out, groups2rrefs,
                         redefine, match_only, readstr, match_exact, group2sign)
@@ -176,7 +176,7 @@ def test_match_all(stages):
 #     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=2, S=S)
 #     rref2=realize(clo, force_rebuild=[clo.dref])
 #     assert len(list(drefrrefs(clo.dref,S)))==2
-#     assert tryread(Path(join(store_rref2path(rref2,S),'artifact')))==str('2_0')
+#     assert tryread(Path(join(rref2path(rref2,S),'artifact')))==str('2_0')
 #
 #   with setup_storage2('test_match_latest') as (T,S):
 #     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=1, S=S)
@@ -186,7 +186,7 @@ def test_match_all(stages):
 #     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=2, buildtime=False, S=S)
 #     rref2=realize(clo, force_rebuild=[clo.dref])
 #     assert len(list(drefrrefs(clo.dref,S)))==2
-#     assert tryread(Path(join(store_rref2path(rref2,S),'artifact')))==str('1_0')
+#     assert tryread(Path(join(rref2path(rref2,S),'artifact')))==str('1_0')
 #
 #   for i in range(10):
 #     with setup_storage2('test_match_latest') as (T,S):
@@ -195,7 +195,7 @@ def test_match_all(stages):
 #       try:
 #         clo=instantiate(_mknode, {'a':0}, match_latest(ntop), nouts, S=S)
 #         rrefs=realizeMany(clo)
-#         times=set([tryread(Path(join(store_rref2path(rref,S),'__buildtime__.txt'))) for rref in rrefs])
+#         times=set([tryread(Path(join(rref2path(rref,S),'__buildtime__.txt'))) for rref in rrefs])
 #         assert len(list(times))==1
 #       except AssertionError:
 #         assert ntop>nouts

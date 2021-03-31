@@ -220,19 +220,19 @@ def mkrefpath(r:DRef, items:List[str]=[])->RefPath:
 #  ___) | || (_) | | |  __/
 # |____/ \__\___/|_|  \___|
 
-def assert_store_initialized(S:SPath)->None:
+def assert_initialized(S:SPath)->None:
   assert isdir(storage(S)), \
     (f"Looks like the Pylightnix store ('{PYLIGHTNIX_STORE}') is not initialized. Did "
-     f"you call `store_initialize`?")
+     f"you call `initialize`?")
   assert isdir(tempdir()), \
     (f"Looks like the Pylightnix tmp ('{tempdir()}') is not initialized. Did "
-     f"you call `store_initialize`?")
+     f"you call `initialize`?")
   assert lstat((storage(S))).st_dev == lstat(tempdir()).st_dev, \
     (f"Looks like Pylightnix store and tmp directories belong to different filesystems. "
      f"This case is not supported yet. Consider setting PYLIGHTNIX_TMP to be on the same "
      f"device with PYLIGHTNIX_STORE")
 
-def store_initialize(custom_store:Optional[str]=None,
+def initialize(custom_store:Optional[str]=None,
                      custom_tmp:Optional[str]=None,
                      check_not_exist:bool=False)->None:
   """ Create the storage and temp direcories if they don't exist. Default
@@ -248,14 +248,14 @@ def store_initialize(custom_store:Optional[str]=None,
   - `check_not_exist:bool=False`: Set to True to assert on already existing
     storages. Good to become sure that newly created storage is empty.
 
-  See also [assert_store_initialized](#pylightnix.core.assert_store_initialized).
+  See also [assert_initialized](#pylightnix.core.assert_initialized).
 
   Example:
   ```python
   import pylightnix.core
   pylightnix.core.PYLIGHTNIX_STORE='/tmp/custom_pylightnix_storage'
   pylightnix.core.PYLIGHTNIX_TMP='/tmp/custom_pylightnix_tmp'
-  pylightnix.core.store_initialize()
+  pylightnix.core.initialize()
   ```
   """
   global PYLIGHTNIX_STORE, PYLIGHTNIX_TMP
@@ -270,7 +270,7 @@ def store_initialize(custom_store:Optional[str]=None,
     PYLIGHTNIX_TMP=custom_tmp
   makedirs(PYLIGHTNIX_TMP, exist_ok=True)
 
-  assert_store_initialized(SPath(PYLIGHTNIX_STORE))
+  assert_initialized(SPath(PYLIGHTNIX_STORE))
 
 
 def resolve(c:Config, r:DRef)->RConfig:
@@ -286,27 +286,27 @@ def resolve(c:Config, r:DRef)->RConfig:
   return RConfig(d)
 
 
-def store_dref2path(r:DRef,S=None)->Path:
+def dref2path(r:DRef,S=None)->Path:
   (dhash,nm)=undref(r)
   return Path(join(storage(S),dhash+'-'+nm))
 
-def store_rref2path(r:RRef, S=None)->Path:
+def rref2path(r:RRef, S=None)->Path:
   (rhash,dhash,nm)=unrref(r)
   return Path(join(storage(S),dhash+'-'+nm,rhash))
 
-def store_cfgpath(r:DRef,S=None)->Path:
-  return Path(join(store_dref2path(r,S),'config.json'))
+def drefcfgpath(r:DRef,S=None)->Path:
+  return Path(join(dref2path(r,S),'config.json'))
 
-def drefctx(r:RRef, S=None)->Context:
+def rrefctx(r:RRef, S=None)->Context:
   """
   FIXME: Either do `context_add(ctx, rref2dref(r), [r])` or document it's absense
   """
   assert_valid_rref(r)
-  return readjson(join(store_rref2path(r,S),'context.json'))
+  return readjson(join(rref2path(r,S),'context.json'))
 
 
 def drefcfg_(r:DRef,S=None)->Config:
-  return assert_valid_config(Config(readjson(store_cfgpath(r,S))))
+  return assert_valid_config(Config(readjson(drefcfgpath(r,S))))
 
 def drefcfg(r:DRef,S=None)->RConfig:
   return resolve(drefcfg_(r,S),r)
@@ -362,7 +362,7 @@ def rrefdeps(rrefs:Iterable[RRef],S=None)->Set[RRef]:
   """
   acc:Set=set()
   for rref in rrefs:
-    for rref_deps in drefctx(rref,S).values():
+    for rref_deps in rrefctx(rref,S).values():
       acc|=set(rref_deps)
   return acc
 
@@ -403,7 +403,7 @@ def rootrrefs(S:Optional[SPath]=None)->Set[RRef]:
 
 def rrefdata(rref:RRef,S=None)->Iterable[Path]:
   """ Iterate over top-level artifacts paths, ignoring reserved files. """
-  root=store_rref2path(rref,S)
+  root=rref2path(rref,S)
   for fd in scandir(root):
     if not (fd.is_file() and fd.name in PYLIGHTNIX_RESERVED):
       yield Path(join(root, fd.name))
@@ -412,7 +412,7 @@ def drefrrefs(dref:DRef,S=None)->List[RRef]:
   """ Iterate over all realizations of a derivation `dref`. The sort order is
   unspecified. Matchers are not taken into account. """
   (dhash,nm)=undref(dref)
-  drefpath=store_dref2path(dref,S)
+  drefpath=dref2path(dref,S)
   rrefs:List[RRef]=[]
   for f in listdir(drefpath):
     if f[-4:]!='.tmp' and isdir(join(drefpath,f)):
@@ -428,7 +428,7 @@ def drefrrefsC(dref:DRef, context:Context, S=None)->Iterable[RRef]:
   """ Iterate over realizations of a derivation `dref` that match a specified
   [context](#pylightnix.types.Context). Sorting order is unspecified. """
   for rref in drefrrefs(dref,S):
-    context2=drefctx(rref,S)
+    context2=rrefctx(rref,S)
     if context_eq(context,context2):
       yield rref
 
@@ -439,7 +439,7 @@ def drefrrefsC(dref:DRef, context:Context, S=None)->Iterable[RRef]:
 #   """
 #   rgs:List[RRefGroup]=[]
 #   for rg in store_rrefs_(dref,S):
-#     context2=drefctx(rg[tag_out()],S)
+#     context2=rrefctx(rg[tag_out()],S)
 #     if context_eq(context,context2):
 #       rgs.append(rg)
 #   return rgs
@@ -449,10 +449,10 @@ def drefrrefsCR(dref:DRef, context_holder:RRef, S=None)->List[RRef]:
   """ Return realizations of `dref` in the `context_holder`'s context.  Previous
   name is store_deref_
   FIXME: rename to drefderef or alike """
-  return context_deref(drefctx(context_holder,S),dref)
+  return context_deref(rrefctx(context_holder,S),dref)
 
 
-def store_buildtime(rref:RRef, S=None)->Optional[str]:
+def rrefbtime(rref:RRef, S=None)->Optional[str]:
   """ Return the buildtime of the current RRef in a format specified by the
   [PYLIGHTNIX_TIME](#pylightnix.utils.PYLIGHTNIX_TIME) constant.
 
@@ -461,7 +461,7 @@ def store_buildtime(rref:RRef, S=None)->Optional[str]:
 
   Buildtime is the time when the realization process has started. Some
   realizations may not provide this information. """
-  return tryread(Path(join(store_rref2path(rref,S),'__buildtime__.txt')))
+  return tryread(Path(join(rref2path(rref,S),'__buildtime__.txt')))
 
 def store_gc(keep_drefs:List[DRef],
              keep_rrefs:List[RRef],
@@ -472,7 +472,7 @@ def store_gc(keep_drefs:List[DRef],
   Default location of `S` may be changed.
 
   See also [rmref](#pylightnix.bashlike.rmref)"""
-  assert_store_initialized(S)
+  assert_initialized(S)
   keep_rrefs_=set(keep_rrefs)
   keep_drefs_=set(keep_drefs)
   closure_rrefs=rrefdeps(keep_rrefs_,S) | keep_rrefs_
@@ -496,7 +496,7 @@ def mkdrv_(c:Config,S:SPath)->DRef:
 
   FIXME: Assert or handle possible (but improbable) hash collision [*]
   """
-  assert_store_initialized(S)
+  assert_initialized(S)
   # c=cp.config
   assert_valid_config(c)
   assert_rref_deps(c)
@@ -511,7 +511,7 @@ def mkdrv_(c:Config,S:SPath)->DRef:
     f.write(config_serialize(c))
 
   filero(Path(join(o,'config.json')))
-  drefpath=store_dref2path(dref,S)
+  drefpath=dref2path(dref,S)
   dreftmp=Path(drefpath+'.tmp')
   replace(o,dreftmp)
 
@@ -557,7 +557,7 @@ def mkrealization(dref:DRef, l:Context, o:Path, S=None)->RRef:
 
   rhash=dirhash(o)
   rref=mkrref(trimhash(rhash),dhash,nm)
-  rrefpath=store_rref2path(rref,S)
+  rrefpath=rref2path(rref,S)
   rreftmp=Path(rrefpath+'.tmp')
 
   replace(o,rreftmp)
@@ -843,10 +843,10 @@ def linkrref(rref:RRef,
   name_:str=name if name is not None else (
     '_result-'+config_name(drefcfg_(rref2dref(rref),S)) if destdir is None else
     'result-'+config_name(drefcfg_(rref2dref(rref),S)))
-  ts:Optional[str]=store_buildtime(rref,S) if withtime else None
+  ts:Optional[str]=rrefbtime(rref,S) if withtime else None
   timetag_=f'{ts}_' if ts is not None else ''
   symlink=Path(join(destdir_,f"{timetag_}{name_}"))
-  forcelink(Path(relpath(store_rref2path(rref,S), destdir_)), symlink)
+  forcelink(Path(relpath(rref2path(rref,S), destdir_)), symlink)
   return symlink
 
 
@@ -859,7 +859,7 @@ def linkdref(dref:DRef,
     '_result-'+config_name(drefcfg_(dref,S)) if destdir is None else
     'result-'+config_name(drefcfg_(dref,S)))
   symlink=Path(join(destdir_,name_))
-  forcelink(Path(relpath(store_dref2path(dref,S), destdir_)), symlink)
+  forcelink(Path(relpath(dref2path(dref,S), destdir_)), symlink)
   return symlink
 
 

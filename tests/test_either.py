@@ -2,7 +2,7 @@ from pylightnix import (instantiate, DRef, RRef, assert_valid_rref, Manager,
                         Build, realize, mklens, either_wrapper, readstr,
                         mkconfig, mkdrv, build_wrapper,
                         build_setoutpaths, either_status, either_isRight,
-                        either_isLeft, realizeMany, store_rref2path, match_only,
+                        either_isLeft, realizeMany, rref2path, match_only,
                         writestr, match_some)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink,
@@ -71,5 +71,5 @@ def test_either_builderror()->None:
     for rref in rrefs:
       assert_valid_rref(rref)
       assert either_isLeft(rref), either_status(rref)
-      assert isfile(join(store_rref2path(rref),'exception.txt'))
+      assert isfile(join(rref2path(rref),'exception.txt'))
 

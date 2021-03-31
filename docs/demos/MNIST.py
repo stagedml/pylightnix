@@ -1,7 +1,7 @@
 
-from pylightnix import Path, store_initialize, dirrm
+from pylightnix import Path, initialize, dirrm
 dirrm(Path('/tmp/pylightnix_mnist_demo'))
-store_initialize(custom_store='/tmp/pylightnix_mnist_demo', custom_tmp='/tmp')
+initialize(custom_store='/tmp/pylightnix_mnist_demo', custom_tmp='/tmp')
 
 from pylightnix import DRef, instantiate_inplace, fetchurl
 
