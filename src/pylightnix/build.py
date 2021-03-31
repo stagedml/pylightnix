@@ -45,7 +45,7 @@ from pylightnix.core import (assert_valid_config, config_cattrs,
                              config_dict, drefcfg)
 
 from pylightnix.repl import (ReplHelper, repl_continue, ERR_INVALID_RH,
-                             ERR_INACTIVE_RH, PYLIGHTNIX_REPL_HELPER)
+                             ERR_INACTIVE_RH)
 
 logger=getLogger(__name__)
 info=logger.info
@@ -259,9 +259,9 @@ def repl_continueBuild(b:Build, rh:Optional[ReplHelper]=None)->Optional[RRef]:
 
 
 def repl_buildargs(rh:Optional[ReplHelper]=None, buildtime:bool=True)->BuildArgs:
-  global PYLIGHTNIX_REPL_HELPER
+  import pylightnix.repl
   if rh is None:
-    rh=PYLIGHTNIX_REPL_HELPER
+    rh=pylightnix.repl.PYLIGHTNIX_REPL_HELPER
   assert rh is not None, ERR_INVALID_RH
   assert rh.context is not None, ERR_INACTIVE_RH
   assert rh.dref is not None, ERR_INACTIVE_RH

@@ -59,14 +59,14 @@ def repl_continueMany(out_paths:Optional[List[Path]]=None,
     rrefs:Optional[List[RRef]]
     if out_paths is not None:
       assert out_rrefs is None
-      rrefgs=[mkrealization(rh.dref,rh.context,p,rh.storage)
+      rrefs=[mkrealization(rh.dref,rh.context,p,rh.storage)
               for p in out_paths]
     elif out_rrefs is not None:
       assert out_paths is None
       rrefs=out_rrefs
     else:
       rrefs=None
-    rh.storage,rh.dref,rh.context,rh.drv,rh.rarg=rh.gen.send((rrefgs,False))
+    rh.storage,rh.dref,rh.context,rh.drv,rh.rarg=rh.gen.send((rrefs,False))
   except StopIteration as e:
     rh.gen=None
     rh.rrefs=e.value
