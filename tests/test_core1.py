@@ -12,7 +12,7 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir, dirhash,
                         concat, linkrrefs, instantiate_, dref2path,
                         path2dref, linkdref, storage, rrefdeps,
                         drefrrefs, allrrefs, match_only, drefrrefs, drefrrefsC,
-                        drefrrefsCR, rrefattrs )
+                        rrefctx, context_deref, rrefattrs )
 
 from tests.imports import (given, Any, Callable, join, Optional, islink,
                            isfile, islink, List, randint, sleep, rmtree, system,
@@ -162,7 +162,7 @@ def test_minimal_closure()->None:
 
     rref1=realize(instantiate(_somenode,S=S))
     rref=realize(instantiate(_anothernode,S=S))
-    rref2=drefrrefsCR(rrefattrs(rref,S=S).papa,rref,S=S)[0]
+    rref2=context_deref(rrefctx(rref,S),rrefattrs(rref,S=S).papa)[0]
     assert rref1==rref2, '''
       Nodes with no dependencies should have empty context, regardless of their
       position in the closure.
@@ -332,7 +332,7 @@ def test_overwrite_realizer()->None:
     all_drefs = list(alldrefs(S))
     assert len(all_drefs)==2
 
-    rref_n3=drefrrefsCR(rrefattrs(rref_n2, S).maman, rref_n2, S)[0]
+    rref_n3=context_deref(rrefctx(rref_n2,S), rrefattrs(rref_n2, S).maman)[0]
     assert open(join(rref2path(rref_n3, S),'artifact'),'r').read() == '42'
 
 

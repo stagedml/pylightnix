@@ -298,9 +298,6 @@ def drefcfgpath(r:DRef,S=None)->Path:
   return Path(join(dref2path(r,S),'config.json'))
 
 def rrefctx(r:RRef, S=None)->Context:
-  """
-  FIXME: Either do `context_add(ctx, rref2dref(r), [r])` or document it's absense
-  """
   assert_valid_rref(r)
   return readjson(join(rref2path(r,S),'context.json'))
 
@@ -336,7 +333,7 @@ def rrefdeps1(rrefs:Iterable[RRef],S=None)->Set[RRef]:
   for rref in rrefs:
     dref=rref2dref(rref)
     for dref_dep in drefdeps1([dref],S):
-      acc|=set(drefrrefsCR(dref_dep,context_holder=rref,S=S))
+      acc|=set(context_deref(rrefctx(rref,S),dref_dep))
   return acc
 
 def drefdeps(drefs:Iterable[DRef], S=None)->Set[DRef]:
@@ -431,26 +428,6 @@ def drefrrefsC(dref:DRef, context:Context, S=None)->Iterable[RRef]:
     context2=rrefctx(rref,S)
     if context_eq(context,context2):
       yield rref
-
-# def store_rrefs(dref:DRef, context:Context, S=None)->List[RRefGroup]:
-#   """ Iterate over realizations of a derivation `dref` which match a specified
-#   [context](#pylightnix.types.Context). Sorting order is unspecified.
-#   DEPRECATED
-#   """
-#   rgs:List[RRefGroup]=[]
-#   for rg in store_rrefs_(dref,S):
-#     context2=rrefctx(rg[tag_out()],S)
-#     if context_eq(context,context2):
-#       rgs.append(rg)
-#   return rgs
-
-
-def drefrrefsCR(dref:DRef, context_holder:RRef, S=None)->List[RRef]:
-  """ Return realizations of `dref` in the `context_holder`'s context.  Previous
-  name is store_deref_
-  FIXME: rename to drefderef or alike """
-  return context_deref(rrefctx(context_holder,S),dref)
-
 
 def rrefbtime(rref:RRef, S=None)->Optional[str]:
   """ Return the buildtime of the current RRef in a format specified by the
@@ -607,7 +584,6 @@ def context_deref(context:Context, dref:DRef)->List[RRef]:
     f"Context {context} doesn't declare {dref} among it's dependencies so we "
     f"can't dereference it.")
   return context[dref]
-
 
 def context_serialize(c:Context)->str:
   assert_valid_context(c)
