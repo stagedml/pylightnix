@@ -41,10 +41,10 @@ def test_rref(rref):
 
 
 @given(cfg=configs())
-def test_config(cfg):
+def test_configs(cfg):
   assert_valid_config(cfg)
 
-def test_config2()->None:
+def test_configs2()->None:
   try:
     c = mkconfig({'a':(3,1)})
     raise ShouldHaveFailed(f'RConfig {c} is surprizingly valid')

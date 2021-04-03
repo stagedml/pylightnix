@@ -105,23 +105,16 @@ def rootstages(draw, min_size:int=1, max_size:int=10, partial_matches:bool=True)
                    max_size=max_size).filter(lambda dag: len(dag)>0))
   note(f"DAG: {dag}")
   roots=dagroots([n for n,_ in dag], lambda n:dag[n][1])
-  # Signature: (NodeID -> ListOfGroups[ListOfTags]])
-  #N=draw(integers(min_value=1,max_value=3))
   rrefnums={n:draw(integers(min_value=1,max_value=3)) for n,_ in dag}
   note(f"Rref numbers: {rrefnums}")
-  # tss={n[0]:[[tag_out()], [tag_out()]] for n in dag}
-  # print(tss)
   if partial_matches:
     nmatches={n:draw(integers(min_value=1,max_value=rrefnums[n]-1)) for n,_ in dag}
   else:
     nmatches={n:rrefnums[n] for n,_ in dag}
-  # nmatches={n[0]:99 for n in dag}
   note(f"NMatches {nmatches}")
   # Signature: (NodeID -> (GroupID -> NonDetValue))
   nondets={n:{i:draw(integers(min_value=1,max_value=5)) for i in range(rrefnums[n])} for n,_ in dag}
   note(f"nondets: {nondets}")
-  # print(tss)
-  # nondets={n[0]:{i:0 for i in range(len(tss[n[0]]))} for n in dag}
 
   def _stage(m, root):
     drefs:dict={}
@@ -129,7 +122,6 @@ def rootstages(draw, min_size:int=1, max_size:int=10, partial_matches:bool=True)
 
       def _nondet(ngroup,tag,nn):
         a=nondets[nn]
-        # note(str(({nn:(a,'[',ngroup,']')})))
         return a[ngroup]
 
       drefs[n]=mkstage(m,

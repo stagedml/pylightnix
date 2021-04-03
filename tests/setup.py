@@ -3,7 +3,7 @@ from pylightnix import (Manager, Path, initialize, DRef, Context,
                         mkconfig, Name, mkdrv, rref2path, dirchmod,
                         Config, RealizeArg, drefrrefsC, tryreadstr_def, SPath,
                         storage, storagename, deepcopy, build_setoutpaths,
-                        maybereadstr, selfref)
+                        maybereadstr, selfref, drefattrs)
 
 from tests.imports import (rmtree, join, makedirs, listdir, Callable,
                            contextmanager, List, Dict,  Popen, PIPE,
@@ -64,22 +64,23 @@ def setup_inplace_reset()->None:
   import pylightnix.inplace
   pylightnix.inplace.PYLIGHTNIX_MANAGER=Manager(storage(None))
 
-def mkstage(m:Manager,
-            config:dict,
-            nondet:Callable[[int],int]=lambda n:0,
-            buildtime:bool=True,
-            realize_wrapper=None,
-            nrrefs:int=1,
-            nmatch:int=1)->DRef:
-  """ Create a test stage.
 
-  Some parameters:
-  - `nondet`: may emulate non-deterministic build outcome
-  """
-  def _config()->Config:
-    c=deepcopy(config)
-    c['artifact']=[selfref,'artifact']
-    return mkconfig(c)
+
+def test_config(c:dict)->Config:
+  c2=deepcopy(c)
+  c2['artifact']=[selfref,'artifact']
+  return mkconfig(c2)
+
+def test_match(nmatch):
+  def _match(S:SPath, dref:DRef, context:Context)->Optional[List[RRef]]:
+    rrefs=drefrrefsC(dref, context, S)
+    values=list(sorted([(maybereadstr(join(rref2path(rref, S),'artifact'),'0',int),rref)
+                        for rref in rrefs], key=lambda x:x[0]))
+    # Return `top-n` matched groups
+    return [tup[1] for tup in values[-nmatch:]] if len(values)>0 else None
+  return _match
+
+def test_realize(nrrefs, buildtime, nondet):
   def _realize(S:SPath, dref:DRef, context:Context, ra:RealizeArg)->List[Path]:
     b=mkbuild(S, dref, context, buildtime=buildtime)
     paths=build_setoutpaths(b,nrrefs)
@@ -89,17 +90,19 @@ def mkstage(m:Manager,
       with open(join(o,'id'),'w') as f:
         f.write(str(i))
     return b.outpaths
-  def _match(S:SPath, dref:DRef, context:Context)->Optional[List[RRef]]:
-    # Get the available groups
-    rrefs=drefrrefsC(dref, context, S)
-    # Sort the output groups by the value of artifact
-    values=list(sorted([(maybereadstr(join(rref2path(rref, S),'artifact'),'0',int),rref)
-                        for rref in rrefs], key=lambda x:x[0]))
-    # Return `top-n` matched groups
-    return [tup[1] for tup in values[-nmatch:]] if len(values)>0 else None
+  return _realize
 
-  rw=(lambda x:x) if realize_wrapper is None else realize_wrapper
-  return mkdrv(m, _config(), _match, rw(_realize))
+def mkstage(m:Manager,
+            config:dict,
+            nondet:Callable[[int],int]=lambda n:0,
+            buildtime:bool=True,
+            mkdrv_=mkdrv,
+            nrrefs:int=1,
+            nmatch:int=1)->DRef:
+  return mkdrv_(m,
+               test_config(config),
+               test_match(nmatch),
+               test_realize(nrrefs, buildtime, nondet))
 
 
 def pipe_stdout(args:List[str], **kwargs)->str:

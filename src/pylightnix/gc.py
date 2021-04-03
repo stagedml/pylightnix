@@ -83,6 +83,8 @@ def gc(keep_dirs:List[Path],
   symlinked under `keep_dir` and is not in short list of pre-defined models.
 
   Pass `interactive=False` to delete the data without request for confirmation.
+
+  FIXME: move to bashlike?
   """
   import sys
   assert (not interactive) or sys.__stdin__.isatty(), (

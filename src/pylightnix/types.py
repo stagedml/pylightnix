@@ -17,7 +17,7 @@
 
 from pylightnix.imports import ( deepcopy, OrderedDict )
 from typing import ( List, Any, Tuple, Union, Optional, Iterable, IO, Callable,
-    Dict, NamedTuple, Set, Generator, TypeVar, NewType, SupportsAbs )
+    Dict, NamedTuple, Set, Generator, TypeVar, NewType, SupportsAbs, Generic )
 
 class Path(str):
   """ `Path` is an alias for string. It is used in pylightnix to
@@ -121,7 +121,7 @@ class Name(str):
 #:
 #: The algorithm described above is implemented as
 #: [build_path](#pylightnix.core.build_path) helper function.
-RefPath = List[Any]
+RefPath = List[Union[DRef,str]]
 
 #: Placeholder for self-reference
 PYLIGHTNIX_SELF_TAG = "__self__"
@@ -172,6 +172,16 @@ Matcher = Callable[[SPath,DRef,Context],Optional[List[RRef]]]
 
 InstantiateArg=Dict[str,Any]
 RealizeArg=Dict[str,Any]
+
+class OutputBase:
+  def get(self)->List[Path]:
+    assert False
+
+class Output(OutputBase):
+  def __init__(self,val:List[Path]):
+    self.val:List[Path]=val
+  def get(self)->List[Path]:
+    return self.val
 
 #: Realizer is a type of callback functions which are defined by the user.
 #: Realizers should implement the stage-specific

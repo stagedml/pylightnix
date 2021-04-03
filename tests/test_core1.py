@@ -21,7 +21,7 @@ from tests.imports import (given, Any, Callable, join, Optional, islink,
 from tests.generators import (rrefs, drefs, configs, dicts, rootstages)
 
 from tests.setup import ( ShouldHaveFailed, setup_storage, setup_storage2,
-                         mkstage, mkstage, pipe_stdout )
+                         mkstage, pipe_stdout )
 
 
 # @given(d=dicts())

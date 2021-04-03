@@ -2,7 +2,8 @@ from pylightnix.imports import (join, mkdtemp, format_exc)
 
 from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional, Config,
                               Realizer, DRef, Context, RealizeArg, RRef, Path,
-                              SPath)
+                              SPath, TypeVar, Generic, Callable, OutputBase,
+                              Matcher)
 
 from pylightnix.core import (assert_valid_config, drefcfg_, config_cattrs,
                              config_hash, config_name, context_deref,
@@ -14,8 +15,32 @@ from pylightnix.utils import (readstr, writestr, readstr, tryreadstr_def)
 # `RealizeError`
 from pylightnix.build import BuildError
 
+_A = TypeVar('_A', bound=OutputBase)
+class Either(Generic[_A],OutputBase):
+  val:Union[Exception,_A]
+  def get(self)->List[Path]:
+    if isinstance(self.val,Exception):
+      return []
+    elif isinstance(self.val,OutputBase):
+      return self.val.get()
+    else:
+      assert False
 
-def either_wrapper(f:Realizer)->Realizer:
+
+def either_status(rref:RRef,S=None)->str:
+  return tryreadstr_def(join(rref2path(rref,S),'status_either.txt'),'RIGHT')
+
+def either_isRight(rref:RRef,S=None)->bool:
+  return either_status(rref,S)=='RIGHT'
+
+def either_isLeft(rref:RRef,S=None)->bool:
+  return either_status(rref,S)=='LEFT'
+
+
+_B = TypeVar('_B', bound=OutputBase)
+def either_wrapper(f:Callable[[SPath,DRef,Context,RealizeArg],Either[_B]],
+                   inject:Callable[[Path],_B]
+                   )->Callable[[SPath,DRef,Context,RealizeArg],_B]:
   """ This wrapper implements poor-man's `(EitherT Error)` monad on stages.
   With this wrapper, stages could become either LEFT (if rasied an error) or
   RIGHT (after normal completion). If the stage turns LEFT, then so will be any
@@ -30,7 +55,7 @@ def either_wrapper(f:Realizer)->Realizer:
   import pylightnix.core
   tmp=pylightnix.core.PYLIGHTNIX_TMP
 
-  def _either(S:SPath, dref:DRef, ctx:Context, ra:RealizeArg)->List[Path]:
+  def _either(S:SPath, dref:DRef, ctx:Context, ra:RealizeArg)->_B:
     # Write the specified build status to every output
     def _mark_status(outpaths:List[Path],
                      status:str,
@@ -44,20 +69,17 @@ def either_wrapper(f:Realizer)->Realizer:
     # if any of them has it.
     for dref_dep in drefdeps1([dref],S):
       for rref in context_deref(ctx,dref_dep):
-        status=tryreadstr_def(join(rref2path(rref,S),'status_either.txt'), 'RIGHT')
-        if status=='RIGHT':
-          continue
-        elif status=='LEFT':
-          outpaths=[Path(mkdtemp(prefix="either_tmp", dir=tmp))]
-          _mark_status(outpaths, 'LEFT')
-          return outpaths
-        else:
-          assert False, f"Invalid either status {status}"
+        if either_isLeft(rref):
+          outpath=Path(mkdtemp(prefix="either_tmp", dir=tmp))
+          _mark_status([outpath], 'LEFT')
+          return inject(outpath)
 
     # Execute the original build
     try:
       outpaths=f(S,dref,ctx,ra)
-      _mark_status(outpaths, 'RIGHT')
+      assert not isinstance(outpaths.val,Exception)
+      _mark_status(outpaths.get(), 'RIGHT')
+      return outpaths.val
     except KeyboardInterrupt:
       raise
     # FIXME: repair build
@@ -65,20 +87,12 @@ def either_wrapper(f:Realizer)->Realizer:
     #   outpaths=be.outgroups
     #   _mark_status(outpaths, 'LEFT', format_exc())
     except Exception:
-      outpaths=[Path(mkdtemp(prefix="either_tmp", dir=tmp))]
-      _mark_status(outpaths, 'LEFT', format_exc())
+      outpath=Path(mkdtemp(prefix="either_tmp", dir=tmp))
+      _mark_status([outpath], 'LEFT', format_exc())
+      return inject(outpath)
 
     # Return either valid artifacts or a LEFT-substitute
-    return outpaths
+    return outpath
 
   return _either
-
-def either_status(rref:RRef,S=None)->str:
-  return readstr(join(rref2path(rref,S),'status_either.txt'))
-
-def either_isRight(rref:RRef,S=None)->bool:
-  return either_status(rref,S)=='RIGHT'
-
-def either_isLeft(rref:RRef,S=None)->bool:
-  return either_status(rref,S)=='LEFT'
 

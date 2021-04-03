@@ -225,7 +225,7 @@ def build_paths(b:Build, refpath:RefPath)->List[Path]:
     return [Path(join(path, *refpath[1:])) for path in b.outpaths]
   else:
     return [Path(join(rref2path(rref,b.storage), *refpath[1:]))
-            for rref in build_deref_(b, refpath[0])]
+            for rref in build_deref_(b, DRef(refpath[0]))]
 
 def build_path(b:Build, refpath:RefPath)->Path:
   """ A single-realization version of the [build_paths](#pylightnix.build.build_paths). """
