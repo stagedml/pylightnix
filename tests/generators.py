@@ -86,35 +86,33 @@ def intdags(draw, min_size:int=1, max_size:int=10):
   return acc
 
 @composite
-def intdags_permutations(draw):
-  """ Return a list of instances of a same DAG. Instances are not nesessarily
+def intdags_permutations(draw, min_size:int=1, max_size:int=10):
+  """ Produce instances of a same DAG. Instances are not nesessarily
   topologically sorted """
-  return draw(lists(permutations(draw(intdags())),min_size=3,max_size=3))
-
-# @composite
-# def nrrefs(draw):
-#   N=draw(integers(min_value=1,max_value=3))
-#   acc=[]
-#   for nrrefs in range(N):
-#     acc.append([f"tag{n}" for n in range(ntags-1)]+[tag_out()])
-#   return acc
+  return draw(lists(permutations(draw(intdags())),
+                    min_size=min_size,
+                    max_size=max_size))
 
 @composite
-def rootstages(draw, min_size:int=1, max_size:int=10, partial_matches:bool=True):
+def rootstages(draw,
+               min_size:int=1,
+               max_size:int=10,
+               partial_matches:bool=True,
+               stagefn=mkstage):
+  """ Produce Pylightnix stage hierarchies
+  Note: A signature of `nondets` is: (NodeID -> (RRefID -> NonDetValue))
+  """
   dag=draw(intdags(min_size=min_size,
                    max_size=max_size).filter(lambda dag: len(dag)>0))
   note(f"DAG: {dag}")
   roots=dagroots([n for n,_ in dag], lambda n:dag[n][1])
-  rrefnums={n:draw(integers(min_value=1,max_value=3)) for n,_ in dag}
-  note(f"Rref numbers: {rrefnums}")
-  if partial_matches:
-    nmatches={n:draw(integers(min_value=1,max_value=max(1,rrefnums[n]-1))) for n,_ in dag}
-  else:
-    nmatches={n:rrefnums[n] for n,_ in dag}
+  nrrefs={n:draw(integers(min_value=1,max_value=3)) for n,_ in dag}
+  note(f"Rref numbers: {nrrefs}")
+  nmatches={n:draw(integers(min_value=1,max_value=max(1,nrrefs[n]-1)))
+            for n,_ in dag} if partial_matches else {n:nrrefs[n] for n,_ in dag}
   note(f"NMatches {nmatches}")
-  # Signature: (NodeID -> (GroupID -> NonDetValue))
-  nondets={n:{i:draw(integers(min_value=1,max_value=5)) for i in range(rrefnums[n])} for n,_ in dag}
-  note(f"nondets: {nondets}")
+  nondets={n:{i:draw(integers(min_value=1,max_value=5))
+              for i in range(nrrefs[n])} for n,_ in dag}
 
   def _stage(m, root):
     drefs:dict={}
@@ -124,11 +122,11 @@ def rootstages(draw, min_size:int=1, max_size:int=10, partial_matches:bool=True)
         a=nondets[nn]
         return a[ngroup]
 
-      drefs[n]=mkstage(m,
+      drefs[n]=stagefn(m,
                        config={'name':f'node_{n}',
                                'parents':[drefs[d] for d in deps]},
                        nondet=partial(_nondet,nn=n),
-                       nrrefs=rrefnums[n],
+                       nrrefs=nrrefs[n],
                        nmatch=nmatches[n])
     return drefs[root]
   return [partial(_stage, root=root) for root in roots]

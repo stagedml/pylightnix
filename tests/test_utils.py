@@ -177,7 +177,7 @@ def run_kahntsort(dag):
     seen.add(n)
   return res
 
-@given(dags=intdags_permutations())
+@given(dags=intdags_permutations(min_size=1, max_size=4))
 def test_kahntsort(dags)->None:
   with setup_storage2('test_kahntsort') as (T,S):
     res0=None
