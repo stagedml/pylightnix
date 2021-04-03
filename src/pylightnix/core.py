@@ -768,7 +768,7 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
         if abort:
           return []
       else:
-        rrefs=drv.matcher(S,dref,dref_context)
+        rrefs=drv.matcher(S, list(drefrrefsC(dref,dref_context,S)))
       if rrefs is None:
         assert dref not in assert_realized, (
           f"Stage '{dref}' was assumed to be already realized. "
@@ -780,7 +780,7 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
         rrefs_built:List[RRef]=[mkrealization(dref,dref_context,rp,S) for rp in rpaths]
         if len(rpaths)!=len(set(rrefs_built)):
           warning(f"Realizer of {dref} produced duplicated realizations")
-        rrefs_matched=drv.matcher(S,dref,dref_context)
+        rrefs_matched=drv.matcher(S,list(drefrrefsC(dref,dref_context,S)))
         assert rrefs_matched is not None, (
           f"The matcher of {dref} is not satisfied with its realizatons. "
           f"The following newly obtained realizations were ignored:\n"
@@ -855,17 +855,32 @@ def mksymlink(rref:RRef, tgtpath:Path, name:str, withtime:bool=True, S=None)->Pa
   return linkrref(rref, destdir=tgtpath, name=name, withtime=withtime, S=S)
 
 
-def match_some(n:int):
-  def _matcher(S:SPath, dref:DRef, context:Context)->Optional[List[RRef]]:
-    rrefs=list(drefrrefsC(dref,context,S))
+def match_ge(n:int):
+  def _matcher(S:SPath, rrefs:List[RRef])->Optional[List[RRef]]:
     if len(rrefs)==0:
       return None
     assert len(rrefs)==n, "Expecting exactly {n} matches"
     return rrefs
   return _matcher
 
+def match_predicate(paccept:Callable[[List[RRef]],bool],
+                    passert:Callable[[List[RRef]],bool]):
+  def _matcher(S:SPath, rrefs:List[RRef])->Optional[List[RRef]]:
+    if passert(rrefs):
+      assert False, "Matching is impossible"
+    if paccept(rrefs):
+      return rrefs
+    return None
+  return _matcher
+
+
 def match_only():
-  return match_some(1)
+  return match_predicate(paccept=lambda l: len(l)==1,
+                         passert=lambda l: len(l)>=2)
+
+def match_some(n:int):
+  return match_predicate(paccept=lambda l: len(l)>=n,
+                         passert=lambda l: False)
 
 #     _                      _
 #    / \   ___ ___  ___ _ __| |_ ___

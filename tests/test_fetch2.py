@@ -1,6 +1,6 @@
 from pylightnix import ( DRef, RRef, lsref, catref, instantiate, realize,
                         unrref, fetchurl, fetchurl2, isrref, rref2path, isfile,
-                        mklens, promise, basename )
+                        mklens, selfref, basename )
 
 from tests.imports import (TemporaryDirectory, join, stat, chmod, S_IEXEC,
     system, Popen, PIPE, get_executable)
@@ -35,7 +35,7 @@ def test_fetchurl2():
               url='mockcurl://result.tar.gz',
               filename='validname.tar.gz',
               sha256=wanted_sha256,
-              out=[promise,'validname.tar.gz']))
+              out=[selfref,'validname.tar.gz']))
 
       finally:
         pylightnix.stages.fetch2.CURL=oldcurl

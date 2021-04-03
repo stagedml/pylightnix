@@ -72,8 +72,7 @@ def test_config(c:dict)->Config:
   return mkconfig(c2)
 
 def test_match(nmatch):
-  def _match(S:SPath, dref:DRef, context:Context)->Optional[List[RRef]]:
-    rrefs=drefrrefsC(dref, context, S)
+  def _match(S:SPath, rrefs:List[RRef])->Optional[List[RRef]]:
     values=list(sorted([(maybereadstr(join(rref2path(rref, S),'artifact'),'0',int),rref)
                         for rref in rrefs], key=lambda x:x[0]))
     # Return `top-n` matched groups

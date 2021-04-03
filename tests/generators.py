@@ -108,7 +108,7 @@ def rootstages(draw, min_size:int=1, max_size:int=10, partial_matches:bool=True)
   rrefnums={n:draw(integers(min_value=1,max_value=3)) for n,_ in dag}
   note(f"Rref numbers: {rrefnums}")
   if partial_matches:
-    nmatches={n:draw(integers(min_value=1,max_value=rrefnums[n]-1)) for n,_ in dag}
+    nmatches={n:draw(integers(min_value=1,max_value=max(1,rrefnums[n]-1))) for n,_ in dag}
   else:
     nmatches={n:rrefnums[n] for n,_ in dag}
   note(f"NMatches {nmatches}")
@@ -120,7 +120,7 @@ def rootstages(draw, min_size:int=1, max_size:int=10, partial_matches:bool=True)
     drefs:dict={}
     for n,deps in list(dag):
 
-      def _nondet(ngroup,tag,nn):
+      def _nondet(ngroup,nn):
         a=nondets[nn]
         return a[ngroup]
 

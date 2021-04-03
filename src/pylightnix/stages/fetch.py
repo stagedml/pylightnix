@@ -18,7 +18,8 @@ from pylightnix.imports import (sha256 as sha256sum, sha1 as sha1sum, urlparse,
     Popen, remove, basename, join, rename, isfile, copyfile, environ, getLogger )
 from pylightnix.types import ( DRef, Manager, Build, Context, Name,
     Path, Optional, List, Config )
-from pylightnix.core import ( mkconfig, mkdrv, match_only, config_cattrs )
+from pylightnix.core import ( mkconfig, mkdrv, match_only, config_cattrs,
+                             selfref )
 from pylightnix.build import ( mkbuild, build_outpath, build_setoutpaths,
     build_paths, build_deref_, build_wrapper, build_wrapper,
                               build_config )
@@ -124,9 +125,8 @@ def fetchurl(m:Manager,
                      'mode':mode})
     else:
       assert False, 'Either sha256 or sha1 arguments should be set'
-    # FIXME: repair promises
-    # if 'unpack' not in mode:
-    #   kwargs.update({'out_path': [promise, fname]})
+    if 'unpack' not in mode:
+      kwargs.update({'out_path': [selfref, fname]})
     return mkconfig(kwargs)
 
   def _realize(b:Build)->None:
@@ -216,9 +216,8 @@ def fetchlocal(m:Manager, sha256:str,
     if envname is not None:
       kwargs.update({'envname':envname})
     kwargs.update({'sha256':sha256, 'mode':mode})
-    # FIXME: repair promises
-    # if 'unpack' not in mode:
-    #   kwargs.update({'out_path': [promise, fname]})
+    if 'unpack' not in mode:
+      kwargs.update({'out_path': [selfref, fname]})
     return mkconfig(kwargs)
 
   def _realize(b:Build)->None:

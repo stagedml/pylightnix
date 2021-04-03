@@ -16,9 +16,9 @@
 
 from pylightnix import (instantiate, DRef, RRef, Path, Build, Manager, mklens,
                         mkdrv, selfref, match_some, build_wrapper, instantiate,
-                        realize, isrref, isdref, store_cattrs, build_cattrs,
-                        build_outpath, build_path, mkconfig, assert_valid_rref,
-                        isrefpath, isclosure, match_only)
+                        realize, isrref, isdref, build_cattrs, build_outpath,
+                        build_path, mkconfig, assert_valid_rref, isrefpath,
+                        isclosure, match_only)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink,
                            isfile, List, randint, sleep, rmtree, system,

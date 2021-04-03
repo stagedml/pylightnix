@@ -168,7 +168,7 @@ Context=Dict[DRef,List[RRef]]
 #:
 #: TODO: Splitting Matcher into two parts would allow us to rid of
 #: `force_interrupt` argument.
-Matcher = Callable[[SPath,DRef,Context],Optional[List[RRef]]]
+Matcher = Callable[[SPath,List[RRef]],Optional[List[RRef]]]
 
 InstantiateArg=Dict[str,Any]
 RealizeArg=Dict[str,Any]

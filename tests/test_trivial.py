@@ -1,8 +1,8 @@
-from pylightnix import ( Manager, DRef, RRef, Path, mklogdir, dirhash, mknode,
-                        drefdeps1, rref2path, Manager, mkcontext,
-                        instantiate, realize, mkfile, Name, realized,
-                        build_wrapper, Build, mkconfig, match_some, mkdrv,
-                        build_outpath, redefine, tryread, mklens, promise )
+from pylightnix import (Manager, DRef, RRef, Path, mklogdir, dirhash, mknode,
+                        drefdeps1, rref2path, Manager, mkcontext, instantiate,
+                        realize, Name, realized, build_wrapper, Build,
+                        mkconfig, match_some, mkdrv, build_outpath, redefine,
+                        tryread, mklens, selfref, match_only )
 
 from tests.imports import (
     given, assume, example, note, settings, text, decimals, integers, rmtree,
@@ -49,22 +49,22 @@ def test_mknode_with_artifacts(d,a)->None:
 
 
 
-def test_mkfile()->None:
-  with setup_storage('test_mkfile'):
+# def test_mkfile()->None:
+#   with setup_storage('test_mkfile'):
 
-    def _setting(m:Manager, nm)->DRef:
-      return mkfile(m, Name('foo'), bytes((nm or 'bar').encode('utf-8')), nm)
+#     def _setting(m:Manager, nm)->DRef:
+#       return mkfile(m, Name('foo'), bytes((nm or 'bar').encode('utf-8')), nm)
 
-    rref1=realize(instantiate(_setting, None))
-    with open(join(rref2path(rref1),'foo'),'r') as f:
-      bar=f.read()
-    assert bar=='bar'
+#     rref1=realize(instantiate(_setting, None))
+#     with open(join(rref2path(rref1),'foo'),'r') as f:
+#       bar=f.read()
+#     assert bar=='bar'
 
-    rref2=realize(instantiate(_setting, 'baz'))
-    with open(join(rref2path(rref2),'baz'),'r') as f:
-      baz=f.read()
-    assert baz=='baz'
-    assert rref1!=rref2
+#     rref2=realize(instantiate(_setting, 'baz'))
+#     with open(join(rref2path(rref2),'baz'),'r') as f:
+#       baz=f.read()
+#     assert baz=='baz'
+#     assert rref1!=rref2
 
 
 def test_realized()->None:
@@ -75,7 +75,7 @@ def test_realized()->None:
         if assume_realized:
           raise ShouldHaveFailed('Should not call the real realizer')
         return build_outpath(b)
-      return mkdrv(m, mkconfig({'name':'1'}), match_some(), build_wrapper(_realize))
+      return mkdrv(m, mkconfig({'name':'1'}), match_only(), build_wrapper(_realize))
 
     dref=instantiate(realized(_setting), assume_realized=True)
     try:
@@ -92,7 +92,7 @@ def test_redefine()->None:
   with setup_storage('test_redefine'):
 
     def _setting(m:Manager)->DRef:
-      return mknode(m, {'name':'foo','bar':'baz','output':[promise,'f']},
+      return mknode(m, {'name':'foo','bar':'baz','output':[selfref,'f']},
                        {Name('f'):bytes(('umgh').encode('utf-8'))})
     def _nc(c):
       mklens(c).bar.val=42
