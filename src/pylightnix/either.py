@@ -3,11 +3,11 @@ from pylightnix.imports import (join, mkdtemp, format_exc)
 from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional, Config,
                               Realizer, DRef, Context, RealizeArg, RRef, Path,
                               SPath, TypeVar, Generic, Callable, OutputBase,
-                              Matcher)
+                              Matcher, Manager, Output)
 
 from pylightnix.core import (assert_valid_config, drefcfg_, config_cattrs,
                              config_hash, config_name, context_deref,
-                             assert_valid_refpath, rref2path, drefdeps1)
+                             assert_valid_refpath, rref2path, drefdeps1, mkdrv)
 
 from pylightnix.utils import (readstr, writestr, readstr, tryreadstr_def)
 
@@ -18,6 +18,8 @@ from pylightnix.build import BuildError
 _A = TypeVar('_A', bound=OutputBase)
 class Either(Generic[_A],OutputBase):
   val:Union[Exception,_A]
+  def __init__(self, val:_A):
+    self.val=val
   def get(self)->List[Path]:
     if isinstance(self.val,Exception):
       return []
@@ -38,7 +40,7 @@ def either_isLeft(rref:RRef,S=None)->bool:
 
 
 _B = TypeVar('_B', bound=OutputBase)
-def either_wrapper(f:Callable[[SPath,DRef,Context,RealizeArg],Either[_B]],
+def either_realizer(f:Callable[[SPath,DRef,Context,RealizeArg],Either[_B]],
                    inject:Callable[[Path],_B]
                    )->Callable[[SPath,DRef,Context,RealizeArg],_B]:
   """ This wrapper implements poor-man's `(EitherT Error)` monad on stages.
@@ -95,4 +97,16 @@ def either_wrapper(f:Callable[[SPath,DRef,Context,RealizeArg],Either[_B]],
     return outpath
 
   return _either
+
+def either_matcher(m:Matcher)->Matcher:
+  return m
+
+# def mkdrvE(m:Manager, config:Config,
+#            matcher:Matcher,
+#            realizer:Callable[[SPath,DRef,Context,RealizeArg],Either[Output]]
+#            )->DRef:
+#   def _inject(p:Path)->Output:
+#     return Output([p])
+#   return mkdrv(m, config, either_matcher(matcher), either_realizer(realizer,_inject))
+
 

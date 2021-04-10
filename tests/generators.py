@@ -1,6 +1,6 @@
 from pylightnix import (Manager, SPath, RConfig, datahash, PYLIGHTNIX_NAMEPAT,
                         mkdref, mkrref, trimhash, encode, instantiate_,
-                        dagroots)
+                        dagroots, List)
 
 from tests.imports import (given, assume, example, note, settings, text,
                            decimals, integers, rmtree, characters, gettempdir,
@@ -98,10 +98,12 @@ def rootstages(draw,
                min_size:int=1,
                max_size:int=10,
                partial_matches:bool=True,
+               failchances:List[int]=[],
                stagefn=mkstage):
   """ Produce Pylightnix stage hierarchies
   Note: A signature of `nondets` is: (NodeID -> (RRefID -> NonDetValue))
   """
+  assert all([x>=0 and x<=100 for x in failchances])
   dag=draw(intdags(min_size=min_size,
                    max_size=max_size).filter(lambda dag: len(dag)>0))
   note(f"DAG: {dag}")
@@ -113,21 +115,25 @@ def rootstages(draw,
   note(f"NMatches {nmatches}")
   nondets={n:{i:draw(integers(min_value=1,max_value=5))
               for i in range(nrrefs[n])} for n,_ in dag}
+  nfails={n:False for n,_ in dag}
+  for pfail in failchances:
+    fail=draw(sampled_from(([True]*pfail)+([False]*(100-pfail))))
+    if fail:
+      nfails[draw(sampled_from(dag.keys()))]=True
+
+  def _nondet(ngroup,nn):
+    return nondets[nn][ngroup]
 
   def _stage(m, root):
     drefs:dict={}
     for n,deps in list(dag):
-
-      def _nondet(ngroup,nn):
-        a=nondets[nn]
-        return a[ngroup]
-
       drefs[n]=stagefn(m,
                        config={'name':f'node_{n}',
                                'parents':[drefs[d] for d in deps]},
                        nondet=partial(_nondet,nn=n),
                        nrrefs=nrrefs[n],
-                       nmatch=nmatches[n])
+                       nmatch=nmatches[n],
+                       mustfail=nfails[n])
     return drefs[root]
   return [partial(_stage, root=root) for root in roots]
 

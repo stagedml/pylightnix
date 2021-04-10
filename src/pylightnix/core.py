@@ -867,7 +867,7 @@ def match_predicate(paccept:Callable[[List[RRef]],bool],
                     passert:Callable[[List[RRef]],bool]):
   def _matcher(S:SPath, rrefs:List[RRef])->Optional[List[RRef]]:
     if passert(rrefs):
-      assert False, "Matching is impossible"
+      assert False, f"Matching is impossible for {rrefs}"
     if paccept(rrefs):
       return rrefs
     return None

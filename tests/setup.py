@@ -65,21 +65,21 @@ def setup_inplace_reset()->None:
   pylightnix.inplace.PYLIGHTNIX_MANAGER=Manager(storage(None))
 
 
-
-def test_config(c:dict)->Config:
+def setup_test_config(c:dict)->Config:
   c2=deepcopy(c)
   c2['artifact']=[selfref,'artifact']
   return mkconfig(c2)
 
-def test_match(nmatch):
+def setup_test_match(nmatch):
   def _match(S:SPath, rrefs:List[RRef])->Optional[List[RRef]]:
     values=list(sorted([(maybereadstr(join(rref2path(rref, S),'artifact'),'0',int),rref)
                         for rref in rrefs], key=lambda x:x[0]))
+    print(nmatch, values)
     # Return `top-n` matched groups
     return [tup[1] for tup in values[-nmatch:]] if len(values)>0 else None
   return _match
 
-def test_realize(nrrefs, buildtime, nondet):
+def setup_test_realize(nrrefs, buildtime, nondet, mustfail):
   def _realize(S:SPath, dref:DRef, context:Context, ra:RealizeArg)->List[Path]:
     b=mkbuild(S, dref, context, buildtime=buildtime)
     paths=build_setoutpaths(b,nrrefs)
@@ -88,6 +88,8 @@ def test_realize(nrrefs, buildtime, nondet):
         f.write(str(nondet(i)))
       with open(join(o,'id'),'w') as f:
         f.write(str(i))
+      if mustfail:
+        raise ValueError('Failure by request')
     return b.outpaths
   return _realize
 
@@ -97,11 +99,12 @@ def mkstage(m:Manager,
             buildtime:bool=True,
             mkdrv_=mkdrv,
             nrrefs:int=1,
-            nmatch:int=1)->DRef:
+            nmatch:int=1,
+            mustfail:bool=False)->DRef:
   return mkdrv_(m,
-               test_config(config),
-               test_match(nmatch),
-               test_realize(nrrefs, buildtime, nondet))
+               setup_test_config(config),
+               setup_test_match(nmatch),
+               setup_test_realize(nrrefs, buildtime, nondet, mustfail))
 
 
 def pipe_stdout(args:List[str], **kwargs)->str:

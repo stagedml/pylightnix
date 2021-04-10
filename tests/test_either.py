@@ -1,9 +1,9 @@
-from pylightnix import (instantiate, DRef, RRef, assert_valid_rref, Manager,
-                        Build, realize, mklens, either_wrapper, readstr,
-                        mkconfig, mkdrv, build_wrapper,
-                        build_setoutpaths, either_status, either_isRight,
-                        either_isLeft, realizeMany, rref2path, match_only,
-                        writestr, match_some)
+from pylightnix import (SPath, Context, RealizeArg, Path, instantiate, DRef,
+                        RRef, assert_valid_rref, Manager, Build, realize,
+                        mklens, either_realizer, readstr, mkconfig, mkdrv,
+                        build_wrapper, build_setoutpaths, either_status,
+                        either_isRight, either_isLeft, realizeMany, rref2path,
+                        match_only, writestr, match_some, Output, mkbuild)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink,
                            isfile, List, randint, sleep, rmtree, system,
@@ -11,8 +11,37 @@ from tests.imports import (given, Any, Callable, join, Optional, islink,
 
 from tests.generators import (drefs, configs, dicts)
 
-from tests.setup import (ShouldHaveFailed, setup_storage, mkstage)
+# from tests.setup import (ShouldHaveFailed, setup_storage, mkstage, test_config,
+#                          test_match)
 
+# from pylightnix.either import (Either, mkdrvE)
+
+
+# def test_realizeE(nrrefs, buildtime, nondet, mustfail):
+#   def _realize(S:SPath, dref:DRef, context:Context, ra:RealizeArg)->Either[Output]:
+#     b=mkbuild(S, dref, context, buildtime=buildtime)
+#     paths=build_setoutpaths(b,nrrefs)
+#     for i,o in enumerate(paths):
+#       with open(join(o,'artifact'),'w') as f:
+#         f.write(str(nondet(i)))
+#       with open(join(o,'id'),'w') as f:
+#         f.write(str(i))
+#       if mustfail:
+#         raise ValueError('Failure by request')
+#     return Either(Output(b.outpaths))
+#   return _realize
+
+# def mkstageE(m:Manager,
+#             config:dict,
+#             nondet:Callable[[int],int]=lambda n:0,
+#             buildtime:bool=True,
+#             nrrefs:int=1,
+#             nmatch:int=1,
+#             mustfail:bool=False)->DRef:
+#   return mkdrvE(m,
+#                test_config(config),
+#                test_match(nmatch),
+#                test_realize(nrrefs, buildtime, nondet, mustfail))
 
 # def mkeither(m, source, should_fail=False):
 #   def _mutate(i):
