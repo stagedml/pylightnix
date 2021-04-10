@@ -3,7 +3,7 @@ from pylightnix import (Manager, Path, initialize, DRef, Context,
                         mkconfig, Name, mkdrv, rref2path, dirchmod,
                         Config, RealizeArg, drefrrefsC, tryreadstr_def, SPath,
                         storage, storagename, deepcopy, build_setoutpaths,
-                        maybereadstr, selfref, drefattrs)
+                        maybereadstr, selfref, drefattrs, Output)
 
 from tests.imports import (rmtree, join, makedirs, listdir, Callable,
                            contextmanager, List, Dict,  Popen, PIPE,
@@ -80,7 +80,7 @@ def setup_test_match(nmatch):
   return _match
 
 def setup_test_realize(nrrefs, buildtime, nondet, mustfail):
-  def _realize(S:SPath, dref:DRef, context:Context, ra:RealizeArg)->List[Path]:
+  def _realize(S:SPath, dref:DRef, context:Context, ra:RealizeArg)->Output:
     b=mkbuild(S, dref, context, buildtime=buildtime)
     paths=build_setoutpaths(b,nrrefs)
     for i,o in enumerate(paths):
@@ -90,7 +90,7 @@ def setup_test_realize(nrrefs, buildtime, nondet, mustfail):
         f.write(str(i))
       if mustfail:
         raise ValueError('Failure by request')
-    return b.outpaths
+    return Output(b.outpaths)
   return _realize
 
 def mkstage(m:Manager,

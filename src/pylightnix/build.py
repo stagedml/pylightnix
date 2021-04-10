@@ -37,7 +37,7 @@ from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional, Iterable,
                               Build, RConfig, ConfigAttrs, Derivation, Stage,
                               Manager, Matcher, Realizer, Set, Closure,
                               Generator, TypeVar, BuildArgs, Config, RealizeArg,
-                              InstantiateArg, SupportsAbs)
+                              InstantiateArg, SupportsAbs, Output)
 
 from pylightnix.core import (assert_valid_config, config_cattrs,
                              config_hash, config_name, context_deref,
@@ -102,7 +102,7 @@ def build_wrapper_(f:Callable[[_B],None],
   assert starttime is None or isinstance(starttime,str)
   assert stoptime is None or isinstance(stoptime,str)
 
-  def _wrapper(S:SPath,dref,context,rarg)->List[Path]:
+  def _wrapper(S:SPath,dref,context,rarg)->Output:
     b=ctr(mkbuildargs(S,dref,context,starttime,{},rarg))
     try:
       f(b)
@@ -115,7 +115,7 @@ def build_wrapper_(f:Callable[[_B],None],
       error(f"Build wrapper of {dref} raised an exception. Remaining "
             f"build directories are: {getattr(b,'outgroups','<unknown>')}")
       raise BuildError(S,dref,getattr(b,'outgroups',[]), e)
-    return getattr(b,'outpaths') # [*]
+    return Output(getattr(b,'outpaths')) # [*]
   return _wrapper
 
 def build_wrapper(f:Callable[[Build],None],

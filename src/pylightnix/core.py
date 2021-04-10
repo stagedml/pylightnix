@@ -776,7 +776,7 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
           f"{drefcfg_(dref)}"
           )
         rrefs_existed=drefrrefsC(dref,dref_context,S)
-        rpaths:List[Path]=drv.realizer(S,dref,dref_context,realize_args.get(dref,{}))
+        rpaths:List[Path]=drv.realizer(S,dref,dref_context,realize_args.get(dref,{})).val
         rrefs_built:List[RRef]=[mkrealization(dref,dref_context,rp,S) for rp in rpaths]
         if len(rpaths)!=len(set(rrefs_built)):
           warning(f"Realizer of {dref} produced duplicated realizations")

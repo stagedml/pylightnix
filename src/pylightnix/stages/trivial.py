@@ -25,7 +25,7 @@ from pylightnix.build import (mkbuild, build_outpath, build_setoutpaths,
 from pylightnix.types import (RefPath, Manager, Context, Build, Name, DRef,
                               RRef, Any, Optional, Dict, Hash, Path, List,
                               Callable, Matcher, Realizer, Stage, Config,
-                              RealizeArg, SPath)
+                              RealizeArg, SPath, Output)
 from pylightnix.utils import (forcelink, isrefpath, traverse_dict)
 
 
@@ -115,7 +115,7 @@ def realized(stage:Any)->Stage:
   # ^^^ Fail if `my_long_running_stage` is not yet realized.
   ```
   """
-  def _no_realizer(S:SPath,dref:DRef,context:Context,rarg:RealizeArg)->List[Path]:
+  def _no_realizer(S:SPath,dref:DRef,context:Context,rarg:RealizeArg)->Output:
     assert False, (
         f"Stage '{dref}' was assumed to be already realized. "
         f"Unfortunately, it seens to be not the case because it's matcher "

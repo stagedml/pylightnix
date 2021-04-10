@@ -221,7 +221,7 @@ class Output(OutputBase):
 #:   ...
 #:   return mkdrv(m, ...,  _realize)
 #: ```
-Realizer = Callable[[SPath,DRef,Context,RealizeArg],List[Path]]
+Realizer = Callable[[SPath,DRef,Context,RealizeArg],Output]
 
 #: Derivation is the core type of Pylightnix. It keeps all the information about
 #: a stage:
