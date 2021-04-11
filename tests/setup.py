@@ -1,9 +1,9 @@
-from pylightnix import (Manager, Path, initialize, DRef, Context,
-                        Optional, mkbuild, build_outpath, allrrefs, RRef,
-                        mkconfig, Name, mkdrv, rref2path, dirchmod,
-                        Config, RealizeArg, drefrrefsC, tryreadstr_def, SPath,
-                        storage, storagename, deepcopy, build_setoutpaths,
-                        maybereadstr, selfref, drefattrs, Output)
+from pylightnix import (Manager, Path, initialize, DRef, Context, Optional,
+                        mkbuild, build_outpath, allrrefs, RRef, mkconfig, Name,
+                        mkdrv, rref2path, dirchmod, Config, RealizeArg,
+                        drefrrefsC, tryreadstr_def, SPath, storage,
+                        storagename, deepcopy, build_setoutpaths, maybereadstr,
+                        selfref, drefattrs, Output, Matcher, Realizer, rrefdeps1)
 
 from tests.imports import (rmtree, join, makedirs, listdir, Callable,
                            contextmanager, List, Dict,  Popen, PIPE,
@@ -70,16 +70,16 @@ def setup_test_config(c:dict)->Config:
   c2['artifact']=[selfref,'artifact']
   return mkconfig(c2)
 
-def setup_test_match(nmatch):
-  def _match(S:SPath, rrefs:List[RRef])->Optional[List[RRef]]:
+def setup_test_match(nmatch)->Matcher:
+  def _match(S:SPath, rrefs:Output[RRef])->Optional[Output[RRef]]:
     values=list(sorted([(maybereadstr(join(rref2path(rref, S),'artifact'),'0',int),rref)
-                        for rref in rrefs], key=lambda x:x[0]))
+                        for rref in rrefs.val], key=lambda x:x[0]))
     print(nmatch, values)
     # Return `top-n` matched groups
-    return [tup[1] for tup in values[-nmatch:]] if len(values)>0 else None
+    return Output([tup[1] for tup in values[-nmatch:]]) if len(values)>0 else None
   return _match
 
-def setup_test_realize(nrrefs, buildtime, nondet, mustfail):
+def setup_test_realize(nrrefs, buildtime, nondet, mustfail)->Realizer:
   def _realize(S:SPath, dref:DRef, context:Context, ra:RealizeArg)->Output:
     b=mkbuild(S, dref, context, buildtime=buildtime)
     paths=build_setoutpaths(b,nrrefs)
@@ -109,4 +109,9 @@ def mkstage(m:Manager,
 
 def pipe_stdout(args:List[str], **kwargs)->str:
   return Popen(args, stdout=PIPE, **kwargs).stdout.read().decode() # type:ignore
+
+def rrefdepth(rref:RRef,S=None)->int:
+  rec=[rrefdepth(r,S) for r in rrefdeps1([rref],S=S)]
+  return 1+(max(rec) if len(rec)>0 else 0)
+
 

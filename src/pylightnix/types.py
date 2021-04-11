@@ -128,6 +128,23 @@ RefPath = List[Union[DRef,str]]
 #: Placeholder for self-reference
 PYLIGHTNIX_SELF_TAG = "__self__"
 
+
+_REF=TypeVar('_REF')
+class EquivClasses(Generic[_REF]):
+  def all(self)->List[_REF]:
+    assert False
+  def n(self)->int:
+    assert False
+
+
+class Output(Generic[_REF],EquivClasses[_REF]):
+  def __init__(self,val:Iterable[_REF]):
+    self.val:List[_REF]=list(val)
+  def n(self)->int:
+    return len(self.val)
+  def all(self)->List[_REF]:
+    return self.val
+
 #: Context type is an alias for Python dict which maps
 #: [DRefs](#pylightnix.types.DRef) into one or many
 #: [RRefs](#pylightnix.types.RRef).
@@ -170,27 +187,10 @@ Context=Dict[DRef,List[RRef]]
 #:
 #: TODO: Splitting Matcher into two parts would allow us to rid of
 #: `force_interrupt` argument.
-Matcher = Callable[[SPath,List[RRef]],Optional[List[RRef]]]
+Matcher = Callable[[SPath,Output[RRef]],Optional[Output[RRef]]]
 
 InstantiateArg=Dict[str,Any]
 RealizeArg=Dict[str,Any]
-
-
-_REF=TypeVar('_REF')
-class EquivClasses(Generic[_REF]):
-  def all(self)->List[_REF]:
-    assert False
-  def n(self)->int:
-    assert False
-
-
-class Output(Generic[_REF],EquivClasses[_REF]):
-  def __init__(self,val:List[_REF]):
-    self.val:List[_REF]=val
-  def n(self)->int:
-    return len(self.val)
-  def all(self)->List[_REF]:
-    return self.val
 
 
 #: Realizer is a type of callback functions which are defined by the user.

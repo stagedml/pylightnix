@@ -119,7 +119,7 @@ def rootstages(draw,
   for pfail in failchances:
     fail=draw(sampled_from(([True]*pfail)+([False]*(100-pfail))))
     if fail:
-      nfails[draw(sampled_from(dag.keys()))]=True
+      nfails[draw(sampled_from([n for n,_ in dag]))]=True
 
   def _nondet(ngroup,nn):
     return nondets[nn][ngroup]

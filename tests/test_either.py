@@ -3,45 +3,67 @@ from pylightnix import (SPath, Context, RealizeArg, Path, instantiate, DRef,
                         mklens, either_realizer, readstr, mkconfig, mkdrv,
                         build_wrapper, build_setoutpaths, either_status,
                         either_isRight, either_isLeft, realizeMany, rref2path,
-                        match_only, writestr, match_some, Output, mkbuild)
+                        match_only, writestr, match_some, Output, mkbuild,
+                        allrrefs, rrefdeps1)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink,
                            isfile, List, randint, sleep, rmtree, system,
-                           S_IWRITE, S_IREAD, S_IEXEC, chmod, Popen, PIPE)
+                           S_IWRITE, S_IREAD, S_IEXEC, chmod, Popen, PIPE,
+                           settings, event)
 
-from tests.generators import (drefs, configs, dicts)
+from tests.generators import (rrefs, drefs, configs, dicts, rootstages,
+                              integers)
 
-# from tests.setup import (ShouldHaveFailed, setup_storage, mkstage, test_config,
-#                          test_match)
+from tests.setup import (ShouldHaveFailed, mkstage, setup_test_config,
+                         setup_test_match, setup_storage2, rrefdepth)
 
-# from pylightnix.either import (Either, mkdrvE)
+from pylightnix.either import (Either, mkdrvE, match_right)
 
 
-# def test_realizeE(nrrefs, buildtime, nondet, mustfail):
-#   def _realize(S:SPath, dref:DRef, context:Context, ra:RealizeArg)->Either[Output]:
-#     b=mkbuild(S, dref, context, buildtime=buildtime)
-#     paths=build_setoutpaths(b,nrrefs)
-#     for i,o in enumerate(paths):
-#       with open(join(o,'artifact'),'w') as f:
-#         f.write(str(nondet(i)))
-#       with open(join(o,'id'),'w') as f:
-#         f.write(str(i))
-#       if mustfail:
-#         raise ValueError('Failure by request')
-#     return Either(Output(b.outpaths))
-#   return _realize
+def test_realizeE(nrrefs, buildtime, nondet, mustfail):
+  def _realize(S:SPath, dref:DRef, context:Context, ra:RealizeArg)->Either[Path,Output]:
+    b=mkbuild(S, dref, context, buildtime=buildtime)
+    paths=build_setoutpaths(b,nrrefs)
+    for i,o in enumerate(paths):
+      with open(join(o,'artifact'),'w') as f:
+        f.write(str(nondet(i)))
+      with open(join(o,'id'),'w') as f:
+        f.write(str(i))
+      if mustfail:
+        raise ValueError('Failure by request')
+    return Either(Output(b.outpaths))
+  return _realize
 
-# def mkstageE(m:Manager,
-#             config:dict,
-#             nondet:Callable[[int],int]=lambda n:0,
-#             buildtime:bool=True,
-#             nrrefs:int=1,
-#             nmatch:int=1,
-#             mustfail:bool=False)->DRef:
-#   return mkdrvE(m,
-#                test_config(config),
-#                test_match(nmatch),
-#                test_realize(nrrefs, buildtime, nondet, mustfail))
+def mkstageE(m:Manager,
+            config:dict,
+            nondet:Callable[[int],int]=lambda n:0,
+            buildtime:bool=True,
+            nrrefs:int=1,
+            nmatch:int=1,
+            mustfail:bool=False)->DRef:
+  return mkdrvE(m,
+               setup_test_config(config),
+               match_right(setup_test_match(nmatch)),
+               test_realizeE(nrrefs, buildtime, nondet, mustfail))
+
+@settings(print_blob=True)
+@given(stages=rootstages(stagefn=mkstageE, failchances=[50]))
+def test_either_invariant(stages):
+  with setup_storage2('test_either_invariant') as (T,S):
+    for stage in stages:
+      rrefs=realizeMany(instantiate(stage,S=S))
+      for rref in rrefs:
+        depth=rrefdepth(rref,S)
+        if either_isRight(rref2path(rref,S)):
+          event(f'Right, depth {depth}')
+        elif either_isLeft(rref2path(rref,S)):
+          event(f'Left, depth {depth}')
+        else:
+          assert False
+    for rref in allrrefs(S=S):
+      for rref_dep in rrefdeps1([rref],S=S):
+        assert not (either_isRight(rref2path(rref,S)) and either_isLeft(rref2path(rref_dep,S)))
+
 
 # def mkeither(m, source, should_fail=False):
 #   def _mutate(i):

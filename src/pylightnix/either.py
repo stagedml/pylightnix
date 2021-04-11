@@ -32,13 +32,13 @@ class Either(Generic[_REF,_A],EquivClasses[_REF]):
 
 
 def either_status(p:Path)->Optional[ExceptionText]:
-  return tryread(Path(join(p,'status_either.txt')))
+  return tryread(Path(join(p,'either_status.txt')))
 
 def either_isRight(p:Path)->bool:
-  return either_status(p) is not None
+  return either_status(p) is None
 
 def either_isLeft(p:Path)->bool:
-  return either_status(p) is None
+  return either_status(p) is not None
 
 def either_set(outpaths:List[Path],
                exception:Optional[str]=None)->None:
@@ -114,9 +114,10 @@ def either_realizer(f:Callable[[SPath,DRef,Context,RealizeArg],Either[Path,_A]],
 
 def either_matcher(m:Callable[[SPath,Either[RRef,_A]],Optional[Either[RRef,_A]]],
                    inject:Callable[[List[RRef]],_A])->Matcher:
-  def _matcher(S:SPath,rrefs:List[RRef])->Optional[List[RRef]]:
-    rrefs2=m(S,either_loadR(rrefs, S, inject))
-    return rrefs2.all() if rrefs2 is not None else None
+  """ Convert an Either-matcher into the regular Matcher """
+  def _matcher(S:SPath,rrefs:Output[RRef])->Optional[Output[RRef]]:
+    erefs=m(S,either_loadR(rrefs.all(), S, inject))
+    return Output(erefs.all()) if erefs is not None else None
   return _matcher
 
 
@@ -133,5 +134,15 @@ def mkdrvE(m:Manager,
   return mkdrv(m, config,
                either_matcher(matcher,_injectR),
                either_realizer(realizer,_injectP))
+
+
+def match_right(m:Callable[[SPath,_A],Optional[_A]]
+                )->Callable[[SPath, Either[RRef,_A]],Optional[Either[RRef,_A]]]:
+  def _matcher(S:SPath,col:Either[RRef,_A])->Optional[Either[RRef,_A]]:
+    if col.exc is not None:
+      return col
+    val=m(S,col.val)
+    return Either(val) if val is not None else None
+  return _matcher
 
 

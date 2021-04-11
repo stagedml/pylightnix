@@ -38,7 +38,7 @@ from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional, Iterable,
                               Build, RConfig, ConfigAttrs, Derivation, Stage,
                               Manager, Matcher, Realizer, Set, Closure,
                               Generator, BuildArgs, Config, RealizeArg,
-                              InstantiateArg, PYLIGHTNIX_SELF_TAG)
+                              InstantiateArg, PYLIGHTNIX_SELF_TAG, Output)
 
 logger=getLogger(__name__)
 info=logger.info
@@ -674,8 +674,8 @@ def instantiate(stage:Any, *args, S=None, **kwargs)->Closure:
 
 
 RealizeSeqGen = Generator[Tuple[SPath,DRef,Context,Derivation,RealizeArg],
-                          Tuple[Optional[List[RRef]],bool],
-                          List[RRef]]
+                          Tuple[Optional[Output[RRef]],bool],
+                          Output[RRef]]
 
 def realize(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
                              assert_realized:List[DRef]=[])->RRef:
@@ -739,7 +739,7 @@ def realizeMany(closure:Closure,
       gen.send((None,False)) # Ask for default action
   except StopIteration as e:
     res=e.value
-  return res
+  return res.val
 
 def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
                                 assert_realized:List[DRef]=[],
@@ -759,16 +759,16 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
   target_deps=drefdeps([target_dref],S)
   for drv in closure.derivations:
     dref=drv.dref
-    rrefs:Optional[List[RRef]]
+    rrefs:Optional[Output[RRef]]
     if dref in target_deps or dref==target_dref:
       dref_deps=drefdeps([dref],S)
       dref_context={k:v for k,v in context_acc.items() if k in dref_deps} # I
       if dref in force_interrupt_:
         rrefs,abort=yield (S,dref,dref_context,drv,realize_args.get(dref,{}))
         if abort:
-          return []
+          return Output([])
       else:
-        rrefs=drv.matcher(S, list(drefrrefsC(dref,dref_context,S)))
+        rrefs=drv.matcher(S, Output(drefrrefsC(dref,dref_context,S)))
       if rrefs is None:
         assert dref not in assert_realized, (
           f"Stage '{dref}' was assumed to be already realized. "
@@ -780,21 +780,21 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
         rrefs_built:List[RRef]=[mkrealization(dref,dref_context,rp,S) for rp in rpaths]
         if len(rpaths)!=len(set(rrefs_built)):
           warning(f"Realizer of {dref} produced duplicated realizations")
-        rrefs_matched=drv.matcher(S,list(drefrrefsC(dref,dref_context,S)))
+        rrefs_matched=drv.matcher(S,Output(drefrrefsC(dref,dref_context,S)))
         assert rrefs_matched is not None, (
           f"The matcher of {dref} is not satisfied with its realizatons. "
           f"The following newly obtained realizations were ignored:\n"
           f"  {rrefs_built}\n"
           f"The following realizations already existed:\n"
           f"  {rrefs_existed}")
-        if (set(rrefs_built) & set(rrefs_matched)) == set() and \
-           (set(rrefs_built) | set(rrefs_matched)) != set():
+        if (set(rrefs_built) & set(rrefs_matched.val)) == set() and \
+           (set(rrefs_built) | set(rrefs_matched.val)) != set():
           warning(f"None of the newly obtained {dref} realizations "
                   f"were matched by the matcher. To capture those "
                   f"realizations explicitly, try `matcher([exact(..)])`")
         rrefs=rrefs_matched
       assert rrefs is not None
-      context_acc=context_add(context_acc,dref,rrefs)
+      context_acc=context_add(context_acc,dref,rrefs.val)
   assert rrefs is not None
   return rrefs
 
@@ -863,9 +863,9 @@ def match_ge(n:int):
     return rrefs
   return _matcher
 
-def match_predicate(paccept:Callable[[List[RRef]],bool],
-                    passert:Callable[[List[RRef]],bool]):
-  def _matcher(S:SPath, rrefs:List[RRef])->Optional[List[RRef]]:
+def match_predicate(paccept:Callable[[Output[RRef]],bool],
+                    passert:Callable[[Output[RRef]],bool]):
+  def _matcher(S:SPath, rrefs:Output[RRef])->Optional[Output[RRef]]:
     if passert(rrefs):
       assert False, f"Matching is impossible for {rrefs}"
     if paccept(rrefs):
@@ -875,11 +875,11 @@ def match_predicate(paccept:Callable[[List[RRef]],bool],
 
 
 def match_only():
-  return match_predicate(paccept=lambda l: len(l)==1,
-                         passert=lambda l: len(l)>=2)
+  return match_predicate(paccept=lambda l: l.n()==1,
+                         passert=lambda l: l.n()>=2)
 
 def match_some(n:int):
-  return match_predicate(paccept=lambda l: len(l)>=n,
+  return match_predicate(paccept=lambda l: l.n()>=n,
                          passert=lambda l: False)
 
 #     _                      _
