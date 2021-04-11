@@ -16,8 +16,10 @@
 
 
 from pylightnix.imports import ( deepcopy, OrderedDict )
-from typing import ( List, Any, Tuple, Union, Optional, Iterable, IO, Callable,
-    Dict, NamedTuple, Set, Generator, TypeVar, NewType, SupportsAbs, Generic )
+
+from typing import (List, Any, Tuple, Union, Optional, Iterable, IO, Callable,
+                    Dict, NamedTuple, Set, Generator, TypeVar, NewType,
+                    SupportsAbs, Generic)
 
 class Path(str):
   """ `Path` is an alias for string. It is used in pylightnix to
@@ -173,15 +175,23 @@ Matcher = Callable[[SPath,List[RRef]],Optional[List[RRef]]]
 InstantiateArg=Dict[str,Any]
 RealizeArg=Dict[str,Any]
 
-class OutputBase:
-  def get(self)->List[Path]:
+
+_REF=TypeVar('_REF')
+class EquivClasses(Generic[_REF]):
+  def all(self)->List[_REF]:
+    assert False
+  def n(self)->int:
     assert False
 
-class Output(OutputBase):
-  def __init__(self,val:List[Path]):
-    self.val:List[Path]=val
-  def get(self)->List[Path]:
+
+class Output(Generic[_REF],EquivClasses[_REF]):
+  def __init__(self,val:List[_REF]):
+    self.val:List[_REF]=val
+  def n(self)->int:
+    return len(self.val)
+  def all(self)->List[_REF]:
     return self.val
+
 
 #: Realizer is a type of callback functions which are defined by the user.
 #: Realizers should implement the stage-specific
@@ -221,7 +231,7 @@ class Output(OutputBase):
 #:   ...
 #:   return mkdrv(m, ...,  _realize)
 #: ```
-Realizer = Callable[[SPath,DRef,Context,RealizeArg],Output]
+Realizer = Callable[[SPath,DRef,Context,RealizeArg],Output[Path]]
 
 #: Derivation is the core type of Pylightnix. It keeps all the information about
 #: a stage:

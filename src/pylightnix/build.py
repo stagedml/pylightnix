@@ -286,43 +286,4 @@ def repl_build(rh:Optional[ReplHelper]=None, buildtime:bool=True)->Build:
   """
   return Build(repl_buildargs(rh, buildtime))
 
-# def either_wrapper(f:Callable[[Build],None],
-#                    ctr:Callable[[BuildArgs],Build],
-#                    buildtime:bool=True,
-#                    nouts:int=1)->Realizer:
-#   """ This wrapper implements poor-man's `(EitherT Error)` monad on stages.
-#   With this wrapper, stages could become either LEFT (if rasied an error) or
-#   RIGHT (after normal completion). If the stage turns LEFT, then so will be any
-#   of it's dependant stages. """
-#   def _either(b:Build)->None:
-#     build_setoutpaths(b, nouts)
-#     # Write the specified build status to every output
-#     def _mark_status(status:str, e:Optional[str]=None)->None:
-#       for o in build_outpaths(b):
-#         writestr(join(o,'status_either.txt'), status)
-#         if e is not None:
-#           writestr(join(o,'exception.txt'), e)
-#     # Scan all immediate dependecnies of this build, propagate 'LEFT' status
-#     for dref in drefdeps1([b.dref]):
-#       for rg in context_deref(b.context, dref):
-#         rref = rg[Tag('out')]
-#         status=tryreadstr_def(join(rref2path(rref),'status_either.txt'), 'RIGHT')
-#         if status=='RIGHT':
-#           continue
-#         elif status=='LEFT':
-#           _mark_status('LEFT')
-#           return
-#         else:
-#           assert False, f"Invalid either status {status}"
-#     # Execute the original build
-#     try:
-#       f(b)
-#       _mark_status('RIGHT')
-#     except KeyboardInterrupt:
-#       raise
-#     except Exception:
-#       _mark_status('LEFT', format_exc())
-#   realizer=build_wrapper_(_either, ctr, buildtime)
-#   return realizer
-
 
