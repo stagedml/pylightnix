@@ -27,8 +27,8 @@ class Either(Generic[_REF,_A],EquivClasses[_REF]):
     self.exc=exc
   def n(self)->int:
     return 1 if self.exc else self.val.n()
-  def all(self)->List[_REF]:
-    return self.val.all()
+  def promisers(self)->List[_REF]:
+    return self.val.promisers()
 
 
 def either_status(p:Path)->Optional[ExceptionText]:
@@ -94,7 +94,7 @@ def either_realizer(f:Callable[[SPath,DRef,Context,RealizeArg],Either[Path,_A]],
     # Execute the original build
     try:
       outpaths=f(S,dref,ctx,ra)
-      either_set(outpaths.all(), outpaths.exc)
+      either_set(outpaths.promisers(), outpaths.exc)
       return outpaths.val
     except KeyboardInterrupt:
       raise
@@ -116,10 +116,9 @@ def either_matcher(m:Callable[[SPath,Either[RRef,_A]],Optional[Either[RRef,_A]]]
                    inject:Callable[[List[RRef]],_A])->Matcher:
   """ Convert an Either-matcher into the regular Matcher """
   def _matcher(S:SPath,rrefs:Output[RRef])->Optional[Output[RRef]]:
-    erefs=m(S,either_loadR(rrefs.all(), S, inject))
-    return Output(erefs.all()) if erefs is not None else None
+    erefs=m(S,either_loadR(rrefs.promisers(), S, inject))
+    return Output(erefs.promisers()) if erefs is not None else None
   return _matcher
-
 
 
 def mkdrvE(m:Manager,

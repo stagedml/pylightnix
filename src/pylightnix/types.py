@@ -131,9 +131,9 @@ PYLIGHTNIX_SELF_TAG = "__self__"
 
 _REF=TypeVar('_REF')
 class EquivClasses(Generic[_REF]):
-  def all(self)->List[_REF]:
-    assert False
   def n(self)->int:
+    assert False
+  def promisers(self)->List[_REF]:
     assert False
 
 
@@ -142,8 +142,9 @@ class Output(Generic[_REF],EquivClasses[_REF]):
     self.val:List[_REF]=list(val)
   def n(self)->int:
     return len(self.val)
-  def all(self)->List[_REF]:
+  def promisers(self)->List[_REF]:
     return self.val
+
 
 #: Context type is an alias for Python dict which maps
 #: [DRefs](#pylightnix.types.DRef) into one or many
@@ -152,6 +153,11 @@ class Output(Generic[_REF],EquivClasses[_REF]):
 #: For any derivation, the Context stores a mapping from it's dependency's
 #: derivations to realizations.
 Context=Dict[DRef,List[RRef]]
+
+
+InstantiateArg=Dict[str,Any]
+
+RealizeArg=Dict[str,Any]
 
 #: Matcher functions serves two purposes:
 #: 1. Decides whether to launch a new realization or re-use existing
@@ -188,9 +194,6 @@ Context=Dict[DRef,List[RRef]]
 #: TODO: Splitting Matcher into two parts would allow us to rid of
 #: `force_interrupt` argument.
 Matcher = Callable[[SPath,Output[RRef]],Optional[Output[RRef]]]
-
-InstantiateArg=Dict[str,Any]
-RealizeArg=Dict[str,Any]
 
 
 #: Realizer is a type of callback functions which are defined by the user.
@@ -268,7 +271,7 @@ Closure = NamedTuple('Closure', [('dref',DRef),
 class Config:
   """ Config is a JSON-serializable dict-like entity containing user-defined
   attributes of a Pylightnix stage. Together with Realizers and Matchers,
-  Configs define Pylightnix stage objects.
+  Configs form Pylightnix stage objects.
 
   Configs should match the requirements of `assert_valid_config`. Typically,
   it's `val` dictionary should only contain JSON-serializable types: strings,
@@ -303,8 +306,8 @@ class Config:
       nepoches = 4
       learning_rate = 1e-5
       hidden_size = 128
-      return mkconfig(locals())
-    return mkdrv(_config(),...)
+      return locals()
+    return mkdrv(mkconfig(_config()),...)
   ```
   """
   def __init__(self, d:dict):
@@ -396,16 +399,16 @@ class Build:
 
 
 class Manager:
-  """ The derivation manager is a mutable storage where we store derivations
-  before combining them into a [Closure](#pylightnix.types.Closure).
+  """ The derivation manager is a mutable storage object where Pylightnix
+  stores derivations before combining them into a
+  [Closure](#pylightnix.types.Closure).
 
-  Manager doesn't have any associated user-level operations. It is typically a
-  first argument of stage functions which should be passed downstream without
-  modifications.
+  Managers doesn't requre any special operations besides creating and passing
+  around. By convention, Manager objects are first arguments of user-defined
+  stage functions and the `mkdrv` API function of Pylightnix.
 
   The [inplace module](#pylightnix.inplace) defines it's own [global derivation
-  manager](#pylightnix.inplace.PYLIGHTNIX_MANAGER) to simplify the usage even
-  more.  """
+  manager](#pylightnix.inplace.PYLIGHTNIX_MANAGER) """
   def __init__(self, S:SPath):
     self.builders:Dict[DRef,Derivation]=OrderedDict()
     self.in_instantiate:bool=False
@@ -416,12 +419,10 @@ class Manager:
 #: R is a DRef or any of its derivatives
 R = TypeVar('R',bound=SupportsAbs[DRef])
 
-#: From the user's point of view, Stage is a basic building block of
-#: Pylightnix.  It is a function that 'introduces'
-#: [derivations](#pylightnix.typing.Derivation) to
-#: [Manager](#pylightnix.typing.Manager).  Return value is a [derivation
-#: reference](#pylightnix.types.DRef) which is a proof that the derivation was
-#: introduced sucessfully.
+#: Stages are the simplest building blocks of Pylightnix. Stage functions
+#: register sequences of stages in the Manager. The return value of a Stage is
+#: [derivation references](#pylightnix.types.DRef) which could be either
+#: mentioned in other stages or sent for realization.
 #:
 #: Some built-in stages are:
 #: - [mknode](#pylightnix.stages.trivial.mknode)

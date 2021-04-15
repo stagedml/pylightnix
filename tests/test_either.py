@@ -20,7 +20,7 @@ from tests.setup import (ShouldHaveFailed, mkstage, setup_test_config,
 from pylightnix.either import (Either, mkdrvE, match_right)
 
 
-def test_realizeE(nrrefs, buildtime, nondet, mustfail):
+def setup_test_realizeE(nrrefs, buildtime, nondet, mustfail):
   def _realize(S:SPath, dref:DRef, context:Context, ra:RealizeArg)->Either[Path,Output]:
     b=mkbuild(S, dref, context, buildtime=buildtime)
     paths=build_setoutpaths(b,nrrefs)
@@ -44,7 +44,7 @@ def mkstageE(m:Manager,
   return mkdrvE(m,
                setup_test_config(config),
                match_right(setup_test_match(nmatch)),
-               test_realizeE(nrrefs, buildtime, nondet, mustfail))
+               setup_test_realizeE(nrrefs, buildtime, nondet, mustfail))
 
 @settings(print_blob=True)
 @given(stages=rootstages(stagefn=mkstageE, failchances=[50]))
