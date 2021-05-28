@@ -21,6 +21,7 @@ from typing import (List, Any, Tuple, Union, Optional, Iterable, IO, Callable,
                     Dict, NamedTuple, Set, Generator, TypeVar, NewType,
                     SupportsAbs, Generic)
 
+
 class Path(str):
   """ `Path` is an alias for string. It is used in pylightnix to
   tell the typechecker that a given string contains a filesystem path. """
@@ -124,6 +125,19 @@ class Name(str):
 #: The algorithm described above is implemented as
 #: [build_path](#pylightnix.core.build_path) helper function.
 RefPath = List[Union[DRef,str]]
+
+
+
+class PylightnixException(Exception):
+  """ Base object of Pylightnix exceptions"""
+  pass
+
+
+class PromiseException(PylightnixException):
+  def __init__(self, dref:DRef, failed:List[Tuple[Path,RefPath]]):
+    self.dref=dref
+    self.failed=failed
+
 
 #: Placeholder for self-reference
 PYLIGHTNIX_SELF_TAG = "__self__"

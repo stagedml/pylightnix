@@ -32,13 +32,14 @@ from pylightnix.utils import (dirhash, assert_serializable, assert_valid_dict,
                               tryreadjson_def, isrefpath, kahntsort, dagroots,
                               isselfpath)
 
-from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional, Iterable,
-                              IO, Path, SPath, Hash, DRef, RRef, RefPath,
-                              HashPart, Callable, Context, Name, NamedTuple,
-                              Build, RConfig, ConfigAttrs, Derivation, Stage,
-                              Manager, Matcher, Realizer, Set, Closure,
-                              Generator, BuildArgs, Config, RealizeArg,
-                              InstantiateArg, PYLIGHTNIX_SELF_TAG, Output)
+from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional,
+                              Iterable, IO, Path, SPath, Hash, DRef, RRef,
+                              RefPath, HashPart, Callable, Context, Name,
+                              NamedTuple, Build, RConfig, ConfigAttrs,
+                              Derivation, Stage, Manager, Matcher, Realizer,
+                              Set, Closure, Generator, BuildArgs, Config,
+                              RealizeArg, InstantiateArg, PYLIGHTNIX_SELF_TAG,
+                              Output, EquivClasses, TypeVar, PromiseException)
 
 logger=getLogger(__name__)
 info=logger.info
@@ -416,11 +417,6 @@ def drefrrefs(dref:DRef,S=None)->List[RRef]:
       rrefs.append(mkrref(HashPart(f), dhash, nm))
   return rrefs
 
-# def store_rrefs_(dref:DRef,S=None)->List[RRefGroup]:
-#   """ Iterate over all realizations of a derivation `dref`. The sort order is
-#   unspecified. """
-#   return rrefs2groups(drefrrefs(dref,S),S)
-
 def drefrrefsC(dref:DRef, context:Context, S=None)->Iterable[RRef]:
   """ Iterate over realizations of a derivation `dref` that match a specified
   [context](#pylightnix.types.Context). Sorting order is unspecified. """
@@ -655,27 +651,11 @@ def instantiate(stage:Any, *args, S=None, **kwargs)->Closure:
   """
   return instantiate_(Manager(storage(S)), stage, *args, **kwargs)
 
-# def mapdrv(drv:Derivation,
-#            new_matcher:Callable[[Matcher],Matcher]=lambda x:x,
-#            new_realizer:Callable[[Realizer],Realizer]=lambda x:x)->Derivation:
-#   return Derivation(drv.dref, new_matcher(drv.matcher),
-#                               new_realizer(drv.realizer))
-
-# def mapclosure(clo:Closure,
-#                new_matcher:Callable[[Matcher],Matcher]=lambda x:x,
-#                new_realizer:Callable[[Realizer],Realizer]=lambda x:x)->Closure:
-#   """
-#   FIXME: Unify with `redefine`
-#   """
-#   drvs=[]
-#   for drv in clo.derivations:
-#     drvs.append(mapdrv(drv, new_matcher, new_realizer))
-#   return Closure(clo.dref, drvs, clo.storage)
-
 
 RealizeSeqGen = Generator[Tuple[SPath,DRef,Context,Derivation,RealizeArg],
                           Tuple[Optional[Output[RRef]],bool],
                           Output[RRef]]
+
 
 def realize(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
                              assert_realized:List[DRef]=[])->RRef:
@@ -741,9 +721,12 @@ def realizeMany(closure:Closure,
     res=e.value
   return res.val
 
-def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
-                                assert_realized:List[DRef]=[],
-                                realize_args:Dict[DRef,RealizeArg]={})->RealizeSeqGen:
+
+def realizeSeq(closure:Closure,
+               force_interrupt:List[DRef]=[],
+               assert_realized:List[DRef]=[],
+               realize_args:Dict[DRef,RealizeArg]={}
+               )->RealizeSeqGen:
   """ Sequentially realize the closure by issuing steps via Python's generator
   interface. `realizeSeq` encodes low-level details of the realization
   algorithm. Consider calling [realizeMany](#pylightnix.core.realizeMany) or
@@ -773,8 +756,7 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
         assert dref not in assert_realized, (
           f"Stage '{dref}' was assumed to be already realized. "
           f"Unfortunately, it is not the case. Config:\n"
-          f"{drefcfg_(dref)}"
-          )
+          f"{drefcfg_(dref)}")
         rrefs_existed=drefrrefsC(dref,dref_context,S)
         rpaths:List[Path]=drv.realizer(S,dref,dref_context,realize_args.get(dref,{})).val
         rrefs_built:List[RRef]=[mkrealization(dref,dref_context,rp,S) for rp in rpaths]
@@ -798,22 +780,23 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
   assert rrefs is not None
   return rrefs
 
+
 def evaluate(stage, *args, **kwargs)->RRef:
   return realize(instantiate(stage,*args,**kwargs))
+
 
 def linkrref(rref:RRef,
              destdir:Optional[Path]=None,
              name:Optional[str]=None,
              withtime:bool=False,
              S=None)->Path:
-  """ Helper function that creates a symbolic link to a particular realization
-  reference. The link is created under the current directory by default or under
-  the `destdir` directory.
+  """ linkkrref creates a symbolic link to a particular realization reference.
+  The new link appears in the `destdir` directory if this argument is not None,
+  otherwise the current directory is used.
 
-  Create a symlink pointing to realization `rref`. Other arguments define
-  symlink name and location. Informally,
+  Informally,
   `{tgtpath}/{timeprefix}{name} --> $PYLIGHTNIX_STORE/{dref}/{rref}`.
-  Overwrite existing symlinks. Folder named `tgtpath` should exist.
+  The function overwrites existing symlinks.
   """
   destdir_='.' if destdir is None else destdir
   name_:str=name if name is not None else (
@@ -881,6 +864,38 @@ def match_only():
 def match_some(n:int):
   return match_predicate(paccept=lambda l: l.n()>=n,
                          passert=lambda l: False)
+
+def cfgsp(c:Config)->List[Tuple[str,RefPath]]:
+  selfpaths=[]
+  def _mut(key:Any, val:Any):
+    nonlocal selfpaths
+    if isselfpath(val):
+      selfpaths.append((str(key),val))
+    return val
+  traverse_dict(config_dict(c),_mut)
+  return selfpaths
+
+
+
+_PATHS = TypeVar('_PATHS', bound=EquivClasses[Path])
+
+
+def promise_realizer(
+  f:Callable[[SPath,DRef,Context,RealizeArg],_PATHS],
+  )->Callable[[SPath,DRef,Context,RealizeArg],_PATHS]:
+  def _r(S:SPath, dref:DRef, ctx:Context, ra:RealizeArg)->_PATHS:
+    ps=f(S,dref,ctx,ra)
+    failed=[]
+    for key,promisepath in cfgsp(drefcfg_(dref,S)):
+      for p in ps.promisers():
+        ppath=join(p,*promisepath[1:])
+        if not (isfile(ppath) or isdir(ppath) or islink(ppath)):
+          failed.append((p,promisepath))
+    if len(failed)>0:
+      raise PromiseException(dref, failed)
+    return ps
+  return _r
+
 
 #     _                      _
 #    / \   ___ ___  ___ _ __| |_ ___

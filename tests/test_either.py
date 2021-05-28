@@ -4,7 +4,7 @@ from pylightnix import (SPath, Context, RealizeArg, Path, instantiate, DRef,
                         build_wrapper, build_setoutpaths, either_status,
                         either_isRight, either_isLeft, realizeMany, rref2path,
                         match_only, writestr, match_some, Output, mkbuild,
-                        allrrefs, rrefdeps1)
+                        allrrefs, rrefdeps1, realizeE, either_paths)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink,
                            isfile, List, randint, sleep, rmtree, system,
@@ -15,24 +15,10 @@ from tests.generators import (rrefs, drefs, configs, dicts, rootstages,
                               integers)
 
 from tests.setup import (ShouldHaveFailed, mkstage, setup_test_config,
-                         setup_test_match, setup_storage2, rrefdepth)
+                         setup_test_match, setup_test_realize, setup_storage2,
+                         rrefdepth)
 
 from pylightnix.either import (Either, mkdrvE, match_right)
-
-
-def setup_test_realizeE(nrrefs, buildtime, nondet, mustfail):
-  def _realize(S:SPath, dref:DRef, context:Context, ra:RealizeArg)->Either[Path,Output]:
-    b=mkbuild(S, dref, context, buildtime=buildtime)
-    paths=build_setoutpaths(b,nrrefs)
-    for i,o in enumerate(paths):
-      with open(join(o,'artifact'),'w') as f:
-        f.write(str(nondet(i)))
-      with open(join(o,'id'),'w') as f:
-        f.write(str(i))
-      if mustfail:
-        raise ValueError('Failure by request')
-    return Either(Output(b.outpaths))
-  return _realize
 
 def mkstageE(m:Manager,
             config:dict,
@@ -41,25 +27,26 @@ def mkstageE(m:Manager,
             nrrefs:int=1,
             nmatch:int=1,
             mustfail:bool=False)->DRef:
-  return mkdrvE(m,
-               setup_test_config(config),
-               match_right(setup_test_match(nmatch)),
-               setup_test_realizeE(nrrefs, buildtime, nondet, mustfail))
+  def _r(S:SPath, dref:DRef, c:Context, ra:RealizeArg)->Either[Path,Output]:
+    r=setup_test_realize(nrrefs, buildtime, nondet, mustfail)
+    return Either(r(S,dref,c,ra))
+  return mkdrvE(m, setup_test_config(config),
+               match_right(setup_test_match(nmatch)), _r)
+
 
 @settings(print_blob=True)
 @given(stages=rootstages(stagefn=mkstageE, failchances=[50]))
 def test_either_invariant(stages):
   with setup_storage2('test_either_invariant') as (T,S):
     for stage in stages:
-      rrefs=realizeMany(instantiate(stage,S=S))
-      for rref in rrefs:
-        depth=rrefdepth(rref,S)
-        if either_isRight(rref2path(rref,S)):
-          event(f'Right, depth {depth}')
-        elif either_isLeft(rref2path(rref,S)):
-          event(f'Left, depth {depth}')
-        else:
-          assert False
+      e=realizeE(instantiate(stage,S=S))
+      depth=max([rrefdepth(rref,S) for rref in either_paths(e)])
+      if either_isRight(e):
+        event(f'Right, depth {depth}')
+      elif either_isLeft(e):
+        event(f'Left, depth {depth}')
+      else:
+        assert False
     for rref in allrrefs(S=S):
       for rref_dep in rrefdeps1([rref],S=S):
         assert not (either_isRight(rref2path(rref,S)) and either_isLeft(rref2path(rref_dep,S)))

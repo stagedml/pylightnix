@@ -1,21 +1,23 @@
 from pylightnix import (instantiate, DRef, RRef, Path, SPath, drefdeps,
-                        realize, rref2dref, Build, match_some, mkdrv,
-                        rref2path, alldrefs, build_wrapper, tryread, trywrite,
+                        Manager, Context, RealizeArg, Output, realize,
+                        rref2dref, Build, match_some, mkdrv, rref2path,
+                        alldrefs, build_wrapper, tryread, trywrite,
                         realizeMany, build_outpaths, mklens, Config,
                         build_setoutpaths, rrefdeps, drefrrefs, allrrefs,
-                        realizeMany, redefine, match_only)
+                        realizeMany, redefine, match_only, PromiseException)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink,
                            isfile, islink, List, randint, sleep, rmtree,
                            system, S_IWRITE, S_IREAD, S_IEXEC, chmod, Popen,
                            PIPE, data, event, settings, reproduce_failure,
-                           lists)
+                           lists, remove)
 
 from tests.generators import (rrefs, drefs, configs, dicts, rootstages,
                               integers)
 
 from tests.setup import ( ShouldHaveFailed, setup_storage, setup_storage2,
-                         mkstage, mkstage, pipe_stdout )
+                         mkstage, mkstage, pipe_stdout , setup_test_realize,
+                         setup_test_match, setup_test_config)
 
 
 @given(stages=rootstages())
@@ -28,6 +30,7 @@ def test_union_of_root_derivations(stages):
       clo=instantiate(stage,S=S)
       deps |= drefdeps([clo.dref],S) | set([clo.dref])
     assert deps==set(alldrefs(S))
+
 
 # @reproduce_failure('5.30.0', b'AAABAAAA')
 @settings(print_blob=True)
@@ -76,6 +79,7 @@ def test_match_only(stages):
         assert len(rrefs)!=1
         event('match_only negative')
 
+
 @settings(max_examples=10)
 @given(stages=rootstages(max_size=3, partial_matches=False),
        n=integers(min_value=0, max_value=3))
@@ -92,6 +96,7 @@ def test_match_some(stages,n):
         rrefs=realizeMany(instantiate(stage,S=S))
         assert len(rrefs)<n
         event('match_some negative')
+
 
 # @settings(max_examples=30,print_blob=True)
 # @given(stages=rootstages(max_size=3, partial_matches=False),
@@ -184,3 +189,32 @@ def test_match_some(stages,n):
 #         assert len(list(times))==1
 #       except AssertionError:
 #         assert ntop>nouts
+
+
+def mkstageP(m:Manager,
+            config:dict,
+            nondet:Callable[[int],int]=lambda n:0,
+            buildtime:bool=True,
+            nrrefs:int=1,
+            nmatch:int=1,
+            mustfail:bool=False)->DRef:
+  def _r(S:SPath, dref:DRef, c:Context, ra:RealizeArg)->Output[Path]:
+    r=setup_test_realize(nrrefs, buildtime, nondet, False)(S,dref,c,ra)
+    if mustfail:
+      for path in r.promisers():
+        remove(join(path,"artifact"))
+    return r
+  return mkdrv(m, setup_test_config(config), setup_test_match(nmatch), _r)
+
+
+# FIXME: Re-enable
+# @given(stages=rootstages(stagefn=mkstageP, failchances=[50,50,50]))
+# def test_promise(stages):
+#   with setup_storage2('test_promise') as (T,S):
+#     for stage in stages:
+#       try:
+#         rrefs=realizeMany(instantiate(stage, S=S))
+#         event('test_promise positive')
+#       except PromiseException as e:
+#         event('test_promise negative')
+

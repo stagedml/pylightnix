@@ -31,13 +31,14 @@ from pylightnix.utils import (dirhash, assert_serializable, assert_valid_dict,
                               isdref, traverse_dict, concat, writestr, readstr,
                               tryreadstr_def, isrefpath)
 
-from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional, Iterable,
-                              IO, Path, SPath, Hash, DRef, RRef, RefPath,
-                              HashPart, Callable, Context, Name, NamedTuple,
-                              Build, RConfig, ConfigAttrs, Derivation, Stage,
-                              Manager, Matcher, Realizer, Set, Closure,
-                              Generator, TypeVar, BuildArgs, Config, RealizeArg,
-                              InstantiateArg, SupportsAbs, Output)
+from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional,
+                              Iterable, IO, Path, SPath, Hash, DRef, RRef,
+                              RefPath, HashPart, Callable, Context, Name,
+                              NamedTuple, Build, RConfig, ConfigAttrs,
+                              Derivation, Stage, Manager, Matcher, Realizer,
+                              Set, Closure, Generator, TypeVar, BuildArgs,
+                              Config, RealizeArg, InstantiateArg, SupportsAbs,
+                              Output, PylightnixException)
 
 from pylightnix.core import (assert_valid_config, config_cattrs,
                              config_hash, config_name, context_deref,
@@ -59,7 +60,7 @@ error=logger.error
 # |____/ \__,_|_|_|\__,_|
 
 
-class BuildError(Exception):
+class BuildError(PylightnixException):
   """ Exception class for build errors """
   def __init__(self,
                S:SPath,
