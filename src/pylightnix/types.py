@@ -142,22 +142,14 @@ class PromiseException(PylightnixException):
 #: Placeholder for self-reference
 PYLIGHTNIX_SELF_TAG = "__self__"
 
-
+#: Either Path or RRef
 _REF=TypeVar('_REF')
-class EquivClasses(Generic[_REF]):
-  def n(self)->int:
-    assert False
-  def promisers(self)->List[_REF]:
-    assert False
 
-
-class Output(Generic[_REF],EquivClasses[_REF]):
+class Output(Generic[_REF]):
+  """ TODO: Rename into something like `UniformList`, meaning that every item
+  should have the same meaning as others. """
   def __init__(self,val:Iterable[_REF]):
     self.val:List[_REF]=list(val)
-  def n(self)->int:
-    return len(self.val)
-  def promisers(self)->List[_REF]:
-    return self.val
 
 
 #: Context type is an alias for Python dict which maps

@@ -561,12 +561,13 @@ def mkrealization(dref:DRef, l:Context, o:Path, S=None)->RRef:
 def mkcontext()->Context:
   return {}
 
-
 def context_eq(a:Context,b:Context)->bool:
   return json_dumps(a)==json_dumps(b)
 
-
 def context_add(ctx:Context, dref:DRef, rrefs:List[RRef])->Context:
+  """ Add a pair `(dref,rrefs)` into a context `ctx`. `rrefs` are supposed to
+  form (a subset of) the realizations of `dref`.
+  Return a new context. """
   assert dref not in ctx, (
     f"Attempting to re-introduce DRef {dref} to context with a "
     f"different realization.\n"
@@ -574,8 +575,8 @@ def context_add(ctx:Context, dref:DRef, rrefs:List[RRef])->Context:
     f" * New realization: {rrefs}\n")
   return dict(sorted([(dref,list(sorted(rrefs)))]+list(ctx.items())))
 
-
 def context_deref(context:Context, dref:DRef)->List[RRef]:
+  """ TODO: Should it return Output (aka `UniformList`) rather than Python list?
   assert dref in context, (
     f"Context {context} doesn't declare {dref} among it's dependencies so we "
     f"can't dereference it.")
