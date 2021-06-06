@@ -31,19 +31,19 @@ from pylightnix.utils import (dirhash, assert_serializable, assert_valid_dict,
                               isdref, traverse_dict, concat, writestr, readstr,
                               tryreadstr_def, isrefpath)
 
-from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional,
-                              Iterable, IO, Path, SPath, Hash, DRef, RRef,
-                              RefPath, HashPart, Callable, Context, Name,
-                              NamedTuple, Build, RConfig, ConfigAttrs,
-                              Derivation, Stage, Manager, Matcher, Realizer,
-                              Set, Closure, Generator, TypeVar, BuildArgs,
-                              Config, RealizeArg, InstantiateArg, SupportsAbs,
-                              Output, PylightnixException)
+from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional, Iterable,
+                              IO, Path, SPath, Hash, DRef, RRef, RefPath,
+                              HashPart, Callable, Context, Name, NamedTuple,
+                              Build, RConfig, ConfigAttrs, Derivation, Stage,
+                              Manager, Matcher, Realizer, RealizerO, Set,
+                              Closure, Generator, TypeVar, BuildArgs, Config,
+                              RealizeArg, InstantiateArg, SupportsAbs, Output,
+                              PylightnixException)
 
 from pylightnix.core import (assert_valid_config, config_cattrs,
                              config_hash, config_name, context_deref,
                              assert_valid_refpath, rref2path, drefdeps1,
-                             config_dict, drefcfg)
+                             config_dict, drefcfg, output_realizer)
 
 from pylightnix.repl import (ReplHelper, repl_continue, ERR_INVALID_RH,
                              ERR_INACTIVE_RH)
@@ -86,7 +86,7 @@ def mkbuild(S:SPath, dref:DRef, context:Context, buildtime:bool=True)->Build:
   timeprefix=timestring() if buildtime else None
   return Build(mkbuildargs(S,dref,context,timeprefix,{},{}))
 
-_B=TypeVar('_B')
+_B=TypeVar('_B', bound=Build)
 def build_wrapper_(f:Callable[[_B],None],
                    ctr:Callable[[BuildArgs],_B],
                    starttime:Optional[str]=None,
@@ -94,10 +94,6 @@ def build_wrapper_(f:Callable[[_B],None],
   """ Build Adapter which convers user-defined realizers which use
   [Build](#pylightnix.types.Build) API into a low-level
   [Realizer](#pylightnix.types.Realizer)
-
-  FIXME: Find out how to Specify the fact that `B` has to be derived from
-         `Build`. Maybe just replace `B` with `Build` and require deriving from
-         it? [*]
   """
 
   assert starttime is None or isinstance(starttime,str)
@@ -114,10 +110,11 @@ def build_wrapper_(f:Callable[[_B],None],
     except Exception as e:
       build_markstop(b,stoptime) # type:ignore
       error(f"Build wrapper of {dref} raised an exception. Remaining "
-            f"build directories are: {getattr(b,'outgroups','<unknown>')}")
+            f"build directories are: {b.outpaths}")
       raise BuildError(S,dref,getattr(b,'outgroups',[]), e)
-    return Output(getattr(b,'outpaths')) # [*]
-  return _wrapper
+    assert b.outpaths is not None, "Builder should specify the number of outputs"
+    return b.outpaths
+  return output_realizer(_wrapper)
 
 def build_wrapper(f:Callable[[Build],None],
                   starttime:Optional[str]=None,
@@ -147,7 +144,7 @@ def build_cattrs(b:Build)->Any:
 def build_setoutpaths(b:Build,
                       nouts:int)->List[Path]:
   assert nouts>0
-  assert len(b.outpaths)==0, \
+  assert b.outpaths is None, \
     f"Build outpaths were already set:\n{b.outpaths}"
   # assert all([len(tags)>0 for tags in tagset]), \
   #   f"Every group of tags should have at least one tag, got {tagset}"
@@ -161,7 +158,7 @@ def build_setoutpaths(b:Build,
     if b.timeprefix:
       with open(join(o,'__buildtime__.txt'), 'w') as f:
         f.write(b.timeprefix)
-  b.outpaths=paths
+  b.outpaths=Output(paths)
   return paths
 
 # def build_setoutpaths(b:Build, nouts:int)->List[Path]:
@@ -170,7 +167,7 @@ def build_setoutpaths(b:Build,
 
 def build_markstop(b:Build, buildstop:Optional[str])->None:
   buildstop_=timestring() if buildstop is None else buildstop
-  for outpath in b.outpaths:
+  for outpath in (b.outpaths.val if b.outpaths else []):
     with open(join(outpath,'__buildstop__.txt'), 'w') as f:
       f.write(buildstop_)
 
@@ -183,16 +180,16 @@ def store_buildelta(rref:RRef,S=None)->Optional[float]:
   return be-bb if bb is not None and be is not None else None
 
 def build_outpaths(b:Build)->List[Path]:
-  assert len(b.outpaths)>0, (
+  assert b.outpaths is not None, (
     f"Attempting to access output paths, but they were not declared. "
     f"Did you call `build_setoutpaths`?")
-  return b.outpaths
+  return b.outpaths.val
 
 def build_outpath(b:Build)->Path:
   """ Return the output path of the realization being built. Output path is a
   path to valid temporary folder where user may put various build artifacts.
   Later this folder becomes a realization. """
-  if len(b.outpaths)==0:
+  if b.outpaths is not None:
     return build_setoutpaths(b,1)[0]
   paths=build_outpaths(b)
   assert len(paths)==1, f"Build was set to have multiple output paths: {paths}"
@@ -220,10 +217,10 @@ def build_deref(b:Build, dref:DRef)->RRef:
 def build_paths(b:Build, refpath:RefPath)->List[Path]:
   assert_valid_refpath(refpath)
   if refpath[0]==b.dref:
-    assert len(b.outpaths)>0, (
+    assert b.outpaths is not None, (
       "Attempt to access build outpaths before they are set. Call"
       "`build_setoutpath(b,num)` first to set their number." )
-    return [Path(join(path, *refpath[1:])) for path in b.outpaths]
+    return [Path(join(path, *refpath[1:])) for path in b.outpaths.val]
   else:
     return [Path(join(rref2path(rref,b.storage), *refpath[1:]))
             for rref in build_deref_(b, DRef(refpath[0]))]
@@ -256,7 +253,7 @@ def build_environ(b:Build, env:Optional[Any]=None)->dict:
 
 
 def repl_continueBuild(b:Build, rh:Optional[ReplHelper]=None)->Optional[RRef]:
-  return repl_continue(out_paths=b.outpaths, rh=rh)
+  return repl_continue(out_paths=b.outpaths.val if b.outpaths else [], rh=rh)
 
 
 def repl_buildargs(rh:Optional[ReplHelper]=None, buildtime:bool=True)->BuildArgs:

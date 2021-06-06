@@ -1,14 +1,15 @@
 from pylightnix.imports import (join, mkdtemp, format_exc, isfile)
 
 from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional, Config,
-                              Realizer, DRef, Context, RealizeArg, RRef, Path,
-                              SPath, TypeVar, Generic, Callable, EquivClasses,
-                              Matcher, Manager, Output, Closure)
+                              Realizer, RealizerO, DRef, Context, RealizeArg,
+                              RRef, Path, SPath, TypeVar, Generic, Callable,
+                              Matcher, MatcherO, Manager, Output, Closure,
+                              NamedTuple)
 
 from pylightnix.core import (assert_valid_config, drefcfg_, config_cattrs,
                              config_hash, config_name, context_deref,
                              assert_valid_refpath, rref2path, drefdeps1, mkdrv,
-                             realizeMany)
+                             realizeMany, output_validate)
 
 from pylightnix.utils import (readstr, writestr, readstr, tryread)
 
@@ -36,35 +37,29 @@ class Either(Generic[_REF]):
   either-realizers in general are not backward-compatible with regular
   realizers.
   """
-  def __init__(self, right:Optional[Output[_REF]]=None, left=None):
+  def __init__(self, right:Optional[Output[_REF]]=None,
+                     left:Optional[Tuple[List[_REF],ExceptionText]]=None):
     assert not ((right is None) and (left is None))
-    self.right:Optional[Output[_REF]]=right
-    self.left:Optional[Tuple[List[_REF],ExceptionText]]=left
+    self.right=right
+    self.left=left
 
-def either_output(e:Either[Path])->Output:
-  """ Return the Output based on Either value `e`, be it the successful or the
-  failed one """
-  if e.right is not None:
-    return e.right
-  else:
-    assert e.left is not None
-    assert len(e.left[0])>0
-    return Output(e.left[0])
+def mkright(o:Output[_REF])->Either[_REF]:
+  return Either(o,None)
+
+def mkleft(paths:List[Path], exc:ExceptionText)->Either[Path]:
+  for o in paths:
+    assert not isfile(join(o,'either_status.txt')), (
+      f"Realization '{o}' already contains a reserved file 'exception.txt'.")
+    writestr(join(o,'either_status.txt'), exc)
+  return Either(None,(paths,exc))
 
 def either_paths(e:Either[_REF])->List[_REF]:
   if e.right is not None:
     return e.right.val
   else:
     assert e.left is not None
+    assert len(e.left[0])>0
     return e.left[0]
-
-def either_dump(e:Either[Path])->None:
-  """ Write the build status to every output of the collection `e`. """
-  for o in either_paths(e):
-    assert not isfile(join(o,'either_status.txt')), (
-      f"Realization '{o}' already contains a reserved file 'exception.txt'.")
-    if e.left is not None:
-      writestr(join(o,'either_status.txt'), e.left[1])
 
 def either_isRight(e:Either[_REF])->bool:
   return e.right is not None
@@ -72,26 +67,35 @@ def either_isRight(e:Either[_REF])->bool:
 def either_isLeft(e:Either[_REF])->bool:
   return e.left is not None
 
-def either_status(p:Path)->Optional[ExceptionText]:
-  return tryread(Path(join(p,'either_status.txt')))
+def either_status(rref:RRef,S)->Optional[ExceptionText]:
+  return tryread(Path(join(rref2path(rref,S),'either_status.txt')))
 
-def either_loadP(paths:List[Path])->Either[Path]:
-  val=Output(paths)
-  ss=[either_status(p) for p in paths if either_status(p) is not None]
-  return Either(val,ss[0] if len(ss)>0 else None)
+# def either_loadP(paths:List[Path])->Either[Path]:
+#   ss=[str(either_status(p)) for p in paths if either_status(p) is not None]
+#   return Either(None,(paths,'\n'.join(ss))) if len(ss)>0 else \
+#          Either(Output(paths),None)
 
-def either_loadO(o:Output[RRef], S)->Either[RRef]:
-  ss=[either_status(rref2path(p,S))
-      for p in o.val if either_status(rref2path(p,S)) is not None]
-  return Either(o,ss[0] if len(ss)>0 else None)
+def either_loadR(rrefs:List[RRef], S)->Either[RRef]:
+  ss=[str(either_status(rref,S)) for rref in rrefs
+      if either_status(rref,S) is not None]
+  return Either(None,(rrefs,'\n'.join(ss))) if len(ss)>0 else \
+         Either(Output(rrefs),None)
 
 
-MatcherE = Callable[[SPath,Either[RRef]],Optional[Either[RRef]]]
 
-RealizerE = Callable[[SPath,DRef,Context,RealizeArg],Either[Path]]
 
-def either_realizer(f:Callable[[SPath,DRef,Context,RealizeArg],Either[Path]],
-                   )->Callable[[SPath,DRef,Context,RealizeArg],Output[Path]]:
+
+def either_validate(dref:DRef, e:Either[Path], S=None)->List[Path]:
+  if e.right is not None:
+    return output_validate(dref, e.right, S)
+  else:
+    assert e.left is not None
+    assert len(e.left[0])>0
+    return e.left[0]
+
+
+def either_realizer(f:Callable[[SPath,DRef,Context,RealizeArg],Output[Path]],
+                   )->Callable[[SPath,DRef,Context,RealizeArg],List[Path]]:
   """ Implements poor-man's `(EitherT Exception Ouput)` monad.
   Either, stages become either LEFT (if rasied an error) or
   RIGHT (after normal completion). If the stage turns LEFT, then so will be any
@@ -105,77 +109,58 @@ def either_realizer(f:Callable[[SPath,DRef,Context,RealizeArg],Either[Path]],
   import pylightnix.core
   tmp=pylightnix.core.PYLIGHTNIX_TMP
 
-  def _either(S:SPath, dref:DRef, ctx:Context, ra:RealizeArg)->Output:
+  def _either(S:SPath, dref:DRef, ctx:Context, ra:RealizeArg)->Either[Path]:
     # Scan the statuses of immediate dependecnies, and propagate the 'LEFT'
     # condition if any of them has it.
     e2:Either[Path]
     for dref_dep in drefdeps1([dref],S):
-      e=either_loadO(Output(context_deref(ctx,dref_dep)),S)
+      e=either_loadR(context_deref(ctx,dref_dep),S)
       if e.left is not None:
-        outpath=Path(mkdtemp(prefix="either_tmp", dir=tmp))
-        e2=Either(left=([outpath,e.left[1]]))
-        either_dump(e2)
-        return either_output(e2)
+        return mkleft([Path(mkdtemp(prefix="either_tmp", dir=tmp))],e.left[1])
 
     # Execute the wrapped builder
     try:
-      e2=f(S,dref,ctx,ra)
-      assert e2.right is not None
-      either_dump(e2)
-      return e2.right
+      return mkright(f(S,dref,ctx,ra))
     except KeyboardInterrupt:
       raise
-    # FIXME: repair build
+    # FIXME: Introduce the type of exception which would posess information
+    # about incompleted paths, then rewrite the following:
     # except BuildError as be:
     #   outpaths=be.outgroups
     #   _mark_status(outpaths, 'LEFT', format_exc())
     except Exception:
-      outpath=Path(mkdtemp(prefix="either_tmp", dir=tmp))
-      e2=Either(left=([outpath],format_exc()))
-      either_dump(e2)
-      return either_output(e2)
+      return mkleft([Path(mkdtemp(prefix="either_tmp", dir=tmp))], format_exc())
 
-  return _either
+  def _r(S:SPath, dref:DRef, ctx:Context, ra:RealizeArg)->List[Path]:
+    """ Obtain the structured result and validate it """
+    e=_either(S,dref,ctx,ra)
+    return either_validate(dref,e,S)
 
+  return _r
 
-def either_matcher(m:Callable[[SPath,Either[RRef]],Optional[Either[RRef]]],
-                   )->Matcher:
+def either_matcher(m:MatcherO)->Matcher:
   """ Convert an Either-matcher into the regular Matcher """
-  def _matcher(S:SPath,rrefs:Output[RRef])->Optional[Output[RRef]]:
-    erefs=m(S,either_loadR(rrefs.promisers(), S, inject))
-    return Output(erefs.promisers()) if erefs is not None else None
+  def _matcher(S:SPath,rrefs:List[RRef])->Optional[List[RRef]]:
+    erefs=either_loadR(rrefs, S)
+    if erefs.right is not None:
+      o2=m(S,erefs.right)
+      return o2.val if o2 is not None else None
+    else:
+      assert erefs.left is not None
+    return erefs.left[0]
   return _matcher
-
-def _injectP(ps:List[Path])->Output[Path]:
-  return Output(ps)
-def _injectR(rs:List[RRef])->Output[RRef]:
-  return Output(rs)
 
 def mkdrvE(m:Manager,
            config:Config,
-           matcher:MatcherE,
-           realizer:RealizerE
+           matcher:MatcherO,
+           realizer:RealizerO
            )->DRef:
-  return mkdrv(m, config,
-               either_matcher(matcher,_injectR),
-               either_realizer(realizer,_injectP))
-
-
-# def match_right(m:Callable[[SPath,_A],Optional[_A]]
-#                 )->Callable[[SPath, Either[RRef,_A]],Optional[Either[RRef,_A]]]:
-#   def _matcher(S:SPath,col:Either[RRef,_A])->Optional[Either[RRef,_A]]:
-#     if col.exc is not None:
-#       return col
-#     val=m(S,col.val)
-#     return Either(val) if val is not None else None
-#   return _matcher
-
+  return mkdrv(m, config, either_matcher(matcher), either_realizer(realizer))
 
 def realizeE(closure:Closure,
              force_rebuild:Union[List[DRef],bool]=[],
              assert_realized:List[DRef]=[],
-             realize_args:Dict[DRef,RealizeArg]={})->Either[RRef,Output]:
+             realize_args:Dict[DRef,RealizeArg]={})->Either[RRef]:
   rrefs=realizeMany(closure,force_rebuild,assert_realized,realize_args)
-  return either_loadR(rrefs,closure.storage,_injectR)
-
+  return either_loadR(rrefs,closure.storage)
 

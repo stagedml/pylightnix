@@ -96,9 +96,9 @@ def shell(r:Union[RRef,DRef,Build,Path,str,None]=None)->None:
   elif isdref(r):
     cwd=dref2path(DRef(r))
   elif isinstance(r,Build):
-    assert len(r.outpaths)>0, (
+    assert r.outpaths is not None and len(r.outpaths.val)>0, (
       "Shell function requires at least one build output path to be defined" )
-    cwd=r.outpaths[0]
+    cwd=r.outpaths.val[0]
   elif isdir(r):
     cwd=str(r)
   elif isfile(r):

@@ -4,7 +4,8 @@ from pylightnix import ( Manager, DRef, RRef, Path, mklogdir, dirhash,
                         assert_valid_rref, alldrefs, assert_valid_dref,
                         repl_realize, repl_cancel, repl_continue, repl_rref,
                         repl_build, ReplHelper, build_outpath, tryread,
-                        repl_continueBuild, isrref, context_deref, rrefctx )
+                        repl_continueBuild, isrref, context_deref, rrefctx,
+                        output_validate )
 
 from tests.imports import (
     given, assume, example, note, settings, text, decimals, integers, rmtree,
@@ -87,7 +88,8 @@ def test_repl_override():
     b=repl_build(rh)
     with open(join(build_outpath(b),'artifact'),'w') as f:
       f.write('777')
-    repl_continue(b.outpaths, rh=rh)
+    assert b.outpaths is not None
+    repl_continue(output_validate(b.dref, b.outpaths, b.storage), rh=rh)
     rref=repl_rref(rh)
     assert rref is not None
 

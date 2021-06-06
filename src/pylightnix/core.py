@@ -32,14 +32,14 @@ from pylightnix.utils import (dirhash, assert_serializable, assert_valid_dict,
                               tryreadjson_def, isrefpath, kahntsort, dagroots,
                               isselfpath)
 
-from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional,
-                              Iterable, IO, Path, SPath, Hash, DRef, RRef,
-                              RefPath, HashPart, Callable, Context, Name,
-                              NamedTuple, Build, RConfig, ConfigAttrs,
-                              Derivation, Stage, Manager, Matcher, Realizer,
-                              Set, Closure, Generator, BuildArgs, Config,
-                              RealizeArg, InstantiateArg, PYLIGHTNIX_SELF_TAG,
-                              Output, EquivClasses, TypeVar, PromiseException)
+from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional, Iterable,
+                              IO, Path, SPath, Hash, DRef, RRef, RefPath,
+                              HashPart, Callable, Context, Name, NamedTuple,
+                              Build, RConfig, ConfigAttrs, Derivation, Stage,
+                              Manager, Matcher, Realizer, RealizerO, Set,
+                              Closure, Generator, BuildArgs, Config, RealizeArg,
+                              InstantiateArg, PYLIGHTNIX_SELF_TAG, Output,
+                              TypeVar, PromiseException)
 
 logger=getLogger(__name__)
 info=logger.info
@@ -577,6 +577,7 @@ def context_add(ctx:Context, dref:DRef, rrefs:List[RRef])->Context:
 
 def context_deref(context:Context, dref:DRef)->List[RRef]:
   """ TODO: Should it return Output (aka `UniformList`) rather than Python list?
+  """
   assert dref in context, (
     f"Context {context} doesn't declare {dref} among it's dependencies so we "
     f"can't dereference it.")
@@ -593,6 +594,23 @@ def context_serialize(c:Context)->str:
 #   |_|\___/| .__/|_|\___| \_/ \___|_|
 #           |_|
 
+
+def output_validate(dref:DRef, o:Output[Path], S=None)->List[Path]:
+    failed=[]
+    for key,promisepath in cfgsp(drefcfg_(dref,S)):
+      for p in o.val:
+        ppath=join(p,*promisepath[1:])
+        if not (isfile(ppath) or isdir(ppath) or islink(ppath)):
+          failed.append((p,promisepath))
+    if len(failed)>0:
+      raise PromiseException(dref, failed)
+    return o.val
+
+
+def output_realizer(f:RealizerO)->Realizer:
+  def _r(S:SPath, dref:DRef, ctx:Context, ra:RealizeArg)->List[Path]:
+    return output_validate(dref,f(S,dref,ctx,ra),S)
+  return _r
 
 
 def mkdrv(m:Manager,
@@ -628,7 +646,7 @@ def mkdrv(m:Manager,
                f"but now we see a different situation. Could it be  "
                f"a recursive call to `instantiate`?\n"
                f"Derivation config:\n{drefcfg_(dref,m.storage)}"))
-  m.builders[dref]=Derivation(dref=dref, matcher=matcher, realizer=realizer)
+  m.builders[dref]=Derivation(dref, matcher, realizer)
   return dref
 
 def instantiate_(m:Manager, stage:Any, *args, **kwargs)->Closure:
@@ -654,8 +672,8 @@ def instantiate(stage:Any, *args, S=None, **kwargs)->Closure:
 
 
 RealizeSeqGen = Generator[Tuple[SPath,DRef,Context,Derivation,RealizeArg],
-                          Tuple[Optional[Output[RRef]],bool],
-                          Output[RRef]]
+                          Tuple[Optional[List[RRef]],bool],
+                          List[RRef]]
 
 
 def realize(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
@@ -743,41 +761,41 @@ def realizeSeq(closure:Closure,
   target_deps=drefdeps([target_dref],S)
   for drv in closure.derivations:
     dref=drv.dref
-    rrefs:Optional[Output[RRef]]
+    rrefs:Optional[List[RRef]]
     if dref in target_deps or dref==target_dref:
       dref_deps=drefdeps([dref],S)
       dref_context={k:v for k,v in context_acc.items() if k in dref_deps} # I
       if dref in force_interrupt_:
         rrefs,abort=yield (S,dref,dref_context,drv,realize_args.get(dref,{}))
         if abort:
-          return Output([])
+          return List([])
       else:
-        rrefs=drv.matcher(S, Output(drefrrefsC(dref,dref_context,S)))
+        rrefs=drv.matcher(S, list(drefrrefsC(dref,dref_context,S)))
       if rrefs is None:
         assert dref not in assert_realized, (
           f"Stage '{dref}' was assumed to be already realized. "
           f"Unfortunately, it is not the case. Config:\n"
           f"{drefcfg_(dref)}")
         rrefs_existed=drefrrefsC(dref,dref_context,S)
-        rpaths:List[Path]=drv.realizer(S,dref,dref_context,realize_args.get(dref,{})).val
+        rpaths:List[Path]=drv.realizer(S,dref,dref_context,realize_args.get(dref,{}))
         rrefs_built:List[RRef]=[mkrealization(dref,dref_context,rp,S) for rp in rpaths]
         if len(rpaths)!=len(set(rrefs_built)):
           warning(f"Realizer of {dref} produced duplicated realizations")
-        rrefs_matched=drv.matcher(S,Output(drefrrefsC(dref,dref_context,S)))
+        rrefs_matched=drv.matcher(S,list(drefrrefsC(dref,dref_context,S)))
         assert rrefs_matched is not None, (
           f"The matcher of {dref} is not satisfied with its realizatons. "
           f"The following newly obtained realizations were ignored:\n"
           f"  {rrefs_built}\n"
           f"The following realizations already existed:\n"
           f"  {rrefs_existed}")
-        if (set(rrefs_built) & set(rrefs_matched.val)) == set() and \
-           (set(rrefs_built) | set(rrefs_matched.val)) != set():
+        if (set(rrefs_built) & set(rrefs_matched)) == set() and \
+           (set(rrefs_built) | set(rrefs_matched)) != set():
           warning(f"None of the newly obtained {dref} realizations "
                   f"were matched by the matcher. To capture those "
                   f"realizations explicitly, try `matcher([exact(..)])`")
         rrefs=rrefs_matched
       assert rrefs is not None
-      context_acc=context_add(context_acc,dref,rrefs.val)
+      context_acc=context_add(context_acc,dref,rrefs)
   assert rrefs is not None
   return rrefs
 
@@ -847,9 +865,10 @@ def match_ge(n:int):
     return rrefs
   return _matcher
 
-def match_predicate(paccept:Callable[[Output[RRef]],bool],
-                    passert:Callable[[Output[RRef]],bool]):
-  def _matcher(S:SPath, rrefs:Output[RRef])->Optional[Output[RRef]]:
+
+def match_predicate(paccept:Callable[[List[RRef]],bool],
+                    passert:Callable[[List[RRef]],bool]):
+  def _matcher(S:SPath, rrefs:List[RRef])->Optional[List[RRef]]:
     if passert(rrefs):
       assert False, f"Matching is impossible for {rrefs}"
     if paccept(rrefs):
@@ -859,11 +878,11 @@ def match_predicate(paccept:Callable[[Output[RRef]],bool],
 
 
 def match_only():
-  return match_predicate(paccept=lambda l: l.n()==1,
-                         passert=lambda l: l.n()>=2)
+  return match_predicate(paccept=lambda l: len(l)==1,
+                         passert=lambda l: len(l)>=2)
 
 def match_some(n:int):
-  return match_predicate(paccept=lambda l: l.n()>=n,
+  return match_predicate(paccept=lambda l: len(l)>=n,
                          passert=lambda l: False)
 
 def cfgsp(c:Config)->List[Tuple[str,RefPath]]:
@@ -875,27 +894,6 @@ def cfgsp(c:Config)->List[Tuple[str,RefPath]]:
     return val
   traverse_dict(config_dict(c),_mut)
   return selfpaths
-
-
-
-_PATHS = TypeVar('_PATHS', bound=EquivClasses[Path])
-
-
-def promise_realizer(
-  f:Callable[[SPath,DRef,Context,RealizeArg],_PATHS],
-  )->Callable[[SPath,DRef,Context,RealizeArg],_PATHS]:
-  def _r(S:SPath, dref:DRef, ctx:Context, ra:RealizeArg)->_PATHS:
-    ps=f(S,dref,ctx,ra)
-    failed=[]
-    for key,promisepath in cfgsp(drefcfg_(dref,S)):
-      for p in ps.promisers():
-        ppath=join(p,*promisepath[1:])
-        if not (isfile(ppath) or isdir(ppath) or islink(ppath)):
-          failed.append((p,promisepath))
-    if len(failed)>0:
-      raise PromiseException(dref, failed)
-    return ps
-  return _r
 
 
 #     _                      _

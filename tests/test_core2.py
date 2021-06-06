@@ -191,20 +191,20 @@ def test_match_some(stages,n):
 #         assert ntop>nouts
 
 
-def mkstageP(m:Manager,
-            config:dict,
-            nondet:Callable[[int],int]=lambda n:0,
-            buildtime:bool=True,
-            nrrefs:int=1,
-            nmatch:int=1,
-            mustfail:bool=False)->DRef:
-  def _r(S:SPath, dref:DRef, c:Context, ra:RealizeArg)->Output[Path]:
-    r=setup_test_realize(nrrefs, buildtime, nondet, False)(S,dref,c,ra)
-    if mustfail:
-      for path in r.promisers():
-        remove(join(path,"artifact"))
-    return r
-  return mkdrv(m, setup_test_config(config), setup_test_match(nmatch), _r)
+# def mkstageP(m:Manager,
+#             config:dict,
+#             nondet:Callable[[int],int]=lambda n:0,
+#             buildtime:bool=True,
+#             nrrefs:int=1,
+#             nmatch:int=1,
+#             mustfail:bool=False)->DRef:
+#   def _r(S:SPath, dref:DRef, c:Context, ra:RealizeArg)->Output[Path]:
+#     r=setup_test_realize(nrrefs, buildtime, nondet, False)(S,dref,c,ra)
+#     if mustfail:
+#       for path in r.promisers():
+#         remove(join(path,"artifact"))
+#     return r
+#   return mkdrv(m, setup_test_config(config), setup_test_match(nmatch), _r)
 
 
 # FIXME: Re-enable

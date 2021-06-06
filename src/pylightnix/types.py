@@ -146,8 +146,7 @@ PYLIGHTNIX_SELF_TAG = "__self__"
 _REF=TypeVar('_REF')
 
 class Output(Generic[_REF]):
-  """ TODO: Rename into something like `UniformList`, meaning that every item
-  should have the same meaning as others. """
+  """ TODO: Rename into something which has a meaning of `PromisedOuput` """
   def __init__(self,val:Iterable[_REF]):
     self.val:List[_REF]=list(val)
 
@@ -199,34 +198,36 @@ RealizeArg=Dict[str,Any]
 #:
 #: TODO: Splitting Matcher into two parts would allow us to rid of
 #: `force_interrupt` argument.
-Matcher = Callable[[SPath,Output[RRef]],Optional[Output[RRef]]]
+Matcher = Callable[[SPath,List[RRef]],Optional[List[RRef]]]
+MatcherO = Callable[[SPath,Output[RRef]],Optional[Output[RRef]]]
 
 
-#: Realizer is a type of callback functions which are defined by the user.
-#: Realizers should implement the stage-specific
-#: [realization](#pylightnix.core.realize) algorithm.
+#: Realizer is a type of user-defined Python function. Realizers typically
+#: implement [application-specific algorithms](#pylightnix.core.realize) which
+#: take some configuration parameters and produce some artifacts.
 #:
 #: Realizer accepts the following arguments:
 #:
-#: - [Reference to a Derivation](#pylightnix.types.DRef) being build
+#: - Path to a global Pylightnix storage
+#: - [Derivation reference](#pylightnix.types.DRef) being build
 #: - [Context](#pylightnix.types.Context) encoding the results of dependency
 #:   resolution.
+#: - Set of additional user-defined arguments
 #:
-#: `DRef` and `Context` allows programmer to access
-#: [Configs](#pylightnix.types.Config) of the current derivation and all it's
-#: dependencies.
+#: Context is the key to accessing the dependency artifacts.
 #:
-#: Realizers have to return one or many folder paths of realization artifacts
-#: (files and folders containing stage-specific data). Those folders will be
-#: added to the pool of Realizations of the current derivation.
-#: [Matcher](#pylightnix.types.Matcher) will be called to pick some subset of
-#: existing realizations. The chosen subset will eventually appear in the
-#: Contexts of downstream derivations.
+#: Derivation reference is required to access [configuration
+#: parameters](#pylightnix.types.Config) of the algorithm.
 #:
-#: Most of the stages defined in Pylightnix use simplified realizer's API
-#: provided by the [Build](#pylightnix.types.Build) helper class. The
-#: [build_wrapper](#pylightnix.core.build_wrapper) function converts realizers
-#: back to standard format.
+#: Realizers must return one or many folders of realization artifacts (files and
+#: folders containing application-specific data). Every folder is treated as an
+#: alternative realization.  [Matcher](#pylightnix.types.Matcher) is later used
+#: to pick the subset of realizations which matches some application-specific
+#: criteria.  This subset will eventually appear as the `Context`s of downstream
+#: realizaions.
+#:
+#: Pylightnix stages may use the simplified realizer API
+#: provided by the [Build](#pylightnix.types.Build) helper class.
 #:
 #: Example:
 #:
@@ -240,7 +241,8 @@ Matcher = Callable[[SPath,Output[RRef]],Optional[Output[RRef]]]
 #:   ...
 #:   return mkdrv(m, ...,  _realize)
 #: ```
-Realizer = Callable[[SPath,DRef,Context,RealizeArg],Output[Path]]
+Realizer = Callable[[SPath,DRef,Context,RealizeArg],List[Path]]
+RealizerO = Callable[[SPath,DRef,Context,RealizeArg],Output[Path]]
 
 #: Derivation is the core type of Pylightnix. It keeps all the information about
 #: a stage:
@@ -400,7 +402,7 @@ class Build:
     self.iarg=ba.iarg
     self.rarg=ba.rarg
     self.timeprefix=ba.timeprefix
-    self.outpaths:List[Path]=[]
+    self.outpaths:Optional[Output[Path]]=None
     self.cattrs_cache:Optional[ConfigAttrs]=None
 
 

@@ -4,7 +4,8 @@ from pylightnix import (SPath, Context, RealizeArg, Path, instantiate, DRef,
                         build_wrapper, build_setoutpaths, either_status,
                         either_isRight, either_isLeft, realizeMany, rref2path,
                         match_only, writestr, match_some, Output, mkbuild,
-                        allrrefs, rrefdeps1, realizeE, either_paths)
+                        allrrefs, rrefdeps1, realizeE, either_paths,
+                        either_loadR)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink,
                            isfile, List, randint, sleep, rmtree, system,
@@ -18,7 +19,7 @@ from tests.setup import (ShouldHaveFailed, mkstage, setup_test_config,
                          setup_test_match, setup_test_realize, setup_storage2,
                          rrefdepth)
 
-from pylightnix.either import (Either, mkdrvE, match_right)
+from pylightnix.either import (Either, mkdrvE)
 
 def mkstageE(m:Manager,
             config:dict,
@@ -27,11 +28,10 @@ def mkstageE(m:Manager,
             nrrefs:int=1,
             nmatch:int=1,
             mustfail:bool=False)->DRef:
-  def _r(S:SPath, dref:DRef, c:Context, ra:RealizeArg)->Either[Path,Output]:
+  def _r(S:SPath, dref:DRef, c:Context, ra:RealizeArg)->Output[Path]:
     r=setup_test_realize(nrrefs, buildtime, nondet, mustfail)
-    return Either(r(S,dref,c,ra))
-  return mkdrvE(m, setup_test_config(config),
-               match_right(setup_test_match(nmatch)), _r)
+    return Output(r(S,dref,c,ra))
+  return mkdrvE(m, setup_test_config(config), setup_test_match(nmatch), _r)
 
 
 @settings(print_blob=True)
@@ -48,8 +48,8 @@ def test_either_invariant(stages):
       else:
         assert False
     for rref in allrrefs(S=S):
-      for rref_dep in rrefdeps1([rref],S=S):
-        assert not (either_isRight(rref2path(rref,S)) and either_isLeft(rref2path(rref_dep,S)))
+      assert not (either_isRight(either_loadR([rref],S)) and
+                  either_isLeft(either_loadR(list(rrefdeps1([rref],S=S)),S)))
 
 
 # def mkeither(m, source, should_fail=False):

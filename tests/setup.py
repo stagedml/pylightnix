@@ -1,9 +1,10 @@
 from pylightnix import (Manager, Path, initialize, DRef, Context, Optional,
                         mkbuild, build_outpath, allrrefs, RRef, mkconfig, Name,
                         mkdrv, rref2path, dirchmod, Config, RealizeArg,
-                        drefrrefsC, tryreadstr_def, SPath, storage,
-                        storagename, deepcopy, build_setoutpaths, maybereadstr,
-                        selfref, drefattrs, Output, Matcher, Realizer, rrefdeps1)
+                        drefrrefsC, tryreadstr_def, SPath, storage, storagename,
+                        deepcopy, build_setoutpaths, maybereadstr, selfref,
+                        drefattrs, Output, Matcher, MatcherO, Realizer,
+                        rrefdeps1)
 
 from tests.imports import (rmtree, join, makedirs, listdir, Callable,
                            contextmanager, List, Dict,  Popen, PIPE,
@@ -70,17 +71,18 @@ def setup_test_config(c:dict)->Config:
   c2['artifact']=[selfref,'artifact']
   return mkconfig(c2)
 
-def setup_test_match(nmatch)->Matcher:
-  def _match(S:SPath, rrefs:Output[RRef])->Optional[Output[RRef]]:
+def setup_test_match(nmatch)->MatcherO:
+  def _match(S:SPath, o:Output[RRef])->Optional[Output[RRef]]:
+    rrefs=o.val
     values=list(sorted([(maybereadstr(join(rref2path(rref, S),'artifact'),'0',int),rref)
-                        for rref in rrefs.val], key=lambda x:x[0]))
+                        for rref in rrefs], key=lambda x:x[0]))
     print(nmatch, values)
     # Return `top-n` matched groups
     return Output([tup[1] for tup in values[-nmatch:]]) if len(values)>0 else None
   return _match
 
 def setup_test_realize(nrrefs, buildtime, nondet, mustfail)->Realizer:
-  def _realize(S:SPath, dref:DRef, context:Context, ra:RealizeArg)->Output:
+  def _realize(S:SPath, dref:DRef, context:Context, ra:RealizeArg)->List[Path]:
     b=mkbuild(S, dref, context, buildtime=buildtime)
     paths=build_setoutpaths(b,nrrefs)
     for i,o in enumerate(paths):
@@ -90,7 +92,8 @@ def setup_test_realize(nrrefs, buildtime, nondet, mustfail)->Realizer:
         f.write(str(i))
       if mustfail:
         raise ValueError('Failure by request')
-    return Output(b.outpaths)
+    assert b.outpaths is not None
+    return b.outpaths.val
   return _realize
 
 def mkstage(m:Manager,

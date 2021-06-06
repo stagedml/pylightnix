@@ -24,7 +24,7 @@ from pylightnix.utils import ( dirrm, timestring, concat )
 
 from pylightnix.types import (Dict, Closure, Context, Derivation, RRef, DRef,
                               List, Tuple, Optional, Generator, Path, Build,
-                              Union, Any, BuildArgs, RealizeArg, SPath, Output)
+                              Union, Any, BuildArgs, RealizeArg, SPath)
 
 from pylightnix.core import (realizeSeq, RealizeSeqGen, mkrealization)
 
@@ -35,7 +35,7 @@ class ReplHelper:
     self.dref:Optional[DRef]=None
     self.context:Optional[Context]=None
     self.drv:Optional[Derivation]=None
-    self.rrefs:Optional[Output[RRef]]=None
+    self.rrefs:Optional[List[RRef]]=None
     self.rarg:Optional[RealizeArg]=None
 
 ERR_INVALID_RH="Neither global, nor user-defined ReplHelper is valid"
@@ -45,7 +45,7 @@ PYLIGHTNIX_REPL_HELPER:Optional[ReplHelper]=None
 
 def repl_continueMany(out_paths:Optional[List[Path]]=None,
                       out_rrefs:Optional[List[RRef]]=None,
-                      rh:Optional[ReplHelper]=None)->Optional[Output[RRef]]:
+                      rh:Optional[ReplHelper]=None)->Optional[List[RRef]]:
   global PYLIGHTNIX_REPL_HELPER
   if rh is None:
     rh=PYLIGHTNIX_REPL_HELPER
@@ -56,14 +56,14 @@ def repl_continueMany(out_paths:Optional[List[Path]]=None,
   assert rh.drv is not None, ERR_INACTIVE_RH
   assert rh.storage is not None, ERR_INACTIVE_RH
   try:
-    rrefs:Optional[Output[RRef]]
+    rrefs:Optional[List[RRef]]
     if out_paths is not None:
       assert out_rrefs is None
-      rrefs=Output([mkrealization(rh.dref,rh.context,p,rh.storage)
-                    for p in out_paths])
+      rrefs=[mkrealization(rh.dref,rh.context,p,rh.storage)
+                    for p in out_paths]
     elif out_rrefs is not None:
       assert out_paths is None
-      rrefs=Output(out_rrefs)
+      rrefs=out_rrefs
     else:
       rrefs=None
     rh.storage,rh.dref,rh.context,rh.drv,rh.rarg=rh.gen.send((rrefs,False))
@@ -78,8 +78,8 @@ def repl_continue(out_paths:Optional[List[Path]]=None,
   rrefs=repl_continueMany(out_paths,out_rrefs,rh)
   if rrefs is None:
     return None
-  assert len(rrefs.val)==1, f"Expects exactly 1 output, not {len(rrefs.val)}"
-  return rrefs.val[0]
+  assert len(rrefs)==1, f"Expects exactly 1 output, not {len(rrefs)}"
+  return rrefs[0]
 
 
 def repl_realize(closure:Closure,
@@ -124,7 +124,7 @@ def repl_realize(closure:Closure,
   return rh
 
 
-def repl_rrefs(rh:ReplHelper)->Optional[Output[RRef]]:
+def repl_rrefs(rh:ReplHelper)->Optional[List[RRef]]:
   return rh.rrefs
 
 
@@ -132,8 +132,8 @@ def repl_rref(rh:ReplHelper)->Optional[RRef]:
   rrefs=repl_rrefs(rh)
   if rrefs is None:
     return None
-  assert len(rrefs.val)==1
-  return rrefs.val[0]
+  assert len(rrefs)==1
+  return rrefs[0]
 
 
 def repl_cancel(rh:Optional[ReplHelper]=None)->None:
@@ -151,6 +151,6 @@ def repl_cancel(rh:Optional[ReplHelper]=None)->None:
 
 def repl_cancelBuild(b:Build, rh:Optional[ReplHelper]=None)->None:
   repl_cancel(rh)
-  for o in b.outpaths:
+  for o in (b.outpaths.val if b.outpaths else []):
     dirrm(o)
 

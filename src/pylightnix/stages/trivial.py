@@ -103,11 +103,9 @@ def redefine(stage:Any,
   return _new_stage
 
 def realized(stage:Any)->Stage:
-  """ [Re-define](#pylightnix.stages.trivial.redefine) stage's realizer by
-  replacing it with a dummy realizer triggering an assertion. As a result, the
-  call to [realize](#pylightnix.core.realizeMany) will only succeed if no
-  realization is actually required. Designed to make users sure that some
-  stage's realize will return immediately.
+  """ Asserts that the stage doesn't requre running its realizer.
+  [Re-defines](#pylightnix.stages.trivial.redefine) stage realizer with a dummy
+  realizer triggering an assertion.
 
   Example:
   ```python
@@ -115,13 +113,12 @@ def realized(stage:Any)->Stage:
   # ^^^ Fail if `my_long_running_stage` is not yet realized.
   ```
   """
-  def _no_realizer(S:SPath,dref:DRef,context:Context,rarg:RealizeArg)->Output:
+  def _no_realizer(S:SPath,dref:DRef,context:Context,rarg:RealizeArg)->List[Path]:
     assert False, (
-        f"Stage '{dref}' was assumed to be already realized. "
-        f"Unfortunately, it seens to be not the case because it's matcher "
-        f"has just instructed the core to call the realizer.\n"
-        # f"Configuration:\n{drefcfg(dref)}\n"
-        f"Context:\n{context}")
+      f"Stage '{dref}' was assumed to be already realized. "
+      f"Unfortunately, it seens to be not the case because it's matcher "
+      f"has just instructed the core to call the realizer.\n"
+      f"Context:\n{context}")
   return redefine(stage, new_realizer=_no_realizer)
 
 
