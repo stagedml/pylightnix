@@ -36,10 +36,10 @@ from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional, Iterable,
                               IO, Path, SPath, Hash, DRef, RRef, RefPath,
                               HashPart, Callable, Context, Name, NamedTuple,
                               Build, RConfig, ConfigAttrs, Derivation, Stage,
-                              Manager, Matcher, Realizer, RealizerO, Set,
-                              Closure, Generator, BuildArgs, Config, RealizeArg,
-                              InstantiateArg, PYLIGHTNIX_SELF_TAG, Output,
-                              TypeVar, PromiseException)
+                              Manager, Matcher, MatcherO, Realizer, RealizerO,
+                              Set, Closure, Generator, BuildArgs, Config,
+                              RealizeArg, InstantiateArg, PYLIGHTNIX_SELF_TAG,
+                              Output, TypeVar, PromiseException)
 
 logger=getLogger(__name__)
 info=logger.info
@@ -612,6 +612,11 @@ def output_realizer(f:RealizerO)->Realizer:
     return output_validate(dref,f(S,dref,ctx,ra),S)
   return _r
 
+def output_matcher(m:MatcherO)->Matcher:
+  def _m(S:SPath,rrefs:List[RRef])->Optional[List[RRef]]:
+    r=m(S,Output(rrefs))
+    return r.val if r is not None else None
+  return _m
 
 def mkdrv(m:Manager,
           config:Config,
@@ -738,7 +743,7 @@ def realizeMany(closure:Closure,
       gen.send((None,False)) # Ask for default action
   except StopIteration as e:
     res=e.value
-  return res.val
+  return res
 
 
 def realizeSeq(closure:Closure,

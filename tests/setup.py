@@ -4,7 +4,8 @@ from pylightnix import (Manager, Path, initialize, DRef, Context, Optional,
                         drefrrefsC, tryreadstr_def, SPath, storage, storagename,
                         deepcopy, build_setoutpaths, maybereadstr, selfref,
                         drefattrs, Output, Matcher, MatcherO, Realizer,
-                        rrefdeps1)
+                        rrefdeps1, RealizerO, Output, output_realizer,
+                        output_matcher)
 
 from tests.imports import (rmtree, join, makedirs, listdir, Callable,
                            contextmanager, List, Dict,  Popen, PIPE,
@@ -71,7 +72,7 @@ def setup_test_config(c:dict)->Config:
   c2['artifact']=[selfref,'artifact']
   return mkconfig(c2)
 
-def setup_test_match(nmatch)->MatcherO:
+def setup_test_match(nmatch:int)->MatcherO:
   def _match(S:SPath, o:Output[RRef])->Optional[Output[RRef]]:
     rrefs=o.val
     values=list(sorted([(maybereadstr(join(rref2path(rref, S),'artifact'),'0',int),rref)
@@ -81,8 +82,8 @@ def setup_test_match(nmatch)->MatcherO:
     return Output([tup[1] for tup in values[-nmatch:]]) if len(values)>0 else None
   return _match
 
-def setup_test_realize(nrrefs, buildtime, nondet, mustfail)->Realizer:
-  def _realize(S:SPath, dref:DRef, context:Context, ra:RealizeArg)->List[Path]:
+def setup_test_realize(nrrefs, buildtime, nondet, mustfail)->RealizerO:
+  def _realize(S:SPath, dref:DRef, context:Context, ra:RealizeArg)->Output[Path]:
     b=mkbuild(S, dref, context, buildtime=buildtime)
     paths=build_setoutpaths(b,nrrefs)
     for i,o in enumerate(paths):
@@ -93,21 +94,20 @@ def setup_test_realize(nrrefs, buildtime, nondet, mustfail)->Realizer:
       if mustfail:
         raise ValueError('Failure by request')
     assert b.outpaths is not None
-    return b.outpaths.val
+    return b.outpaths
   return _realize
 
 def mkstage(m:Manager,
             config:dict,
             nondet:Callable[[int],int]=lambda n:0,
             buildtime:bool=True,
-            mkdrv_=mkdrv,
             nrrefs:int=1,
             nmatch:int=1,
             mustfail:bool=False)->DRef:
-  return mkdrv_(m,
-               setup_test_config(config),
-               setup_test_match(nmatch),
-               setup_test_realize(nrrefs, buildtime, nondet, mustfail))
+  return mkdrv(m, setup_test_config(config),
+                  output_matcher(setup_test_match(nmatch)),
+                  output_realizer(setup_test_realize(
+                    nrrefs, buildtime, nondet, mustfail)))
 
 
 def pipe_stdout(args:List[str], **kwargs)->str:

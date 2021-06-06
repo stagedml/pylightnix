@@ -30,7 +30,7 @@ def mkstageE(m:Manager,
             mustfail:bool=False)->DRef:
   def _r(S:SPath, dref:DRef, c:Context, ra:RealizeArg)->Output[Path]:
     r=setup_test_realize(nrrefs, buildtime, nondet, mustfail)
-    return Output(r(S,dref,c,ra))
+    return r(S,dref,c,ra)
   return mkdrvE(m, setup_test_config(config), setup_test_match(nmatch), _r)
 
 
