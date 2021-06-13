@@ -82,6 +82,8 @@ def setup_test_match(nmatch:int)->MatcherO:
     return Output([tup[1] for tup in values[-nmatch:]]) if len(values)>0 else None
   return _match
 
+DELIBERATE_TEST_FAILURE='Deliberate test failure'
+
 def setup_test_realize(nrrefs, buildtime, nondet, mustfail)->RealizerO:
   def _realize(S:SPath, dref:DRef, context:Context, ra:RealizeArg)->Output[Path]:
     b=mkbuild(S, dref, context, buildtime=buildtime)
@@ -92,7 +94,7 @@ def setup_test_realize(nrrefs, buildtime, nondet, mustfail)->RealizerO:
       with open(join(o,'id'),'w') as f:
         f.write(str(i))
       if mustfail:
-        raise ValueError('Failure by request')
+        raise ValueError(DELIBERATE_TEST_FAILURE)
     assert b.outpaths is not None
     return b.outpaths
   return _realize

@@ -5,19 +5,19 @@ from pylightnix import (SPath, Context, RealizeArg, Path, instantiate, DRef,
                         either_isRight, either_isLeft, realizeMany, rref2path,
                         match_only, writestr, match_some, Output, mkbuild,
                         allrrefs, rrefdeps1, realizeE, either_paths,
-                        either_loadR)
+                        either_loadR, either_status)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink,
                            isfile, List, randint, sleep, rmtree, system,
                            S_IWRITE, S_IREAD, S_IEXEC, chmod, Popen, PIPE,
-                           settings, event)
+                           settings, event, reproduce_failure)
 
 from tests.generators import (rrefs, drefs, configs, dicts, rootstages,
                               integers)
 
 from tests.setup import (ShouldHaveFailed, mkstage, setup_test_config,
                          setup_test_match, setup_test_realize, setup_storage2,
-                         rrefdepth)
+                         rrefdepth, DELIBERATE_TEST_FAILURE)
 
 from pylightnix.either import (Either, mkdrvE)
 
@@ -33,18 +33,21 @@ def mkstageE(m:Manager,
     return r(S,dref,c,ra)
   return mkdrvE(m, setup_test_config(config), setup_test_match(nmatch), _r)
 
-
-@settings(print_blob=True)
+# @settings(print_blob=True)
 @given(stages=rootstages(stagefn=mkstageE, failchances=[50]))
 def test_either_invariant(stages):
   with setup_storage2('test_either_invariant') as (T,S):
     for stage in stages:
       e=realizeE(instantiate(stage,S=S))
       depth=max([rrefdepth(rref,S) for rref in either_paths(e)])
+      assert not (either_isLeft(e) and either_isRight(e))
+      assert (either_isLeft(e) or either_isRight(e))
       if either_isRight(e):
-        event(f'Right, depth {depth}')
+        event(f'Right')
+        assert either_status(e) is None
       elif either_isLeft(e):
-        event(f'Left, depth {depth}')
+        event(f'Left')
+        assert DELIBERATE_TEST_FAILURE in str(either_status(e))
       else:
         assert False
     for rref in allrrefs(S=S):
@@ -94,14 +97,14 @@ def test_either_invariant(stages):
 #     assert not either_isLeft(rref), either_status(rref)
 
 # def test_either_builderror()->None:
-#   with setup_storage('test_either_builderror'):
+#   with setup_storage2('test_either_builderror') as T,S:
 #     def _setting(m:Manager)->DRef:
 #       def _make(b:Build):
 #         # Make both paths differ from each other
 #         for p in build_setoutpaths(b, 2):
 #           writestr(join(p,'artifact.txt'), p)
 #         raise ValueError('Ooops (an intended test failure)')
-#       return mkdrv(m, mkconfig({'name':'pigfood'}),
+#       return mkdrvE(m, mkconfig({'name':'pigfood'}),
 #                    match_some(2), either_wrapper(build_wrapper(_make)))
 
 #     rrefs = realizeMany(instantiate(_setting))

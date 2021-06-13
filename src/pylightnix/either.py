@@ -67,17 +67,15 @@ def either_isRight(e:Either[_REF])->bool:
 def either_isLeft(e:Either[_REF])->bool:
   return e.left is not None
 
-def either_status(rref:RRef,S)->Optional[ExceptionText]:
-  return tryread(Path(join(rref2path(rref,S),'either_status.txt')))
-
-# def either_loadP(paths:List[Path])->Either[Path]:
-#   ss=[str(either_status(p)) for p in paths if either_status(p) is not None]
-#   return Either(None,(paths,'\n'.join(ss))) if len(ss)>0 else \
-#          Either(Output(paths),None)
+def either_status(e:Either[_REF])->Optional[ExceptionText]:
+  return e.left[1] if e.left is not None else None
 
 def either_loadR(rrefs:List[RRef], S)->Either[RRef]:
-  ss=[str(either_status(rref,S)) for rref in rrefs
-      if either_status(rref,S) is not None]
+  ss=[]
+  for rref in rrefs:
+    err=tryread(Path(join(rref2path(rref,S),'either_status.txt')))
+    if err is not None:
+      ss.append(err)
   return Either(None,(rrefs,'\n'.join(ss))) if len(ss)>0 else \
          Either(Output(rrefs),None)
 
