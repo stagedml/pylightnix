@@ -189,7 +189,7 @@ def build_outpath(b:Build)->Path:
   """ Return the output path of the realization being built. Output path is a
   path to valid temporary folder where user may put various build artifacts.
   Later this folder becomes a realization. """
-  if b.outpaths is not None:
+  if b.outpaths is None:
     return build_setoutpaths(b,1)[0]
   paths=build_outpaths(b)
   assert len(paths)==1, f"Build was set to have multiple output paths: {paths}"
