@@ -102,6 +102,9 @@ def rootstages(draw,
                stagefn=mkstage):
   """ Produce Pylightnix stage hierarchies
   Note: A signature of `nondets` is: (NodeID -> (RRefID -> NonDetValue))
+  `failchances` indicates how many errors to introduce into a hierarchy. For
+  example, setting it to `[100,100]` would make 2 attempts to mark some stage
+  with a 'deliberate error' flag.
   """
   assert all([x>=0 and x<=100 for x in failchances])
   dag=draw(intdags(min_size=min_size,

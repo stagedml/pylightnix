@@ -9,7 +9,7 @@ from pylightnix import (Manager, Path, initialize, DRef, Context, Optional,
 
 from tests.imports import (rmtree, join, makedirs, listdir, Callable,
                            contextmanager, List, Dict,  Popen, PIPE,
-                           gettempdir, mkdtemp)
+                           gettempdir, mkdtemp, remove)
 
 class ShouldHaveFailed(Exception):
   pass
@@ -119,4 +119,23 @@ def rrefdepth(rref:RRef,S=None)->int:
   rec=[rrefdepth(r,S) for r in rrefdeps1([rref],S=S)]
   return 1+(max(rec) if len(rec)>0 else 0)
 
+
+def mkstageP(m:Manager,
+            config:dict,
+            nondet:Callable[[int],int]=lambda n:0,
+            buildtime:bool=True,
+            nrrefs:int=1,
+            nmatch:int=1,
+            mustfail:bool=False)->DRef:
+  """ Makes a stage which could deliberately break the promise - i.e. fail to
+  provide a promised artifact """
+  def _r(S:SPath, dref:DRef, c:Context, ra:RealizeArg)->Output[Path]:
+    r=setup_test_realize(nrrefs, buildtime, nondet, False)(S,dref,c,ra)
+    if mustfail:
+      # for path in r.val:
+      remove(join(r.val[-1],"artifact"))
+    return r
+  return mkdrv(m, setup_test_config(config),
+               output_matcher(setup_test_match(nmatch)),
+               output_realizer(_r))
 

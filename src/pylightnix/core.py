@@ -891,6 +891,7 @@ def match_some(n:int):
                          passert=lambda l: False)
 
 def cfgsp(c:Config)->List[Tuple[str,RefPath]]:
+  """ Returns the list of self-references (aka self-paths) in the config. """
   selfpaths=[]
   def _mut(key:Any, val:Any):
     nonlocal selfpaths

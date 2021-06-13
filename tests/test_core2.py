@@ -4,20 +4,21 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, drefdeps,
                         alldrefs, build_wrapper, tryread, trywrite,
                         realizeMany, build_outpaths, mklens, Config,
                         build_setoutpaths, rrefdeps, drefrrefs, allrrefs,
-                        realizeMany, redefine, match_only, PromiseException)
+                        realizeMany, redefine, match_only, PromiseException,
+                        output_matcher, output_realizer, cfgsp, drefcfg_)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink,
                            isfile, islink, List, randint, sleep, rmtree,
                            system, S_IWRITE, S_IREAD, S_IEXEC, chmod, Popen,
                            PIPE, data, event, settings, reproduce_failure,
-                           lists, remove)
+                           lists, remove, isfile, isdir)
 
 from tests.generators import (rrefs, drefs, configs, dicts, rootstages,
                               integers)
 
 from tests.setup import ( ShouldHaveFailed, setup_storage, setup_storage2,
                          mkstage, mkstage, pipe_stdout , setup_test_realize,
-                         setup_test_match, setup_test_config)
+                         setup_test_match, setup_test_config, mkstageP)
 
 
 @given(stages=rootstages())
@@ -191,30 +192,19 @@ def test_match_some(stages,n):
 #         assert ntop>nouts
 
 
-# def mkstageP(m:Manager,
-#             config:dict,
-#             nondet:Callable[[int],int]=lambda n:0,
-#             buildtime:bool=True,
-#             nrrefs:int=1,
-#             nmatch:int=1,
-#             mustfail:bool=False)->DRef:
-#   def _r(S:SPath, dref:DRef, c:Context, ra:RealizeArg)->Output[Path]:
-#     r=setup_test_realize(nrrefs, buildtime, nondet, False)(S,dref,c,ra)
-#     if mustfail:
-#       for path in r.promisers():
-#         remove(join(path,"artifact"))
-#     return r
-#   return mkdrv(m, setup_test_config(config), setup_test_match(nmatch), _r)
-
-
-# FIXME: Re-enable
-# @given(stages=rootstages(stagefn=mkstageP, failchances=[50,50,50]))
-# def test_promise(stages):
-#   with setup_storage2('test_promise') as (T,S):
-#     for stage in stages:
-#       try:
-#         rrefs=realizeMany(instantiate(stage, S=S))
-#         event('test_promise positive')
-#       except PromiseException as e:
-#         event('test_promise negative')
+@given(stages=rootstages(stagefn=mkstageP, failchances=[50]))
+def test_promise(stages):
+  with setup_storage2('test_promise') as (T,S):
+    for stage in stages:
+      try:
+        rrefs=realizeMany(instantiate(stage, S=S))
+        event('test_promise positive')
+      except PromiseException as e:
+        event('test_promise negative')
+        for (p,rp) in e.failed:
+          assert not isfile(join(p,*rp[1:]))
+    for rref in allrrefs(S):
+      for sp in cfgsp(drefcfg_(rref2dref(rref),S)):
+        p=Path(join(rref2path(rref,S),*sp[1][1:]))
+        assert isfile(p) or isdir(p)
 
