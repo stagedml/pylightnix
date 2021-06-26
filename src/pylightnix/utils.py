@@ -427,7 +427,8 @@ def kahntsort(nodes:Iterable[Any],
 
 def dagroots(sorted_nodes:List[Any],
              inbounds:Callable[[Any],Set[Any]])->Set[Any]:
-  """ Return a set og root nodes of a DAG."""
+  """ Return a set of root nodes of a DAG. DAG should be topologically sorted.
+  """
   nonroots=set()
   acc=set()
   for node in reversed(sorted_nodes):

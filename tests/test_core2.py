@@ -5,7 +5,8 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, drefdeps,
                         realizeMany, build_outpaths, mklens, Config,
                         build_setoutpaths, rrefdeps, drefrrefs, allrrefs,
                         realizeMany, redefine, match_only, PromiseException,
-                        output_matcher, output_realizer, cfgsp, drefcfg_)
+                        output_matcher, output_realizer, cfgsp, drefcfg_,
+                        rootrrefs, rootdrefs)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink,
                            isfile, islink, List, randint, sleep, rmtree,
@@ -207,4 +208,30 @@ def test_promise(stages):
       for sp in cfgsp(drefcfg_(rref2dref(rref),S)):
         p=Path(join(rref2path(rref,S),*sp[1][1:]))
         assert isfile(p) or isdir(p)
+
+@given(stages=rootstages())
+def test_root_rrefs(stages):
+  """ Check that rootrrefs really enumerates roots """
+  with setup_storage2('test_root_rrefs') as (T,S):
+    assert len(rootrrefs(S))==0
+    results=set()
+    for stage in stages:
+      rrefs=realizeMany(instantiate(stage,S=S))
+      results |= set(rrefs)
+    roots=rootrrefs(S)
+    for rref in results:
+      assert rref in roots
+
+
+@given(stages=rootstages())
+def test_root_drefs(stages):
+  """ Check that rootrrefs really enumerates roots """
+  with setup_storage2('test_root_drefs') as (T,S):
+    assert len(rootdrefs(S))==0
+    results=set()
+    for stage in stages:
+      results |= set([instantiate(stage,S=S).dref])
+    roots=rootdrefs(S)
+    for dref in results:
+      assert dref in roots
 

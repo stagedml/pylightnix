@@ -386,7 +386,7 @@ def rootdrefs(S:Optional[SPath]=None)->Set[DRef]:
   topsorted=kahntsort(alldrefs(S), _inb)
   assert topsorted is not None, (
     f"Falied to topologically sort the derivations of {S}. This "
-    f"probably means that the storage is damaged")
+    f"probably means that the storage ({S if S else 'default'}) is damaged")
   return dagroots(topsorted, _inb)
 
 def rootrrefs(S:Optional[SPath]=None)->Set[RRef]:
