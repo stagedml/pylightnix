@@ -773,7 +773,7 @@ def realizeSeq(closure:Closure,
       if dref in force_interrupt_:
         rrefs,abort=yield (S,dref,dref_context,drv,realize_args.get(dref,{}))
         if abort:
-          return List([])
+          return []
       else:
         rrefs=drv.matcher(S, list(drefrrefsC(dref,dref_context,S)))
       if rrefs is None:
