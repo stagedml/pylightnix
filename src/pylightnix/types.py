@@ -126,23 +126,19 @@ class Name(str):
 #: [build_path](#pylightnix.core.build_path) helper function.
 RefPath = List[Union[DRef,str]]
 
-
-
 class PylightnixException(Exception):
-  """ Base object of Pylightnix exceptions"""
+  """ Base class of Pylightnix exceptions"""
   pass
-
 
 class PromiseException(PylightnixException):
   def __init__(self, dref:DRef, failed:List[Tuple[Path,RefPath]]):
     self.dref=dref
     self.failed=failed
 
-
 #: Placeholder for self-reference
 PYLIGHTNIX_SELF_TAG = "__self__"
 
-#: Either Path or RRef
+#: Type variable intended to be either a Path or RRef
 _REF=TypeVar('_REF')
 
 class Output(Generic[_REF]):
@@ -159,9 +155,10 @@ class Output(Generic[_REF]):
 #: derivations to realizations.
 Context=Dict[DRef,List[RRef]]
 
-
+#: Type of user-defined arguments to pass to the Config
 InstantiateArg=Dict[str,Any]
 
+#: Type of user-defined arguments to pass to the Realizer
 RealizeArg=Dict[str,Any]
 
 #: Matcher functions serves two purposes:
@@ -362,8 +359,10 @@ class Build:
 
   - [build_config](#pylightnix.core.build_config) - Obtain the RConfig object of
     the current stage
-  - [build_cattrs](#pylightnix.core.build_cattrs) - Obtain the ConfigAttrs helper
-  - [build_path](#pylightnix.core.build_path) - Convert a RefPath or a PromisePath
+  - [build_cattrs](#pylightnix.core.build_cattrs) - Obtain the ConfigAttrs
+    helper
+  - [build_path](#pylightnix.core.build_path) - Convert a RefPath or a
+    PromisePath
     into a system file path
   - [build_setoutgroups](#pylightnix.build.build_setoutgroups) - Initialize and
     return groups of output folders
