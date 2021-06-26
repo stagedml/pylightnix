@@ -14,11 +14,13 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir, dirhash,
                         drefrrefs, allrrefs, match_only, drefrrefs, drefrrefsC,
                         rrefctx, context_deref, rrefattrs )
 
-from tests.imports import (given, Any, Callable, join, Optional, islink,
-                           isfile, islink, List, randint, sleep, rmtree, system,
-                           S_IWRITE, S_IREAD, S_IEXEC, chmod, Popen, PIPE, data)
+from tests.imports import (given, Any, Callable, join, Optional, islink, isfile,
+                           islink, isdir, dirname, List, randint, sleep, rmtree,
+                           system, S_IWRITE, S_IREAD, S_IEXEC, chmod, Popen,
+                           PIPE, data)
 
-from tests.generators import (rrefs, drefs, configs, dicts, rootstages)
+from tests.generators import (rrefs, drefs, configs, dicts, rootstages,
+                              settings)
 
 from tests.setup import ( ShouldHaveFailed, setup_storage, setup_storage2,
                          mkstage, pipe_stdout )
@@ -383,33 +385,24 @@ def test_gc()->None:
 #     rref=realize(instantiate(_setting,True,S=S))
 #     assert_valid_rref(rref)
 
-# def test_path2rref()->None:
-#   with setup_storage2('test_path2rref') as (T,S):
-#     s1=partial(mkstage, config={'name':'1', 'promise':[promise,'artifact']})
-#     rref1=realize(instantiate(s1,S=S))
-#     rref2=path2rref(rref2path(rref1,S))
-#     assert rref1==rref2
-#     l=mksymlink(rref1, S, 'result', S=S)
-#     assert path2rref(Path(l))==rref1
-#     rref3=path2rref(Path("/foo/00000000000000000000000000000000-bar/11111111111111111111111111111111"))
-#     assert rref3=='rref:11111111111111111111111111111111-00000000000000000000000000000000-bar'
-#     for x in [path2rref(Path('')),path2rref(Path('foo'))]:
-#       assert x is None
 
-# def test_path2dref()->None:
-#   with setup_storage2('test_path2dref') as (T,S):
-#     s1=partial(mkstage, config={'name':'1', 'promise':[promise,'artifact']})
-#     clo1=instantiate(s1,S=S)
-#     dref1=clo1.dref
-#     rref1=realize(clo1)
-#     dref2=path2dref(dref2path(rref2dref(rref1),S=S))
-#     assert dref1==dref2
-#     l=linkdref(dref1, S, 'result_dref', S=S)
-#     assert path2dref(Path(l))==dref1
-#     dref3=path2dref(Path("/foo/00000000000000000000000000000000-bar"))
-#     assert dref3=='dref:00000000000000000000000000000000-bar'
-#     for x in [path2dref(Path('')),path2dref(Path('foo'))]:
-#       assert x is None
+@settings(max_examples=10)
+@given(dref=drefs())
+def test_path2dref(dref):
+  with setup_storage2('test_path2dref') as (T,S):
+    p=dref2path(dref,S)
+    assert isdir(dirname(p))
+    dref2=path2dref(p)
+    assert dref==dref2
+
+@settings(max_examples=10)
+@given(rref=rrefs())
+def test_path2rref(rref):
+  with setup_storage2('test_path2rref') as (T,S):
+    p=rref2path(rref,S)
+    assert isdir(dirname(dirname(p)))
+    rref2=path2rref(p)
+    assert rref==rref2
 
 # def test_linkrrefs()->None:
 #   with setup_storage2('test_linkrefs') as (T,S):
