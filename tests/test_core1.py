@@ -404,14 +404,14 @@ def test_path2rref(rref):
     rref2=path2rref(p)
     assert rref==rref2
 
-# def test_linkrrefs()->None:
-#   with setup_storage2('test_linkrefs') as (T,S):
-#     s1=partial(mkstage, config={'name':'1', 'promise':[promise,'artifact']})
-#     rref1=realize(instantiate(s1,S=S))
-#     l=linkrrefs([rref1, rref1], destdir=S, S=S)
-#     assert len(l)==2
-#     assert str(l[0])==join(S,'result-1')
-#     assert islink(join(S,'result-1'))
-#     l=linkrrefs([rref1], destdir=S, withtime=True, S=S)
-#     assert S in l[0]
+def test_linkrrefs()->None:
+  with setup_storage2('test_linkrrefs') as (T,S):
+    s1=partial(mkstage, config={'name':'1'})
+    rref1=realize(instantiate(s1,S=S))
+    l=linkrrefs([rref1, rref1], destdir=S, S=S)
+    assert len(l)==2
+    assert str(l[0])==join(S,'result-1')
+    assert islink(join(S,'result-1'))
+    l=linkrrefs([rref1], destdir=S, withtime=True, S=S)
+    assert S in l[0]
 
