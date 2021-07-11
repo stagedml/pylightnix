@@ -1,4 +1,5 @@
-from os import makedirs, replace, listdir, stat, chmod, system, environ, remove
+from os import (makedirs, replace, listdir, stat, chmod, system, environ,
+                remove, readlink)
 from stat import S_IEXEC, S_IWRITE, S_IREAD
 from os.path import (basename, join, isfile, isdir, islink, relpath, abspath,
                      dirname )

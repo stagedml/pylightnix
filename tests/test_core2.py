@@ -223,9 +223,10 @@ def test_root_rrefs(stages):
       assert rref in roots
 
 
+@settings(deadline=None)
 @given(stages=rootstages())
 def test_root_drefs(stages):
-  """ Check that rootrrefs really enumerates roots """
+  """ Check that rootdrefs really enumerates roots """
   with setup_storage2('test_root_drefs') as (T,S):
     assert len(rootdrefs(S))==0
     results=set()

@@ -4,7 +4,7 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir, dirhash,
                         mkcontext, allrrefs, mkdref, mkrref, unrref, undref,
                         realize, rref2dref, drefcfg, mkconfig, Build, Context,
                         build_outpath, mkdrv, rref2path, config_cattrs,
-                        mksymlink, drefattrs, build_deref, build_path,
+                        drefattrs, build_deref, build_path,
                         mkrefpath, build_config, alldrefs, build_wrapper,
                         build_cattrs, build_name, tryread, trywrite,
                         realizeMany, scanref_dict, config_dict, mklens, isrref,
@@ -12,12 +12,12 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir, dirhash,
                         concat, linkrrefs, instantiate_, dref2path,
                         path2dref, linkdref, storage, rrefdeps,
                         drefrrefs, allrrefs, match_only, drefrrefs, drefrrefsC,
-                        rrefctx, context_deref, rrefattrs )
+                        rrefctx, context_deref, rrefattrs, rrefbtime )
 
 from tests.imports import (given, Any, Callable, join, Optional, islink, isfile,
                            islink, isdir, dirname, List, randint, sleep, rmtree,
                            system, S_IWRITE, S_IREAD, S_IEXEC, chmod, Popen,
-                           PIPE, data)
+                           PIPE, data, readlink)
 
 from tests.generators import (rrefs, drefs, configs, dicts, rootstages,
                               settings)
@@ -264,39 +264,6 @@ def test_config_ro():
     assert getattr(cro,k) == d[k]
 
 
-def test_mksymlink()->None:
-  with setup_storage2('test_mksymlink') as (T,S):
-    tp=T
-
-    def _setting1(m:Manager)->DRef:
-      return mkstage(m, {'a':'1'}, lambda i:33, buildtime=False)
-    def _setting2(m:Manager)->DRef:
-      return mkstage(m, {'a':'1'}, lambda i:42, buildtime=True)
-
-    clo=instantiate(_setting1,S=S)
-    rref=realize(clo)
-
-    clo2=instantiate(_setting2,S=S)
-    rref2=realize(clo2, force_rebuild=True)
-
-    assert clo.dref==clo2.dref
-    assert rref2!=rref
-
-    s=mksymlink(rref, tgtpath=tp, name='thelink',S=S)
-    assert islink(s)
-    assert not isfile(join(s,'__buildtime__.txt'))
-    assert tp in s
-
-    s2=mksymlink(rref2, tgtpath=tp, name='thelink',S=S)
-    assert islink(s2)
-    assert isfile(join(s2,'__buildtime__.txt'))
-    assert tp in s
-
-    assert s2!=s, "s2 should have timestamp"
-
-    s3=mksymlink(rref2, tgtpath=tp, name='thelink', withtime=False,S=S)
-    assert s3==s
-
 def test_ignored_stage()->None:
   with setup_storage2('test_ignored_stage') as (T,S):
     n1:DRef; n2:DRef; n3:DRef; n4:DRef
@@ -404,14 +371,31 @@ def test_path2rref(rref):
     rref2=path2rref(p)
     assert rref==rref2
 
+def test_linkdref()->None:
+  with setup_storage2('test_linkdref') as (T,S):
+    s1=partial(mkstage, config={'name':'NaMe'})
+    dref1=instantiate(s1,S=S).dref
+    l=linkdref(dref1, destdir=S, format='result-%(N)s', S=S)
+    assert str(l)==join(S,'result-NaMe')
+    assert islink(join(S,'result-NaMe'))
+    assert S in l
+    assert undref(dref1)[0] in readlink(l)
+
 def test_linkrrefs()->None:
   with setup_storage2('test_linkrrefs') as (T,S):
-    s1=partial(mkstage, config={'name':'1'})
+    s1=partial(mkstage, config={'name':'NaMe'})
     rref1=realize(instantiate(s1,S=S))
-    l=linkrrefs([rref1, rref1], destdir=S, S=S)
-    assert len(l)==2
-    assert str(l[0])==join(S,'result-1')
-    assert islink(join(S,'result-1'))
-    l=linkrrefs([rref1], destdir=S, withtime=True, S=S)
+    l=linkrrefs([rref1], destdir=S, format='result-%(N)s', S=S)
+    assert len(l)==1
+    assert str(l[0])==join(S,'result-NaMe')
+    assert islink(join(S,'result-NaMe'))
+    assert S in l[0]
+    assert unrref(rref1)[0] in readlink(l[0])
+    assert unrref(rref1)[1] in readlink(l[0])
+    assert undref(rref2dref(rref1))[0] in readlink(l[0])
+    l=linkrrefs([rref1], destdir=S, format='result-%(T)s', S=S)
+    t=rrefbtime(rref1,S)
+    assert t is not None
+    assert t in l[0]
     assert S in l[0]
 

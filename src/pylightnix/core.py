@@ -201,7 +201,7 @@ def config_hash(c:Config)->Hash:
   return datahash([(config_name(c),encode(config_serialize(c)))])
 
 def config_name(c:Config)->Name:
-  """ Return short human-readable name of a config """
+  """ Return a `name` field of a config `c`, defaulting to string "unnmaed". """
   return mkname(config_dict(c).get('name','unnamed'))
 
 def config_deps(c:Config)->Set[DRef]:
@@ -432,7 +432,7 @@ def rrefbtime(rref:RRef, S=None)->Optional[str]:
   [parsetime](#pylightnix.utils.parsetime) may be used to parse stings into
   UNIX-Epoch seconds.
 
-  Buildtime is the time when the realization process has started. Some
+  Buildtime is the time when the realization process was started. Some
   realizations may not provide this information. """
   return tryread(Path(join(rref2path(rref,S),'__buildtime__.txt')))
 
@@ -811,64 +811,54 @@ def evaluate(stage, *args, **kwargs)->RRef:
 
 def linkrref(rref:RRef,
              destdir:Optional[Path]=None,
-             name:Optional[str]=None,
-             withtime:bool=False,
+             format:str='_rref_%(T)s_%(N)s',
              S=None)->Path:
   """ linkkrref creates a symbolic link to a particular realization reference.
   The new link appears in the `destdir` directory if this argument is not None,
   otherwise the current directory is used.
 
-  Informally,
-  `{tgtpath}/{timeprefix}{name} --> $PYLIGHTNIX_STORE/{dref}/{rref}`.
+  Format accepts the following Python pattern tags:
+  - `%(T)s` replaced with the build time
+  - `%(N)s` replaced with the config name
+
+  Informally, `linkrref` creates the link:
+  `{tgtpath}/{format} --> $PYLIGHTNIX_STORE/{dref}/{rref}`.
+
   The function overwrites existing symlinks.
   """
-  destdir_='.' if destdir is None else destdir
-  name_:str=name if name is not None else (
-    '_result-'+config_name(drefcfg_(rref2dref(rref),S)) if destdir is None else
-    'result-'+config_name(drefcfg_(rref2dref(rref),S)))
-  ts:Optional[str]=rrefbtime(rref,S) if withtime else None
-  timetag_=f'{ts}_' if ts is not None else ''
-  symlink=Path(join(destdir_,f"{timetag_}{name_}"))
+  timetag_:str=rrefbtime(rref,S) or ''
+  nametag_:str=config_name(drefcfg_(rref2dref(rref),S))
+  destdir_=destdir if destdir is not None else '.'
+  symlink=Path(join(destdir_,format %{'T':timetag_,'N':nametag_}))
   forcelink(Path(relpath(rref2path(rref,S), destdir_)), symlink)
   return symlink
 
 
 def linkdref(dref:DRef,
              destdir:Optional[Path]=None,
-             name:Optional[str]=None,
+             format:str='_rref_%(N)s',
              S=None)->Path:
-  destdir_='.' if destdir is None else destdir
-  name_:str=name if name is not None else (
-    '_result-'+config_name(drefcfg_(dref,S)) if destdir is None else
-    'result-'+config_name(drefcfg_(dref,S)))
-  symlink=Path(join(destdir_,name_))
+  nametag_:str=config_name(drefcfg_(dref,S))
+  destdir_=destdir if destdir is not None else '.'
+  symlink=Path(join(destdir_,format %{'N':nametag_}))
   forcelink(Path(relpath(dref2path(dref,S), destdir_)), symlink)
   return symlink
 
 
 def linkrrefs(rrefs:Iterable[RRef], destdir:Optional[Path]=None,
-              withtime:bool=False,
+              format:str='_rref_%(T)s_%(N)s',
               S=None)->List[Path]:
   """ A Wrapper around `linkrref` for linking a set of RRefs. """
   acc=[]
   for r in rrefs:
-    acc.append(linkrref(r, destdir=destdir, name=None, withtime=withtime, S=S))
+    acc.append(linkrref(r, destdir=destdir, format=format, S=S))
   return acc
 
 
-def mksymlink(rref:RRef, tgtpath:Path, name:str, withtime:bool=True, S=None)->Path:
-  """ A wrapper for `linkrref`, for backward compatibility """
-  assert isdir(tgtpath), f"Target link directory doesn't exist: '{tgtpath}'"
-  return linkrref(rref, destdir=tgtpath, name=name, withtime=withtime, S=S)
-
-
-def match_ge(n:int):
-  def _matcher(S:SPath, rrefs:List[RRef])->Optional[List[RRef]]:
-    if len(rrefs)==0:
-      return None
-    assert len(rrefs)==n, "Expecting exactly {n} matches"
-    return rrefs
-  return _matcher
+# def mksymlink(rref:RRef, tgtpath:Path, name:str, withtime:bool=True, S=None)->Path:
+#   """ A wrapper for `linkrref`, for backward compatibility """
+#   assert isdir(tgtpath), f"Target link directory doesn't exist: '{tgtpath}'"
+#   return linkrref(rref, destdir=tgtpath, name=name, withtime=withtime, S=S)
 
 
 def match_predicate(paccept:Callable[[List[RRef]],bool],
