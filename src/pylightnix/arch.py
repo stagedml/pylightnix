@@ -19,17 +19,15 @@ from pylightnix.imports import (Popen, dirname, basename, remove, join,
                                 isdir, shutil_copy)
 from pylightnix.types import (RRef, List, Dict, Path, Iterable, Optional,
                               SPath, Manager, DRef, Config, RConfig, Build,
-                              RRefGroup, Set)
-from pylightnix.core import (drefdeps, rrefdeps,
-                             rref2path, dref2path, storage,
+                              Set)
+
+from pylightnix.core import (drefdeps, rrefdeps, rref2path, dref2path, storage,
                              tempdir, storagename, alldrefs, rootdrefs,
-                             rootrrefs, rref2dref, config_deps, drefcfg_,
-                             mkdrv, realize, realizeMany,
-                             instantiate, rrefs2groups, store_deref, rrefdata,
-                             config_name, tag_out, store_deref_, realizeGroups,
-                             match_exact, exact, groups2rrefs,
-                             config_substitutePromises)
-from pylightnix.build import (build_setoutgroups, build_wrapper)
+                             rootrrefs, rref2dref, config_deps, drefcfg_, mkdrv,
+                             realize, realizeMany, instantiate, rrefdata,
+                             config_name, match_existing, drefrrefsC, resolve)
+
+from pylightnix.build import (build_setoutpaths, build_wrapper)
 from pylightnix.utils import (try_executable, dirrm)
 
 
@@ -85,59 +83,59 @@ def unpack(archive:Path,S=None)->None:
     archstore=SPath(join(tmppath, storagename()))
     assert isdir(archstore), \
       f"Archive '{archive}' didn't contain a directory '{storagename()}'"
-    copyclosure(rrefs2groups(rootrrefs(S=archstore),S=archstore),S=archstore,D=S)
+    copyclosure(rrefs_S=rootrrefs(S=archstore),S=archstore,D=S)
   finally:
     dirrm(tmppath)
     pass
 
-def deref_(ctxgr, dref, S):
+def deref_(ctxr, dref, S):
   """ FIXME Figure out what happens here. """
-  return store_deref_(context_holder=ctxgr[tag_out()], dref=dref, S=S) \
-          if dref!=rref2dref(ctxgr[tag_out()]) else [ctxgr]
+  return drefrrefsC(dref, context=ctxr, S=S) \
+          if dref!=rref2dref(ctxr) else [ctxr]
 
-def copyclosure(rrefgs_S:Iterable[RRefGroup], S:SPath, D:Optional[SPath]=None)->None:
+
+
+def copyclosure(rrefs_S:Iterable[RRef],
+                S:SPath,
+                D:Optional[SPath]=None)->None:
   """ Copy the closure of `rrefs` from source storage `S` to the destination
-  storage `D`. By default, use global storage as a desitnation.
+  storage `D`. If `D` is None, use the default global storage as a desitnation.
 
   TODO: Implement a non-recursive version.
   """
-  for rrefg_S in rrefgs_S:
+  for rref_S in rrefs_S:
     visited_drefs:Set[DRef]=set()
 
-    dref_S:DRef=rref2dref(rrefg_S[tag_out()])
+    dref_S:DRef=rref2dref(rref_S)
 
     def _stage(m:Manager, dref:DRef)->DRef:
       nonlocal visited_drefs
       cfg=drefcfg_(dref,S=S)
       # print(f"Instantiating {cfg}")
       if dref not in visited_drefs:
-        for dep_dref in config_deps(config_substitutePromises(cfg,dref)):
+        for dep_dref in config_deps(resolve(cfg,dref)):
           if dep_dref!=dref:
             _stage(m, dep_dref)
 
       def _make(b:Build)->None:
         """ 'Realize' the derivation in `D` by copying its contents from `S` """
-        grps_S=deref_(rrefg_S, b.dref, S=S)
+        rrefs_S=deref_(rref_S, b.dref, S=S)
         # print(f'Building {b.dref} with {b.context}')
         # print(grps_S)
-        grps=build_setoutgroups(b, [list(grp.keys()) for grp in grps_S])
-        for g_S,g in zip(grps_S,grps):
-          for tag,rref in g_S.items():
-            # print(f'Copying {tag} : {rref}')
-            assert tag in g
-            for artifact in rrefdata(rref,S):
-              shutil_copy(artifact, g[tag])
+        ps=build_setoutpaths(b, len(rrefs_S))
+        for rref,p in zip(rrefs_S,ps):
+          for artifact in rrefdata(rref,S):
+            shutil_copy(artifact,p)
 
-      rrefgs_S1=deref_(rrefg_S, dref, S=S)
+      rrefs_S1=deref_(rref_S, dref, S=S)
       # print(f"Expecting to get: {rrefgs_S1}")
-      dref2=mkdrv(m, cfg, match_exact(rrefgs_S1), build_wrapper(_make))
+      dref2=mkdrv(m, cfg, match_existing(rrefs_S1), build_wrapper(_make))
       visited_drefs.add(dref2)
       assert dref==dref2, f"{dref} != {dref2}"
       return dref2
 
-    rrefgs_D=realizeGroups(instantiate(_stage, dref_S, S=D))
-    assert len(rrefgs_D)==1, f"{rrefgs_D}"
-    assert rrefgs_D[0]==rrefg_S, f"{rrefgs_D[0]}!={rrefg_S}"
+    rrefs_D=realizeMany(instantiate(_stage, dref_S, S=D))
+    assert rrefs_D==[rref_S], f"{rrefs_D}!={[rref_S]}"
 
 
   # assert False, "Not impl"

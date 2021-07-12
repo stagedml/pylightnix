@@ -418,7 +418,7 @@ def drefrrefs(dref:DRef,S=None)->List[RRef]:
   return rrefs
 
 def drefrrefsC(dref:DRef, context:Context, S=None)->Iterable[RRef]:
-  """ Iterate over realizations of a derivation `dref` that match a specified
+  """ Iterate over realizations of a derivation `dref` that match the specified
   [context](#pylightnix.types.Context). Sorting order is unspecified. """
   for rref in drefrrefs(dref,S):
     context2=rrefctx(rref,S)
@@ -689,7 +689,7 @@ def realize(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
   assert len(rrefs)==1, (
       f"`realize` is to be used with single-output derivations. Derivation "
       f"{closure.dref} has {len(rrefs)} outputs:\n{rrefs}\n"
-      f"Consider using `realizeMany` or `realizeGroups`." )
+      f"Consider using `realizeMany`." )
   return rrefs[0]
 
 
@@ -712,8 +712,8 @@ def realizeMany(closure:Closure,
     return mkdrv(m, ...)
 
   clo:Closure=instantiate(mystage)
-  rrefgs:List[RRefGroup]=realizeGroups(clo)
-  print([mklen(rref).syspath for grp[tag_out()] in rrefgs])
+  rrefs:List[RRef]=realizeMany(clo)
+  print([mklen(rref).syspath for rref in rrefs])
   ```
 
   Pylightnix contains the following alternatives to `realizeMany`:
@@ -876,9 +876,20 @@ def match_only():
   return match_predicate(paccept=lambda l: len(l)==1,
                          passert=lambda l: len(l)>=2)
 
+
 def match_some(n:int):
   return match_predicate(paccept=lambda l: len(l)>=n,
                          passert=lambda l: False)
+
+
+def match_existing(rrefs:List[RRef]):
+  """ Match sertain rrefs that should already exist. Never call realizers.  """
+  def _matcher(S:SPath, existing_rrefs:List[RRef])->Optional[List[RRef]]:
+    for rref in rrefs:
+      assert rref in existing_rrefs
+    return rrefs
+  return _matcher
+
 
 def cfgsp(c:Config)->List[Tuple[str,RefPath]]:
   """ Returns the list of self-references (aka self-paths) in the config. """
