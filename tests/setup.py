@@ -77,7 +77,7 @@ def setup_test_match(nmatch:int)->MatcherO:
     rrefs=o.val
     values=list(sorted([(maybereadstr(join(rref2path(rref, S),'artifact'),'0',int),rref)
                         for rref in rrefs], key=lambda x:x[0]))
-    print(nmatch, values)
+    # print(nmatch, values)
     # Return `top-n` matched groups
     return Output([tup[1] for tup in values[-nmatch:]]) if len(values)>0 else None
   return _match

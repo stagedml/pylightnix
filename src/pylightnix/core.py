@@ -882,11 +882,20 @@ def match_some(n:int):
                          passert=lambda l: False)
 
 
-def match_existing(rrefs:List[RRef]):
-  """ Match sertain rrefs that should already exist. Never call realizers.  """
+# def match_existing(rrefs:List[RRef]):
+#   """ Match certain rrefs that should already exist. Never call realizers.  """
+#   def _matcher(S:SPath, existing_rrefs:List[RRef])->Optional[List[RRef]]:
+#     for rref in rrefs:
+#       assert rref in existing_rrefs, f"{rref} not found among {existing_rrefs}"
+#     return rrefs
+#   return _matcher
+
+
+def match_exact(rrefs:List[RRef]):
+  """ Expects the realizer to produce a very specific set of rrefs """
   def _matcher(S:SPath, existing_rrefs:List[RRef])->Optional[List[RRef]]:
-    for rref in rrefs:
-      assert rref in existing_rrefs
+    if not set(rrefs).issubset(set(existing_rrefs)):
+      return None
     return rrefs
   return _matcher
 
