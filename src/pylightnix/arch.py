@@ -34,13 +34,13 @@ from pylightnix.utils import (try_executable, dirrm)
 
 APACK=try_executable('apack',
                      'PYLIGHTNIX_APACK',
-                     '`apack` executable not found. Please install `atool` system '
-                     'pacakge or set PYLIGHTNIX_APACK env var.',
+                     '`apack` executable not found. Please install `atool` '
+                     'system pacakge or set PYLIGHTNIX_APACK env var.',
                      '`arch.pack` procedure will fail.')
 AUNPACK=try_executable('aunpack',
                      'PYLIGHTNIX_AUNPACK',
-                     '`aunpack` executable not found. Please install `atool` system '
-                     'pacakge or set PYLIGHTNIX_AUNPACK env var.',
+                     '`aunpack` executable not found. Please install `atool` '
+                     'system pacakge or set PYLIGHTNIX_AUNPACK env var.',
                      '`arch.unpack` procedure will fail.')
 
 
