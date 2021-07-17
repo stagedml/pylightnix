@@ -22,7 +22,7 @@ from pylightnix.types import ( DRef, Manager, Build, Context, Name,
     Path, Optional, List, Config )
 from pylightnix.core import ( mkconfig, mkdrv, match_only,
                              PYLIGHTNIX_NAMEPAT, config_cattrs, selfref )
-from pylightnix.build import ( mkbuild, build_outpath, build_setoutpaths,
+from pylightnix.build import ( build_outpath,
     build_paths, build_deref_, build_config, build_wrapper, build_wrapper )
 from pylightnix.utils import ( try_executable, makedirs, filehash )
 from pylightnix.lens import ( mklens )

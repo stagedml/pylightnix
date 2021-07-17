@@ -8,11 +8,11 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir, dirhash,
                         mkrefpath, build_config, alldrefs, build_wrapper,
                         build_cattrs, build_name, tryread, trywrite,
                         realizeMany, scanref_dict, config_dict, mklens, isrref,
-                        Config, RConfig, build_setoutpaths, partial, path2rref,
+                        Config, RConfig, partial, path2rref,
                         concat, linkrrefs, instantiate_, dref2path,
                         path2dref, linkdref, storage, rrefdeps,
                         drefrrefs, allrrefs, match_only, drefrrefs, drefrrefsC,
-                        rrefctx, context_deref, rrefattrs, rrefbtime )
+                        rrefctx, context_deref, rrefattrs, rrefbstart )
 
 from tests.imports import (given, Any, Callable, join, Optional, islink, isfile,
                            islink, isdir, dirname, List, randint, sleep, rmtree,
@@ -380,22 +380,4 @@ def test_linkdref()->None:
     assert islink(join(S,'result-NaMe'))
     assert S in l
     assert undref(dref1)[0] in readlink(l)
-
-def test_linkrrefs()->None:
-  with setup_storage2('test_linkrrefs') as (T,S):
-    s1=partial(mkstage, config={'name':'NaMe'})
-    rref1=realize(instantiate(s1,S=S))
-    l=linkrrefs([rref1], destdir=S, format='result-%(N)s', S=S)
-    assert len(l)==1
-    assert str(l[0])==join(S,'result-NaMe')
-    assert islink(join(S,'result-NaMe'))
-    assert S in l[0]
-    assert unrref(rref1)[0] in readlink(l[0])
-    assert unrref(rref1)[1] in readlink(l[0])
-    assert undref(rref2dref(rref1))[0] in readlink(l[0])
-    l=linkrrefs([rref1], destdir=S, format='result-%(T)s', S=S)
-    t=rrefbtime(rref1,S)
-    assert t is not None
-    assert t in l[0]
-    assert S in l[0]
 

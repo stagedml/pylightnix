@@ -20,8 +20,8 @@ from pylightnix.types import ( DRef, Manager, Build, Context, Name,
     Path, Optional, List, Config )
 from pylightnix.core import ( mkconfig, mkdrv, match_only, config_cattrs,
                              selfref )
-from pylightnix.build import ( mkbuild, build_outpath, build_setoutpaths,
-    build_paths, build_deref_, build_wrapper, build_wrapper,
+from pylightnix.build import ( build_outpath, build_paths, build_deref_,
+                              build_wrapper, build_wrapper,
                               build_config )
 from pylightnix.utils import ( try_executable, makedirs )
 from pylightnix.lens import ( mklens )

@@ -149,8 +149,3 @@ def repl_cancel(rh:Optional[ReplHelper]=None)->None:
     rh.gen=None
 
 
-def repl_cancelBuild(b:Build, rh:Optional[ReplHelper]=None)->None:
-  repl_cancel(rh)
-  for o in (b.outpaths.val if b.outpaths else []):
-    dirrm(o)
-

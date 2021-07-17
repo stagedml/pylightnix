@@ -1,9 +1,9 @@
 from pylightnix import (SPath, Context, RealizeArg, Path, instantiate, DRef,
                         RRef, assert_valid_rref, Manager, Build, realize,
                         mklens, either_realizer, readstr, mkconfig, mkdrv,
-                        build_wrapper, build_setoutpaths, either_status,
+                        build_wrapper, either_status,
                         either_isRight, either_isLeft, realizeMany, rref2path,
-                        match_only, writestr, match_some, Output, mkbuild,
+                        match_only, writestr, match_some, Output,
                         allrrefs, rrefdeps1, realizeE, either_paths,
                         either_loadR, either_status)
 
@@ -24,12 +24,12 @@ from pylightnix.either import (Either, mkdrvE)
 def mkstageE(m:Manager,
             config:dict,
             nondet:Callable[[int],int]=lambda n:0,
-            buildtime:bool=True,
+            buildstart:Optional[str]='AUTO',
             nrrefs:int=1,
             nmatch:int=1,
             mustfail:bool=False)->DRef:
   def _r(S:SPath, dref:DRef, c:Context, ra:RealizeArg)->Output[Path]:
-    r=setup_test_realize(nrrefs, buildtime, nondet, mustfail)
+    r=setup_test_realize(nrrefs, buildstart, nondet, mustfail)
     return r(S,dref,c,ra)
   return mkdrvE(m, setup_test_config(config), setup_test_match(nmatch), _r)
 

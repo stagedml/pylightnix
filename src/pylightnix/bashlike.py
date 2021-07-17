@@ -14,16 +14,17 @@
 
 """ Simple functions imitating unix shell tools.  """
 
-from pylightnix.types import ( Iterable, List, Union, Optional, DRef, RRef,
-    Dict, Tuple, Path, Stage )
-from pylightnix.imports import ( isfile, isdir, listdir, join, rmtree, environ,
-    Popen, rename, getsize, fnmatch, dirname )
-from pylightnix.core import ( dref2path, rref2path, isrref, isdref,
+from pylightnix.types import (Iterable, List, Union, Optional, DRef, RRef,
+    Dict, Tuple, Path, Stage)
+from pylightnix.imports import (isfile, isdir, listdir, join, rmtree, environ,
+    Popen, rename, getsize, fnmatch, dirname, relpath)
+from pylightnix.core import (dref2path, rref2path, isrref, isdref,
     alldrefs, drefrrefs, drefcfg_, config_name,
-    instantiate, drefcfgpath, rref2dref )
-from pylightnix.utils import ( dirchmod, dirrm, dirsize, parsetime, timestring )
+    instantiate, drefcfgpath, rref2dref)
+from pylightnix.utils import (dirchmod, dirrm, dirsize, parsetime, timestring,
+                              forcelink)
 
-from pylightnix.build import (Build)
+from pylightnix.build import (Build, rrefbstart)
 
 def lsdref_(r:DRef)->Iterable[str]:
   p=dref2path(r)
@@ -199,4 +200,49 @@ def diff(stageA:Union[RRef,DRef,Stage], stageB:Union[RRef,DRef,Stage])->None:
         shell=False, cwd='/').wait()
 
 
+
+def linkrref(rref:RRef,
+             destdir:Optional[Path]=None,
+             format:str='_rref_%(T)s_%(N)s',
+             S=None)->Path:
+  """ linkkrref creates a symbolic link to a particular realization reference.
+  The new link appears in the `destdir` directory if this argument is not None,
+  otherwise the current directory is used.
+
+  Format accepts the following Python pattern tags:
+  - `%(T)s` replaced with the build time
+  - `%(N)s` replaced with the config name
+
+  Informally, `linkrref` creates the link:
+  `{tgtpath}/{format} --> $PYLIGHTNIX_STORE/{dref}/{rref}`.
+
+  The function overwrites existing symlinks.
+  """
+  timetag_:str=rrefbstart(rref,S) or ''
+  nametag_:str=config_name(drefcfg_(rref2dref(rref),S))
+  destdir_=destdir if destdir is not None else '.'
+  symlink=Path(join(destdir_,format %{'T':timetag_,'N':nametag_}))
+  forcelink(Path(relpath(rref2path(rref,S), destdir_)), symlink)
+  return symlink
+
+
+def linkdref(dref:DRef,
+             destdir:Optional[Path]=None,
+             format:str='_rref_%(N)s',
+             S=None)->Path:
+  nametag_:str=config_name(drefcfg_(dref,S))
+  destdir_=destdir if destdir is not None else '.'
+  symlink=Path(join(destdir_,format %{'N':nametag_}))
+  forcelink(Path(relpath(dref2path(dref,S), destdir_)), symlink)
+  return symlink
+
+
+def linkrrefs(rrefs:Iterable[RRef], destdir:Optional[Path]=None,
+              format:str='_rref_%(T)s_%(N)s',
+              S=None)->List[Path]:
+  """ A Wrapper around `linkrref` for linking a set of RRefs. """
+  acc=[]
+  for r in rrefs:
+    acc.append(linkrref(r, destdir=destdir, format=format, S=S))
+  return acc
 

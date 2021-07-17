@@ -3,7 +3,7 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, drefdeps,
                         rref2dref, Build, match_some, mkdrv, rref2path,
                         alldrefs, build_wrapper, tryread, trywrite,
                         realizeMany, build_outpaths, mklens, Config,
-                        build_setoutpaths, rrefdeps, drefrrefs, allrrefs,
+                        rrefdeps, drefrrefs, allrrefs,
                         realizeMany, redefine, match_only, PromiseException,
                         output_matcher, output_realizer, cfgsp, drefcfg_,
                         rootrrefs, rootdrefs)
@@ -22,6 +22,7 @@ from tests.setup import ( ShouldHaveFailed, setup_storage, setup_storage2,
                          setup_test_match, setup_test_config, mkstageP)
 
 
+@settings(print_blob=True, deadline=None)
 @given(stages=rootstages())
 def test_union_of_root_derivations(stages):
   """ Union of dep.closures of root derivations must be equal to the set of all
@@ -35,7 +36,7 @@ def test_union_of_root_derivations(stages):
 
 
 # @reproduce_failure('5.30.0', b'AAABAAAA')
-@settings(print_blob=True)
+@settings(print_blob=True, deadline=None)
 @given(stages=rootstages())
 def test_union_of_root_realizations(stages):
   """ Union of dep.closures of root realizations must be less or equal to the

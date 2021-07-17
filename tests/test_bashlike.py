@@ -1,12 +1,15 @@
-from pylightnix import ( DRef, RRef, lsref, catref, instantiate, realize,
-    unrref, rmref, dref2path, rref2path, shellref, shell, rref2dref, du,
-    repl_realize, repl_cancelBuild, repl_build, build_outpath, find, partial,
-    diff, timestring, parsetime )
+from pylightnix import (DRef, RRef, lsref, catref, instantiate, realize, unrref,
+                        rmref, dref2path, rref2path, shellref, shell, rref2dref,
+                        du, repl_realize, repl_cancelBuild, repl_build,
+                        build_outpath, find, partial, diff, timestring,
+                        parsetime, linkdref, linkrref, linkrrefs, readlink,
+                        undref, islink, rrefbstart)
 
-from tests.setup import ( ShouldHaveFailed, setup_storage, mkstage, mkstage )
+from tests.setup import (ShouldHaveFailed, setup_storage, mkstage, mkstage,
+                         setup_storage2 )
 
-from tests.imports import ( isdir, environ, chmod, stat, TemporaryDirectory,
-    join, S_IEXEC, sleep )
+from tests.imports import (isdir, environ, chmod, stat, TemporaryDirectory,
+                           join, S_IEXEC, sleep)
 
 
 def test_bashlike():
@@ -16,7 +19,8 @@ def test_bashlike():
     rref2=realize(clo, force_rebuild=[clo.dref])
     assert 'artifact' in lsref(rref1)
     assert 'context.json' in lsref(rref1)
-    assert '__buildtime__.txt' in lsref(rref1)
+    assert '__buildstart__.txt' in lsref(rref1)
+    assert '__buildstop__.txt' in lsref(rref1)
     h1,_,_=unrref(rref1)
     h2,_,_=unrref(rref2)
     assert len(lsref(clo.dref))==2
@@ -120,4 +124,22 @@ def test_diff():
     rref2=realize(instantiate(s2))
     diff(dref1, rref2)
     diff(dref1, s2)
+
+def test_linkrrefs()->None:
+  with setup_storage2('test_linkrrefs') as (T,S):
+    s1=partial(mkstage, config={'name':'NaMe'})
+    rref1=realize(instantiate(s1,S=S))
+    l=linkrrefs([rref1], destdir=S, format='result-%(N)s', S=S)
+    assert len(l)==1
+    assert str(l[0])==join(S,'result-NaMe')
+    assert islink(join(S,'result-NaMe'))
+    assert S in l[0]
+    assert unrref(rref1)[0] in readlink(l[0])
+    assert unrref(rref1)[1] in readlink(l[0])
+    assert undref(rref2dref(rref1))[0] in readlink(l[0])
+    l=linkrrefs([rref1], destdir=S, format='result-%(T)s', S=S)
+    t=rrefbstart(rref1,S)
+    assert t is not None
+    assert t in l[0]
+    assert S in l[0]
 

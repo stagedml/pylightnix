@@ -7,7 +7,7 @@ from pylightnix import (instantiate, DRef, RRef, Path, mklogdir, dirhash,
                         build_deref, build_path, mkrefpath, build_wrapper,
                         build_cattrs, build_name, tryread, trywrite, match_only,
                         realizeMany, build_outpaths, scanref_dict, config_dict,
-                        mklens, isrref, Config, build_setoutpaths, partial,
+                        mklens, isrref, Config, partial,
                         path2rref, BuildError)
 
 from tests.imports import ( given, Any, Callable, join, Optional, islink,

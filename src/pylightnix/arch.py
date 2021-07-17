@@ -28,7 +28,7 @@ from pylightnix.core import (drefdeps, rrefdeps, rref2path, dref2path, storage,
                              config_name, match_exact, drefrrefsC, resolve,
                              rrefctx)
 
-from pylightnix.build import (build_setoutpaths, build_wrapper)
+from pylightnix.build import (build_markstart, build_wrapper)
 from pylightnix.utils import (try_executable, dirrm)
 
 
@@ -122,14 +122,15 @@ def copyclosure(rrefs_S:Iterable[RRef],
         rrefs_S=deref_(rref_S, b.dref, S=S)
         # print(f'Building {b.dref} hoping to get {rrefs_S}')
         # print(grps_S)
-        ps=build_setoutpaths(b, len(rrefs_S))
+        ps=build_markstart(b, len(rrefs_S))
         for rref,p in zip(rrefs_S,ps):
           for artifact in rrefdata(rref,S):
             shutil_copy(artifact,p)
 
       rrefs_S1=deref_(rref_S, dref, S=S)
       # print(f"Expecting for {dref}/{rref_S}: {list(rrefs_S1)}")
-      dref2=mkdrv(m, cfg, match_exact(rrefs_S1), build_wrapper(_make))
+      dref2=mkdrv(m, cfg, match_exact(rrefs_S1),
+                  build_wrapper(_make,nouts=None,starttime=None,stoptime=None))
       visited_drefs.add(dref2)
       assert dref==dref2, f"{dref} != {dref2}"
       return dref2

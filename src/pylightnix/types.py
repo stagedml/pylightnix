@@ -344,7 +344,8 @@ class ConfigAttrs:
 BuildArgs = NamedTuple('BuildArgs', [('storage',SPath),
                                      ('dref',DRef),
                                      ('context',Context),
-                                     ('timeprefix',Optional[str]),
+                                     ('starttime',Optional[str]),
+                                     ('stoptime',Optional[str]),
                                      ('iarg',InstantiateArg),
                                      ('rarg',RealizeArg)])
 
@@ -400,7 +401,8 @@ class Build:
     self.context=ba.context
     self.iarg=ba.iarg
     self.rarg=ba.rarg
-    self.timeprefix=ba.timeprefix
+    self.starttime=ba.starttime
+    self.stoptime=ba.stoptime
     self.outpaths:Optional[Output[Path]]=None
     self.cattrs_cache:Optional[ConfigAttrs]=None
 

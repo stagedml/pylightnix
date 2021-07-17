@@ -46,7 +46,7 @@ from pylightnix.core import (assert_valid_config, config_cattrs,
                              config_dict, drefcfg, output_realizer)
 
 from pylightnix.repl import (ReplHelper, repl_continue, ERR_INVALID_RH,
-                             ERR_INACTIVE_RH)
+                             ERR_INACTIVE_RH, repl_cancel)
 
 logger=getLogger(__name__)
 info=logger.info
@@ -65,32 +65,34 @@ class BuildError(PylightnixException):
   def __init__(self,
                S:SPath,
                dref:DRef,
-               outpaths:List[Path],
+               outpaths:Optional[Output[Path]],
                exception:Exception,
                msg:str=''):
-    """ Initialize BUildError instance. """
+    """ Initialize BuildError instance. """
     super().__init__(msg)
     self.storage=S
     self.dref=dref
     self.exception=exception
-    self.outpaths:List[Path]=outpaths
+    self.outpaths:List[Path]=outpaths.val if outpaths else []
   def __str__(self):
     return f"Failed to realize '{self.dref}': {self.exception}"
 
-def mkbuildargs(S:SPath, dref:DRef, context:Context, starttime:Optional[str],
+def mkbuildargs(S:SPath, dref:DRef, context:Context,
+                starttime:Optional[str], stoptime:Optional[str],
                 iarg:InstantiateArg, rarg:RealizeArg)->BuildArgs:
   assert_valid_config(drefcfg(dref,S))
-  return BuildArgs(S, dref, context, starttime, iarg, rarg)
+  return BuildArgs(S, dref, context, starttime, stoptime, iarg, rarg)
 
-def mkbuild(S:SPath, dref:DRef, context:Context, buildtime:bool=True)->Build:
-  timeprefix=timestring() if buildtime else None
-  return Build(mkbuildargs(S,dref,context,timeprefix,{},{}))
+# def mkbuild(S:SPath, dref:DRef, context:Context, buildtime:bool=True)->Build:
+#   timeprefix=timestring() if buildtime else None
+#   return Build(mkbuildargs(S,dref,context,timeprefix,{},{}))
 
 _B=TypeVar('_B', bound=Build)
 def build_wrapper_(f:Callable[[_B],None],
                    ctr:Callable[[BuildArgs],_B],
-                   starttime:Optional[str]=None,
-                   stoptime:Optional[str]=None)->Realizer:
+                   nouts:Optional[int]=1,
+                   starttime:Optional[str]='AUTO',
+                   stoptime:Optional[str]='AUTO')->Realizer:
   """ Build Adapter which convers user-defined realizers which use
   [Build](#pylightnix.types.Build) API into a low-level
   [Realizer](#pylightnix.types.Realizer)
@@ -100,29 +102,33 @@ def build_wrapper_(f:Callable[[_B],None],
   assert stoptime is None or isinstance(stoptime,str)
 
   def _wrapper(S:SPath,dref,context,rarg)->Output:
-    b=ctr(mkbuildargs(S,dref,context,starttime,{},rarg))
+    b=ctr(mkbuildargs(S,dref,context,starttime,stoptime,{},rarg))
+    if nouts is not None:
+      build_markstart(b,nouts)
     try:
       f(b)
-      build_markstop(b,stoptime) # type:ignore
     except KeyboardInterrupt:
-      build_markstop(b,stoptime) # type:ignore
+      build_markstop_noexcept(b) # type:ignore
       raise
     except Exception as e:
-      build_markstop(b,stoptime) # type:ignore
+      build_markstop_noexcept(b) # type:ignore
       error(f"Build wrapper of {dref} raised an exception. Remaining "
             f"build directories are: {b.outpaths}")
-      raise BuildError(S,dref,getattr(b,'outgroups',[]), e)
-    assert b.outpaths is not None, "Builder should specify the number of outputs"
+      raise BuildError(S,dref,b.outpaths,e)
+    assert b.outpaths is not None, \
+      "Builder should produce at least one output path"
+    build_markstop(b) # type:ignore
     return b.outpaths
   return output_realizer(_wrapper)
 
 def build_wrapper(f:Callable[[Build],None],
+                  nouts:Optional[int]=1,
                   starttime:Optional[str]=None,
                   stoptime:Optional[str]=None)->Realizer:
   """ Build Adapter which convers user-defined realizers which use
   [Build](#pylightnix.types.Build) API into a low-level
   [Realizer](#pylightnix.types.Realizer) """
-  return build_wrapper_(f,Build,starttime,stoptime)
+  return build_wrapper_(f,Build,nouts,starttime,stoptime)
 
 def build_config(b:Build)->RConfig:
   """ Return the [Config](#pylightnix.types.RConfig) object of the realization
@@ -141,56 +147,78 @@ def build_cattrs(b:Build)->Any:
     b.cattrs_cache=config_cattrs(build_config(b))
   return b.cattrs_cache
 
-def build_setoutpaths(b:Build,
-                      nouts:int)->List[Path]:
+def build_markstart(b:Build, nouts:int)->List[Path]:
   assert nouts>0
   assert b.outpaths is None, \
-    f"Build outpaths were already set:\n{b.outpaths}"
-  # assert all([len(tags)>0 for tags in tagset]), \
-  #   f"Every group of tags should have at least one tag, got {tagset}"
+    f"Attempt to repeatedly set build output paths. "\
+    f"Previously set to:\n{b.outpaths}"
   import pylightnix.core
   tmp=pylightnix.core.PYLIGHTNIX_TMP
   h=config_hash(build_config(b))[:8]
-  def _prefix():
-    return f'{b.timeprefix}_{h}_' if b.timeprefix is not None else f'{h}_'
-  paths=[Path(mkdtemp(prefix=_prefix(), dir=tmp)) for _ in range(nouts)]
-  for o in paths:
-    if b.timeprefix:
-      with open(join(o,'__buildtime__.txt'), 'w') as f:
-        f.write(b.timeprefix)
+  if b.starttime is not None:
+    paths=[Path(mkdtemp(prefix=f'{b.starttime}_{h}_', dir=tmp))
+           for _ in range(nouts)]
+    starttime=timestring() if b.starttime=='AUTO' else b.starttime
+    for o in paths:
+      with open(join(o,'__buildstart__.txt'), 'w') as f:
+        f.write(starttime)
+  else:
+    paths=[Path(mkdtemp(prefix=f'{h}_', dir=tmp)) for _ in range(nouts)]
   b.outpaths=Output(paths)
   return paths
 
-# def build_setoutpaths(b:Build, nouts:int)->List[Path]:
-#   return [g[Tag('out')] for g in
-#           build_setoutgroups(b,[[Tag('out')] for _ in range(nouts)])]
+def build_markstop(b:Build)->None:
+  if b.stoptime is not None:
+    stoptime=timestring() if b.stoptime=='AUTO' else b.stoptime
+    for outpath in (b.outpaths.val if b.outpaths else []):
+      with open(join(outpath,'__buildstop__.txt'), 'w') as f:
+        f.write(stoptime)
 
-def build_markstop(b:Build, buildstop:Optional[str])->None:
-  buildstop_=timestring() if buildstop is None else buildstop
-  for outpath in (b.outpaths.val if b.outpaths else []):
-    with open(join(outpath,'__buildstop__.txt'), 'w') as f:
-      f.write(buildstop_)
+def build_markstop_noexcept(b:Build)->None:
+  try:
+    build_markstop(b)
+  except:
+    pass
 
-def store_buildelta(rref:RRef,S=None)->Optional[float]:
-  def _gettime(fn)->Optional[float]:
-    ts=tryread(Path(join(rref2path(rref,S),fn)))
+def rrefbstart(rref:RRef, S=None)->Optional[str]:
+  """ Return the buildtime of the current RRef in a format specified by the
+  [PYLIGHTNIX_TIME](#pylightnix.utils.PYLIGHTNIX_TIME) constant.
+
+  [parsetime](#pylightnix.utils.parsetime) may be used to parse stings into
+  UNIX-Epoch seconds.
+
+  Buildtime is the time when the realization process was started. Some
+  realizations may not provide this information. """
+  return tryread(Path(join(rref2path(rref,S),'__buildstart__.txt')))
+
+def rrefbstop(rref:RRef, S=None)->Optional[str]:
+  """ Return the buildtime of the current RRef in a format specified by the
+  [PYLIGHTNIX_TIME](#pylightnix.utils.PYLIGHTNIX_TIME) constant.
+
+  [parsetime](#pylightnix.utils.parsetime) may be used to parse stings into
+  UNIX-Epoch seconds.
+
+  Buildtime is the time when the realization process was started. Some
+  realizations may not provide this information. """
+  return tryread(Path(join(rref2path(rref,S),'__buildstop__.txt')))
+
+def rrefbdelta(rref:RRef,S=None)->Optional[float]:
+  def _parsetime(ts)->Optional[float]:
     return parsetime(ts) if ts is not None else None
-  bb=_gettime('__buildtime__.txt')
-  be=_gettime('__buildstop__.txt')
+  bb=_parsetime(rrefbstart(rref,S))
+  be=_parsetime(rrefbstop(rref,S))
   return be-bb if bb is not None and be is not None else None
 
 def build_outpaths(b:Build)->List[Path]:
   assert b.outpaths is not None, (
     f"Attempting to access output paths, but they were not declared. "
-    f"Did you call `build_setoutpaths`?")
+    f"Did you set the number of build outputs or call `build_markstart`?")
   return b.outpaths.val
 
 def build_outpath(b:Build)->Path:
   """ Return the output path of the realization being built. Output path is a
   path to valid temporary folder where user may put various build artifacts.
   Later this folder becomes a realization. """
-  if b.outpaths is None:
-    return build_setoutpaths(b,1)[0]
   paths=build_outpaths(b)
   assert len(paths)==1, f"Build was set to have multiple output paths: {paths}"
   return paths[0]
@@ -219,14 +247,15 @@ def build_paths(b:Build, refpath:RefPath)->List[Path]:
   if refpath[0]==b.dref:
     assert b.outpaths is not None, (
       "Attempt to access build outpaths before they are set. Call"
-      "`build_setoutpath(b,num)` first to set their number." )
+      "`build_markstart(b,num)` first to set their number." )
     return [Path(join(path, *refpath[1:])) for path in b.outpaths.val]
   else:
     return [Path(join(rref2path(rref,b.storage), *refpath[1:]))
             for rref in build_deref_(b, DRef(refpath[0]))]
 
 def build_path(b:Build, refpath:RefPath)->Path:
-  """ A single-realization version of the [build_paths](#pylightnix.build.build_paths). """
+  """ A single-realization version of the
+  [build_paths](#pylightnix.build.build_paths). """
   paths=build_paths(b,refpath)
   assert len(paths)==1
   return paths[0]
@@ -253,10 +282,11 @@ def build_environ(b:Build, env:Optional[Any]=None)->dict:
 
 
 def repl_continueBuild(b:Build, rh:Optional[ReplHelper]=None)->Optional[RRef]:
+  build_markstop(b)
   return repl_continue(out_paths=b.outpaths.val if b.outpaths else [], rh=rh)
 
 
-def repl_buildargs(rh:Optional[ReplHelper]=None, buildtime:bool=True)->BuildArgs:
+def repl_buildargs(rh:Optional[ReplHelper]=None)->BuildArgs:
   import pylightnix.repl
   if rh is None:
     rh=pylightnix.repl.PYLIGHTNIX_REPL_HELPER
@@ -265,11 +295,10 @@ def repl_buildargs(rh:Optional[ReplHelper]=None, buildtime:bool=True)->BuildArgs
   assert rh.dref is not None, ERR_INACTIVE_RH
   assert rh.rarg is not None, ERR_INACTIVE_RH
   assert rh.storage is not None, ERR_INACTIVE_RH
-  timeprefix=timestring() if buildtime else None
-  return mkbuildargs(rh.storage, rh.dref, rh.context, timeprefix, {}, rh.rarg)
+  return mkbuildargs(rh.storage,rh.dref,rh.context,'AUTO','AUTO',{},rh.rarg)
 
 
-def repl_build(rh:Optional[ReplHelper]=None, buildtime:bool=True)->Build:
+def repl_build(rh:Optional[ReplHelper]=None, nouts:Optional[int]=1)->Build:
   """ Return `Build` object for using in repl-based debugging
 
   Example:
@@ -282,6 +311,15 @@ def repl_build(rh:Optional[ReplHelper]=None, buildtime:bool=True)->Build:
   some_stage_train(b) # Debug as needed
   ```
   """
-  return Build(repl_buildargs(rh, buildtime))
+  b=Build(repl_buildargs(rh))
+  if nouts is not None:
+    build_markstart(b,nouts)
+  return b
+
+def repl_cancelBuild(b:Build, rh:Optional[ReplHelper]=None)->None:
+  build_markstop(b)
+  repl_cancel(rh)
+  for o in (b.outpaths.val if b.outpaths else []):
+    dirrm(o)
 
 

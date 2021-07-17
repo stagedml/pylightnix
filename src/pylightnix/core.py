@@ -299,15 +299,17 @@ def drefcfgpath(r:DRef,S=None)->Path:
   return Path(join(dref2path(r,S),'config.json'))
 
 def rrefctx(r:RRef, S=None)->Context:
+  """ Return the realization context. """
   assert_valid_rref(r)
   return readjson(join(rref2path(r,S),'context.json'))
 
+def drefcfg_(dref:DRef,S=None)->Config:
+  """ Return `dref` configuration, selfrefs are not resolved """
+  return assert_valid_config(Config(readjson(drefcfgpath(dref,S))))
 
-def drefcfg_(r:DRef,S=None)->Config:
-  return assert_valid_config(Config(readjson(drefcfgpath(r,S))))
-
-def drefcfg(r:DRef,S=None)->RConfig:
-  return resolve(drefcfg_(r,S),r)
+def drefcfg(dref:DRef,S=None)->RConfig:
+  """ Return `dref` configuration, selfrefs are resolved """
+  return resolve(drefcfg_(dref,S),dref)
 
 def drefattrs(r:DRef, S=None)->Any:
   """ Read the [ConfigAttrs](#pylightnix.types.ConfigAttr) of the storage node `r`.
@@ -322,7 +324,7 @@ def rrefattrs(r:RRef, S=None)->Any:
   return drefattrs(rref2dref(r),S)
 
 def drefdeps1(drefs:Iterable[DRef],S=None)->Set[DRef]:
-  """ Return a list of reference's immediate dependencies, not including `drefs`
+  """ Return a set of reference's immediate dependencies, not including `drefs`
   themselves. """
   acc=set()
   for dref in drefs:
@@ -330,6 +332,8 @@ def drefdeps1(drefs:Iterable[DRef],S=None)->Set[DRef]:
   return acc
 
 def rrefdeps1(rrefs:Iterable[RRef],S=None)->Set[RRef]:
+  """ Return a set of reference's immediate dependencies, not including `rrefs`
+  themselves. """
   acc=set()
   for rref in rrefs:
     dref=rref2dref(rref)
@@ -425,17 +429,6 @@ def drefrrefsC(dref:DRef, context:Context, S=None)->Iterable[RRef]:
     if context_eq(context,context2):
       yield rref
 
-def rrefbtime(rref:RRef, S=None)->Optional[str]:
-  """ Return the buildtime of the current RRef in a format specified by the
-  [PYLIGHTNIX_TIME](#pylightnix.utils.PYLIGHTNIX_TIME) constant.
-
-  [parsetime](#pylightnix.utils.parsetime) may be used to parse stings into
-  UNIX-Epoch seconds.
-
-  Buildtime is the time when the realization process was started. Some
-  realizations may not provide this information. """
-  return tryread(Path(join(rref2path(rref,S),'__buildtime__.txt')))
-
 def store_gc(keep_drefs:List[DRef],
              keep_rrefs:List[RRef],
              S:SPath)->Tuple[Set[DRef],Set[RRef]]:
@@ -449,7 +442,8 @@ def store_gc(keep_drefs:List[DRef],
   keep_rrefs_=set(keep_rrefs)
   keep_drefs_=set(keep_drefs)
   closure_rrefs=rrefdeps(keep_rrefs_,S) | keep_rrefs_
-  closure_drefs=drefdeps(keep_drefs_,S) | keep_drefs_ | {rref2dref(rref) for rref in closure_rrefs}
+  closure_drefs=drefdeps(keep_drefs_,S) | keep_drefs_ | {rref2dref(rref)
+                                                         for rref in closure_rrefs}
   remove_drefs=set()
   remove_rrefs=set()
   for dref in alldrefs(S):
@@ -782,8 +776,10 @@ def realizeSeq(closure:Closure,
           f"Unfortunately, it is not the case. Config:\n"
           f"{drefcfg_(dref)}")
         rrefs_existed=drefrrefsC(dref,dref_context,S)
-        rpaths:List[Path]=drv.realizer(S,dref,dref_context,realize_args.get(dref,{}))
-        rrefs_built:List[RRef]=[mkrealization(dref,dref_context,rp,S) for rp in rpaths]
+        rpaths:List[Path]=drv.realizer(S,dref,dref_context,
+                                       realize_args.get(dref,{}))
+        rrefs_built:List[RRef]=[mkrealization(dref,dref_context,rp,S)
+                                for rp in rpaths]
         if len(rpaths)!=len(set(rrefs_built)):
           warning(f"Realizer of {dref} produced duplicated realizations")
         rrefs_matched=drv.matcher(S,list(drefrrefsC(dref,dref_context,S)))
@@ -809,57 +805,6 @@ def evaluate(stage, *args, **kwargs)->RRef:
   return realize(instantiate(stage,*args,**kwargs))
 
 
-def linkrref(rref:RRef,
-             destdir:Optional[Path]=None,
-             format:str='_rref_%(T)s_%(N)s',
-             S=None)->Path:
-  """ linkkrref creates a symbolic link to a particular realization reference.
-  The new link appears in the `destdir` directory if this argument is not None,
-  otherwise the current directory is used.
-
-  Format accepts the following Python pattern tags:
-  - `%(T)s` replaced with the build time
-  - `%(N)s` replaced with the config name
-
-  Informally, `linkrref` creates the link:
-  `{tgtpath}/{format} --> $PYLIGHTNIX_STORE/{dref}/{rref}`.
-
-  The function overwrites existing symlinks.
-  """
-  timetag_:str=rrefbtime(rref,S) or ''
-  nametag_:str=config_name(drefcfg_(rref2dref(rref),S))
-  destdir_=destdir if destdir is not None else '.'
-  symlink=Path(join(destdir_,format %{'T':timetag_,'N':nametag_}))
-  forcelink(Path(relpath(rref2path(rref,S), destdir_)), symlink)
-  return symlink
-
-
-def linkdref(dref:DRef,
-             destdir:Optional[Path]=None,
-             format:str='_rref_%(N)s',
-             S=None)->Path:
-  nametag_:str=config_name(drefcfg_(dref,S))
-  destdir_=destdir if destdir is not None else '.'
-  symlink=Path(join(destdir_,format %{'N':nametag_}))
-  forcelink(Path(relpath(dref2path(dref,S), destdir_)), symlink)
-  return symlink
-
-
-def linkrrefs(rrefs:Iterable[RRef], destdir:Optional[Path]=None,
-              format:str='_rref_%(T)s_%(N)s',
-              S=None)->List[Path]:
-  """ A Wrapper around `linkrref` for linking a set of RRefs. """
-  acc=[]
-  for r in rrefs:
-    acc.append(linkrref(r, destdir=destdir, format=format, S=S))
-  return acc
-
-
-# def mksymlink(rref:RRef, tgtpath:Path, name:str, withtime:bool=True, S=None)->Path:
-#   """ A wrapper for `linkrref`, for backward compatibility """
-#   assert isdir(tgtpath), f"Target link directory doesn't exist: '{tgtpath}'"
-#   return linkrref(rref, destdir=tgtpath, name=name, withtime=withtime, S=S)
-
 
 def match_predicate(paccept:Callable[[List[RRef]],bool],
                     passert:Callable[[List[RRef]],bool]):
@@ -880,15 +825,6 @@ def match_only():
 def match_some(n:int):
   return match_predicate(paccept=lambda l: len(l)>=n,
                          passert=lambda l: False)
-
-
-# def match_existing(rrefs:List[RRef]):
-#   """ Match certain rrefs that should already exist. Never call realizers.  """
-#   def _matcher(S:SPath, existing_rrefs:List[RRef])->Optional[List[RRef]]:
-#     for rref in rrefs:
-#       assert rref in existing_rrefs, f"{rref} not found among {existing_rrefs}"
-#     return rrefs
-#   return _matcher
 
 
 def match_exact(rrefs:List[RRef]):
