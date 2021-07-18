@@ -201,8 +201,10 @@ RealizeArg=Dict[str,Any]
 #:
 #: TODO: Splitting Matcher into two parts would allow us to rid of
 #: `force_interrupt` argument.
-Matcher = Callable[[StorageSettings,List[RRef]],Optional[List[RRef]]]
-MatcherO = Callable[[StorageSettings,Output[RRef]],Optional[Output[RRef]]]
+Matcher = Callable[[Optional[StorageSettings],List[RRef]],
+                   Optional[List[RRef]]]
+MatcherO = Callable[[Optional[StorageSettings],Output[RRef]],
+                    Optional[Output[RRef]]]
 
 
 #: Realizer is a type of user-defined Python function. Realizers typically
@@ -244,8 +246,8 @@ MatcherO = Callable[[StorageSettings,Output[RRef]],Optional[Output[RRef]]]
 #:   ...
 #:   return mkdrv(m, ...,  _realize)
 #: ```
-Realizer = Callable[[StorageSettings,DRef,Context,RealizeArg],List[Path]]
-RealizerO = Callable[[StorageSettings,DRef,Context,RealizeArg],Output[Path]]
+Realizer = Callable[[Optional[StorageSettings],DRef,Context,RealizeArg],List[Path]]
+RealizerO = Callable[[Optional[StorageSettings],DRef,Context,RealizeArg],Output[Path]]
 
 #: Derivation is the core type of Pylightnix. It keeps all the information about
 #: a stage:
@@ -277,7 +279,7 @@ Derivation = NamedTuple('Derivation', [('dref',DRef),
 #: call to [realizeMany](#pylightnix.core.realizeMany) or it's analogs.
 Closure = NamedTuple('Closure', [('dref',DRef),
                                  ('derivations',List[Derivation]),
-                                 ('S',StorageSettings)])
+                                 ('S',Optional[StorageSettings])])
 
 class Config:
   """ Config is a JSON-serializable dict-like entity containing user-defined
@@ -347,7 +349,7 @@ class ConfigAttrs:
 
 
 
-BuildArgs = NamedTuple('BuildArgs', [('storage',SPath),
+BuildArgs = NamedTuple('BuildArgs', [('S',Optional[StorageSettings]),
                                      ('dref',DRef),
                                      ('context',Context),
                                      ('starttime',Optional[str]),
@@ -402,7 +404,7 @@ class Build:
   """
 
   def __init__(self, ba:BuildArgs)->None:
-    self.storage=ba.storage
+    self.S=ba.S
     self.dref=ba.dref
     self.context=ba.context
     self.iarg=ba.iarg
@@ -428,7 +430,7 @@ class Manager:
     self.builders:Dict[DRef,Derivation]=OrderedDict()
     self.in_instantiate:bool=False
     self.in_redefine:bool=False
-    self.S:StorageSettings=S
+    self.S:Optional[StorageSettings]=S
 
 
 #: R is a DRef or any of its derivatives

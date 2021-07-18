@@ -19,7 +19,7 @@ from pylightnix.imports import (sha256 as sha256sum, sha1 as sha1sum, urlparse,
 from pylightnix.types import ( DRef, Manager, Build, Context, Name,
     Path, Optional, List, Config )
 from pylightnix.core import ( mkconfig, mkdrv, match_only, config_cattrs,
-                             selfref )
+                             selfref, fstmpdir )
 from pylightnix.build import ( build_outpath, build_paths, build_deref_,
                               build_wrapper, build_wrapper,
                               build_config )
@@ -100,8 +100,7 @@ def fetchurl(m:Manager,
   ```
   """
 
-  import pylightnix.core
-  tmpfetchdir=join(pylightnix.core.PYLIGHTNIX_TMP,'fetchurl')
+  tmpfetchdir=join(fstmpdir(m.S),'fetchurl')
 
   fname=filename or basename(urlparse(url).path)
   assert len(fname)>0, ("Downloadable filename shouldn't be empty. "

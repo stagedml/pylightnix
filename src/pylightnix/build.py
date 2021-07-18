@@ -38,12 +38,12 @@ from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional, Iterable,
                               Manager, Matcher, Realizer, RealizerO, Set,
                               Closure, Generator, TypeVar, BuildArgs, Config,
                               RealizeArg, InstantiateArg, SupportsAbs, Output,
-                              PylightnixException)
+                              PylightnixException, StorageSettings)
 
 from pylightnix.core import (assert_valid_config, config_cattrs,
                              config_hash, config_name, context_deref,
                              assert_valid_refpath, rref2path, drefdeps1,
-                             config_dict, drefcfg, output_realizer)
+                             config_dict, drefcfg, output_realizer, fstmpdir)
 
 from pylightnix.repl import (ReplHelper, repl_continue, ERR_INVALID_RH,
                              ERR_INACTIVE_RH, repl_cancel)
@@ -63,21 +63,21 @@ error=logger.error
 class BuildError(PylightnixException):
   """ Exception class for build errors """
   def __init__(self,
-               S:SPath,
+               S:Optional[StorageSettings],
                dref:DRef,
                outpaths:Optional[Output[Path]],
                exception:Exception,
                msg:str=''):
     """ Initialize BuildError instance. """
     super().__init__(msg)
-    self.storage=S
+    self.S=S
     self.dref=dref
     self.exception=exception
     self.outpaths:List[Path]=outpaths.val if outpaths else []
   def __str__(self):
     return f"Failed to realize '{self.dref}': {self.exception}"
 
-def mkbuildargs(S:SPath, dref:DRef, context:Context,
+def mkbuildargs(S:Optional[StorageSettings], dref:DRef, context:Context,
                 starttime:Optional[str], stoptime:Optional[str],
                 iarg:InstantiateArg, rarg:RealizeArg)->BuildArgs:
   assert_valid_config(drefcfg(dref,S))
@@ -101,7 +101,7 @@ def build_wrapper_(f:Callable[[_B],None],
   assert starttime is None or isinstance(starttime,str)
   assert stoptime is None or isinstance(stoptime,str)
 
-  def _wrapper(S:SPath,dref,context,rarg)->Output:
+  def _wrapper(S:Optional[StorageSettings],dref,context,rarg)->Output:
     b=ctr(mkbuildargs(S,dref,context,starttime,stoptime,{},rarg))
     if nouts is not None:
       build_markstart(b,nouts)
@@ -133,7 +133,7 @@ def build_wrapper(f:Callable[[Build],None],
 def build_config(b:Build)->RConfig:
   """ Return the [Config](#pylightnix.types.RConfig) object of the realization
   being built. """
-  return drefcfg(b.dref, b.storage)
+  return drefcfg(b.dref, b.S)
 
 def build_context(b:Build)->Context:
   """ Return the [Context](#pylightnix.types.Context) object of the realization
@@ -152,8 +152,7 @@ def build_markstart(b:Build, nouts:int)->List[Path]:
   assert b.outpaths is None, \
     f"Attempt to repeatedly set build output paths. "\
     f"Previously set to:\n{b.outpaths}"
-  import pylightnix.core
-  tmp=pylightnix.core.PYLIGHTNIX_TMP
+  tmp=fstmpdir(b.S)
   h=config_hash(build_config(b))[:8]
   if b.starttime is not None:
     paths=[Path(mkdtemp(prefix=f'{b.starttime}_{h}_', dir=tmp))
@@ -250,7 +249,7 @@ def build_paths(b:Build, refpath:RefPath)->List[Path]:
       "`build_markstart(b,num)` first to set their number." )
     return [Path(join(path, *refpath[1:])) for path in b.outpaths.val]
   else:
-    return [Path(join(rref2path(rref,b.storage), *refpath[1:]))
+    return [Path(join(rref2path(rref,b.S), *refpath[1:]))
             for rref in build_deref_(b, DRef(refpath[0]))]
 
 def build_path(b:Build, refpath:RefPath)->Path:
@@ -294,8 +293,8 @@ def repl_buildargs(rh:Optional[ReplHelper]=None)->BuildArgs:
   assert rh.context is not None, ERR_INACTIVE_RH
   assert rh.dref is not None, ERR_INACTIVE_RH
   assert rh.rarg is not None, ERR_INACTIVE_RH
-  assert rh.storage is not None, ERR_INACTIVE_RH
-  return mkbuildargs(rh.storage,rh.dref,rh.context,'AUTO','AUTO',{},rh.rarg)
+  assert rh.S is not None, ERR_INACTIVE_RH
+  return mkbuildargs(rh.S,rh.dref,rh.context,'AUTO','AUTO',{},rh.rarg)
 
 
 def repl_build(rh:Optional[ReplHelper]=None, nouts:Optional[int]=1)->Build:

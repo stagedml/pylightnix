@@ -4,12 +4,12 @@ from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional, Config,
                               Realizer, RealizerO, DRef, Context, RealizeArg,
                               RRef, Path, SPath, TypeVar, Generic, Callable,
                               Matcher, MatcherO, Manager, Output, Closure,
-                              NamedTuple)
+                              NamedTuple, StorageSettings)
 
 from pylightnix.core import (assert_valid_config, drefcfg_, config_cattrs,
                              config_hash, config_name, context_deref,
                              assert_valid_refpath, rref2path, drefdeps1, mkdrv,
-                             realizeMany, output_validate)
+                             realizeMany, output_validate, fstmpdir)
 
 from pylightnix.utils import (readstr, writestr, readstr, tryread)
 
@@ -92,8 +92,10 @@ def either_validate(dref:DRef, e:Either[Path], S=None)->List[Path]:
     return e.left[0]
 
 
-def either_realizer(f:Callable[[SPath,DRef,Context,RealizeArg],Output[Path]],
-                   )->Callable[[SPath,DRef,Context,RealizeArg],List[Path]]:
+def either_realizer(f:Callable[[Optional[StorageSettings],DRef,
+                                Context,RealizeArg],Output[Path]],
+                   )->Callable[[Optional[StorageSettings],DRef,
+                                Context,RealizeArg],List[Path]]:
   """ Implements poor-man's `(EitherT Exception Ouput)` monad.
   Either, stages become either LEFT (if rasied an error) or
   RIGHT (after normal completion). If the stage turns LEFT, then so will be any
@@ -104,12 +106,12 @@ def either_realizer(f:Callable[[SPath,DRef,Context,RealizeArg],Output[Path]],
 
   Either-stages should use appropriate matchers which supports LEFT-mode.
   """
-  import pylightnix.core
-  tmp=pylightnix.core.PYLIGHTNIX_TMP
+  # import pylightnix.core
 
-  def _either(S:SPath, dref:DRef, ctx:Context, ra:RealizeArg)->Either[Path]:
+  def _either(S, dref:DRef, ctx:Context, ra:RealizeArg)->Either[Path]:
     # Scan the statuses of immediate dependecnies, and propagate the 'LEFT'
     # condition if any of them has it.
+    tmp=fstmpdir(S)
     e2:Either[Path]
     for dref_dep in drefdeps1([dref],S):
       e=either_loadR(context_deref(ctx,dref_dep),S)
@@ -129,7 +131,8 @@ def either_realizer(f:Callable[[SPath,DRef,Context,RealizeArg],Output[Path]],
     except Exception:
       return mkleft([Path(mkdtemp(prefix="either_tmp", dir=tmp))], format_exc())
 
-  def _r(S:SPath, dref:DRef, ctx:Context, ra:RealizeArg)->List[Path]:
+  def _r(S:Optional[StorageSettings],dref:DRef,
+         ctx:Context,ra:RealizeArg)->List[Path]:
     """ Obtain the structured result and validate it """
     e=_either(S,dref,ctx,ra)
     return either_validate(dref,e,S)
@@ -138,7 +141,8 @@ def either_realizer(f:Callable[[SPath,DRef,Context,RealizeArg],Output[Path]],
 
 def either_matcher(m:MatcherO)->Matcher:
   """ Convert an Either-matcher into the regular Matcher """
-  def _matcher(S:SPath,rrefs:List[RRef])->Optional[List[RRef]]:
+  def _matcher(S:Optional[StorageSettings],
+               rrefs:List[RRef])->Optional[List[RRef]]:
     erefs=either_loadR(rrefs, S)
     if erefs.right is not None:
       o2=m(S,erefs.right)
@@ -160,5 +164,5 @@ def realizeE(closure:Closure,
              assert_realized:List[DRef]=[],
              realize_args:Dict[DRef,RealizeArg]={})->Either[RRef]:
   rrefs=realizeMany(closure,force_rebuild,assert_realized,realize_args)
-  return either_loadR(rrefs,closure.storage)
+  return either_loadR(rrefs,closure.S)
 

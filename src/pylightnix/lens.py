@@ -18,15 +18,15 @@ through the dependent configurations """
 from pylightnix.imports import (join)
 from pylightnix.types import (Any, Dict, List, Build, DRef, RRef, Optional,
                               RefPath, Tuple, Union, Path, Context, NamedTuple,
-                              Context, Closure, SPath )
+                              Context, Closure, SPath, StorageSettings)
 from pylightnix.utils import (isrefpath, isdref, isrref, tryreadjson )
 from pylightnix.core import (rref2dref, rref2path, config_dict,
                              dref2path, rrefctx, context_deref,
-                             context_add, storage, drefcfg)
+                             context_add, drefcfg)
 from pylightnix.build import (build_outpaths, build_config, build_context)
 
 
-LensContext = NamedTuple('LensContext',[('storage',SPath),
+LensContext = NamedTuple('LensContext',[('S',Optional[StorageSettings]),
                                         ('build_path',Optional[Path]),
                                         ('context',Optional[Context]),
                                         ('closure',Optional[Closure])])
@@ -35,7 +35,7 @@ LensContext = NamedTuple('LensContext',[('storage',SPath),
 def val2dict(v:Any, ctx:LensContext)->Optional[dict]:
   """ Return the `dict` representation of the Lens value, if possible. Getting
   the dictionary allows for creating new lenses """
-  S:SPath=ctx.storage
+  S=ctx.S
   if isdref(v):
     return config_dict(drefcfg(DRef(v), S))
   elif isrref(v):
@@ -56,7 +56,7 @@ def val2dict(v:Any, ctx:LensContext)->Optional[dict]:
 
 
 def val2rref(v:Any, ctx:LensContext)->RRef:
-  S=ctx.storage
+  S=ctx.S
   if isdref(v):
     dref=DRef(v)
     context=ctx.context
@@ -80,7 +80,7 @@ def val2path(v:Any, ctx:LensContext)->Path:
   possible or if the result is associated with multiple paths.
 
   FIXME: re-use val2rref here """
-  S:SPath=ctx.storage
+  S:Optional[StorageSettings]=ctx.S
   if isdref(v):
     dref=DRef(v)
     context=ctx.context
@@ -240,7 +240,7 @@ class Lens:
     v=traverse(self, r)
     assert isdref(v), f"Lens {r} expected closure, but got '{v}'"
     assert self.ctx.closure is not None
-    return Closure(v, self.ctx.closure.derivations, self.ctx.storage)
+    return Closure(v, self.ctx.closure.derivations, self.ctx.S)
 
 
 def mklens(x:Any, o:Optional[Path]=None,
@@ -249,7 +249,7 @@ def mklens(x:Any, o:Optional[Path]=None,
                   ctx:Optional[Context]=None,
                   closure:Optional[Closure]=None,
                   build_output_idx:int=0,
-                  S:Optional[SPath]=None)->Lens:
+                  S:Optional[StorageSettings]=None)->Lens:
   """ mklens creates [Lens](#pylightnix.lens.Lens) objects from various
   Pylightnix objects.
 
@@ -300,11 +300,9 @@ def mklens(x:Any, o:Optional[Path]=None,
 
   """
   if S is None and b is not None:
-    S=b.storage
+    S=b.S
   if S is None and isinstance(x,Build):
-    S=x.storage
-  if S is None:
-    S=storage(S)
+    S=x.S
   if ctx is None and b is not None:
     ctx=build_context(b)
   if ctx is None and isinstance(x,Build):

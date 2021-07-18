@@ -398,7 +398,7 @@ def drefrrefsC(dref:DRef, context:Context, S=None)->Iterable[RRef]:
 
 def store_gc(keep_drefs:List[DRef],
              keep_rrefs:List[RRef],
-             S:SPath)->Tuple[Set[DRef],Set[RRef]]:
+             S:Optional[StorageSettings]=None)->Tuple[Set[DRef],Set[RRef]]:
   """ Take roots which are in use and should not be removed. Return roots which
   are not used and may be removed. Actual removing is to be done by the user.
 
@@ -422,7 +422,7 @@ def store_gc(keep_drefs:List[DRef],
   return remove_drefs,remove_rrefs
 
 
-def mkdrv_(c:Config,S:SPath)->DRef:
+def mkdrv_(c:Config,S=None)->DRef:
   """ Create new derivation in storage `S`.
 
   We attempt to do it atomically by creating temp directory first and then
@@ -440,7 +440,7 @@ def mkdrv_(c:Config,S:SPath)->DRef:
 
   dref=mkdref(trimhash(dhash),refname)
 
-  o=Path(mkdtemp(prefix=refname, dir=tempdir()))
+  o=Path(mkdtemp(prefix=refname, dir=fstmpdir(S)))
   with open(join(o,'config.json'), 'w') as f:
     f.write(config_serialize(c))
 
@@ -569,12 +569,13 @@ def output_validate(dref:DRef, o:Output[Path], S=None)->List[Path]:
 
 
 def output_realizer(f:RealizerO)->Realizer:
-  def _r(S:SPath, dref:DRef, ctx:Context, ra:RealizeArg)->List[Path]:
-    return output_validate(dref,f(S,dref,ctx,ra),S)
+  def _r(S:Optional[StorageSettings], dref:DRef, ctx:Context,
+         ra:RealizeArg)->List[Path]:
+    return output_validate(dref,f(S,dref,ctx,ra),S=S)
   return _r
 
 def output_matcher(m:MatcherO)->Matcher:
-  def _m(S:SPath,rrefs:List[RRef])->Optional[List[RRef]]:
+  def _m(S:Optional[StorageSettings],rrefs:List[RRef])->Optional[List[RRef]]:
     r=m(S,Output(rrefs))
     return r.val if r is not None else None
   return _m
@@ -604,14 +605,14 @@ def mkdrv(m:Manager,
   rref:RRef=realize(instantiate(somestage))
   ```
   """
-  dref=mkdrv_(config,m.storage)
+  dref=mkdrv_(config,S=m.S)
   if dref in m.builders:
     if not m.in_redefine:
       warning((f"Overwriting either the matcher or the realizer of derivation "
                f"'{dref}'. It could be intended (e.g. a result of `redefine`), "
                f"but now we see a different situation. Could it be  "
                f"a recursive call to `instantiate`?\n"
-               f"Derivation config:\n{drefcfg_(dref,m.storage)}"))
+               f"Derivation config:\n{drefcfg_(dref,m.S)}"))
   m.builders[dref]=Derivation(dref, matcher, realizer)
   return dref
 
@@ -625,7 +626,7 @@ def instantiate_(m:Manager, stage:Any, *args, **kwargs)->Closure:
   finally:
     m.in_instantiate=False
   assert_have_realizers(m,[target_dref])
-  return Closure(target_dref,list(m.builders.values()),m.storage)
+  return Closure(target_dref,list(m.builders.values()),S=m.S)
 
 def instantiate(stage:Any, *args, S=None, **kwargs)->Closure:
   """ Instantiate takes the [Stage](#pylightnix.types.Stage) function and
@@ -634,12 +635,13 @@ def instantiate(stage:Any, *args, S=None, **kwargs)->Closure:
   All new derivations are added to the storage.
   See also [realizeMany](#pylightnix.core.realizeMany)
   """
-  return instantiate_(Manager(fsstorage(S)), stage, *args, **kwargs)
+  return instantiate_(Manager(S), stage, *args, **kwargs)
 
 
-RealizeSeqGen = Generator[Tuple[SPath,DRef,Context,Derivation,RealizeArg],
-                          Tuple[Optional[List[RRef]],bool],
-                          List[RRef]]
+RealizeSeqGen = Generator[
+  Tuple[Optional[StorageSettings],DRef,Context,Derivation,RealizeArg],
+  Tuple[Optional[List[RRef]],bool],
+  List[RRef]]
 
 
 def realize(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
@@ -719,7 +721,7 @@ def realizeSeq(closure:Closure,
 
   FIXME: `assert_realized` may probably be implemented by calling `redefine`
   with appropriate failing realizer on every Derivation. """
-  S=closure.storage
+  S=closure.S
   assert_valid_closure(closure)
   force_interrupt_:Set[DRef]=set(force_interrupt)
   context_acc:Context={}
@@ -882,7 +884,7 @@ def assert_rref_deps(c:Config)->None:
 
 def assert_have_realizers(m:Manager, drefs:List[DRef])->None:
   have_drefs=set(m.builders.keys())
-  need_drefs=drefdeps(drefs,m.storage) | set(drefs)
+  need_drefs=drefdeps(drefs,m.S) | set(drefs)
   missing=list(need_drefs-have_drefs)
   assert len(missing)==0, (
     f"The following derivations don't have realizers associated with them:\n"

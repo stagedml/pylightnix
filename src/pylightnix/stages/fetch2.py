@@ -21,7 +21,8 @@ from pylightnix.imports import (sha256 as sha256sum, sha1 as sha1sum, urlparse,
 from pylightnix.types import ( DRef, Manager, Build, Context, Name,
     Path, Optional, List, Config )
 from pylightnix.core import ( mkconfig, mkdrv, match_only,
-                             PYLIGHTNIX_NAMEPAT, config_cattrs, selfref )
+                             PYLIGHTNIX_NAMEPAT, config_cattrs, selfref,
+                             fstmpdir )
 from pylightnix.build import ( build_outpath,
     build_paths, build_deref_, build_config, build_wrapper, build_wrapper )
 from pylightnix.utils import ( try_executable, makedirs, filehash )
@@ -84,8 +85,7 @@ def fetchurl2(m:Manager,
   ```
   """
 
-  import pylightnix.core
-  tmpfetchdir=join(pylightnix.core.PYLIGHTNIX_TMP,'fetchurl2')
+  tmpfetchdir=join(fstmpdir(m.S),'fetchurl2')
   assert isabs(tmpfetchdir), (f"Expect absolute PYLIGHTNIX_TMP path, "
                               f"got {tmpfetchdir}")
 

@@ -17,12 +17,11 @@ from tests.imports import (given, Any, Callable, join, Optional, islink,
 from tests.generators import (rrefs, drefs, configs, dicts, rootstages,
                               integers)
 
-from tests.setup import ( ShouldHaveFailed, setup_storage, setup_storage2,
-                         mkstage, mkstage, pipe_stdout , setup_test_realize,
-                         setup_test_match, setup_test_config, mkstageP)
+from tests.setup import ( ShouldHaveFailed, setup_storage2, mkstage, mkstage,
+                         pipe_stdout , setup_test_realize, setup_test_match,
+                         setup_test_config, mkstageP)
 
 
-@settings(print_blob=True)
 @given(stages=rootstages())
 def test_union_of_root_derivations(stages):
   """ Union of dep.closures of root derivations must be equal to the set of all

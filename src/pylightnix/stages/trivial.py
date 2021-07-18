@@ -19,13 +19,13 @@ from pylightnix.imports import (join, deepcopy, dirname, makedirs, isfile,
 from pylightnix.core import (mkdrv, mkconfig, assert_valid_name,
                              datahash, config_dict,
                              assert_valid_refpath, rref2path,
-                             drefcfg_, storage, match_only)
+                             drefcfg_, match_only)
 from pylightnix.build import (build_outpath,
                               build_paths, build_deref_, build_wrapper)
 from pylightnix.types import (RefPath, Manager, Context, Build, Name, DRef,
                               RRef, Any, Optional, Dict, Hash, Path, List,
                               Callable, Matcher, Realizer, Stage, Config,
-                              RealizeArg, SPath, Output)
+                              RealizeArg, SPath, Output, StorageSettings)
 from pylightnix.utils import (forcelink, isrefpath, traverse_dict)
 
 
@@ -88,7 +88,7 @@ def redefine(stage:Any,
   """
   def _new_stage(m:Manager,*args,**kwargs)->DRef:
     dref=stage(m,*args,**kwargs) # type:ignore
-    d=config_dict(drefcfg_(dref,S=m.storage))
+    d=config_dict(drefcfg_(dref,S=m.S))
     new_config(d)
     new_matcher_=new_matcher if new_matcher is not None\
                              else m.builders[dref].matcher
@@ -113,7 +113,8 @@ def realized(stage:Any)->Stage:
   # ^^^ Fail if `my_long_running_stage` is not yet realized.
   ```
   """
-  def _no_realizer(S:SPath,dref:DRef,context:Context,rarg:RealizeArg)->List[Path]:
+  def _no_realizer(S:Optional[StorageSettings],dref:DRef,
+                   context:Context,rarg:RealizeArg)->List[Path]:
     assert False, (
       f"Stage '{dref}' was assumed to be already realized. "
       f"Unfortunately, it seens to be not the case because it's matcher "

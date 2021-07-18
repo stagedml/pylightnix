@@ -4,13 +4,12 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir, dirhash,
                         mkcontext, allrrefs, mkdref, mkrref, unrref, undref,
                         realize, rref2dref, drefcfg, mkconfig, Build, Context,
                         build_outpath, mkdrv, rref2path, config_cattrs,
-                        drefattrs, build_deref, build_path,
-                        mkrefpath, build_config, alldrefs, build_wrapper,
-                        build_cattrs, build_name, tryread, trywrite,
-                        realizeMany, scanref_dict, config_dict, mklens, isrref,
-                        Config, RConfig, partial, path2rref,
-                        concat, linkrrefs, instantiate_, dref2path,
-                        path2dref, linkdref, storage, rrefdeps,
+                        drefattrs, build_deref, build_path, mkrefpath,
+                        build_config, alldrefs, build_wrapper, build_cattrs,
+                        build_name, tryread, trywrite, realizeMany,
+                        scanref_dict, config_dict, mklens, isrref, Config,
+                        RConfig, partial, path2rref, concat, linkrrefs,
+                        instantiate_, dref2path, path2dref, linkdref, rrefdeps,
                         drefrrefs, allrrefs, match_only, drefrrefs, drefrrefsC,
                         rrefctx, context_deref, rrefattrs, rrefbstart )
 
@@ -22,7 +21,7 @@ from tests.imports import (given, Any, Callable, join, Optional, islink, isfile,
 from tests.generators import (rrefs, drefs, configs, dicts, rootstages,
                               settings)
 
-from tests.setup import ( ShouldHaveFailed, setup_storage, setup_storage2,
+from tests.setup import ( ShouldHaveFailed, setup_storage2,
                          mkstage, pipe_stdout )
 
 

@@ -12,14 +12,14 @@ from tests.imports import (
 
 from tests.generators import (configs, dicts, artifacts)
 
-from tests.setup import (setup_storage, setup_inplace_reset,
+from tests.setup import (setup_storage2, setup_inplace_reset,
                          mkstage)
 
 
 
 def test_inplace():
-  with setup_storage('test_inplace'):
-    setup_inplace_reset()
+  with setup_storage2('test_inplace') as S:
+    setup_inplace_reset(S)
 
     n1 = instantiate_inplace(mkstage, {'a':'1'})
     n2 = instantiate_inplace(mkstage, {'b':'2'})

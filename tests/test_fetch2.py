@@ -1,17 +1,17 @@
 from pylightnix import ( DRef, RRef, lsref, catref, instantiate, realize,
                         unrref, fetchurl, fetchurl2, isrref, rref2path, isfile,
-                        mklens, selfref, basename )
+                        mklens, selfref, basename, fstmpdir )
 
 from tests.imports import (TemporaryDirectory, join, stat, chmod, S_IEXEC,
     system, Popen, PIPE, get_executable)
 
-from tests.setup import (ShouldHaveFailed, setup_storage, pipe_stdout)
+from tests.setup import (ShouldHaveFailed, setup_storage2, pipe_stdout)
 
 
 SHA256SUM=get_executable('sha256sum', 'Please install `sha256sum` tool from `coreutils` package')
 
 def test_fetchurl2():
-  with setup_storage('test_fetchurl'):
+  with setup_storage2('test_fetchurl') as S:
     with TemporaryDirectory() as tmp:
       mockcurl=join(tmp,'mockcurl')
       print(mockcurl)
@@ -35,17 +35,18 @@ def test_fetchurl2():
               url='mockcurl://result.tar.gz',
               filename='validname.tar.gz',
               sha256=wanted_sha256,
-              out=[selfref,'validname.tar.gz']))
+              out=[selfref,'validname.tar.gz'], S=S))
 
       finally:
         pylightnix.stages.fetch2.CURL=oldcurl
 
       assert isrref(rref)
-      assert isfile(mklens(rref).out.syspath)
+      assert isfile(mklens(rref,S=S).out.syspath)
 
 
 def test_fetchurl2_file():
-  with setup_storage('test_fetclocal') as tmp:
+  with setup_storage2('test_fetclocal') as S:
+    tmp=fstmpdir(S)
     mockdata=join(tmp,'mockdata.foo')
     with open(mockdata,'w') as f:
       f.write('dogfood')
@@ -53,8 +54,9 @@ def test_fetchurl2_file():
     wanted_sha256=pipe_stdout([SHA256SUM, "mockdata.foo"], cwd=tmp).split()[0]
     rref=realize(instantiate(fetchurl2,
                              url=f"file://{mockdata}",
-                             sha256=wanted_sha256))
+                             sha256=wanted_sha256,
+                             S=S))
     assert isrref(rref)
-    assert isfile(mklens(rref).out.syspath)
-    assert basename(mklens(rref).out.syspath)=="mockdata.foo"
+    assert isfile(mklens(rref,S=S).out.syspath)
+    assert basename(mklens(rref,S=S).out.syspath)=="mockdata.foo"
 

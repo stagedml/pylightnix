@@ -26,13 +26,13 @@ from tests.imports import (given, Any, Callable, join, Optional, islink,
 
 from tests.generators import (rrefs, drefs, configs, dicts)
 
-from tests.setup import (ShouldHaveFailed, setup_storage, mkstage)
+from tests.setup import (ShouldHaveFailed, setup_storage2, mkstage)
 
 
 
 
 def test_lens():
-  with setup_storage('test_lens'):
+  with setup_storage2('test_lens') as S:
     def _setting(m:Manager)->DRef:
       n1=mkstage(m, {'name':'1', 'selfref':[selfref,'artifact']})
       n2=mkstage(m, {'name':'2', 'selfref':[selfref,'artifact'],
@@ -58,18 +58,18 @@ def test_lens():
                  matcher=match_only(),
                  realizer=build_wrapper(_realize))
 
-    clo=instantiate(_setting)
-    assert isrefpath(mklens(clo.dref).maman.selfref.refpath)
-    assert isdir(mklens(clo.dref).syspath)
+    clo=instantiate(_setting, S=S)
+    assert isrefpath(mklens(clo.dref,S=S).maman.selfref.refpath)
+    assert isdir(mklens(clo.dref,S=S).syspath)
     rref=realize(clo)
     assert_valid_rref(rref)
-    assert isrefpath(mklens(rref).maman.selfref.refpath)
-    assert isfile(mklens(rref).maman.selfref.syspath)
-    assert mklens(rref).rref == rref
-    assert isrefpath(mklens(rref).papa.selfref.refpath)
-    assert mklens(rref).papa.dict.d1.val == 1
-    assert mklens(rref).dref == clo.dref
-    assert isdir(mklens(rref).syspath)
+    assert isrefpath(mklens(rref,S=S).maman.selfref.refpath)
+    assert isfile(mklens(rref,S=S).maman.selfref.syspath)
+    assert mklens(rref,S=S).rref == rref
+    assert isrefpath(mklens(rref,S=S).papa.selfref.refpath)
+    assert mklens(rref,S=S).papa.dict.d1.val == 1
+    assert mklens(rref,S=S).dref == clo.dref
+    assert isdir(mklens(rref,S=S).syspath)
 
     try:
       print(mklens(clo.dref).maman.selfref.syspath)
@@ -108,17 +108,17 @@ def test_lens():
 
 
 def test_lens_closures():
-  with setup_storage('test_lens_closures'):
+  with setup_storage2('test_lens_closures') as S:
     def _setting(m:Manager)->DRef:
       n1=mkstage(m, {'name':'1', 'x':33, 'selfref':[selfref,'artifact']})
       n2=mkstage(m, {'name':'2', 'papa':n1, 'dict':{'d1':1} })
       n3=mkstage(m, {'name':'3', 'maman':n2 })
       return n3
 
-    clo=instantiate(_setting)
+    clo=instantiate(_setting, S=S)
     assert isclosure(clo)
 
-    rref=realize(mklens(clo).maman.papa.closure)
-    assert mklens(rref).x.val==33
-    assert open(mklens(rref).selfref.syspath).read()=='0'
+    rref=realize(mklens(clo,S=S).maman.papa.closure)
+    assert mklens(rref,S=S).x.val==33
+    assert open(mklens(rref,S=S).selfref.syspath).read()=='0'
 

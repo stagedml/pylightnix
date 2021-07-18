@@ -16,7 +16,7 @@ from tests.imports import (
 from tests.generators import (
     configs, dicts, artifacts )
 
-from tests.setup import ( setup_storage, setup_inplace_reset, mkstage, mkstage,
+from tests.setup import ( setup_storage2, setup_inplace_reset, mkstage, mkstage,
                          ShouldHaveFailed )
 
 # def test_repl_null():
@@ -29,7 +29,7 @@ from tests.setup import ( setup_storage, setup_inplace_reset, mkstage, mkstage,
 #     return n2
 
 def test_repl_basic():
-  with setup_storage('test_repl_default'):
+  with setup_storage2('test_repl_default') as S:
 
     n1:DRef; n2:DRef
     def _setting(m:Manager)->DRef:
@@ -38,7 +38,7 @@ def test_repl_basic():
       n2 = mkstage(m, {'maman':n1})
       return n2
 
-    clo=instantiate(_setting)
+    clo=instantiate(_setting,S=S)
     rh=repl_realize(clo, force_interrupt=False)
     assert repl_rref(rh) is not None
 
@@ -53,7 +53,7 @@ def test_repl_basic():
 
 
 def test_repl_race():
-  with setup_storage('test_repl_recursion'):
+  with setup_storage2('test_repl_recursion'):
 
     def _setting(m:Manager)->DRef:
       n1 = mkstage(m, {'a':'1'})
@@ -73,7 +73,7 @@ def test_repl_race():
 
 
 def test_repl_override():
-  with setup_storage('test_repl_override'):
+  with setup_storage2('test_repl_override'):
 
     n1:DRef; n2:DRef
     def _setting(m:Manager)->DRef:
@@ -89,7 +89,7 @@ def test_repl_override():
     with open(join(build_outpath(b),'artifact'),'w') as f:
       f.write('777')
     assert b.outpaths is not None
-    repl_continue(output_validate(b.dref, b.outpaths, b.storage), rh=rh)
+    repl_continue(output_validate(b.dref, b.outpaths, S=b.S), rh=rh)
     rref=repl_rref(rh)
     assert rref is not None
 
@@ -99,7 +99,7 @@ def test_repl_override():
 
 
 def test_repl_globalHelper():
-  with setup_storage('test_repl_globalHelper'):
+  with setup_storage2('test_repl_globalHelper') as S:
 
     n1:DRef; n2:DRef
     def _setting(m:Manager)->DRef:
@@ -108,7 +108,7 @@ def test_repl_globalHelper():
       n2 = mkstage(m, {'maman':n1})
       return n2
 
-    rh=repl_realize(instantiate(_setting), force_interrupt=True)
+    rh=repl_realize(instantiate(_setting, S=S), force_interrupt=True)
     assert repl_rref(rh) is None
     b=repl_build()
     with open(join(build_outpath(b),'artifact.txt'), 'w') as f:
@@ -120,7 +120,7 @@ def test_repl_globalHelper():
 
 
 def test_repl_globalCancel():
-  with setup_storage('test_repl_globalCancel'):
+  with setup_storage2('test_repl_globalCancel') as S:
 
     n1:DRef; n2:DRef
     def _setting(m:Manager)->DRef:
@@ -129,18 +129,19 @@ def test_repl_globalCancel():
       n2 = mkstage(m, {'maman':n1})
       return n2
 
-    rh=repl_realize(instantiate(_setting), force_interrupt=True)
+    rh=repl_realize(instantiate(_setting,S=S), force_interrupt=True)
     assert repl_rref(rh) is None
     repl_cancel()
     assert rh.gen is None
-    rref=realize(instantiate(_setting))
+    rref=realize(instantiate(_setting, S=S))
     assert isrref(rref)
 
 
 def test_repl_realizeInval():
-  with setup_storage('test_repl_realizeInval'):
+  with setup_storage2('test_repl_realizeInval') as S:
     try:
-      repl_realize(instantiate(mkstage, {'a':1}), force_interrupt=33) #type:ignore
+      repl_realize(instantiate(mkstage, {'a':1}, S=S),
+                   force_interrupt=33) #type:ignore
       raise ShouldHaveFailed('wrong force_interrupt value')
     except AssertionError:
       pass

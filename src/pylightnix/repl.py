@@ -24,14 +24,15 @@ from pylightnix.utils import ( dirrm, timestring, concat )
 
 from pylightnix.types import (Dict, Closure, Context, Derivation, RRef, DRef,
                               List, Tuple, Optional, Generator, Path, Build,
-                              Union, Any, BuildArgs, RealizeArg, SPath)
+                              Union, Any, BuildArgs, RealizeArg, SPath,
+                              StorageSettings)
 
 from pylightnix.core import (realizeSeq, RealizeSeqGen, mkrealization)
 
 class ReplHelper:
   def __init__(self, gen:RealizeSeqGen)->None:
     self.gen:Optional[RealizeSeqGen]=gen
-    self.storage:Optional[SPath]=None
+    self.S:Optional[StorageSettings]=None
     self.dref:Optional[DRef]=None
     self.context:Optional[Context]=None
     self.drv:Optional[Derivation]=None
@@ -54,19 +55,19 @@ def repl_continueMany(out_paths:Optional[List[Path]]=None,
   assert rh.dref is not None, ERR_INACTIVE_RH
   assert rh.context is not None, ERR_INACTIVE_RH
   assert rh.drv is not None, ERR_INACTIVE_RH
-  assert rh.storage is not None, ERR_INACTIVE_RH
+  assert rh.S is not None, ERR_INACTIVE_RH
   try:
     rrefs:Optional[List[RRef]]
     if out_paths is not None:
       assert out_rrefs is None
-      rrefs=[mkrealization(rh.dref,rh.context,p,rh.storage)
+      rrefs=[mkrealization(rh.dref,rh.context,p,rh.S)
                     for p in out_paths]
     elif out_rrefs is not None:
       assert out_paths is None
       rrefs=out_rrefs
     else:
       rrefs=None
-    rh.storage,rh.dref,rh.context,rh.drv,rh.rarg=rh.gen.send((rrefs,False))
+    rh.S,rh.dref,rh.context,rh.drv,rh.rarg=rh.gen.send((rrefs,False))
   except StopIteration as e:
     rh.gen=None
     rh.rrefs=e.value
@@ -117,7 +118,7 @@ def repl_realize(closure:Closure,
   PYLIGHTNIX_REPL_HELPER=rh
   assert rh.gen is not None, ERR_INACTIVE_RH
   try:
-    rh.storage,rh.dref,rh.context,rh.drv,rh.rarg=next(rh.gen)
+    rh.S,rh.dref,rh.context,rh.drv,rh.rarg=next(rh.gen)
   except StopIteration as e:
     rh.gen=None
     rh.rrefs=e.value

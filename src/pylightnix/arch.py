@@ -21,12 +21,12 @@ from pylightnix.types import (RRef, List, Dict, Path, Iterable, Optional,
                               SPath, Manager, DRef, Config, RConfig, Build,
                               Set)
 
-from pylightnix.core import (drefdeps, rrefdeps, rref2path, dref2path, storage,
-                             tempdir, storagename, alldrefs, rootdrefs,
-                             rootrrefs, rref2dref, config_deps, drefcfg_, mkdrv,
-                             realize, realizeMany, instantiate, rrefdata,
-                             config_name, match_exact, drefrrefsC, resolve,
-                             rrefctx)
+from pylightnix.core import (drefdeps, rrefdeps, rref2path, dref2path,
+                             fsstorage, fstmpdir, storagename, alldrefs,
+                             rootdrefs, rootrrefs, rref2dref, config_deps,
+                             drefcfg_, mkdrv, realize, realizeMany, instantiate,
+                             rrefdata, config_name, match_exact, drefrrefsC,
+                             resolve, rrefctx)
 
 from pylightnix.build import (build_markstart, build_wrapper)
 from pylightnix.utils import (try_executable, dirrm)
@@ -53,7 +53,7 @@ def pack(roots:List[RRef], out:Path, S=None)->None:
   except Exception:
     pass
   rrefs=rrefdeps(roots,S)
-  store_holder=dirname(storage(S))
+  store_holder=dirname(fsstorage(S))
   done=False
   try:
     for rref in rrefs | set(roots):
@@ -74,9 +74,9 @@ def pack(roots:List[RRef], out:Path, S=None)->None:
         pass
 
 def unpack(archive:Path,S=None)->None:
-  tmppath=Path(mkdtemp(suffix=f"_{basename(archive)}", dir=tempdir()))
+  tmppath=Path(mkdtemp(suffix=f"_{basename(archive)}", dir=fstmpdir(S)))
   try:
-    p=Popen([AUNPACK(), '-q', '-X', tmppath, archive], cwd=tempdir())
+    p=Popen([AUNPACK(), '-q', '-X', tmppath, archive], cwd=fstmpdir(S))
     p.wait()
     assert p.returncode==0, \
       f"Failed to unpack '{archive}'. Retcode is {p.returncode}"

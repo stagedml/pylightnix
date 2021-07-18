@@ -5,7 +5,7 @@ from pylightnix import (DRef, RRef, lsref, catref, instantiate, realize, unrref,
                         parsetime, linkdref, linkrref, linkrrefs, readlink,
                         undref, islink, rrefbstart)
 
-from tests.setup import (ShouldHaveFailed, setup_storage, mkstage, mkstage,
+from tests.setup import (ShouldHaveFailed, mkstage, mkstage,
                          setup_storage2 )
 
 from tests.imports import (isdir, environ, chmod, stat, TemporaryDirectory,
@@ -13,8 +13,8 @@ from tests.imports import (isdir, environ, chmod, stat, TemporaryDirectory,
 
 
 def test_bashlike():
-  with setup_storage('test_bashlike'):
-    clo=instantiate(mkstage, {'a':1}, lambda i:42)
+  with setup_storage2('test_bashlike') as S:
+    clo=instantiate(mkstage, {'a':1}, lambda i:42, S=S)
     rref1=realize(clo, force_rebuild=[clo.dref])
     rref2=realize(clo, force_rebuild=[clo.dref])
     assert 'artifact' in lsref(rref1)
@@ -39,11 +39,11 @@ def test_bashlike():
       pass
 
 def test_rmdref():
-  with setup_storage('test_rmdref') as s:
-    clo=instantiate(mkstage, {'a':1}, lambda i:42)
+  with setup_storage2('test_rmdref') as S:
+    clo=instantiate(mkstage, {'a':1}, lambda i:42, S=S)
     drefpath=dref2path(clo.dref)
     rref1=realize(clo, force_rebuild=[clo.dref])
-    rrefpath=rref2path(rref1)
+    rrefpath=rref2path(rref1, S=S)
     assert isdir(rrefpath)
     rmref(rref1)
     assert not isdir(rrefpath)
@@ -57,7 +57,7 @@ def test_rmdref():
       pass
 
 def test_shellref():
-  with setup_storage('test_shellref') as s:
+  with setup_storage2('test_shellref') as S:
     with TemporaryDirectory() as tmp:
       mockshell=join(tmp,'mockshell')
       with open(mockshell,'w') as f:
@@ -65,7 +65,7 @@ def test_shellref():
         f.write(f"pwd\n")
       chmod(mockshell, stat(mockshell).st_mode | S_IEXEC)
       environ['SHELL']=mockshell
-      rref=realize(instantiate(mkstage, {'a':1}))
+      rref=realize(instantiate(mkstage, {'a':1}, S=S))
       shellref(rref)
       shellref(rref2dref(rref))
       shellref()
@@ -83,11 +83,11 @@ def test_shellref():
 
 
 def test_du():
-  with setup_storage('test_du') as s:
+  with setup_storage2('test_du') as S:
     usage=du()
     assert usage=={}
-    clo=instantiate(mkstage, {'name':'1'}, lambda i:42)
-    usage=du()
+    clo=instantiate(mkstage, {'name':'1'}, lambda i:42, S=S)
+    usage=du(S=S)
     assert clo.dref in usage
     assert usage[clo.dref][0]>0
     assert usage[clo.dref][1]=={}
@@ -97,36 +97,36 @@ def test_du():
     assert usage[clo.dref][1][rref]>0
 
 def test_find():
-  with setup_storage('test_find') as s:
+  with setup_storage2('test_find') as S:
     s1=partial(mkstage, config={'name':'1'}, nondet=lambda i:42)
     s2=partial(mkstage, config={'name':'2'}, nondet=lambda i:33)
-    rref1=realize(instantiate(s1))
+    rref1=realize(instantiate(s1,S=S))
     sleep(0.1)
     now=parsetime(timestring())
-    rref2=realize(instantiate(s2))
+    rref2=realize(instantiate(s2,S=S))
     rrefs=find()
     assert set(rrefs)==set([rref1,rref2])
-    rrefs=find(name='1')
+    rrefs=find(name='1',S=S)
     assert rrefs==[rref1]
-    rrefs=find(name=s2)
+    rrefs=find(name=s2,S=S)
     assert rrefs==[rref2]
-    rrefs=find(newer=-10)
+    rrefs=find(newer=-10,S=S)
     assert len(rrefs)==2
     # FIXME: repair now-based search
     # rrefs=find(newer=now)
     # assert rrefs==[rref2]
 
 def test_diff():
-  with setup_storage('test_find') as s:
+  with setup_storage2('test_find') as S:
     s1=partial(mkstage, config={'name':'1'}, nondet=lambda i:42)
     s2=partial(mkstage, config={'name':'2'}, nondet=lambda i:33)
-    dref1=instantiate(s1).dref
-    rref2=realize(instantiate(s2))
-    diff(dref1, rref2)
-    diff(dref1, s2)
+    dref1=instantiate(s1,S=S).dref
+    rref2=realize(instantiate(s2,S=S))
+    diff(dref1,rref2,S=S)
+    diff(dref1,s2,S=S)
 
 def test_linkrrefs()->None:
-  with setup_storage2('test_linkrrefs') as (T,S):
+  with setup_storage2('test_linkrrefs') as S:
     s1=partial(mkstage, config={'name':'NaMe'})
     rref1=realize(instantiate(s1,S=S))
     l=linkrrefs([rref1], destdir=S, format='result-%(N)s', S=S)

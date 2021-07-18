@@ -62,9 +62,9 @@ def setup_storage2(tn:str):
   assert 0==len(listdir(storepath))
   yield S
 
-def setup_inplace_reset()->None:
+def setup_inplace_reset(S=None)->None:
   import pylightnix.inplace
-  pylightnix.inplace.PYLIGHTNIX_MANAGER=Manager(S=None)
+  pylightnix.inplace.PYLIGHTNIX_MANAGER=Manager(S=S)
 
 
 def setup_test_config(c:dict)->Config:
@@ -73,7 +73,7 @@ def setup_test_config(c:dict)->Config:
   return mkconfig(c2)
 
 def setup_test_match(nmatch:int)->MatcherO:
-  def _match(S:StorageSettings, o:Output[RRef])->Optional[Output[RRef]]:
+  def _match(S, o:Output[RRef])->Optional[Output[RRef]]:
     rrefs=o.val
     values=list(sorted([(maybereadstr(join(rref2path(rref, S),'artifact'),'0',int),rref)
                         for rref in rrefs], key=lambda x:x[0]))
@@ -88,7 +88,7 @@ def setup_test_realize(nrrefs:int,
                        starttime:Optional[str],
                        nondet,
                        mustfail:bool)->RealizerO:
-  def _realize(S:StorageSettings, dref:DRef, context:Context, ra:RealizeArg)->Output[Path]:
+  def _realize(S, dref:DRef, context:Context, ra:RealizeArg)->Output[Path]:
     b=Build(mkbuildargs(S,dref,context,starttime,'AUTO',{},{}))
     paths=build_markstart(b,nrrefs)
     for i,o in enumerate(paths):
@@ -134,7 +134,7 @@ def mkstageP(m:Manager,
             mustfail:bool=False)->DRef:
   """ Makes a stage which could deliberately break the promise - i.e. fail to
   provide a promised artifact """
-  def _r(S:StorageSettings, dref:DRef, c:Context, ra:RealizeArg)->Output[Path]:
+  def _r(S, dref:DRef, c:Context, ra:RealizeArg)->Output[Path]:
     r=setup_test_realize(nrrefs, starttime, nondet, False)(S,dref,c,ra)
     if mustfail:
       # for path in r.val:

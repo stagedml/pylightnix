@@ -20,7 +20,7 @@ from pylightnix.imports import (isfile, isdir, listdir, join, rmtree, environ,
     Popen, rename, getsize, fnmatch, dirname, relpath)
 from pylightnix.core import (dref2path, rref2path, isrref, isdref,
     alldrefs, drefrrefs, drefcfg_, config_name,
-    instantiate, drefcfgpath, rref2dref)
+    instantiate, drefcfgpath, rref2dref, fsstorage)
 from pylightnix.utils import (dirchmod, dirrm, dirsize, parsetime, timestring,
                               forcelink)
 
@@ -80,7 +80,7 @@ def rmref(r:Union[RRef,DRef])->None:
   else:
     assert False, f"Invalid reference {r}"
 
-def shell(r:Union[RRef,DRef,Build,Path,str,None]=None)->None:
+def shell(r:Union[RRef,DRef,Build,Path,str,None]=None, S=None)->None:
   """ Open the Unix Shell in the directory associated with the argument passed.
   Path to the shell executable is read from the `SHELL` environment variable,
   defaulting to `/bin/sh`. If `r` is None, open the shell in the root of the
@@ -90,12 +90,11 @@ def shell(r:Union[RRef,DRef,Build,Path,str,None]=None)->None:
   """
   cwd:str
   if r is None:
-    import pylightnix.core
-    cwd=pylightnix.core.PYLIGHTNIX_STORE
+    cwd=fsstorage(S)
   elif isrref(r):
-    cwd=rref2path(RRef(r))
+    cwd=rref2path(RRef(r),S=S)
   elif isdref(r):
-    cwd=dref2path(DRef(r))
+    cwd=dref2path(DRef(r), S=S)
   elif isinstance(r,Build):
     assert r.outpaths is not None and len(r.outpaths.val)>0, (
       "Shell function requires at least one build output path to be defined" )
@@ -111,21 +110,21 @@ def shell(r:Union[RRef,DRef,Build,Path,str,None]=None)->None:
   Popen([environ.get('SHELL','/bin/sh')], shell=False, cwd=cwd).wait()
 
 
-def shellref(r:Union[RRef,DRef,None]=None)->None:
+def shellref(r:Union[RRef,DRef,None]=None, S=None)->None:
   """ Alias for [shell](#pylightnix.bashlike.shell). Deprecated. """
-  shell(r)
+  shell(r, S=S)
 
 
-def du()->Dict[DRef,Tuple[int,Dict[RRef,int]]]:
+def du(S=None)->Dict[DRef,Tuple[int,Dict[RRef,int]]]:
   """ Calculates the disk usage, in bytes. For every derivation, return it's
   total disk usage and disk usages per realizations. Note, that total disk usage
   of a derivation is slightly bigger than sum of it's realization's usages."""
   res={}
-  for dref in alldrefs():
+  for dref in alldrefs(S=S):
     rref_res={}
     dref_total=0
-    for rref in drefrrefs(dref):
-      usage=dirsize(rref2path(rref))
+    for rref in drefrrefs(dref, S=S):
+      usage=dirsize(rref2path(rref, S=S))
       rref_res[rref]=usage
       dref_total+=usage
     dref_total+=getsize(join(dref2path(dref),'config.json'))
@@ -133,7 +132,9 @@ def du()->Dict[DRef,Tuple[int,Dict[RRef,int]]]:
   return res
 
 
-def find(name:Optional[Union[Stage,str]]=None, newer:Optional[float]=None)->List[RRef]:
+def find(name:Optional[Union[Stage,str]]=None,
+         newer:Optional[float]=None,
+         S=None)->List[RRef]:
   """ Find [RRefs](#pylightnix.types.RRef) in Pylightnix sotrage which
   match all of the criteria provided. Without arguments return all RRefs.
 
@@ -158,11 +159,11 @@ def find(name:Optional[Union[Stage,str]]=None, newer:Optional[float]=None)->List
       name_=name
     else:
       stage=name
-      name_=config_name(drefcfg_(instantiate(stage).dref))
-  for dref in alldrefs():
-    for rref in drefrrefs(dref):
+      name_=config_name(drefcfg_(instantiate(stage,S=S).dref, S=S))
+  for dref in alldrefs(S=S):
+    for rref in drefrrefs(dref,S=S):
       if name_ is not None:
-        if not fnmatch(config_name(drefcfg_(rref2dref(rref))),name_):
+        if not fnmatch(config_name(drefcfg_(rref2dref(rref),S=S)),name_):
           continue
       if newer is not None:
         if newer<=0:
@@ -182,7 +183,9 @@ def find(name:Optional[Union[Stage,str]]=None, newer:Optional[float]=None)->List
       rrefs.append(rref)
   return rrefs
 
-def diff(stageA:Union[RRef,DRef,Stage], stageB:Union[RRef,DRef,Stage])->None:
+def diff(stageA:Union[RRef,DRef,Stage],
+         stageB:Union[RRef,DRef,Stage],
+         S=None)->None:
   """ Run system's `diff` utility to print the difference between configs of 2
   stages passed.
 
@@ -190,11 +193,11 @@ def diff(stageA:Union[RRef,DRef,Stage], stageB:Union[RRef,DRef,Stage])->None:
   """
   def _cfgpathof(s)->Path:
     if isrref(s):
-      return drefcfgpath(rref2dref(RRef(s)))
+      return drefcfgpath(rref2dref(RRef(s)),S=S)
     elif isdref(s):
-      return drefcfgpath(DRef(s))
+      return drefcfgpath(DRef(s),S=S)
     else:
-      return drefcfgpath(instantiate(s).dref)
+      return drefcfgpath(instantiate(s,S=S).dref,S=S)
 
   Popen(['diff', '-u', _cfgpathof(stageA), _cfgpathof(stageB)],
         shell=False, cwd='/').wait()
