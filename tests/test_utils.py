@@ -2,7 +2,7 @@ from pylightnix import (instantiate, DRef, RRef, Path, mklogdir, dirhash,
                         assert_valid_dref, assert_valid_rref, mknode, drefdeps1,
                         store_gc, assert_valid_hash, assert_valid_config,
                         Manager, mkcontext, mkdref, mkrref, unrref, undref,
-                        realize, rref2dref, initialize, mkconfig,
+                        realize, rref2dref, fsinit, mkconfig,
                         timestring, parsetime, traverse_dict, isrref, isdref,
                         scanref_dict, filehash, readjson, writejson, kahntsort)
 
@@ -55,16 +55,16 @@ def test_setup_storage()->None:
   setup_storage('a')
   setup_storage('a')
 
-def test_initialize()->None:
-  with setup_storage('test_initialize') as p:
-    import pylightnix.core
+def test_fsinit()->None:
+  with setup_storage('test_fsinit') as p:
+    # import pylightnix.core
     try:
-      pylightnix.core.PYLIGHTNIX_TMP=join(p,'tmp')
-      pylightnix.core.PYLIGHTNIX_STORE=join(p,'store')
-      initialize(custom_store=None, custom_tmp=None)
+      # pylightnix.core.PYLIGHTNIX_TMP=join(p,'tmp')
+      # pylightnix.core.PYLIGHTNIX_STORE=join(p,'store')
+      fsinit(custom_store=None, custom_tmp=None)
       assert isdir(join(p,'tmp'))
       assert isdir(join(p,'store'))
-      initialize(custom_store=None, custom_tmp=None)
+      fsinit(custom_store=None, custom_tmp=None)
       assert isdir(join(p,'tmp'))
       assert isdir(join(p,'store'))
     finally:

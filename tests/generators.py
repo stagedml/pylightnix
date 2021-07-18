@@ -1,6 +1,5 @@
-from pylightnix import (Manager, SPath, RConfig, datahash, PYLIGHTNIX_NAMEPAT,
-                        mkdref, mkrref, trimhash, encode, instantiate_,
-                        dagroots, List)
+from pylightnix import (Manager, RConfig, datahash, PYLIGHTNIX_NAMEPAT, mkdref,
+                        mkrref, trimhash, encode, instantiate_, dagroots, List)
 
 from tests.imports import (given, assume, example, note, settings, text,
                            decimals, integers, rmtree, characters, gettempdir,

@@ -1,11 +1,12 @@
-from pylightnix import (Manager, Build, Path, initialize, DRef, Context,
+from pylightnix import (Manager, Build, Path, fsinit, DRef, Context,
                         Optional, mkbuildargs, build_outpath, allrrefs, RRef,
                         mkconfig, Name, mkdrv, rref2path, dirchmod, Config,
-                        RealizeArg, drefrrefsC, tryreadstr_def, SPath, storage,
-                        storagename, deepcopy, maybereadstr, selfref, drefattrs,
-                        Output, Matcher, MatcherO, Realizer, rrefdeps1,
-                        RealizerO, Output, output_realizer, output_matcher,
-                        build_markstart, build_markstop)
+                        RealizeArg, drefrrefsC, tryreadstr_def, StorageSettings,
+                        fsstorage, storagename, deepcopy, maybereadstr, selfref,
+                        drefattrs, Output, Matcher, MatcherO, Realizer,
+                        rrefdeps1, RealizerO, Output, output_realizer,
+                        output_matcher, build_markstart, build_markstop,
+                        StorageSettings)
 
 from tests.imports import (rmtree, join, makedirs, listdir, Callable,
                            contextmanager, List, Dict,  Popen, PIPE,
@@ -19,34 +20,34 @@ settings.load_profile("pylightnix")
 class ShouldHaveFailed(Exception):
   pass
 
-@contextmanager
-def setup_storage(tn:str):
-  # We reset STORE variables to prevent interaction with production store
-  import pylightnix.core
-  pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
-  pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
-  storepath=Path(join(gettempdir(),tn))
-  try:
-    dirchmod(storepath, 'rw')
-    rmtree(storepath)
-  except FileNotFoundError:
-    pass
-  initialize(custom_store=storepath,
-                   custom_tmp=join(gettempdir(),'pylightnix_tmp'))
-  assert 0==len(listdir(storepath))
-  try:
-    yield storepath
-  finally:
-    # print('Setting PYLIGHTNIX_STORE to none')
-    pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
-    pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
+# @contextmanager
+# def setup_storage(tn:str):
+#   # We reset STORE variables to prevent interaction with production store
+#   import pylightnix.core
+#   pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
+#   pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
+#   storepath=Path(join(gettempdir(),tn))
+#   try:
+#     dirchmod(storepath, 'rw')
+#     rmtree(storepath)
+#   except FileNotFoundError:
+#     pass
+#   fsinit(custom_store=storepath,
+#                    custom_tmp=join(gettempdir(),'pylightnix_tmp'))
+#   assert 0==len(listdir(storepath))
+#   try:
+#     yield storepath
+#   finally:
+#     # print('Setting PYLIGHTNIX_STORE to none')
+#     pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
+#     pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
 
 @contextmanager
 def setup_storage2(tn:str):
   # We reset STORE variables to prevent interaction with production store
-  import pylightnix.core
-  pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
-  pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
+  # import pylightnix.core
+  # pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
+  # pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
   assert len(tn)>0
   testroot=Path(join(gettempdir(), 'pylightnix', tn))
   storepath=Path(join(testroot, storagename()))
@@ -56,20 +57,14 @@ def setup_storage2(tn:str):
     rmtree(testroot)
   except FileNotFoundError:
     pass
-  # initialize(custom_store=storepath, custom_tmp=gettempdir())
-  makedirs(storepath, exist_ok=False)
-  makedirs(tmppath, exist_ok=False)
-  pylightnix.core.PYLIGHTNIX_TMP=tmppath # type:ignore
+  S=StorageSettings(tmppath,storepath)
+  fsinit(S)
   assert 0==len(listdir(storepath))
-  try:
-    yield tmppath,storepath
-  finally:
-    pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
-    pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
+  yield S
 
 def setup_inplace_reset()->None:
   import pylightnix.inplace
-  pylightnix.inplace.PYLIGHTNIX_MANAGER=Manager(storage(None))
+  pylightnix.inplace.PYLIGHTNIX_MANAGER=Manager(S=None)
 
 
 def setup_test_config(c:dict)->Config:
@@ -78,7 +73,7 @@ def setup_test_config(c:dict)->Config:
   return mkconfig(c2)
 
 def setup_test_match(nmatch:int)->MatcherO:
-  def _match(S:SPath, o:Output[RRef])->Optional[Output[RRef]]:
+  def _match(S:StorageSettings, o:Output[RRef])->Optional[Output[RRef]]:
     rrefs=o.val
     values=list(sorted([(maybereadstr(join(rref2path(rref, S),'artifact'),'0',int),rref)
                         for rref in rrefs], key=lambda x:x[0]))
@@ -93,7 +88,7 @@ def setup_test_realize(nrrefs:int,
                        starttime:Optional[str],
                        nondet,
                        mustfail:bool)->RealizerO:
-  def _realize(S:SPath, dref:DRef, context:Context, ra:RealizeArg)->Output[Path]:
+  def _realize(S:StorageSettings, dref:DRef, context:Context, ra:RealizeArg)->Output[Path]:
     b=Build(mkbuildargs(S,dref,context,starttime,'AUTO',{},{}))
     paths=build_markstart(b,nrrefs)
     for i,o in enumerate(paths):
@@ -139,7 +134,7 @@ def mkstageP(m:Manager,
             mustfail:bool=False)->DRef:
   """ Makes a stage which could deliberately break the promise - i.e. fail to
   provide a promised artifact """
-  def _r(S:SPath, dref:DRef, c:Context, ra:RealizeArg)->Output[Path]:
+  def _r(S:StorageSettings, dref:DRef, c:Context, ra:RealizeArg)->Output[Path]:
     r=setup_test_realize(nrrefs, starttime, nondet, False)(S,dref,c,ra)
     if mustfail:
       # for path in r.val:

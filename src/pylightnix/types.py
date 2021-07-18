@@ -32,6 +32,12 @@ class SPath(Path):
   tell the typechecker that a given string contains a path to storage. """
   pass
 
+#: Stoarge settings contains a path for the main stoarge and a path for
+#: temporary directories. These paths need to be on the same device in order to
+#: atomic rename work.
+StorageSettings=NamedTuple('StorageSettings',[('storage',Optional[Path]),
+                                              ('tmpdir',Optional[Path])])
+
 class Hash(str):
   """ `Hash` is an alias for string. It is used in pylightnix to
   tell the typechecker that a given string contains sha256 hash digest. """
@@ -195,8 +201,8 @@ RealizeArg=Dict[str,Any]
 #:
 #: TODO: Splitting Matcher into two parts would allow us to rid of
 #: `force_interrupt` argument.
-Matcher = Callable[[SPath,List[RRef]],Optional[List[RRef]]]
-MatcherO = Callable[[SPath,Output[RRef]],Optional[Output[RRef]]]
+Matcher = Callable[[StorageSettings,List[RRef]],Optional[List[RRef]]]
+MatcherO = Callable[[StorageSettings,Output[RRef]],Optional[Output[RRef]]]
 
 
 #: Realizer is a type of user-defined Python function. Realizers typically
@@ -238,8 +244,8 @@ MatcherO = Callable[[SPath,Output[RRef]],Optional[Output[RRef]]]
 #:   ...
 #:   return mkdrv(m, ...,  _realize)
 #: ```
-Realizer = Callable[[SPath,DRef,Context,RealizeArg],List[Path]]
-RealizerO = Callable[[SPath,DRef,Context,RealizeArg],Output[Path]]
+Realizer = Callable[[StorageSettings,DRef,Context,RealizeArg],List[Path]]
+RealizerO = Callable[[StorageSettings,DRef,Context,RealizeArg],Output[Path]]
 
 #: Derivation is the core type of Pylightnix. It keeps all the information about
 #: a stage:
@@ -271,7 +277,7 @@ Derivation = NamedTuple('Derivation', [('dref',DRef),
 #: call to [realizeMany](#pylightnix.core.realizeMany) or it's analogs.
 Closure = NamedTuple('Closure', [('dref',DRef),
                                  ('derivations',List[Derivation]),
-                                 ('storage',SPath)])
+                                 ('S',StorageSettings)])
 
 class Config:
   """ Config is a JSON-serializable dict-like entity containing user-defined
@@ -418,11 +424,11 @@ class Manager:
 
   The [inplace module](#pylightnix.inplace) defines it's own [global derivation
   manager](#pylightnix.inplace.PYLIGHTNIX_MANAGER) """
-  def __init__(self, S:SPath):
+  def __init__(self, S:Optional[StorageSettings]):
     self.builders:Dict[DRef,Derivation]=OrderedDict()
     self.in_instantiate:bool=False
     self.in_redefine:bool=False
-    self.storage:SPath=S
+    self.S:StorageSettings=S
 
 
 #: R is a DRef or any of its derivatives

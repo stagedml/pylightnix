@@ -32,14 +32,15 @@ from pylightnix.utils import (dirhash, assert_serializable, assert_valid_dict,
                               tryreadjson_def, isrefpath, kahntsort, dagroots,
                               isselfpath)
 
-from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional, Iterable,
-                              IO, Path, SPath, Hash, DRef, RRef, RefPath,
-                              HashPart, Callable, Context, Name, NamedTuple,
-                              Build, RConfig, ConfigAttrs, Derivation, Stage,
-                              Manager, Matcher, MatcherO, Realizer, RealizerO,
-                              Set, Closure, Generator, BuildArgs, Config,
-                              RealizeArg, InstantiateArg, PYLIGHTNIX_SELF_TAG,
-                              Output, TypeVar, PromiseException)
+from pylightnix.types import (StorageSettings, Dict, List, Any, Tuple, Union,
+                              Optional, Iterable, IO, Path, SPath, Hash, DRef,
+                              RRef, RefPath, HashPart, Callable, Context, Name,
+                              NamedTuple, Build, RConfig, ConfigAttrs,
+                              Derivation, Stage, Manager, Matcher, MatcherO,
+                              Realizer, RealizerO, Set, Closure, Generator,
+                              BuildArgs, Config, RealizeArg, InstantiateArg,
+                              PYLIGHTNIX_SELF_TAG, Output, TypeVar,
+                              PromiseException)
 
 logger=getLogger(__name__)
 info=logger.info
@@ -52,42 +53,60 @@ PYLIGHTNIX_STORE_VERSION=0
 def storagename():
   return f"store-v{PYLIGHTNIX_STORE_VERSION}"
 
-#: `PYLIGHTNIX_ROOT` contains the path to the root of pylightnix shared data folder.
-#:
-#: Default is `~/_pylightnix` or `/var/run/_pylightnix` if no `$HOME` is available.
-#: Setting `PYLIGHTNIX_ROOT` environment variable overwrites the defaults.
-PYLIGHTNIX_ROOT=environ.get('PYLIGHTNIX_ROOT',
-  join(environ.get('HOME','/var/run'), '_pylightnix'))
+def fsroot()->Path:
+  """ `fsroot` contains the path to the root of pylightnix shared data folder.
+  Default is `~/_pylightnix` or `/var/run/_pylightnix` if no `$HOME` is
+  available.  Setting `PYLIGHTNIX_ROOT` environment variable overwrites the
+  defaults.  """
+  return Path(environ.get('PYLIGHTNIX_ROOT',
+    join(environ.get('HOME','/var/run'), '_pylightnix')))
 
-
-#: `PYLIGHTNIX_TMP` contains the path to the root of temporary folders.
-#: Setting `PYLIGHTNIX_TMP` environment variable overwrites the default value of
-#: `$PYLIGHTNIX_ROOT/tmp`.
-PYLIGHTNIX_TMP=environ.get('PYLIGHTNIX_TMP', join(PYLIGHTNIX_ROOT,'tmp'))
-
-def tempdir(tmp:Optional[Path]=None)->Path:
-  if tmp is None:
-    assert isinstance(PYLIGHTNIX_TMP, str), \
-      f"Default temp folder location is not a string: {PYLIGHTNIX_TMP}"
-    return Path(PYLIGHTNIX_TMP)
+def fstmpdir(S:Optional[StorageSettings]=None)->Path:
+  if S is None or S.tmpdir is None:
+    return Path(environ.get('PYLIGHTNIX_TMP',
+                            join(fsroot(),'tmp')))
   else:
-    return tmp
+    return S.tmpdir
 
-#: `PYLIGHTNIX_STORE` contains the path to the main pylightnix store folder.
-#:
-#: By default, the store is located in `$PYLIGHTNIX_ROOT/store-vXX` folder.
-#: Setting `PYLIGHTNIX_STORE` environment variable overwrites the defaults.
-PYLIGHTNIX_STORE=join(PYLIGHTNIX_ROOT, storagename())
-
-def storage(S:Optional[SPath]=None)->SPath:
+def fsstorage(S:Optional[StorageSettings]=None)->Path:
   """ Returns the location to Pylightnix storage, defaulting to
   PYLIGHTNIX_STORE """
-  if S is None:
-    assert isinstance(PYLIGHTNIX_STORE, str), \
-      f"Default storage location is not a string: {PYLIGHTNIX_STORE}"
-    return SPath(PYLIGHTNIX_STORE)
+  if S is None or S.storage is None:
+    return Path(environ.get('PYLIGHTNIX_STORAGE',
+                            join(fsroot(), storagename())))
   else:
-    return S
+    return S.storage
+
+
+def assert_fsinit(S:Optional[StorageSettings]=None)->None:
+  assert isdir(fsstorage(S)), \
+    (f"Looks like the Pylightnix storage ('{fsstorage(S)}') is not "
+     f"initialized. Did you set `S` parameter correctly?")
+  assert isdir(fstmpdir(S)), \
+    (f"Looks like the Pylightnix tmp ('{fstmpdir(S)}') is not initialized. Did "
+     f"you call `initialize`?")
+  assert lstat((fsstorage(S))).st_dev == lstat(fstmpdir(S)).st_dev, \
+    (f"Looks like Pylightnix store and tmp directories belong to different "
+     f"filesystems. This case is not supported yet. Consider setting "
+     f"PYLIGHTNIX_TMP to be on the same device with PYLIGHTNIX_STORE")
+
+def fsinit(S:Optional[StorageSettings]=None,
+           check_not_exist:bool=False)->None:
+  """ Create the storage and/or temp direcory if they don't exist. Default
+  locations are determined by `PYLIGHTNIX_STOREAGE` and `PYLIGHTNIX_TMP` env
+  variables.
+
+  Parameters:
+  - `custom_store:Optional[Path]=None`: If not None, create new storage located
+    here.
+  - `custom_tmp:Optional[Path]=None`: If not None, set the temp files directory
+    here.
+  - `check_not_exist:bool=False`: Set to True to assert on already existing
+    storages. Good to become sure that newly created storage is empty.
+  """
+  makedirs(fsstorage(S), exist_ok=False if check_not_exist else True)
+  makedirs(fstmpdir(S), exist_ok=True)
+  assert_fsinit(S)
 
 #: Set the regular expression pattern for valid name characters.
 PYLIGHTNIX_NAMEPAT="[a-zA-Z0-9_-]"
@@ -221,58 +240,6 @@ def mkrefpath(r:DRef, items:List[str]=[])->RefPath:
 #  ___) | || (_) | | |  __/
 # |____/ \__\___/|_|  \___|
 
-def assert_initialized(S:SPath)->None:
-  assert isdir(storage(S)), \
-    (f"Looks like the Pylightnix store ('{PYLIGHTNIX_STORE}') is not initialized. Did "
-     f"you call `initialize`?")
-  assert isdir(tempdir()), \
-    (f"Looks like the Pylightnix tmp ('{tempdir()}') is not initialized. Did "
-     f"you call `initialize`?")
-  assert lstat((storage(S))).st_dev == lstat(tempdir()).st_dev, \
-    (f"Looks like Pylightnix store and tmp directories belong to different filesystems. "
-     f"This case is not supported yet. Consider setting PYLIGHTNIX_TMP to be on the same "
-     f"device with PYLIGHTNIX_STORE")
-
-def initialize(custom_store:Optional[str]=None,
-                     custom_tmp:Optional[str]=None,
-                     check_not_exist:bool=False)->None:
-  """ Create the storage and temp direcories if they don't exist. Default
-  locations are determined by `PYLIGHTNIX_STORE` and `PYLIGHTNIX_TMP` global
-  variables which in turn may be set by either setting environment variables of
-  the same name or by direct assigning.
-
-  Parameters:
-  - `custom_store:Optional[str]=None`: If not None, create new storage located
-    here.
-  - `custom_tmp:Optional[str]=None`: If not None, set the temp files directory
-    here.
-  - `check_not_exist:bool=False`: Set to True to assert on already existing
-    storages. Good to become sure that newly created storage is empty.
-
-  See also [assert_initialized](#pylightnix.core.assert_initialized).
-
-  Example:
-  ```python
-  import pylightnix.core
-  pylightnix.core.PYLIGHTNIX_STORE='/tmp/custom_pylightnix_storage'
-  pylightnix.core.PYLIGHTNIX_TMP='/tmp/custom_pylightnix_tmp'
-  pylightnix.core.initialize()
-  ```
-  """
-  global PYLIGHTNIX_STORE, PYLIGHTNIX_TMP
-
-  if custom_store is not None:
-    PYLIGHTNIX_STORE=custom_store
-  info(f"Initializing {'' if isdir(PYLIGHTNIX_STORE) else 'non-'}existing "
-       f"{PYLIGHTNIX_STORE}")
-  makedirs(PYLIGHTNIX_STORE, exist_ok=False if check_not_exist else True)
-
-  if custom_tmp is not None:
-    PYLIGHTNIX_TMP=custom_tmp
-  makedirs(PYLIGHTNIX_TMP, exist_ok=True)
-
-  assert_initialized(SPath(PYLIGHTNIX_STORE))
-
 
 def resolve(c:Config, r:DRef)->RConfig:
   """ Replace all Promise tags with DRef `r`. In particular, all PromisePaths
@@ -289,11 +256,11 @@ def resolve(c:Config, r:DRef)->RConfig:
 
 def dref2path(r:DRef,S=None)->Path:
   (dhash,nm)=undref(r)
-  return Path(join(storage(S),dhash+'-'+nm))
+  return Path(join(fsstorage(S),dhash+'-'+nm))
 
 def rref2path(r:RRef, S=None)->Path:
   (rhash,dhash,nm)=unrref(r)
-  return Path(join(storage(S),dhash+'-'+nm,rhash))
+  return Path(join(fsstorage(S),dhash+'-'+nm,rhash))
 
 def drefcfgpath(r:DRef,S=None)->Path:
   return Path(join(dref2path(r,S),'config.json'))
@@ -371,7 +338,7 @@ def rrefdeps(rrefs:Iterable[RRef],S=None)->Set[RRef]:
 def alldrefs(S=None)->Iterable[DRef]:
   """ Iterates over all derivations of the storage located at `S`
   (PYLIGHTNIX_STORE env is used by default) """
-  store_path_=storage(S)
+  store_path_=fsstorage(S)
   for dirname in listdir(store_path_):
     if dirname[-4:]!='.tmp' and isdir(join(store_path_,dirname)):
       yield mkdref(HashPart(dirname[:32]), Name(dirname[32+1:]))
@@ -438,7 +405,7 @@ def store_gc(keep_drefs:List[DRef],
   Default location of `S` may be changed.
 
   See also [rmref](#pylightnix.bashlike.rmref)"""
-  assert_initialized(S)
+  assert_fsinit(S)
   keep_rrefs_=set(keep_rrefs)
   keep_drefs_=set(keep_drefs)
   closure_rrefs=rrefdeps(keep_rrefs_,S) | keep_rrefs_
@@ -463,7 +430,7 @@ def mkdrv_(c:Config,S:SPath)->DRef:
 
   FIXME: Assert or handle possible (but improbable) hash collision [*]
   """
-  assert_initialized(S)
+  assert_fsinit(S)
   # c=cp.config
   assert_valid_config(c)
   assert_rref_deps(c)
@@ -667,7 +634,7 @@ def instantiate(stage:Any, *args, S=None, **kwargs)->Closure:
   All new derivations are added to the storage.
   See also [realizeMany](#pylightnix.core.realizeMany)
   """
-  return instantiate_(Manager(storage(S)), stage, *args, **kwargs)
+  return instantiate_(Manager(fsstorage(S)), stage, *args, **kwargs)
 
 
 RealizeSeqGen = Generator[Tuple[SPath,DRef,Context,Derivation,RealizeArg],

@@ -1,8 +1,8 @@
-from pylightnix import (Manager, Path, initialize, DRef, Context,
+from pylightnix import (Manager, Path, fsinit, DRef, Context,
                         Optional, mkbuild, build_outpath, allrrefs, RRef,
                         mkconfig, Name, mkdrv, rref2path, dirchmod,
                         promise, Config, RealizeArg, drefrrefsC,
-                        tryreadstr_def, SPath, storage, storagename, deepcopy,
+                        tryreadstr_def, storage, storagename, deepcopy,
                         build_setoutgroups, tag_out, maybereadstr)
 
 from tests.imports import (rmtree, join, makedirs, listdir, Callable,
