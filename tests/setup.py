@@ -9,7 +9,12 @@ from pylightnix import (Manager, Build, Path, initialize, DRef, Context,
 
 from tests.imports import (rmtree, join, makedirs, listdir, Callable,
                            contextmanager, List, Dict,  Popen, PIPE,
-                           gettempdir, mkdtemp, remove)
+                           gettempdir, mkdtemp, remove, settings, HealthCheck)
+
+
+settings.register_profile("pylightnix", deadline=None, print_blob=True,
+                          suppress_health_check=(HealthCheck.too_slow,))
+settings.load_profile("pylightnix")
 
 class ShouldHaveFailed(Exception):
   pass

@@ -121,7 +121,6 @@ def test_dirhash2(b)->None:
     h=dirhash(path)
     assert (p.stdout[:len(h)].decode('utf-8'))==h
 
-@settings(suppress_health_check=(HealthCheck.too_slow,))
 @given(d=dicts())
 def test_dirhash3(d)->None:
   with setup_storage('dirhash3') as path:
@@ -131,7 +130,6 @@ def test_dirhash3(d)->None:
     h=dirhash(path)
     assert (p.stdout[:len(h)].decode('utf-8'))==h
 
-@settings(suppress_health_check=(HealthCheck.too_slow,))
 @given(d=dicts())
 def test_dirhash4(d)->None:
   with setup_storage('dirhash4') as path:

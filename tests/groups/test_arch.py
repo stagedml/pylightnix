@@ -54,7 +54,7 @@ def test_pack1()->None:
 # @reproduce_failure('5.30.0', b'AAEBAAAAAAAAAA==')
 # @reproduce_failure('5.30.0', b'AXicJUwJDsAwCOJw7f7/4oGLBCMCrwBKpAURWeEfhkWDnSNODtcKFyEMZ+XhfSod6ibGZjdnueaWCFuaVF8fMEIAwQ==')
 # @reproduce_failure('5.30.0', b'AXicFYlJDgAxDMIw1rTH/v+3k4hFAr+TxDLNTfkiYPbBVsK4GTl7sShdMMkPENwAbg==')
-@settings(max_examples=10, print_blob=True, deadline=None, phases=[Phase.generate])
+@settings(max_examples=10, phases=[Phase.generate])
 @given(stages=rootstages())
 def test_pack2(stages)->None:
   archives=[]

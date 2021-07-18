@@ -33,7 +33,6 @@ def mkstageE(m:Manager,
     return r(S,dref,c,ra)
   return mkdrvE(m, setup_test_config(config), setup_test_match(nmatch), _r)
 
-# @settings(print_blob=True)
 @given(stages=rootstages(stagefn=mkstageE, failchances=[50]))
 def test_either_invariant(stages):
   with setup_storage2('test_either_invariant') as (T,S):

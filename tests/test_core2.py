@@ -22,7 +22,7 @@ from tests.setup import ( ShouldHaveFailed, setup_storage, setup_storage2,
                          setup_test_match, setup_test_config, mkstageP)
 
 
-@settings(print_blob=True, deadline=None)
+@settings(print_blob=True)
 @given(stages=rootstages())
 def test_union_of_root_derivations(stages):
   """ Union of dep.closures of root derivations must be equal to the set of all
@@ -36,7 +36,6 @@ def test_union_of_root_derivations(stages):
 
 
 # @reproduce_failure('5.30.0', b'AAABAAAA')
-@settings(print_blob=True, deadline=None)
 @given(stages=rootstages())
 def test_union_of_root_realizations(stages):
   """ Union of dep.closures of root realizations must be less or equal to the
@@ -49,7 +48,6 @@ def test_union_of_root_realizations(stages):
       deps|=rrefdeps(rrefs,S) | set(rrefs)
     assert deps<=set(allrrefs(S))
 
-# @settings(deadline=None)
 # @given(stages=rootstages())
 # def test_group_invariants(stages):
 #   """ Group invariants should be fulfilled. """
@@ -101,7 +99,7 @@ def test_match_some(stages,n):
         event('match_some negative')
 
 
-# @settings(max_examples=30,print_blob=True)
+# @settings(max_examples=30)
 # @given(stages=rootstages(max_size=3, partial_matches=False),
 #        topN=integers(min_value=1, max_value=3))
 # def test_match_best(stages,topN):
@@ -118,7 +116,7 @@ def test_match_some(stages,n):
 #       event(f'match_best ngroups {len(arts)}')
 #       assert sorted(artsM)==sorted(arts)[-len(artsM):]
 
-# @settings(max_examples=30,print_blob=True)
+# @settings(max_examples=30)
 # @given(stages=rootstages(max_size=3, partial_matches=False),
 #        subs=lists(integers(min_value=1, max_value=3),max_size=3))
 # def test_match_exact(stages,subs):
@@ -136,7 +134,7 @@ def test_match_some(stages,n):
 #       except AssertionError:
 #         assert len(subset)==0
 
-# @settings(max_examples=30,print_blob=True)
+# @settings(max_examples=30)
 # @given(stages=rootstages(max_size=3, partial_matches=False))
 # def test_match_all(stages):
 #   with setup_storage2('test_match_all') as (T,S):
@@ -224,7 +222,6 @@ def test_root_rrefs(stages):
       assert rref in roots
 
 
-@settings(deadline=None)
 @given(stages=rootstages())
 def test_root_drefs(stages):
   """ Check that rootdrefs really enumerates roots """
