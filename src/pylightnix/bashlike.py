@@ -15,7 +15,7 @@
 """ Simple functions imitating unix shell tools.  """
 
 from pylightnix.types import (Iterable, List, Union, Optional, DRef, RRef,
-    Dict, Tuple, Path, Stage)
+    Dict, Tuple, Path, Stage, StorageSettings)
 from pylightnix.imports import (isfile, isdir, listdir, join, rmtree, environ,
     Popen, rename, getsize, fnmatch, dirname, relpath)
 from pylightnix.core import (dref2path, rref2path, isrref, isdref,
@@ -26,46 +26,46 @@ from pylightnix.utils import (dirchmod, dirrm, dirsize, parsetime, timestring,
 
 from pylightnix.build import (Build, rrefbstart)
 
-def lsdref_(r:DRef)->Iterable[str]:
-  p=dref2path(r)
+def lsdref_(r:DRef, S=None)->Iterable[str]:
+  p=dref2path(r,S=S)
   for d in listdir(p):
     p2=join(d,p)
     if isdir(p2):
       yield d
 
-def lsrref_(r:RRef, fn:List[str]=[])->Iterable[str]:
-  p=join(rref2path(r),*fn)
+def lsrref_(r:RRef, fn:List[str]=[], S=None)->Iterable[str]:
+  p=join(rref2path(r,S=S),*fn)
   for d in listdir(p):
     yield d
 
-def lsrref(r:RRef, fn:List[str]=[])->List[str]:
-  return list(lsrref_(r,fn))
+def lsrref(r:RRef, fn:List[str]=[], S=None)->List[str]:
+  return list(lsrref_(r,fn,S=S))
 
-def lsref(r:Union[RRef,DRef])->List[str]:
+def lsref(r:Union[RRef,DRef], S=None)->List[str]:
   """ List the contents of `r`. For [DRefs](#pylightnix.types.DRef), return
   realization hashes. For [RRefs](#pylightnix.types.RRef), list artifact files.
   """
   if isrref(r):
-    return list(lsrref(RRef(r)))
+    return list(lsrref(RRef(r),S=S))
   elif isdref(r):
-    return list(lsdref_(DRef(r)))
+    return list(lsdref_(DRef(r),S=S))
   else:
     assert False, f"Invalid reference {r}"
 
-def catrref_(r:RRef, fn:List[str])->Iterable[str]:
-  with open(join(rref2path(r),*fn),'r') as f:
+def catrref_(r:RRef, fn:List[str], S=None)->Iterable[str]:
+  with open(join(rref2path(r,S=S),*fn),'r') as f:
     for l in f.readlines():
       yield l
 
-def catref(r:RRef, fn:List[str])->List[str]:
+def catref(r:RRef, fn:List[str], S=None)->List[str]:
   """ Return the contents of r's artifact line by line. `fn` is a list of
   folders, relative to rref's root. """
   if isrref(r) and isinstance(r,RRef):
-    return list(catrref_(r,fn))
+    return list(catrref_(r,fn,S=S))
   else:
     assert False, 'not implemented'
 
-def rmref(r:Union[RRef,DRef])->None:
+def rmref(r:Union[RRef,DRef], S=None)->None:
   """ Forcebly remove a reference from the storage. Removing
   [DRefs](#pylightnix.types.DRef) also removes all their realizations.
 
@@ -74,9 +74,9 @@ def rmref(r:Union[RRef,DRef])->None:
   care of possible race conditions.
   """
   if isrref(r):
-    dirrm(rref2path(RRef(r)))
+    dirrm(rref2path(RRef(r),S=S))
   elif isdref(r):
-    dirrm(dref2path(DRef(r)))
+    dirrm(dref2path(DRef(r),S=S))
   else:
     assert False, f"Invalid reference {r}"
 
@@ -127,14 +127,14 @@ def du(S=None)->Dict[DRef,Tuple[int,Dict[RRef,int]]]:
       usage=dirsize(rref2path(rref, S=S))
       rref_res[rref]=usage
       dref_total+=usage
-    dref_total+=getsize(join(dref2path(dref),'config.json'))
+    dref_total+=getsize(join(dref2path(dref,S=S),'config.json'))
     res[dref]=(dref_total,rref_res)
   return res
 
 
 def find(name:Optional[Union[Stage,str]]=None,
          newer:Optional[float]=None,
-         S=None)->List[RRef]:
+         S:Optional[StorageSettings]=None)->List[RRef]:
   """ Find [RRefs](#pylightnix.types.RRef) in Pylightnix sotrage which
   match all of the criteria provided. Without arguments return all RRefs.
 

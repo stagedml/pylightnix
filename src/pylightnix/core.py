@@ -350,20 +350,20 @@ def allrrefs(S=None)->Iterable[RRef]:
     for rref in drefrrefs(dref,S):
       yield rref
 
-def rootdrefs(S:Optional[SPath]=None)->Set[DRef]:
+def rootdrefs(S:Optional[StorageSettings]=None)->Set[DRef]:
   """ Return root DRefs of the storage `S` as a set """
   def _inb(x):
-    return drefdeps1([x],S)
+    return drefdeps1([x],S=S)
   topsorted=kahntsort(alldrefs(S), _inb)
   assert topsorted is not None, (
     f"Falied to topologically sort the derivations of {S}. This "
     f"probably means that the storage ({S if S else 'default'}) is damaged")
   return dagroots(topsorted, _inb)
 
-def rootrrefs(S:Optional[SPath]=None)->Set[RRef]:
+def rootrrefs(S:Optional[StorageSettings]=None)->Set[RRef]:
   """ Return root RRefs of the storage `S` as a set """
   def _inb(x):
-    return rrefdeps1([x],S)
+    return rrefdeps1([x],S=S)
   topsorted=kahntsort(allrrefs(S), _inb)
   assert topsorted is not None, (
     f"Falied to topologically sort the realizations of {S}. This "

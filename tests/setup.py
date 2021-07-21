@@ -44,10 +44,6 @@ class ShouldHaveFailed(Exception):
 
 @contextmanager
 def setup_storage2(tn:str):
-  # We reset STORE variables to prevent interaction with production store
-  # import pylightnix.core
-  # pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
-  # pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
   assert len(tn)>0
   testroot=Path(join(gettempdir(), 'pylightnix', tn))
   storepath=Path(join(testroot, storagename()))
@@ -57,7 +53,7 @@ def setup_storage2(tn:str):
     rmtree(testroot)
   except FileNotFoundError:
     pass
-  S=StorageSettings(tmppath,storepath)
+  S=StorageSettings(storepath,tmppath)
   fsinit(S)
   assert 0==len(listdir(storepath))
   yield S

@@ -23,7 +23,7 @@ from pylightnix.arch import (pack,unpack)
 
 
 def test_pack1()->None:
-  with setup_storage2('test_pack1') as (T,S):
+  with setup_storage2('test_pack1') as S:
     def _stage(m):
       s1=mkstage(m, {'name':'n1',
                      'promise':[selfref,'artifact']})
@@ -39,7 +39,7 @@ def test_pack1()->None:
     print('===================')
     print(list(allrrefs(S)))
     print('===================')
-    arch_path=Path(join(T,'archive.zip'))
+    arch_path=Path(join(S.tmpdir,'archive.zip'))
     pack([rref3], arch_path, S=S)
     unpack(arch_path, S=S)
     assert isfile(arch_path)
@@ -51,22 +51,23 @@ def test_pack1()->None:
 # # @reproduce_failure('5.30.0', b'AXicFYlJDgAxDMIw1rTH/v+3k4hFAr+TxDLNTfkiYPbBVsK4GTl7sShdMMkPENwAbg==')
 # @reproduce_failure('4.41.0', b'AAAAAA==')
 # @reproduce_failure('4.41.0', b'AA4NApYAAwADAgEBBAMFBgIAAQA=')
+# @reproduce_failure('4.41.0', b'AAAAAA==')
 @settings(max_examples=10, phases=[Phase.generate])
 @given(stages=rootstages())
 def test_pack2(stages)->None:
   archives=[]
-  with setup_storage2('test_pack_src') as (T1,S1):
+  with setup_storage2('test_pack_src') as S1:
     for nstage,stage in enumerate(stages):
       rrefs=realizeMany(instantiate(stage,S=S1))
       for nrref,rref in enumerate(rrefs):
-        ap=Path(join(T1,f'archive_{nstage:02d}_{nrref:02d}.zip'))
+        ap=Path(join(S1.tmpdir,f'archive_{nstage:02d}_{nrref:02d}.zip'))
         print(f'Packing {ap}')
         pack([rref], ap, S=S1)
         archives.append(ap)
 
   print('PACK done')
 
-  with setup_storage2('test_pack_dst') as (T2,S2):
+  with setup_storage2('test_pack_dst') as S2:
     for ap in archives:
       print(f'Unpacking {ap}')
       unpack(Path(ap), S=S2)

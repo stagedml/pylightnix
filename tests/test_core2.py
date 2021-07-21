@@ -26,7 +26,7 @@ from tests.setup import ( ShouldHaveFailed, setup_storage2, mkstage, mkstage,
 def test_union_of_root_derivations(stages):
   """ Union of dep.closures of root derivations must be equal to the set of all
   derivations. """
-  with setup_storage2('test_union_of_root_derivations') as (T,S):
+  with setup_storage2('test_union_of_root_derivations') as S:
     deps=set()
     for stage in stages:
       clo=instantiate(stage,S=S)
@@ -40,7 +40,7 @@ def test_union_of_root_realizations(stages):
   """ Union of dep.closures of root realizations must be less or equal to the
   set of all realizations. Less - because realizer may produce more
   realizations then the matcher matches"""
-  with setup_storage2('test_union_of_root_realizations') as (T,S):
+  with setup_storage2('test_union_of_root_realizations') as S:
     deps=set()
     for stage in stages:
       rrefs=realizeMany(instantiate(stage,S=S))
@@ -50,7 +50,7 @@ def test_union_of_root_realizations(stages):
 # @given(stages=rootstages())
 # def test_group_invariants(stages):
 #   """ Group invariants should be fulfilled. """
-#   with setup_storage2('test_group_invariants') as (T,S):
+#   with setup_storage2('test_group_invariants') as S:
 #     event(f"Number of top-level stages: {len(stages)}")
 #     for stage in stages:
 #       rgs=realizeGroups(instantiate(stage,S=S))
@@ -66,7 +66,7 @@ def test_union_of_root_realizations(stages):
 @settings(max_examples=10)
 @given(stages=rootstages(max_size=3, partial_matches=False))
 def test_match_only(stages):
-  with setup_storage2('test_match_only') as (T,S):
+  with setup_storage2('test_match_only') as S:
     for stage in stages:
       try:
         rrefs=realizeMany(
@@ -84,7 +84,7 @@ def test_match_only(stages):
 @given(stages=rootstages(max_size=3, partial_matches=False),
        n=integers(min_value=0, max_value=3))
 def test_match_some(stages,n):
-  with setup_storage2('test_match_some') as (T,S):
+  with setup_storage2('test_match_some') as S:
     for stage in stages:
       try:
         rrefs=realizeMany(
@@ -102,7 +102,7 @@ def test_match_some(stages,n):
 # @given(stages=rootstages(max_size=3, partial_matches=False),
 #        topN=integers(min_value=1, max_value=3))
 # def test_match_best(stages,topN):
-#   with setup_storage2('test_match_best') as (T,S):
+#   with setup_storage2('test_match_best') as S:
 #     def _artifact(rref)->float:
 #       return float(readstr(join(mklens(rref,S=S).syspath,"artifact")))
 #     for stage in stages:
@@ -119,7 +119,7 @@ def test_match_some(stages,n):
 # @given(stages=rootstages(max_size=3, partial_matches=False),
 #        subs=lists(integers(min_value=1, max_value=3),max_size=3))
 # def test_match_exact(stages,subs):
-#   with setup_storage2('test_match_exact') as (T,S):
+#   with setup_storage2('test_match_exact') as S:
 #     for stage in stages:
 #       rrefs=realizeMany(instantiate(stage, S=S))
 #       subset=[rrefs[s%len(rrefs)] for s in subs]
@@ -136,7 +136,7 @@ def test_match_some(stages,n):
 # @settings(max_examples=30)
 # @given(stages=rootstages(max_size=3, partial_matches=False))
 # def test_match_all(stages):
-#   with setup_storage2('test_match_all') as (T,S):
+#   with setup_storage2('test_match_all') as S:
 #     for stage in stages:
 #         grs=realizeGroups(
 #               instantiate(
@@ -158,7 +158,7 @@ def test_match_some(stages,n):
 #     return mkdrv(m, Config(cfg), matcher,
 #                     build_wrapper(_realize, buildtime=buildtime))
 #
-#   with setup_storage2('test_match_latest') as (T,S):
+#   with setup_storage2('test_match_latest') as S:
 #     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=1, S=S)
 #     rref1=realize(clo)
 #     assert len(list(drefrrefs(clo.dref,S)))==1
@@ -168,7 +168,7 @@ def test_match_some(stages,n):
 #     assert len(list(drefrrefs(clo.dref,S)))==2
 #     assert tryread(Path(join(rref2path(rref2,S),'artifact')))==str('2_0')
 #
-#   with setup_storage2('test_match_latest') as (T,S):
+#   with setup_storage2('test_match_latest') as S:
 #     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=1, S=S)
 #     rref1=realize(clo)
 #     assert len(list(drefrrefs(clo.dref,S)))==1
@@ -179,7 +179,7 @@ def test_match_some(stages,n):
 #     assert tryread(Path(join(rref2path(rref2,S),'artifact')))==str('1_0')
 #
 #   for i in range(10):
-#     with setup_storage2('test_match_latest') as (T,S):
+#     with setup_storage2('test_match_latest') as S:
 #       nouts=randint(1,10)
 #       ntop=randint(1,10)
 #       try:
@@ -193,7 +193,7 @@ def test_match_some(stages,n):
 
 @given(stages=rootstages(stagefn=mkstageP, failchances=[50]))
 def test_promise(stages):
-  with setup_storage2('test_promise') as (T,S):
+  with setup_storage2('test_promise') as S:
     for stage in stages:
       try:
         rrefs=realizeMany(instantiate(stage, S=S))
@@ -210,7 +210,7 @@ def test_promise(stages):
 @given(stages=rootstages())
 def test_root_rrefs(stages):
   """ Check that rootrrefs really enumerates roots """
-  with setup_storage2('test_root_rrefs') as (T,S):
+  with setup_storage2('test_root_rrefs') as S:
     assert len(rootrrefs(S))==0
     results=set()
     for stage in stages:
@@ -224,7 +224,7 @@ def test_root_rrefs(stages):
 @given(stages=rootstages())
 def test_root_drefs(stages):
   """ Check that rootdrefs really enumerates roots """
-  with setup_storage2('test_root_drefs') as (T,S):
+  with setup_storage2('test_root_drefs') as S:
     assert len(rootdrefs(S))==0
     results=set()
     for stage in stages:

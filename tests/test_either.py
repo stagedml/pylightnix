@@ -35,7 +35,7 @@ def mkstageE(m:Manager,
 
 @given(stages=rootstages(stagefn=mkstageE, failchances=[50]))
 def test_either_invariant(stages):
-  with setup_storage2('test_either_invariant') as (T,S):
+  with setup_storage2('test_either_invariant') as S:
     for stage in stages:
       e=realizeE(instantiate(stage,S=S))
       depth=max([rrefdepth(rref,S) for rref in either_paths(e)])

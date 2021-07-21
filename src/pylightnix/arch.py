@@ -19,7 +19,7 @@ from pylightnix.imports import (Popen, dirname, basename, remove, join,
                                 isdir, shutil_copy)
 from pylightnix.types import (RRef, List, Dict, Path, Iterable, Optional,
                               SPath, Manager, DRef, Config, RConfig, Build,
-                              Set)
+                              Set, StorageSettings)
 
 from pylightnix.core import (drefdeps, rrefdeps, rref2path, dref2path,
                              fsstorage, fstmpdir, storagename, alldrefs,
@@ -44,7 +44,7 @@ AUNPACK=try_executable('aunpack',
                      '`arch.unpack` procedure will fail.')
 
 
-def pack(roots:List[RRef], out:Path, S=None)->None:
+def pack(roots:List[RRef], out:Path, S:Optional[StorageSettings]=None)->None:
   tmp=splitext(out)[0]+'_tmp'+splitext(out)[1]
   try:
     remove(tmp)
@@ -62,7 +62,8 @@ def pack(roots:List[RRef], out:Path, S=None)->None:
                relpath(rref2path(rref,S), start=store_holder)],
               cwd=store_holder)
       p.wait()
-      assert p.returncode==0, f"Failed to pack {rref}. Retcode is {p.returncode}"
+      assert p.returncode==0, \
+        f"Failed to pack {rref}. Retcode is {p.returncode}"
     done=True
   finally:
     if done:
@@ -80,12 +81,14 @@ def unpack(archive:Path,S=None)->None:
     p.wait()
     assert p.returncode==0, \
       f"Failed to unpack '{archive}'. Retcode is {p.returncode}"
-    archstore=SPath(join(tmppath, storagename()))
-    assert isdir(archstore), \
-      f"Archive '{archive}' didn't contain a directory '{storagename()}'"
+    archdir=join(tmppath, storagename())
+    assert isdir(archdir), \
+      f"Archive '{archive}' does't contain directory '{storagename()}' " \
+      f"(expected to find in '{archdir}')"
+    archstore=StorageSettings(Path(archdir),None)
     copyclosure(rrefs_S=rootrrefs(S=archstore),S=archstore,D=S)
   finally:
-    dirrm(tmppath)
+    # dirrm(tmppath)
     pass
 
 def deref_(ctxr:RRef, dref:DRef, S):
@@ -97,8 +100,8 @@ def deref_(ctxr:RRef, dref:DRef, S):
 
 
 def copyclosure(rrefs_S:Iterable[RRef],
-                S:SPath,
-                D:Optional[SPath]=None)->None:
+                S:StorageSettings,
+                D:Optional[StorageSettings]=None)->None:
   """ Copy the closure of `rrefs` from source storage `S` to the destination
   storage `D`. If `D` is None, use the default global storage as a desitnation.
 

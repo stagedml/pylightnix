@@ -73,7 +73,7 @@ def test_repl_race():
 
 
 def test_repl_override():
-  with setup_storage2('test_repl_override'):
+  with setup_storage2('test_repl_override') as S:
 
     n1:DRef; n2:DRef
     def _setting(m:Manager)->DRef:
@@ -82,7 +82,7 @@ def test_repl_override():
       n2 = mkstage(m, {'maman':n1}, lambda i: 42)
       return n2
 
-    clo=instantiate(_setting)
+    clo=instantiate(_setting, S=S)
     rh=repl_realize(clo, force_interrupt=[n1])
     assert rh.dref==n1
     b=repl_build(rh)
@@ -93,8 +93,8 @@ def test_repl_override():
     rref=repl_rref(rh)
     assert rref is not None
 
-    rrefn1=context_deref(rrefctx(rref),n1)[0]
-    assert tryread(Path(join(rref2path(rrefn1),'artifact'))) == '777'
+    rrefn1=context_deref(rrefctx(rref,S=S),n1)[0]
+    assert tryread(Path(join(rref2path(rrefn1,S=S),'artifact'))) == '777'
 
 
 
@@ -116,7 +116,7 @@ def test_repl_globalHelper():
     repl_continueBuild(b)
     rref=repl_rref(rh)
     assert rref is not None
-    assert isfile(join(rref2path(rref),'artifact.txt'))
+    assert isfile(join(rref2path(rref,S=S),'artifact.txt'))
 
 
 def test_repl_globalCancel():

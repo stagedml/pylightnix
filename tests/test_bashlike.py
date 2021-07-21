@@ -17,23 +17,23 @@ def test_bashlike():
     clo=instantiate(mkstage, {'a':1}, lambda i:42, S=S)
     rref1=realize(clo, force_rebuild=[clo.dref])
     rref2=realize(clo, force_rebuild=[clo.dref])
-    assert 'artifact' in lsref(rref1)
-    assert 'context.json' in lsref(rref1)
-    assert '__buildstart__.txt' in lsref(rref1)
-    assert '__buildstop__.txt' in lsref(rref1)
+    assert 'artifact' in lsref(rref1,S=S)
+    assert 'context.json' in lsref(rref1,S=S)
+    assert '__buildstart__.txt' in lsref(rref1,S=S)
+    assert '__buildstop__.txt' in lsref(rref1,S=S)
     h1,_,_=unrref(rref1)
     h2,_,_=unrref(rref2)
-    assert len(lsref(clo.dref))==2
-    assert h1 in lsref(clo.dref)
-    assert h2 in lsref(clo.dref)
-    assert '42' in catref(rref1,['artifact'])
+    assert len(lsref(clo.dref,S=S))==2
+    assert h1 in lsref(clo.dref,S=S)
+    assert h2 in lsref(clo.dref,S=S)
+    assert '42' in catref(rref1,['artifact'],S=S)
     try:
-      lsref('foobar') # type:ignore
+      lsref('foobar',S=S) # type:ignore
       raise ShouldHaveFailed('should reject garbage')
     except AssertionError:
       pass
     try:
-      catref(clo.dref, ['artifact']) # type:ignore
+      catref(clo.dref,['artifact'],S=S) # type:ignore
       raise ShouldHaveFailed('notimpl')
     except AssertionError:
       pass
@@ -41,17 +41,17 @@ def test_bashlike():
 def test_rmdref():
   with setup_storage2('test_rmdref') as S:
     clo=instantiate(mkstage, {'a':1}, lambda i:42, S=S)
-    drefpath=dref2path(clo.dref)
+    drefpath=dref2path(clo.dref,S=S)
     rref1=realize(clo, force_rebuild=[clo.dref])
     rrefpath=rref2path(rref1, S=S)
     assert isdir(rrefpath)
-    rmref(rref1)
+    rmref(rref1,S=S)
     assert not isdir(rrefpath)
     assert isdir(drefpath)
-    rmref(clo.dref)
+    rmref(clo.dref,S=S)
     assert not isdir(drefpath)
     try:
-      rmref('asdasd') # type:ignore
+      rmref('asdasd',S=S) # type:ignore
       raise ShouldHaveFailed('shoud reject garbage')
     except AssertionError:
       pass
@@ -66,17 +66,17 @@ def test_shellref():
       chmod(mockshell, stat(mockshell).st_mode | S_IEXEC)
       environ['SHELL']=mockshell
       rref=realize(instantiate(mkstage, {'a':1}, S=S))
-      shellref(rref)
-      shellref(rref2dref(rref))
-      shellref()
-      shell(rref2path(rref))
-      repl_realize(instantiate(mkstage, {'n':1}), force_interrupt=True)
+      shellref(rref,S=S)
+      shellref(rref2dref(rref),S=S)
+      shellref(S=S)
+      shell(rref2path(rref,S=S),S=S)
+      repl_realize(instantiate(mkstage, {'n':1},S=S), force_interrupt=True)
       b=repl_build()
       o=build_outpath(b)
       shell(b)
       repl_cancelBuild(b)
       try:
-        shellref('foo') # type:ignore
+        shellref('foo',S=S) # type:ignore
         raise ShouldHaveFailed('shellref should reject garbage')
       except AssertionError:
         pass
@@ -84,7 +84,7 @@ def test_shellref():
 
 def test_du():
   with setup_storage2('test_du') as S:
-    usage=du()
+    usage=du(S=S)
     assert usage=={}
     clo=instantiate(mkstage, {'name':'1'}, lambda i:42, S=S)
     usage=du(S=S)
@@ -92,7 +92,7 @@ def test_du():
     assert usage[clo.dref][0]>0
     assert usage[clo.dref][1]=={}
     rref=realize(clo)
-    usage=du()
+    usage=du(S=S)
     assert rref in usage[clo.dref][1]
     assert usage[clo.dref][1][rref]>0
 
@@ -104,7 +104,7 @@ def test_find():
     sleep(0.1)
     now=parsetime(timestring())
     rref2=realize(instantiate(s2,S=S))
-    rrefs=find()
+    rrefs=find(S=S)
     assert set(rrefs)==set([rref1,rref2])
     rrefs=find(name='1',S=S)
     assert rrefs==[rref1]
@@ -129,17 +129,17 @@ def test_linkrrefs()->None:
   with setup_storage2('test_linkrrefs') as S:
     s1=partial(mkstage, config={'name':'NaMe'})
     rref1=realize(instantiate(s1,S=S))
-    l=linkrrefs([rref1], destdir=S, format='result-%(N)s', S=S)
+    l=linkrrefs([rref1], destdir=S.tmpdir, format='result-%(N)s', S=S)
     assert len(l)==1
-    assert str(l[0])==join(S,'result-NaMe')
-    assert islink(join(S,'result-NaMe'))
-    assert S in l[0]
+    assert str(l[0])==join(S.tmpdir,'result-NaMe')
+    assert islink(join(S.tmpdir,'result-NaMe'))
+    assert S.tmpdir in l[0]
     assert unrref(rref1)[0] in readlink(l[0])
     assert unrref(rref1)[1] in readlink(l[0])
     assert undref(rref2dref(rref1))[0] in readlink(l[0])
-    l=linkrrefs([rref1], destdir=S, format='result-%(T)s', S=S)
+    l=linkrrefs([rref1], destdir=S.tmpdir, format='result-%(T)s', S=S)
     t=rrefbstart(rref1,S)
     assert t is not None
     assert t in l[0]
-    assert S in l[0]
+    assert S.tmpdir in l[0]
 

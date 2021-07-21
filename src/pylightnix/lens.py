@@ -88,10 +88,10 @@ def val2path(v:Any, ctx:LensContext)->Path:
       if dref in context:
         rrefs=context_deref(context,dref)
         assert len(rrefs)==1, "Lens doesn't support multirealization dependencies"
-        return Path(rref2path(rrefs[0]))
-    return dref2path(dref)
+        return Path(rref2path(rrefs[0],S=S))
+    return dref2path(dref,S=S)
   elif isrref(v):
-    return rref2path(RRef(v),S)
+    return rref2path(RRef(v),S=S)
   elif isrefpath(v):
     refpath=list(v) # RefPath is list
     bpath=ctx.build_path

@@ -31,10 +31,10 @@ def test_inplace():
     rref_n3 = realize_inplace(n3)
     assert_valid_rref(rref_n3)
 
-    all_drefs = list(alldrefs())
+    all_drefs = list(alldrefs(S=S))
     assert len(all_drefs)==4
-    assert len(list(drefrrefs(n1)))==1
-    assert len(list(drefrrefs(n2)))==0
-    assert len(list(drefrrefs(n3)))==1
-    assert len(list(drefrrefs(n4)))==0
+    assert len(list(drefrrefs(n1,S=S)))==1
+    assert len(list(drefrrefs(n2,S=S)))==0
+    assert len(list(drefrrefs(n3,S=S)))==1
+    assert len(list(drefrrefs(n4,S=S)))==0
 

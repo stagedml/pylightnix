@@ -69,5 +69,5 @@ def test_fetchlocal2():
                              mode='as-is',S=S))
     assert isrref(rref)
     assert isfile(join(rref2path(rref,S),'mockdata'))
-    assert isfile(mklens(rref).out_path.syspath)
+    assert isfile(mklens(rref,S=S).out_path.syspath)
 

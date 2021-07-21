@@ -72,34 +72,34 @@ def test_lens():
     assert isdir(mklens(rref,S=S).syspath)
 
     try:
-      print(mklens(clo.dref).maman.selfref.syspath)
+      print(mklens(clo.dref,S=S).maman.selfref.syspath)
       raise ShouldHaveFailed()
     except AssertionError:
       pass
 
     try:
-      print(mklens(rref).papa.dict.d1.get('xxx'))
+      print(mklens(rref,S=S).papa.dict.d1.get('xxx'))
       raise ShouldHaveFailed()
     except AssertionError:
       pass
 
     try:
-      print(mklens(rref).papa.dict.d1.syspath)
+      print(mklens(rref,S=S).papa.dict.d1.syspath)
       raise ShouldHaveFailed()
     except AssertionError:
       pass
 
     try:
-      mklens(rref).papa.dict.d1.val=42 # can't mutate rref
+      mklens(rref,S=S).papa.dict.d1.val=42 # can't mutate rref
       raise ShouldHaveFailed()
     except AssertionError:
       pass
 
     d={'foo':'foo','bar':'bar'}
-    mklens(d).foo.val='zzz'
+    mklens(d,S=S).foo.val='zzz'
     assert d['foo']=='zzz'
     try:
-      mklens(d).x.val=42 # can't set new values
+      mklens(d,S=S).x.val=42 # can't set new values
       raise ShouldHaveFailed()
     except AssertionError:
       pass
