@@ -20,10 +20,11 @@ from pylightnix.imports import (sha256 as sha256sum, sha1 as sha1sum, urlparse,
                                 splitext, re_sub )
 from pylightnix.types import ( DRef, Manager, Build, Context, Name,
     Path, Optional, List, Config )
-from pylightnix.core import ( mkconfig, mkdrv, match_only, promise,
-                             PYLIGHTNIX_NAMEPAT )
-from pylightnix.build import ( mkbuild, build_outpath, build_setoutpaths,
-    build_paths, build_deref_, build_cattrs, build_wrapper, build_wrapper )
+from pylightnix.core import ( mkconfig, mkdrv, match_only,
+                             PYLIGHTNIX_NAMEPAT, config_cattrs, selfref,
+                             fstmpdir )
+from pylightnix.build import ( build_outpath,
+    build_paths, build_deref_, build_config, build_wrapper, build_wrapper )
 from pylightnix.utils import ( try_executable, makedirs, filehash )
 from pylightnix.lens import ( mklens )
 
@@ -80,12 +81,11 @@ def fetchurl2(m:Manager,
       sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b')
 
   rref:RRef=realize(instantiate(hello_src))
-  print(store_rref2path(rref))
+  print(rref2path(rref))
   ```
   """
 
-  import pylightnix.core
-  tmpfetchdir=join(pylightnix.core.PYLIGHTNIX_TMP,'fetchurl2')
+  tmpfetchdir=join(fstmpdir(m.S),'fetchurl2')
   assert isabs(tmpfetchdir), (f"Expect absolute PYLIGHTNIX_TMP path, "
                               f"got {tmpfetchdir}")
 
@@ -112,12 +112,12 @@ def fetchurl2(m:Manager,
       args.update({'sha1':sha1})
     if sha256 is not None:
       args.update({'sha256':sha256})
-    args.update({'out':[promise, filename_]})
+    args.update({'out':[selfref, filename_]})
     args.update(**kwargs)
     return args
 
   def _make(b:Build)->None:
-    c=build_cattrs(b)
+    c=config_cattrs(build_config(b))
     o=build_outpath(b)
 
     download_dir=o if force_download else tmpfetchdir

@@ -67,11 +67,11 @@
     * [config\_substitutePromises](#pylightnix.core.config_substitutePromises)
     * [config\_promises](#pylightnix.core.config_promises)
     * [mkrefpath](#pylightnix.core.mkrefpath)
-    * [assert\_store\_initialized](#pylightnix.core.assert_store_initialized)
-    * [store\_initialize](#pylightnix.core.store_initialize)
-    * [store\_dref2path](#pylightnix.core.store_dref2path)
-    * [store\_rref2path](#pylightnix.core.store_rref2path)
-    * [store\_cfgpath](#pylightnix.core.store_cfgpath)
+    * [assert\_store\_initialized](#pylightnix.core.assert_initialized)
+    * [store\_initialize](#pylightnix.core.initialize)
+    * [store\_dref2path](#pylightnix.core.dref2path)
+    * [store\_rref2path](#pylightnix.core.rref2path)
+    * [store\_cfgpath](#pylightnix.core.drefcfgpath)
     * [store\_config\_](#pylightnix.core.store_config_)
     * [store\_config](#pylightnix.core.store_config)
     * [store\_context](#pylightnix.core.store_context)
@@ -87,6 +87,9 @@
     * [rrefdata](#pylightnix.core.rrefdata)
     * [rrefs2groups](#pylightnix.core.rrefs2groups)
     * [groups2rrefs](#pylightnix.core.groups2rrefs)
+    * [grouprref](#pylightnix.core.grouprref)
+    * [group2sign](#pylightnix.core.group2sign)
+    * [group\_in](#pylightnix.core.group_in)
     * [drefrrefs](#pylightnix.core.drefrrefs)
     * [store\_rrefs\_](#pylightnix.core.store_rrefs_)
     * [store\_rrefs](#pylightnix.core.store_rrefs)
@@ -120,17 +123,21 @@
     * [linkdref](#pylightnix.core.linkdref)
     * [linkrrefs](#pylightnix.core.linkrrefs)
     * [mksymlink](#pylightnix.core.mksymlink)
-    * [match](#pylightnix.core.match)
-    * [latest](#pylightnix.core.latest)
+    * [mkmatch](#pylightnix.core.mkmatch)
     * [exact](#pylightnix.core.exact)
+    * [latest](#pylightnix.core.latest)
     * [best](#pylightnix.core.best)
     * [texthash](#pylightnix.core.texthash)
-    * [match\_n](#pylightnix.core.match_n)
-    * [match\_latest](#pylightnix.core.match_latest)
-    * [match\_best](#pylightnix.core.match_best)
+    * [mappred](#pylightnix.core.mappred)
+    * [mapmin](#pylightnix.core.mapmin)
+    * [mapsome](#pylightnix.core.mapsome)
+    * [maponly](#pylightnix.core.maponly)
     * [match\_all](#pylightnix.core.match_all)
     * [match\_some](#pylightnix.core.match_some)
     * [match\_only](#pylightnix.core.match_only)
+    * [match\_latest](#pylightnix.core.match_latest)
+    * [match\_best](#pylightnix.core.match_best)
+    * [match\_exact](#pylightnix.core.match_exact)
     * [assert\_valid\_refpath](#pylightnix.core.assert_valid_refpath)
     * [assert\_valid\_config](#pylightnix.core.assert_valid_config)
     * [assert\_valid\_name](#pylightnix.core.assert_valid_name)
@@ -150,7 +157,7 @@
     * [BuildError](#pylightnix.build.BuildError)
     * [mkbuildargs](#pylightnix.build.mkbuildargs)
     * [mkbuild](#pylightnix.build.mkbuild)
-    * [B](#pylightnix.build.B)
+    * [\_B](#pylightnix.build._B)
     * [build\_wrapper\_](#pylightnix.build.build_wrapper_)
     * [build\_wrapper](#pylightnix.build.build_wrapper)
     * [build\_config](#pylightnix.build.build_config)
@@ -317,7 +324,7 @@ Realization reference is obtained from the process called
 
 Valid realization references may be dereferenced down to system paths of
 *build artifacts* by calling
-[store_rref2path](#pylightnix.core.store_rref2path).
+[rref2path](#pylightnix.core.store_rref2path).
 
 <a name="pylightnix.types.Name"></a>
 ## `Name` Objects
@@ -351,7 +358,7 @@ generally have to perform the following basic actions:
 [store_deref](#pylightnix.core.store_deref) or
 [build_deref](#pylightnix.core.build_deref).
 2. Convert the realization reference into system path with
-[store_rref2path](#pylightnix.core.store_rref2path)
+[rref2path](#pylightnix.core.store_rref2path)
 3.  Join the system path with `[1:]` part of RefPath to get the real filename.
 
 The algorithm described above is implemented as
@@ -483,28 +490,24 @@ derivations to realizations.
 Matcher = Callable[[SPath,DRef,Context],Optional[List[RRefGroup]]]
 ```
 
-Matcher is a type of user-defined functions which select required
-realizations from the set of all realizations tagged with tag 'out'.
+Matcher functions serves two purposes:
+1. Decides whether to launch a new realization or re-use existing
+realizations.
+2. Filters a matched subset of realization groups out of the set of
+available realizations.
 
-A Matcher should take a derivation reference and a context as its arguments.
-Its task is to read find out which realizations are available and return
-some subset of this set (see [store_rrefs](#pylightnix.core.store_rrefs)).
-Alternatively, matcher could return None which would be a signal for
-Pylightnix to produce more realizations.
+Matchers must be a pure functions. They answer 'yes' to the first question
+by returning None. Non-none value specifies the matched set of groups.
+Returning an empty list asks Pylightnix to leave the derivation without
+realizations.
 
-Matchers may return an empty set. In contrast to `None`, this would instruct
-Pylightnix to leave the derivation without realizations.
+Matcher invariants are:
 
-Pylightnix calls matchers during the realizaiton. Matching results are
-cached in form of `(DRef,List[RRef])` tuple. Pylightnix use it to e.g.
-resolve downstream realizations.
-
-Matchers must follow the below rules:
-
-- Matchers should be **pure**. It's output should depend only on the
-existing build artifacts of available realizations.
-- Matchers should be **satisfiable** by realizers of their stages. If matcher
-returns None, the core calls realizer and re-run the matcher only once.
+- Matchers must be **pure**. Its outputs must only depend on the
+immutable realizations passed as inputs.
+- Matchers must be **satisfiable**. If the matcher returns None, the core
+re-runs runs the realization and calls the matcher once again. Returning
+None again would be an error.
 
 Pylightnix includes a set of built-in matchers:
 
@@ -841,7 +844,7 @@ We use `type:ignore` pragmas when we need to pass `**kwargs`.
 ## `Key`
 
 ```python
-Key = Callable[[RRef],Optional[Union[int,float,str]]]
+Key = Callable[[RRefGroup,SPath],Optional[Union[int,float,str]]]
 ```
 
 
@@ -1168,19 +1171,19 @@ def mkrefpath(r: DRef, items: List[str] = []) -> RefPath
 Construct a [RefPath](#pylightnix.types.RefPath) out of a reference `ref`
 and a path within the stage's realization
 
-<a name="pylightnix.core.assert_store_initialized"></a>
-## `assert_store_initialized()`
+<a name="pylightnix.core.assert_initialized"></a>
+## `assert_initialized()`
 
 ```python
-def assert_store_initialized(S: SPath) -> None
+def assert_initialized(S: SPath) -> None
 ```
 
 
-<a name="pylightnix.core.store_initialize"></a>
-## `store_initialize()`
+<a name="pylightnix.core.initialize"></a>
+## `initialize()`
 
 ```python
-def store_initialize(custom_store: Optional[str] = None, custom_tmp: Optional[str] = None, check_not_exist: bool = False) -> None
+def initialize(custom_store: Optional[str] = None, custom_tmp: Optional[str] = None, check_not_exist: bool = False) -> None
 ```
 
 Create the storage and temp direcories if they don't exist. Default
@@ -1196,37 +1199,37 @@ Parameters:
 - `check_not_exist:bool=False`: Set to True to assert on already existing
   storages. Good to become sure that newly created storage is empty.
 
-See also [assert_store_initialized](#pylightnix.core.assert_store_initialized).
+See also [assert_initialized](#pylightnix.core.assert_initialized).
 
 Example:
 ```python
 import pylightnix.core
 pylightnix.core.PYLIGHTNIX_STORE='/tmp/custom_pylightnix_storage'
 pylightnix.core.PYLIGHTNIX_TMP='/tmp/custom_pylightnix_tmp'
-pylightnix.core.store_initialize()
+pylightnix.core.initialize()
 ```
 
-<a name="pylightnix.core.store_dref2path"></a>
-## `store_dref2path()`
+<a name="pylightnix.core.dref2path"></a>
+## `dref2path()`
 
 ```python
-def store_dref2path(r: DRef, S=None) -> Path
-```
-
-
-<a name="pylightnix.core.store_rref2path"></a>
-## `store_rref2path()`
-
-```python
-def store_rref2path(r: RRef, S=None) -> Path
+def dref2path(r: DRef, S=None) -> Path
 ```
 
 
-<a name="pylightnix.core.store_cfgpath"></a>
-## `store_cfgpath()`
+<a name="pylightnix.core.rref2path"></a>
+## `rref2path()`
 
 ```python
-def store_cfgpath(r: DRef, S=None) -> Path
+def rref2path(r: RRef, S=None) -> Path
+```
+
+
+<a name="pylightnix.core.drefcfgpath"></a>
+## `drefcfgpath()`
+
+```python
+def drefcfgpath(r: DRef, S=None) -> Path
 ```
 
 
@@ -1279,11 +1282,11 @@ def store_deps(drefs: Iterable[DRef], S=None) -> Set[DRef]
 Return a list of reference's immediate dependencies, not including `drefs`
 themselves.
 
-<a name="pylightnix.core.store_depRrefs"></a>
-## `store_depRrefs()`
+<a name="pylightnix.core.rrefdeps1"></a>
+## `rrefdeps1()`
 
 ```python
-def store_depRrefs(rrefs: Iterable[RRef], S=None) -> Set[RRef]
+def rrefdeps1(rrefs: Iterable[RRef], S=None) -> Set[RRef]
 ```
 
 
@@ -1353,9 +1356,10 @@ Return root RRefs of the storage `S` as a set
 ## `rrefdata()`
 
 ```python
-def rrefdata(rref: RRef, S=None) -> Iterable[Tuple[str,List[str],List[str]]]
+def rrefdata(rref: RRef, S=None) -> Iterable[Path]
 ```
 
+Return the paths of top-level artifacts
 
 <a name="pylightnix.core.rrefs2groups"></a>
 ## `rrefs2groups()`
@@ -1378,6 +1382,30 @@ def groups2rrefs(grs: List[RRefGroup]) -> List[RRef]
 
 Merges several [Groups](#pylightnix.types.Group) of RRefs into a plain
 list of RRefs
+
+<a name="pylightnix.core.grouprref"></a>
+## `grouprref()`
+
+```python
+def grouprref(gr: RRefGroup) -> RRef
+```
+
+
+<a name="pylightnix.core.group2sign"></a>
+## `group2sign()`
+
+```python
+def group2sign(grp: RRefGroup) -> List[Tuple[RRef,Tag]]
+```
+
+
+<a name="pylightnix.core.group_in"></a>
+## `group_in()`
+
+```python
+def group_in(grp: RRefGroup, grps: List[RRefGroup]) -> bool
+```
+
 
 <a name="pylightnix.core.drefrrefs"></a>
 ## `drefrrefs()`
@@ -1433,7 +1461,7 @@ See also [build_deref](#pylightnix.core.build_deref)
 ## `store_buildtime()`
 
 ```python
-def store_buildtime(rref: RRef, S=None) -> Optional[str]
+def rrefbtime(rref: RRef, S=None) -> Optional[str]
 ```
 
 Return the buildtime of the current RRef in a format specified by the
@@ -1787,11 +1815,11 @@ def mksymlink(rref: RRef, tgtpath: Path, name: str, withtime: bool = True, S=Non
 
 A wrapper for `linkrref`, for backward compatibility
 
-<a name="pylightnix.core.match"></a>
-## `match()`
+<a name="pylightnix.core.mkmatch"></a>
+## `mkmatch()`
 
 ```python
-def match(keys: List[Key], rmin: Optional[int] = 1, rmax: Optional[int] = 1, exclusive: bool = False) -> Matcher
+def mkmatch(keys: List[Key], topN: Optional[int] = None) -> Matcher
 ```
 
 Create a [Matcher](#pylightnix.types.Matcher) by combining different
@@ -1804,26 +1832,21 @@ with at least one matched realization.
 
 Arguments:
 - `keys`: A list of [Key](#pylightnix.types.Key) functions.
-- `rmin`: An integer selecting the minimum number of realizations to accept.
-    If non-None, Pylightnix will be asked to run the Realizer **if** the number
-    of matching keys is less than this number.
-- `rmax`: An integer selecting the maximum number of realizations to match
-  (realizer is free to produce more realizations)
-- `exclusive`: If true, asserts if the number of realizations exceeds `rmax`
+- `topN`: Limits the number of best matches to thin number.
+
+<a name="pylightnix.core.exact"></a>
+## `exact()`
+
+```python
+def exact(grps: List[RRefGroup]) -> Key
+```
+
 
 <a name="pylightnix.core.latest"></a>
 ## `latest()`
 
 ```python
 def latest() -> Key
-```
-
-
-<a name="pylightnix.core.exact"></a>
-## `exact()`
-
-```python
-def exact(expected: List[RRef]) -> Key
 ```
 
 
@@ -1843,35 +1866,40 @@ def texthash() -> Key
 ```
 
 
-<a name="pylightnix.core.match_n"></a>
-## `match_n()`
+<a name="pylightnix.core.mappred"></a>
+## `mappred()`
 
 ```python
-def match_n(n: int = 1, keys=[]) -> Matcher
+def mappred(pred: Callable[[List[RRefGroup]],bool], ma: Matcher) -> Matcher
 ```
 
-Return a [Matcher](#pylightnix.types.Matcher) which matchs with any
-number of realizations which is greater or equal than `n`.
+Calls for a realizer if the number of matches is below the minimum
 
-<a name="pylightnix.core.match_latest"></a>
-## `match_latest()`
+<a name="pylightnix.core.mapmin"></a>
+## `mapmin()`
 
 ```python
-def match_latest(n: int = 1) -> Matcher
+def mapmin(minN: int, ma: Matcher) -> Matcher
 ```
 
+Call for a realizer if the number of matches is below the number
 
-<a name="pylightnix.core.match_best"></a>
-## `match_best()`
+<a name="pylightnix.core.mapsome"></a>
+## `mapsome()`
 
 ```python
-def match_best(filename: str, n: int = 1) -> Matcher
+def mapsome(ma: Matcher) -> Matcher
 ```
 
-Return a [Matcher](#pylightnix.types.Matcher) which checks contexts of
-realizations and then compares them based on stage-specific scores. For each
-realization, score is read from artifact file named `filename` that should
-contain a single float number. Realization with largest score wins.
+Call for a realizer if the number of matches is zero.
+
+<a name="pylightnix.core.maponly"></a>
+## `maponly()`
+
+```python
+def maponly(ma: Matcher) -> Matcher
+```
+
 
 <a name="pylightnix.core.match_all"></a>
 ## `match_all()`
@@ -1880,18 +1908,18 @@ contain a single float number. Realization with largest score wins.
 def match_all() -> Matcher
 ```
 
-Return a [Matcher](#pylightnix.types.Matcher) which matchs with **ANY**
-number of realizations, including zero.
+[Match](#pylightnix.types.Matcher) **all** the available realizations,
+including zero. Never call to a realizer.
 
 <a name="pylightnix.core.match_some"></a>
 ## `match_some()`
 
 ```python
-def match_some(n: int = 1) -> Matcher
+def match_some(minN: int = 1) -> Matcher
 ```
 
-Return a [Matcher](#pylightnix.types.Matcher) which matchs with any
-number of realizations which is greater or equal than `n`.
+Call to a realizer if there are less than `minN` realizations in storage.
+Matche `minN` or more realizations.
 
 <a name="pylightnix.core.match_only"></a>
 ## `match_only()`
@@ -1900,9 +1928,37 @@ number of realizations which is greater or equal than `n`.
 def match_only() -> Matcher
 ```
 
-Return a [Matcher](#pylightnix.types.Matcher) which expects no more than
-one realization for every [derivation](#pylightnix.types.DRef), given the
-[context](#pylightnix.types.Context).
+Matches one or more realizations, but asserts if there are more than one
+realizations matched.
+
+<a name="pylightnix.core.match_latest"></a>
+## `match_latest()`
+
+```python
+def match_latest(minN: int = 1, topN: int = 1) -> Matcher
+```
+
+Match up to `topN` oldest realizations. Call to a realizer if there are
+less than `minN` realizations available.
+
+<a name="pylightnix.core.match_best"></a>
+## `match_best()`
+
+```python
+def match_best(filename: str, minN: int = 1, topN: int = 1) -> Matcher
+```
+
+[Match](#pylightnix.types.Matcher) up to `topN` best matches, but not
+less than minN. The score is expected to reside in a file named `filename`.
+
+<a name="pylightnix.core.match_exact"></a>
+## `match_exact()`
+
+```python
+def match_exact(grps: List[RRefGroup]) -> Matcher
+```
+
+Match exact these groups. Call to a realizer if no groups were seen.
 
 <a name="pylightnix.core.assert_valid_refpath"></a>
 ## `assert_valid_refpath()`
@@ -2073,11 +2129,11 @@ def mkbuild(S: SPath, dref: DRef, context: Context, buildtime: bool = True) -> B
 ```
 
 
-<a name="pylightnix.build.B"></a>
-## `B`
+<a name="pylightnix.build._B"></a>
+## `_B`
 
 ```python
-B = TypeVar('B')
+_B = TypeVar('_B')
 ```
 
 
@@ -2085,7 +2141,7 @@ B = TypeVar('B')
 ## `build_wrapper_()`
 
 ```python
-def build_wrapper_(f: Callable[[B],None], ctr: Callable[[BuildArgs],B], starttime: Optional[str] = None, stoptime: Optional[str] = None) -> Realizer
+def build_wrapper_(f: Callable[[_B],None], ctr: Callable[[BuildArgs],_B], starttime: Optional[str] = None, stoptime: Optional[str] = None) -> Realizer
 ```
 
 Build Adapter which convers user-defined realizers which use
@@ -2625,7 +2681,7 @@ def hello_src(m:Manager)->DRef:
     sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b')
 
 rref:RRef=realize(instantiate(hello_src))
-print(store_rref2path(rref))
+print(rref2path(rref))
 ```
 
 <a name="pylightnix.stages.fetch"></a>
@@ -2726,7 +2782,7 @@ def hello_src(m:Manager)->DRef:
     sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b')
 
 rref:RRef=realize(instantiate(hello_src))
-print(store_rref2path(rref))
+print(rref2path(rref))
 ```
 
 <a name="pylightnix.stages.fetch.fetchlocal"></a>

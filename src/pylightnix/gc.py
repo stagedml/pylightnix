@@ -25,7 +25,7 @@ from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional,
                               InstantiateArg, Tag, Group, RRefGroup)
 
 from pylightnix.core import (instantiate, realize, path2rref, path2dref,
-                             store_gc, store_rref2path, storage)
+                             store_gc, rref2path, storage)
 
 from pylightnix.bashlike import (rmref)
 
@@ -83,6 +83,8 @@ def gc(keep_dirs:List[Path],
   symlinked under `keep_dir` and is not in short list of pre-defined models.
 
   Pass `interactive=False` to delete the data without request for confirmation.
+
+  FIXME: move to bashlike?
   """
   import sys
   assert (not interactive) or sys.__stdin__.isatty(), (
@@ -96,7 +98,7 @@ def gc(keep_dirs:List[Path],
     total=0
     if len(drefs)+len(rrefs)>0:
       print("Objects to be removed:")
-    rrefs_pairs=sorted([(rref, dirsize(store_rref2path(rref,S))) for rref in rrefs],
+    rrefs_pairs=sorted([(rref, dirsize(rref2path(rref,S))) for rref in rrefs],
              key=lambda x:x[1])
     for dref in drefs:
       print(f"\t{dref}")

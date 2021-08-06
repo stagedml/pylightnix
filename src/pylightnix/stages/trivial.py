@@ -17,16 +17,15 @@
 from pylightnix.imports import (join, deepcopy, dirname, makedirs, isfile,
                                 isdir, defaultdict)
 from pylightnix.core import (mkdrv, mkconfig, assert_valid_name,
-                             datahash, config_dict, store_config,
-                             assert_valid_refpath, store_rref2path,
-                             store_config_, promise, storage, match_only)
-from pylightnix.build import (mkbuild, build_outpath, build_setoutpaths,
-                              build_paths, build_deref_, build_cattrs,
-                              build_wrapper)
+                             datahash, config_dict,
+                             assert_valid_refpath, rref2path,
+                             drefcfg_, match_only)
+from pylightnix.build import (build_outpath,
+                              build_paths, build_deref_, build_wrapper)
 from pylightnix.types import (RefPath, Manager, Context, Build, Name, DRef,
                               RRef, Any, Optional, Dict, Hash, Path, List,
                               Callable, Matcher, Realizer, Stage, Config,
-                              RealizeArg, Tag, RRefGroup, SPath)
+                              RealizeArg, SPath, Output, StorageSettings)
 from pylightnix.utils import (forcelink, isrefpath, traverse_dict)
 
 
@@ -47,20 +46,18 @@ def mknode(m:Manager,
         f.write(av)
   return mkdrv(m, mkconfig(config), match_only(), build_wrapper(_realize))
 
-
-def mkfile(m:Manager,
-           name:Name,
-           contents:bytes,
-           filename:Optional[Name]=None)->DRef:
-  filename_:Name=filename if filename is not None else name
-  return mknode(m, config_dict={'output':[promise,filename_]},
-                   artifacts={filename_:contents})
+# def mkfile(m:Manager,
+#            name:Name,
+#            contents:bytes,
+#            filename:Optional[Name]=None)->DRef:
+#   filename_:Name=filename if filename is not None else name
+#   return mknode(m, config_dict={'output':[promise,filename_]},
+#                    artifacts={filename_:contents})
 
 def redefine(stage:Any,
              new_config:Callable[[dict],None]=lambda x:None,
              new_matcher:Optional[Matcher]=None,
-             new_realizer:Optional[Realizer]=None,
-             check_promises:bool=True)->Any:
+             new_realizer:Optional[Realizer]=None)->Any:
   """ Define a new Derivation based on the existing one, by updating it's
   config, optionally re-writing it's matcher, or it's realizer.
 
@@ -84,13 +81,14 @@ def redefine(stage:Any,
   realize(instantiate(redefine(myMLmodel, _new_config)))
   ```
 
-  FIXME: Current version will may either update realizer of an existing config,
-  or create a completely new derivation, depending on whether we change modify
-  the config or not. One should define the behaviour more clearly.
+  FIXME: Updating configs is dangerous: it changes its dref and thus breaks
+  dependencies. Only top-level stages should use `new_confid` currently.
+
+  FIXME: Unify with `mapclosure`
   """
   def _new_stage(m:Manager,*args,**kwargs)->DRef:
     dref=stage(m,*args,**kwargs) # type:ignore
-    d=config_dict(store_config_(dref,S=m.storage))
+    d=config_dict(drefcfg_(dref,S=m.S))
     new_config(d)
     new_matcher_=new_matcher if new_matcher is not None\
                              else m.builders[dref].matcher
@@ -98,19 +96,16 @@ def redefine(stage:Any,
                                else m.builders[dref].realizer
     m.in_redefine=True
     try:
-      dref=mkdrv(m, mkconfig(d), new_matcher_, new_realizer_,
-        check_promises=check_promises)
+      dref=mkdrv(m, mkconfig(d), new_matcher_, new_realizer_)
     finally:
       m.in_redefine=False
     return dref
   return _new_stage
 
 def realized(stage:Any)->Stage:
-  """ [Re-define](#pylightnix.stages.trivial.redefine) stage's realizer by
-  replacing it with a dummy realizer triggering an assertion. As a result, the
-  call to [realize](#pylightnix.core.realizeMany) will only succeed if no
-  realization is actually required. Designed to make users sure that some
-  stage's realize will return immediately.
+  """ Asserts that the stage doesn't requre running its realizer.
+  [Re-defines](#pylightnix.stages.trivial.redefine) stage realizer with a dummy
+  realizer triggering an assertion.
 
   Example:
   ```python
@@ -118,13 +113,13 @@ def realized(stage:Any)->Stage:
   # ^^^ Fail if `my_long_running_stage` is not yet realized.
   ```
   """
-  def _no_realizer(S:SPath,dref:DRef,context:Context,rarg:RealizeArg)->List[Dict[Tag,Path]]:
+  def _no_realizer(S:Optional[StorageSettings],dref:DRef,
+                   context:Context,rarg:RealizeArg)->List[Path]:
     assert False, (
-        f"Stage '{dref}' was assumed to be already realized. "
-        f"Unfortunately, it seens to be not the case because it's matcher "
-        f"has just instructed the core to call the realizer.\n"
-        f"Configuration:\n{store_config(dref)}\n"
-        f"Context:\n{context}")
+      f"Stage '{dref}' was assumed to be already realized. "
+      f"Unfortunately, it seens to be not the case because it's matcher "
+      f"has just instructed the core to call the realizer.\n"
+      f"Context:\n{context}")
   return redefine(stage, new_realizer=_no_realizer)
 
 

@@ -16,8 +16,11 @@
 
 
 from pylightnix.imports import ( deepcopy, OrderedDict )
-from typing import ( List, Any, Tuple, Union, Optional, Iterable, IO, Callable,
-    Dict, NamedTuple, Set, Generator, TypeVar, NewType, SupportsAbs )
+
+from typing import (List, Any, Tuple, Union, Optional, Iterable, IO, Callable,
+                    Dict, NamedTuple, Set, Generator, TypeVar, NewType,
+                    SupportsAbs, Generic)
+
 
 class Path(str):
   """ `Path` is an alias for string. It is used in pylightnix to
@@ -28,6 +31,12 @@ class SPath(Path):
   """ `SPath` is an alias for string. It is used in pylightnix to
   tell the typechecker that a given string contains a path to storage. """
   pass
+
+#: Stoarge settings contains a path for the main stoarge and a path for
+#: temporary directories. These paths need to be on the same device in order to
+#: atomic rename work.
+StorageSettings=NamedTuple('StorageSettings',[('storage',Optional[Path]),
+                                              ('tmpdir',Optional[Path])])
 
 class Hash(str):
   """ `Hash` is an alias for string. It is used in pylightnix to
@@ -89,7 +98,7 @@ class RRef(str):
 
   Valid realization references may be dereferenced down to system paths of
   *build artifacts* by calling
-  [store_rref2path](#pylightnix.core.store_rref2path). """
+  [rref2path](#pylightnix.core.store_rref2path). """
   pass
 
 class Name(str):
@@ -116,81 +125,33 @@ class Name(str):
 #:    [store_deref](#pylightnix.core.store_deref) or
 #:    [build_deref](#pylightnix.core.build_deref).
 #: 2. Convert the realization reference into system path with
-#:    [store_rref2path](#pylightnix.core.store_rref2path)
+#:    [rref2path](#pylightnix.core.store_rref2path)
 #: 3.  Join the system path with `[1:]` part of RefPath to get the real filename.
 #:
 #: The algorithm described above is implemented as
 #: [build_path](#pylightnix.core.build_path) helper function.
-RefPath = List[Any]
+RefPath = List[Union[DRef,str]]
 
-#: *Do not change!*
-#: A tag to mark the start of [PromisePaths](#pylightnix.types.PromisePath).
-PYLIGHTNIX_PROMISE_TAG = "__promise__"
+class PylightnixException(Exception):
+  """ Base class of Pylightnix exceptions"""
+  pass
 
-#: *Do not change!*
-#: A tag to mark the start of [PromisePaths](#pylightnix.types.PromisePath). In
-#: contrast to promises, Pylightnix doesn't check the claims
-PYLIGHTNIX_CLAIM_TAG = "__claim__"
+class PromiseException(PylightnixException):
+  def __init__(self, dref:DRef, failed:List[Tuple[Path,RefPath]]):
+    self.dref=dref
+    self.failed=failed
 
-#: PromisePath is an alias for Python list of strings. The first item is a
-#: special tag (the [promise](#pylightnix.core.promise) or the
-#: [claim](#pylightnix.core.claim)) and the subsequent
-#: items should represent a file or directory path parts. PromisePaths are
-#: typically fields of [Configs](#pylightnix.types.Config). They represent
-#: paths to the artifacts which we promise will be created by the derivation
-#: being currently configured.
-#:
-#: PromisePaths do exist only at the time of instantiation. Pylightnix converts
-#: them into [RefPath](#pylightnix.types.RefPath) before the realization
-#: starts. Converted configs change their type to
-#: [RConfig](#pylightnix.type.RConfig)
-#:
-#: Example:
-#: ```python
-#: from pylightnix import mkconfig, mkdrv, promise
-#: def myconfig()->Config:
-#:   name = "config-of-some-stage"
-#:   promise_binary = [promise, 'usr','bin','hello']
-#:   other_params = 42
-#:   return mkconfig(locals())
-#: dref=mkdrv(..., config=myconfig(), ...)
-#: ```
-PromisePath = List[Any]
+#: Placeholder for self-reference
+PYLIGHTNIX_SELF_TAG = "__self__"
 
-#: Realization Tag is a user-defined string without spaces and newline symbols.
-#: There is a special tag named 'out' which is used by default. Users may choose
-#: to introduce other tags, like 'doc','man' or 'checkpoint'. User-tagged
-#: realizations should refer to some specific 'out' realization.  For
-#: realizations, Having the same tag would mean that those realizations share
-#: some functionality, e.g. contain documentation or are ML model checkpoints.
-#:
-#: Every 'out' realization plus zero-to-many other tagged realizations form a
-#: [Group](#pylightnix.types.Group). The group behaves as a whole during
-#: [Matching](#pylightnix.types.Matcher).
-#:
-#: Tag invariants:
-#: - Each RRef has its Tag, the default tag name is 'out'
-#: - Several realization of a derivation may have the same tag. That means they
-#:   contain functionally equivalent artifacts.
-Tag = NewType('Tag', str)
+#: Type variable intended to be either a Path or RRef
+_REF=TypeVar('_REF')
 
-#: A type for [RRefGroup](#pylightnix.type.RRefGroup) name.
-Group = NewType('Group', str)
+class Output(Generic[_REF]):
+  """ TODO: Rename into something which has a meaning of `PromisedOuput` """
+  def __init__(self,val:Iterable[_REF]):
+    self.val:List[_REF]=list(val)
 
-#: RRefGroup unites [tagged](#pylightnix.types.Tag) realizations. For
-#: example, there may be a Group containing tags ['out',log'] and another Group
-#: containing realizations tagged with ['out','log','docs']. Each group must
-#: contain at least one realization tagged with tag 'out' Only 'out'
-#: realizations are subjects for [matching](#pylightnix.types.Matcher).
-#:
-#: Group invariants:
-#: - There are no empty Groups
-#: - Each realization belongs to exactly one Group
-#: - All realizations of a Group originates from the same derivation
-#: - All realizations of a Group have the same Context
-#: - At least one realization of a group hase tag 'out'
-#: - All realizations of a Group have different tags
-RRefGroup = Dict[Tag,RRef]
 
 #: Context type is an alias for Python dict which maps
 #: [DRefs](#pylightnix.types.DRef) into one or many
@@ -199,6 +160,12 @@ RRefGroup = Dict[Tag,RRef]
 #: For any derivation, the Context stores a mapping from it's dependency's
 #: derivations to realizations.
 Context=Dict[DRef,List[RRef]]
+
+#: Type of user-defined arguments to pass to the Config
+InstantiateArg=Dict[str,Any]
+
+#: Type of user-defined arguments to pass to the Realizer
+RealizeArg=Dict[str,Any]
 
 #: Matcher functions serves two purposes:
 #: 1. Decides whether to launch a new realization or re-use existing
@@ -231,36 +198,41 @@ Context=Dict[DRef,List[RRef]]
 #: - [match_some](#pylightnix.core.match_some) matches any existing realizations
 #: - [match_only](#pylightnix.core.match_only) matches exactly one existing
 #:   realization (asserts if there are more than one realizations)
-Matcher = Callable[[SPath,DRef,Context],Optional[List[RRefGroup]]]
+#:
+#: TODO: Splitting Matcher into two parts would allow us to rid of
+#: `force_interrupt` argument.
+Matcher = Callable[[Optional[StorageSettings],List[RRef]],
+                   Optional[List[RRef]]]
+MatcherO = Callable[[Optional[StorageSettings],Output[RRef]],
+                    Optional[Output[RRef]]]
 
-InstantiateArg=Dict[str,Any]
-RealizeArg=Dict[str,Any]
 
-#: Realizer is a type of callback functions which are defined by the user.
-#: Realizers should implement the stage-specific
-#: [realization](#pylightnix.core.realize) algorithm.
+#: Realizer is a type of user-defined Python function. Realizers typically
+#: implement [application-specific algorithms](#pylightnix.core.realize) which
+#: take some configuration parameters and produce some artifacts.
 #:
 #: Realizer accepts the following arguments:
 #:
-#: - [Reference to a Derivation](#pylightnix.types.DRef) being build
+#: - Path to a global Pylightnix storage
+#: - [Derivation reference](#pylightnix.types.DRef) being build
 #: - [Context](#pylightnix.types.Context) encoding the results of dependency
 #:   resolution.
+#: - Set of additional user-defined arguments
 #:
-#: `DRef` and `Context` allows programmer to access
-#: [Configs](#pylightnix.types.Config) of the current derivation and all it's
-#: dependencies.
+#: Context is the key to accessing the dependency artifacts.
 #:
-#: Realizers have to return one or many folder paths of realization artifacts
-#: (files and folders containing stage-specific data). Those folders will be
-#: added to the pool of Realizations of the current derivation.
-#: [Matcher](#pylightnix.types.Matcher) will be called to pick some subset of
-#: existing realizations. The chosen subset will eventually appear in the
-#: Contexts of downstream derivations.
+#: Derivation reference is required to access [configuration
+#: parameters](#pylightnix.types.Config) of the algorithm.
 #:
-#: Most of the stages defined in Pylightnix use simplified realizer's API
-#: provided by the [Build](#pylightnix.types.Build) helper class. The
-#: [build_wrapper](#pylightnix.core.build_wrapper) function converts realizers
-#: back to standard format.
+#: Realizers must return one or many folders of realization artifacts (files and
+#: folders containing application-specific data). Every folder is treated as an
+#: alternative realization.  [Matcher](#pylightnix.types.Matcher) is later used
+#: to pick the subset of realizations which matches some application-specific
+#: criteria.  This subset will eventually appear as the `Context`s of downstream
+#: realizaions.
+#:
+#: Pylightnix stages may use the simplified realizer API
+#: provided by the [Build](#pylightnix.types.Build) helper class.
 #:
 #: Example:
 #:
@@ -274,7 +246,8 @@ RealizeArg=Dict[str,Any]
 #:   ...
 #:   return mkdrv(m, ...,  _realize)
 #: ```
-Realizer = Callable[[SPath,DRef,Context,RealizeArg],List[Dict[Tag,Path]]]
+Realizer = Callable[[Optional[StorageSettings],DRef,Context,RealizeArg],List[Path]]
+RealizerO = Callable[[Optional[StorageSettings],DRef,Context,RealizeArg],Output[Path]]
 
 #: Derivation is the core type of Pylightnix. It keeps all the information about
 #: a stage:
@@ -289,6 +262,9 @@ Realizer = Callable[[SPath,DRef,Context,RealizeArg],List[Dict[Tag,Path]]]
 #:
 #: Derivations normally appear as a result of [mkdrv](#pylightnix.core.mkdrv)
 #: call.
+#:
+#: TODO: Think about saving Stage function here as well. This would allow us to
+#: organize catamorphism-like mappers.
 Derivation = NamedTuple('Derivation', [('dref',DRef),
                                        ('matcher',Matcher),
                                        ('realizer',Realizer)])
@@ -303,18 +279,21 @@ Derivation = NamedTuple('Derivation', [('dref',DRef),
 #: call to [realizeMany](#pylightnix.core.realizeMany) or it's analogs.
 Closure = NamedTuple('Closure', [('dref',DRef),
                                  ('derivations',List[Derivation]),
-                                 ('storage',SPath)])
+                                 ('S',Optional[StorageSettings])])
 
 class Config:
-  """ Config is a JSON-serializable dict which contains user-defined attributes
-  of Pylightnix stage. Together with Realizers and Matchers, Configs determine
-  stage's realization process.
+  """ Config is a JSON-serializable dict-like entity containing user-defined
+  attributes of a Pylightnix stage. Together with Realizers and Matchers,
+  Configs form Pylightnix stage objects.
 
   Configs should match the requirements of `assert_valid_config`. Typically,
   it's `val` dictionary should only contain JSON-serializable types: strings,
   string aliases such as [DRefs](#pylightnix.types.DRef), bools, ints, floats,
   lists or other dicts. No bytes, `numpy.float32` or lambdas are allowed. Tuples
   are also forbidden because they are not preserved (decoded into lists).
+
+  Config of a derivation can't include the Derivation reference of this
+  derivation.
 
   Some fields of a config have a special meaning for Pylightnix:
 
@@ -340,8 +319,8 @@ class Config:
       nepoches = 4
       learning_rate = 1e-5
       hidden_size = 128
-      return mkconfig(locals())
-    return mkdrv(_config(),...)
+      return locals()
+    return mkdrv(mkconfig(_config()),...)
   ```
   """
   def __init__(self, d:dict):
@@ -353,8 +332,7 @@ class Config:
 
 class RConfig(Config):
   """ `RConfig` is a [Config](#pylightnix.types.Config) where all
-  [Claims](#pylightnix.types.PYLIGHTNIX_CLAIM_TAG) and
-  [Promises](#pylightnix.types.PYLIGHTNIX_PROMISE_TAG) are resolved.  RConfig
+  [Self-referenes](#pylightnix.types.PYLIGHTNIX_SELF_TAG) are resolved. RConfig
   stands for 'Resolved Config'.  """
   pass
 
@@ -371,10 +349,11 @@ class ConfigAttrs:
 
 
 
-BuildArgs = NamedTuple('BuildArgs', [('storage',SPath),
+BuildArgs = NamedTuple('BuildArgs', [('S',Optional[StorageSettings]),
                                      ('dref',DRef),
                                      ('context',Context),
-                                     ('timeprefix',Optional[str]),
+                                     ('starttime',Optional[str]),
+                                     ('stoptime',Optional[str]),
                                      ('iarg',InstantiateArg),
                                      ('rarg',RealizeArg)])
 
@@ -389,8 +368,10 @@ class Build:
 
   - [build_config](#pylightnix.core.build_config) - Obtain the RConfig object of
     the current stage
-  - [build_cattrs](#pylightnix.core.build_cattrs) - Obtain the ConfigAttrs helper
-  - [build_path](#pylightnix.core.build_path) - Convert a RefPath or a PromisePath
+  - [build_cattrs](#pylightnix.core.build_cattrs) - Obtain the ConfigAttrs
+    helper
+  - [build_path](#pylightnix.core.build_path) - Convert a RefPath or a
+    PromisePath
     into a system file path
   - [build_setoutgroups](#pylightnix.build.build_setoutgroups) - Initialize and
     return groups of output folders
@@ -423,43 +404,42 @@ class Build:
   """
 
   def __init__(self, ba:BuildArgs)->None:
-    self.storage=ba.storage
+    self.S=ba.S
     self.dref=ba.dref
     self.context=ba.context
     self.iarg=ba.iarg
     self.rarg=ba.rarg
-    self.timeprefix=ba.timeprefix
-    self.outgroups:List[Dict[Tag,Path]]=[]
+    self.starttime=ba.starttime
+    self.stoptime=ba.stoptime
+    self.outpaths:Optional[Output[Path]]=None
     self.cattrs_cache:Optional[ConfigAttrs]=None
 
 
 class Manager:
-  """ The derivation manager is a mutable storage where we store derivations
-  before combining them into a [Closure](#pylightnix.types.Closure).
+  """ The derivation manager is a mutable storage object where Pylightnix
+  stores derivations before combining them into a
+  [Closure](#pylightnix.types.Closure).
 
-  Manager doesn't have any associated user-level operations. It is typically a
-  first argument of stage functions which should be passed downstream without
-  modifications.
+  Managers doesn't requre any special operations besides creating and passing
+  around. By convention, Manager objects are first arguments of user-defined
+  stage functions and the `mkdrv` API function of Pylightnix.
 
   The [inplace module](#pylightnix.inplace) defines it's own [global derivation
-  manager](#pylightnix.inplace.PYLIGHTNIX_MANAGER) to simplify the usage even
-  more.  """
-  def __init__(self, S:SPath):
+  manager](#pylightnix.inplace.PYLIGHTNIX_MANAGER) """
+  def __init__(self, S:Optional[StorageSettings]):
     self.builders:Dict[DRef,Derivation]=OrderedDict()
     self.in_instantiate:bool=False
     self.in_redefine:bool=False
-    self.storage:SPath=S
+    self.S:Optional[StorageSettings]=S
 
 
 #: R is a DRef or any of its derivatives
 R = TypeVar('R',bound=SupportsAbs[DRef])
 
-#: From the user's point of view, Stage is a basic building block of
-#: Pylightnix.  It is a function that 'introduces'
-#: [derivations](#pylightnix.typing.Derivation) to
-#: [Manager](#pylightnix.typing.Manager).  Return value is a [derivation
-#: reference](#pylightnix.types.DRef) which is a proof that the derivation was
-#: introduced sucessfully.
+#: Stages are the simplest building blocks of Pylightnix. Stage functions
+#: register sequences of stages in the Manager. The return value of a Stage is
+#: [derivation references](#pylightnix.types.DRef) which could be either
+#: mentioned in other stages or sent for realization.
 #:
 #: Some built-in stages are:
 #: - [mknode](#pylightnix.stages.trivial.mknode)
@@ -475,6 +455,4 @@ R = TypeVar('R',bound=SupportsAbs[DRef])
 #: We use `type:ignore` pragmas when we need to pass `**kwargs`.
 Stage = Callable[[Manager],R]
 
-
-Key = Callable[[RRefGroup,SPath],Optional[Union[int,float,str]]]
 

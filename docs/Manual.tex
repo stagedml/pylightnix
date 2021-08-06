@@ -13,6 +13,10 @@
 \usepackage{hyperref}
 \usepackage{mdframed}
 \usepackage{import}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{xparse}
 
 \fvset{breaklines, breakafter=0123456789-/}
 \setpythontexfv{breaklines, breakafter=0123456789-/, commandchars=\\\{\}}
@@ -32,6 +36,14 @@
 
 \newcommand{\mysmallstdout}{\begin{mdframed}\footnotesize{\texttt{\stdoutpythontex[verbatim][breaklines,breakafter=0123456789-/]}}\end{mdframed}}
 
+\newcommand{\N}{\mathbb N}
+\newcommand{\Q}{\mathbb Q}
+
+\DeclarePairedDelimiterX{\set}[1]{\{}{\}}{\setargs{#1}}
+\NewDocumentCommand{\setargs}{>{\SplitArgument{1}{;}}m}
+{\setargsaux#1}
+\NewDocumentCommand{\setargsaux}{mm}
+{\IfNoValueTF{#2}{#1} {#1\,\delimsize|\,\mathopen{}#2}}%{#1\:;\:#2}
 
 \begin{document}
 
@@ -48,8 +60,10 @@
 \import{./sections}{Install.tex}
 \import{./sections}{Related.tex}
 \import{./sections}{QuickStart.tex}
-\import{./sections}{Rationale.tex}
+\import{./sections}{Definitions.tex}
 \import{./sections}{Comparison.tex}
+\import{./sections}{Rationale.tex}
+\import{./sections}{DevNotes.tex}
 
 \end{document}
 

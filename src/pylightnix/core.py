@@ -28,19 +28,19 @@ from pylightnix.utils import (dirhash, assert_serializable, assert_valid_dict,
                               dicthash, scanref_dict, scanref_list, forcelink,
                               timestring, parsetime, datahash, readjson,
                               tryread, encode, dirchmod, dirrm, filero, isrref,
-                              isdref, traverse_dict, ispromise, isclaim,
-                              tryread_def, tryreadjson_def, isrefpath,
-                              kahntsort, dagroots)
+                              isdref, traverse_dict, tryread_def,
+                              tryreadjson_def, isrefpath, kahntsort, dagroots,
+                              isselfpath)
 
-from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional,
-                              Iterable, IO, Path, SPath, Hash, DRef, RRef,
-                              RefPath, PromisePath, HashPart, Callable,
-                              Context, Name, NamedTuple, Build, RConfig,
-                              ConfigAttrs, Derivation, Stage, Manager, Matcher,
-                              Realizer, Set, Closure, Generator, Key,
-                              BuildArgs, PYLIGHTNIX_PROMISE_TAG,
-                              PYLIGHTNIX_CLAIM_TAG, Config, RealizeArg,
-                              InstantiateArg, Tag, Group, RRefGroup)
+from pylightnix.types import (StorageSettings, Dict, List, Any, Tuple, Union,
+                              Optional, Iterable, IO, Path, SPath, Hash, DRef,
+                              RRef, RefPath, HashPart, Callable, Context, Name,
+                              NamedTuple, Build, RConfig, ConfigAttrs,
+                              Derivation, Stage, Manager, Matcher, MatcherO,
+                              Realizer, RealizerO, Set, Closure, Generator,
+                              BuildArgs, Config, RealizeArg, InstantiateArg,
+                              PYLIGHTNIX_SELF_TAG, Output, TypeVar,
+                              PromiseException)
 
 logger=getLogger(__name__)
 info=logger.info
@@ -53,42 +53,60 @@ PYLIGHTNIX_STORE_VERSION=0
 def storagename():
   return f"store-v{PYLIGHTNIX_STORE_VERSION}"
 
-#: `PYLIGHTNIX_ROOT` contains the path to the root of pylightnix shared data folder.
-#:
-#: Default is `~/_pylightnix` or `/var/run/_pylightnix` if no `$HOME` is available.
-#: Setting `PYLIGHTNIX_ROOT` environment variable overwrites the defaults.
-PYLIGHTNIX_ROOT=environ.get('PYLIGHTNIX_ROOT',
-  join(environ.get('HOME','/var/run'), '_pylightnix'))
+def fsroot()->Path:
+  """ `fsroot` contains the path to the root of pylightnix shared data folder.
+  Default is `~/_pylightnix` or `/var/run/_pylightnix` if no `$HOME` is
+  available.  Setting `PYLIGHTNIX_ROOT` environment variable overwrites the
+  defaults.  """
+  return Path(environ.get('PYLIGHTNIX_ROOT',
+    join(environ.get('HOME','/var/run'), '_pylightnix')))
 
-
-#: `PYLIGHTNIX_TMP` contains the path to the root of temporary folders.
-#: Setting `PYLIGHTNIX_TMP` environment variable overwrites the default value of
-#: `$PYLIGHTNIX_ROOT/tmp`.
-PYLIGHTNIX_TMP=environ.get('PYLIGHTNIX_TMP', join(PYLIGHTNIX_ROOT,'tmp'))
-
-def tempdir(tmp:Optional[Path]=None)->Path:
-  if tmp is None:
-    assert isinstance(PYLIGHTNIX_TMP, str), \
-      f"Default temp folder location is not a string: {PYLIGHTNIX_TMP}"
-    return Path(PYLIGHTNIX_TMP)
+def fstmpdir(S:Optional[StorageSettings]=None)->Path:
+  if S is None or S.tmpdir is None:
+    return Path(environ.get('PYLIGHTNIX_TMP',
+                            join(fsroot(),'tmp')))
   else:
-    return tmp
+    return S.tmpdir
 
-#: `PYLIGHTNIX_STORE` contains the path to the main pylightnix store folder.
-#:
-#: By default, the store is located in `$PYLIGHTNIX_ROOT/store-vXX` folder.
-#: Setting `PYLIGHTNIX_STORE` environment variable overwrites the defaults.
-PYLIGHTNIX_STORE=join(PYLIGHTNIX_ROOT, storagename())
-
-def storage(S:Optional[SPath]=None)->SPath:
+def fsstorage(S:Optional[StorageSettings]=None)->Path:
   """ Returns the location to Pylightnix storage, defaulting to
   PYLIGHTNIX_STORE """
-  if S is None:
-    assert isinstance(PYLIGHTNIX_STORE, str), \
-      f"Default storage location is not a string: {PYLIGHTNIX_STORE}"
-    return SPath(PYLIGHTNIX_STORE)
+  if S is None or S.storage is None:
+    return Path(environ.get('PYLIGHTNIX_STORAGE',
+                            join(fsroot(), storagename())))
   else:
-    return S
+    return S.storage
+
+
+def assert_fsinit(S:Optional[StorageSettings]=None)->None:
+  assert isdir(fsstorage(S)), \
+    (f"Looks like the Pylightnix storage ('{fsstorage(S)}') is not "
+     f"initialized. Did you set `S` parameter correctly?")
+  assert isdir(fstmpdir(S)), \
+    (f"Looks like the Pylightnix tmp ('{fstmpdir(S)}') is not initialized. Did "
+     f"you call `initialize`?")
+  assert lstat((fsstorage(S))).st_dev == lstat(fstmpdir(S)).st_dev, \
+    (f"Looks like Pylightnix store and tmp directories belong to different "
+     f"filesystems. This case is not supported yet. Consider setting "
+     f"PYLIGHTNIX_TMP to be on the same device with PYLIGHTNIX_STORE")
+
+def fsinit(S:Optional[StorageSettings]=None,
+           check_not_exist:bool=False)->None:
+  """ Create the storage and/or temp direcory if they don't exist. Default
+  locations are determined by `PYLIGHTNIX_STOREAGE` and `PYLIGHTNIX_TMP` env
+  variables.
+
+  Parameters:
+  - `custom_store:Optional[Path]=None`: If not None, create new storage located
+    here.
+  - `custom_tmp:Optional[Path]=None`: If not None, set the temp files directory
+    here.
+  - `check_not_exist:bool=False`: Set to True to assert on already existing
+    storages. Good to become sure that newly created storage is empty.
+  """
+  makedirs(fsstorage(S), exist_ok=False if check_not_exist else True)
+  makedirs(fstmpdir(S), exist_ok=True)
+  assert_fsinit(S)
 
 #: Set the regular expression pattern for valid name characters.
 PYLIGHTNIX_NAMEPAT="[a-zA-Z0-9_-]"
@@ -101,6 +119,8 @@ def reserved(folder:Path, name:str)->Path:
   assert name in PYLIGHTNIX_RESERVED, \
     f"File name '{name}' expected to be reserved"
   return Path(join(folder,name))
+
+selfref = PYLIGHTNIX_SELF_TAG
 
 #  ____       __
 # |  _ \ ___ / _|___
@@ -168,20 +188,6 @@ def path2rref(p:Path)->Optional[RRef]:
   h2,nm=undref(dref)
   return mkrref(HashPart(h1),HashPart(h2),mkname(nm))
 
-def mktag(s:str)->Tag:
-  for c in ['\n',' ']:
-    assert c not in s, f"Invalid symbol '{c}' in tag '{s}'"
-  return Tag(s)
-
-def tag_out()->Tag:
-  """ Pre-defined default Tag name """
-  return mktag('out')
-
-def mkgroup(s:str)->Group:
-  for c in ['\n',' ']:
-    assert c not in s
-  return Group(s)
-
 #   ____             __ _
 #  / ___|___  _ __  / _(_) __ _
 # | |   / _ \| '_ \| |_| |/ _` |
@@ -214,34 +220,12 @@ def config_hash(c:Config)->Hash:
   return datahash([(config_name(c),encode(config_serialize(c)))])
 
 def config_name(c:Config)->Name:
-  """ Return short human-readable name of a config """
+  """ Return a `name` field of a config `c`, defaulting to string "unnmaed". """
   return mkname(config_dict(c).get('name','unnamed'))
 
-def config_deps(c:RConfig)->Set[DRef]:
+def config_deps(c:Config)->Set[DRef]:
   drefs,_=scanref_dict(config_dict(c))
   return set(drefs)
-
-def config_substitutePromises(c:Config, r:DRef)->RConfig:
-  """ Replace all Promise tags with DRef `r`. In particular, all PromisePaths
-  are converted into RefPaths. """
-  d=config_dict(c)
-  def _mut(k:Any,val:Any):
-    if ispromise(val) or isclaim(val):
-      return [DRef(r)]+val[1:]
-    else:
-      return val
-  traverse_dict(d,_mut)
-  return RConfig(d)
-
-def config_promises(c:Config, r:DRef)->List[Tuple[str,PromisePath]]:
-  promises=[]
-  def _mut(key:Any, val:Any):
-    nonlocal promises
-    if ispromise(val):
-      promises.append((str(key),val))
-    return val
-  traverse_dict(config_dict(c),_mut)
-  return promises
 
 def mkrefpath(r:DRef, items:List[str]=[])->RefPath:
   """ Construct a [RefPath](#pylightnix.types.RefPath) out of a reference `ref`
@@ -256,128 +240,88 @@ def mkrefpath(r:DRef, items:List[str]=[])->RefPath:
 #  ___) | || (_) | | |  __/
 # |____/ \__\___/|_|  \___|
 
-def assert_store_initialized(S:SPath)->None:
-  assert isdir(storage(S)), \
-    (f"Looks like the Pylightnix store ('{PYLIGHTNIX_STORE}') is not initialized. Did "
-     f"you call `store_initialize`?")
-  assert isdir(tempdir()), \
-    (f"Looks like the Pylightnix tmp ('{tempdir()}') is not initialized. Did "
-     f"you call `store_initialize`?")
-  assert lstat((storage(S))).st_dev == lstat(tempdir()).st_dev, \
-    (f"Looks like Pylightnix store and tmp directories belong to different filesystems. "
-     f"This case is not supported yet. Consider setting PYLIGHTNIX_TMP to be on the same "
-     f"device with PYLIGHTNIX_STORE")
 
-def store_initialize(custom_store:Optional[str]=None,
-                     custom_tmp:Optional[str]=None,
-                     check_not_exist:bool=False)->None:
-  """ Create the storage and temp direcories if they don't exist. Default
-  locations are determined by `PYLIGHTNIX_STORE` and `PYLIGHTNIX_TMP` global
-  variables which in turn may be set by either setting environment variables of
-  the same name or by direct assigning.
+def resolve(c:Config, r:DRef)->RConfig:
+  """ Replace all Promise tags with DRef `r`. In particular, all PromisePaths
+  are converted into RefPaths. """
+  d=config_dict(c)
+  def _mut(k:Any,val:Any):
+    if isselfpath(val):
+      return [DRef(r)]+val[1:]
+    else:
+      return val
+  traverse_dict(d,_mut)
+  return RConfig(d)
 
-  Parameters:
-  - `custom_store:Optional[str]=None`: If not None, create new storage located
-    here.
-  - `custom_tmp:Optional[str]=None`: If not None, set the temp files directory
-    here.
-  - `check_not_exist:bool=False`: Set to True to assert on already existing
-    storages. Good to become sure that newly created storage is empty.
 
-  See also [assert_store_initialized](#pylightnix.core.assert_store_initialized).
-
-  Example:
-  ```python
-  import pylightnix.core
-  pylightnix.core.PYLIGHTNIX_STORE='/tmp/custom_pylightnix_storage'
-  pylightnix.core.PYLIGHTNIX_TMP='/tmp/custom_pylightnix_tmp'
-  pylightnix.core.store_initialize()
-  ```
-  """
-  global PYLIGHTNIX_STORE, PYLIGHTNIX_TMP
-
-  if custom_store is not None:
-    PYLIGHTNIX_STORE=custom_store
-  info(f"Initializing {'' if isdir(PYLIGHTNIX_STORE) else 'non-'}existing "
-       f"{PYLIGHTNIX_STORE}")
-  makedirs(PYLIGHTNIX_STORE, exist_ok=False if check_not_exist else True)
-
-  if custom_tmp is not None:
-    PYLIGHTNIX_TMP=custom_tmp
-  makedirs(PYLIGHTNIX_TMP, exist_ok=True)
-
-  assert_store_initialized(SPath(PYLIGHTNIX_STORE))
-
-def store_dref2path(r:DRef,S=None)->Path:
+def dref2path(r:DRef,S=None)->Path:
   (dhash,nm)=undref(r)
-  return Path(join(storage(S),dhash+'-'+nm))
+  return Path(join(fsstorage(S),dhash+'-'+nm))
 
-def store_rref2path(r:RRef, S=None)->Path:
+def rref2path(r:RRef, S=None)->Path:
   (rhash,dhash,nm)=unrref(r)
-  return Path(join(storage(S),dhash+'-'+nm,rhash))
+  return Path(join(fsstorage(S),dhash+'-'+nm,rhash))
 
-def store_cfgpath(r:DRef,S=None)->Path:
-  return Path(join(store_dref2path(r,S),'config.json'))
+def drefcfgpath(r:DRef,S=None)->Path:
+  return Path(join(dref2path(r,S),'config.json'))
 
-def store_config_(r:DRef,S=None)->Config:
-  return assert_valid_config(Config(readjson(store_cfgpath(r,S))))
-
-def store_config(r:Union[DRef,RRef],S=None)->RConfig:
-  """ Read the [Config](#pylightnix.types.Config) of the derivation and
-  [resolve](#pylightnix.core.config_substitutePromises) it from promises and
-  claims. """
-  assert isrref(r) or isdref(r), (
-      f"Invalid reference '{r}'. Expected either RRef or DRef." )
-  if isrref(r):
-    dref=rref2dref(RRef(r))
-  else:
-    dref=DRef(r)
-  return config_substitutePromises(store_config_(dref,S),dref)
-
-def store_context(r:RRef, S=None)->Context:
-  """
-  FIXME: Either do `context_add(ctx, rref2dref(r), [r])` or document it's absense
-  """
+def rrefctx(r:RRef, S=None)->Context:
+  """ Return the realization context. """
   assert_valid_rref(r)
-  return readjson(join(store_rref2path(r,S),'context.json'))
+  return readjson(join(rref2path(r,S),'context.json'))
 
-def store_cattrs(r:Union[DRef,RRef], S=None)->Any:
+def drefcfg_(dref:DRef,S=None)->Config:
+  """ Return `dref` configuration, selfrefs are not resolved """
+  return assert_valid_config(Config(readjson(drefcfgpath(dref,S))))
+
+def drefcfg(dref:DRef,S=None)->RConfig:
+  """ Return `dref` configuration, selfrefs are resolved """
+  return resolve(drefcfg_(dref,S),dref)
+
+def drefattrs(r:DRef, S=None)->Any:
   """ Read the [ConfigAttrs](#pylightnix.types.ConfigAttr) of the storage node `r`.
-  Note, that it is a kind of 'syntactic sugar' for `store_config`. Both
+  Note, that it is a kind of 'syntactic sugar' for `drefcfg`. Both
   functions do the same thing. """
-  return config_cattrs(store_config(r,S))
+  return config_cattrs(drefcfg(r,S))
 
-def store_deps(drefs:Iterable[DRef],S=None)->Set[DRef]:
-  """ Return a list of reference's immediate dependencies, not including `drefs`
+def rrefattrs(r:RRef, S=None)->Any:
+  """ Read the [ConfigAttrs](#pylightnix.types.ConfigAttr) of the storage node `r`.
+  Note, that it is a kind of 'syntactic sugar' for `drefcfg`. Both
+  functions do the same thing. """
+  return drefattrs(rref2dref(r),S)
+
+def drefdeps1(drefs:Iterable[DRef],S=None)->Set[DRef]:
+  """ Return a set of reference's immediate dependencies, not including `drefs`
   themselves. """
   acc=set()
   for dref in drefs:
-    acc.update(config_deps(store_config(dref,S))-{dref})
+    acc.update(config_deps(drefcfg_(dref,S)))
   return acc
 
-def store_depRrefs(rrefs:Iterable[RRef],S=None)->Set[RRef]:
+def rrefdeps1(rrefs:Iterable[RRef],S=None)->Set[RRef]:
+  """ Return a set of reference's immediate dependencies, not including `rrefs`
+  themselves. """
   acc=set()
   for rref in rrefs:
     dref=rref2dref(rref)
-    for dref_dep in store_deps([dref],S):
-      for rg in store_deref_(rref,dref_dep,S):
-        acc|=set(rg.values())
+    for dref_dep in drefdeps1([dref],S):
+      acc|=set(context_deref(rrefctx(rref,S),dref_dep))
   return acc
 
-def store_deepdeps(drefs:Iterable[DRef], S=None)->Set[DRef]:
+def drefdeps(drefs:Iterable[DRef], S=None)->Set[DRef]:
   """ Return the complete set of `drefs`'s dependencies, not including `drefs`
   themselves. """
-  frontier=store_deps(drefs,S)
+  frontier=drefdeps1(drefs,S)
   processed=set()
   while frontier:
     ref = frontier.pop()
     processed.add(ref)
-    for dep in store_deps([ref],S):
+    for dep in drefdeps1([ref],S):
       if dep not in processed:
         frontier.add(dep)
   return processed
 
-def store_deepdepRrefs(rrefs:Iterable[RRef],S=None)->Set[RRef]:
+def rrefdeps(rrefs:Iterable[RRef],S=None)->Set[RRef]:
   """ Return the complete set of rrefs's dependencies, not including `rrefs`
   themselves.
 
@@ -387,14 +331,14 @@ def store_deepdepRrefs(rrefs:Iterable[RRef],S=None)->Set[RRef]:
   """
   acc:Set=set()
   for rref in rrefs:
-    for rref_deps in store_context(rref,S).values():
+    for rref_deps in rrefctx(rref,S).values():
       acc|=set(rref_deps)
   return acc
 
 def alldrefs(S=None)->Iterable[DRef]:
   """ Iterates over all derivations of the storage located at `S`
   (PYLIGHTNIX_STORE env is used by default) """
-  store_path_=storage(S)
+  store_path_=fsstorage(S)
   for dirname in listdir(store_path_):
     if dirname[-4:]!='.tmp' and isdir(join(store_path_,dirname)):
       yield mkdref(HashPart(dirname[:32]), Name(dirname[32+1:]))
@@ -406,20 +350,20 @@ def allrrefs(S=None)->Iterable[RRef]:
     for rref in drefrrefs(dref,S):
       yield rref
 
-def rootdrefs(S:Optional[SPath]=None)->Set[DRef]:
+def rootdrefs(S:Optional[StorageSettings]=None)->Set[DRef]:
   """ Return root DRefs of the storage `S` as a set """
   def _inb(x):
-    return store_deps([x],S)
+    return drefdeps1([x],S=S)
   topsorted=kahntsort(alldrefs(S), _inb)
   assert topsorted is not None, (
     f"Falied to topologically sort the derivations of {S}. This "
-    f"probably means that the storage is damaged")
+    f"probably means that the storage ({S if S else 'default'}) is damaged")
   return dagroots(topsorted, _inb)
 
-def rootrrefs(S:Optional[SPath]=None)->Set[RRef]:
+def rootrrefs(S:Optional[StorageSettings]=None)->Set[RRef]:
   """ Return root RRefs of the storage `S` as a set """
   def _inb(x):
-    return store_depRrefs([x],S)
+    return rrefdeps1([x],S=S)
   topsorted=kahntsort(allrrefs(S), _inb)
   assert topsorted is not None, (
     f"Falied to topologically sort the realizations of {S}. This "
@@ -427,122 +371,58 @@ def rootrrefs(S:Optional[SPath]=None)->Set[RRef]:
   return dagroots(topsorted, _inb)
 
 def rrefdata(rref:RRef,S=None)->Iterable[Path]:
-  """ Return the paths of top-level artifacts """
-  root=store_rref2path(rref,S)
+  """ Iterate over top-level artifacts paths, ignoring reserved files. """
+  root=rref2path(rref,S)
   for fd in scandir(root):
     if not (fd.is_file() and fd.name in PYLIGHTNIX_RESERVED):
       yield Path(join(root, fd.name))
 
-def rrefs2groups(rrefs:Iterable[RRef], S=None)->List[RRefGroup]:
-  """ Split RRefs to a set of [Groups](#pylightnix.types.Group), according to
-  their [Tags](#pylightnix.types.Tag)
-
-  FIXME: re-implement with a complexity better than O(N^2)
-  """
-  return [({store_tag(rref,S):rref for rref in rrefs if store_group(rref,S)==g})
-    for g in sorted({store_group(rref,S) for rref in rrefs})]
-
-def groups2rrefs(grs:List[RRefGroup])->List[RRef]:
-  """ Merges several [Groups](#pylightnix.types.Group) of RRefs into a plain
-  list of RRefs """
-  return list(chain.from_iterable([gr.values() for gr in grs]))
-
-def grouprref(gr:RRefGroup)->RRef:
-  return gr[tag_out()]
-
-def group2sign(grp:RRefGroup)->List[Tuple[RRef,Tag]]:
-  return list(sorted([(rref,tag) for tag,rref in grp.items()]))
-
-def group_in(grp:RRefGroup, grps:List[RRefGroup])->bool:
-  return group2sign(grp) in set({group2sign(gr) for gr in grps})
-
 def drefrrefs(dref:DRef,S=None)->List[RRef]:
   """ Iterate over all realizations of a derivation `dref`. The sort order is
-  unspecified. Matching is not taken into account. """
+  unspecified. Matchers are not taken into account. """
   (dhash,nm)=undref(dref)
-  drefpath=store_dref2path(dref,S)
+  drefpath=dref2path(dref,S)
   rrefs:List[RRef]=[]
   for f in listdir(drefpath):
     if f[-4:]!='.tmp' and isdir(join(drefpath,f)):
       rrefs.append(mkrref(HashPart(f), dhash, nm))
   return rrefs
 
-def store_rrefs_(dref:DRef,S=None)->List[RRefGroup]:
-  """ Iterate over all realizations of a derivation `dref`. The sort order is
-  unspecified. """
-  return rrefs2groups(drefrrefs(dref,S),S)
-
-def store_rrefs(dref:DRef, context:Context, S=None)->List[RRefGroup]:
-  """ Iterate over realizations of a derivation `dref` which match a specified
+def drefrrefsC(dref:DRef, context:Context, S=None)->Iterable[RRef]:
+  """ Iterate over realizations of a derivation `dref` that match the specified
   [context](#pylightnix.types.Context). Sorting order is unspecified. """
-  rgs:List[RRefGroup]=[]
-  for rg in store_rrefs_(dref,S):
-    context2=store_context(rg[tag_out()],S)
+  for rref in drefrrefs(dref,S):
+    context2=rrefctx(rref,S)
     if context_eq(context,context2):
-      rgs.append(rg)
-  return rgs
-
-def store_deref_(context_holder:RRef, dref:DRef, S=None)->List[RRefGroup]:
-  return context_deref(store_context(context_holder,S),dref,S)
-
-def store_deref(context_holder:RRef, dref:DRef, S=None)->RRefGroup:
-  """ For any realization `context_holder` and it's dependency `dref`, `store_deref`
-  queries the realization reference of this dependency.
-
-  See also [build_deref](#pylightnix.core.build_deref)"""
-  rgs=store_deref_(context_holder, dref, S)
-  assert len(rgs)==1
-  return rgs[0]
-
-def store_buildtime(rref:RRef, S=None)->Optional[str]:
-  """ Return the buildtime of the current RRef in a format specified by the
-  [PYLIGHTNIX_TIME](#pylightnix.utils.PYLIGHTNIX_TIME) constant.
-
-  [parsetime](#pylightnix.utils.parsetime) may be used to parse stings into
-  UNIX-Epoch seconds.
-
-  Buildtime is the time when the realization process has started. Some
-  realizations may not provide this information. """
-  return tryread(Path(join(store_rref2path(rref,S),'__buildtime__.txt')))
-
-def store_tag(rref:RRef,S=None)->Tag:
-  """ Return the [Tag](#pylightnix.types.tag) of a Realization. Default Tag
-  name is 'out'. """
-  return mktag(tryreadjson_def(
-    reserved(store_rref2path(rref,S),'group.json'),{}).get('tag','out'))
-
-def store_group(rref:RRef,S=None)->Group:
-  """ Return group identifier of the realization """
-  return mkgroup(tryreadjson_def(
-    reserved(store_rref2path(rref,S),'group.json'),{}).get('group',rref))
+      yield rref
 
 def store_gc(keep_drefs:List[DRef],
              keep_rrefs:List[RRef],
-             S:SPath)->Tuple[Set[DRef],Set[RRef]]:
+             S:Optional[StorageSettings]=None)->Tuple[Set[DRef],Set[RRef]]:
   """ Take roots which are in use and should not be removed. Return roots which
   are not used and may be removed. Actual removing is to be done by the user.
 
   Default location of `S` may be changed.
 
   See also [rmref](#pylightnix.bashlike.rmref)"""
-  assert_store_initialized(S)
+  assert_fsinit(S)
   keep_rrefs_=set(keep_rrefs)
   keep_drefs_=set(keep_drefs)
-  closure_rrefs=store_deepdepRrefs(keep_rrefs_,S) | keep_rrefs_
-  closure_drefs=store_deepdeps(keep_drefs_,S) | keep_drefs_ | {rref2dref(rref) for rref in closure_rrefs}
+  closure_rrefs=rrefdeps(keep_rrefs_,S) | keep_rrefs_
+  closure_drefs=drefdeps(keep_drefs_,S) | keep_drefs_ | {rref2dref(rref)
+                                                         for rref in closure_rrefs}
   remove_drefs=set()
   remove_rrefs=set()
   for dref in alldrefs(S):
     if dref not in closure_drefs:
       remove_drefs.add(dref)
-    for rg in store_rrefs_(dref,S):
-      for rref in rg.values():
-        if rref not in closure_rrefs:
-          remove_rrefs.add(rref)
+    for rref in drefrrefs(dref,S):
+      if rref not in closure_rrefs:
+        remove_rrefs.add(rref)
   return remove_drefs,remove_rrefs
 
 
-def mkdrv_(c:Config,S:SPath)->DRef:
+def mkdrv_(c:Config,S=None)->DRef:
   """ Create new derivation in storage `S`.
 
   We attempt to do it atomically by creating temp directory first and then
@@ -550,7 +430,7 @@ def mkdrv_(c:Config,S:SPath)->DRef:
 
   FIXME: Assert or handle possible (but improbable) hash collision [*]
   """
-  assert_store_initialized(S)
+  assert_fsinit(S)
   # c=cp.config
   assert_valid_config(c)
   assert_rref_deps(c)
@@ -560,12 +440,12 @@ def mkdrv_(c:Config,S:SPath)->DRef:
 
   dref=mkdref(trimhash(dhash),refname)
 
-  o=Path(mkdtemp(prefix=refname, dir=tempdir()))
+  o=Path(mkdtemp(prefix=refname, dir=fstmpdir(S)))
   with open(join(o,'config.json'), 'w') as f:
     f.write(config_serialize(c))
 
   filero(Path(join(o,'config.json')))
-  drefpath=store_dref2path(dref,S)
+  drefpath=dref2path(dref,S)
   dreftmp=Path(drefpath+'.tmp')
   replace(o,dreftmp)
 
@@ -579,8 +459,7 @@ def mkdrv_(c:Config,S:SPath)->DRef:
       raise
   return dref
 
-def mkrealization(dref:DRef, l:Context, o:Path,
-                  leader:Optional[Tuple[Tag,RRef]]=None, S=None)->RRef:
+def mkrealization(dref:DRef, l:Context, o:Path, S=None)->RRef:
   """ Create the [Realization](#pylightnix.types.RRef) object in the storage
   `S`. Return new Realization reference.
 
@@ -593,33 +472,26 @@ def mkrealization(dref:DRef, l:Context, o:Path,
     we use name `out` and derivation's own rref.
 
   FIXME: Assert or handle possible but improbable hash collision[*]
-  FIXME: Consider(not sure) writing group.json for all realizations[**]
   """
-  c=store_config(dref,S)
-  assert_valid_config(c)
+  assert_valid_config(drefcfg_(dref,S))
   (dhash,nm)=undref(dref)
 
   assert isdir(o), (
-     f"While realizing {dref}: Outpath is expected to be a path to existing "
-     f"directory, but got {o}")
+   f"While realizing {dref}: Outpath is expected to be a path to existing "
+   f"directory, but got {o}")
 
   for fn in PYLIGHTNIX_RESERVED:
     assert not isfile(join(o,fn)), (
-       f"While realizing {dref}: output folder '{o}' contains file '{fn}'. "
-       f"This name is reserved, please use another name. List of reserved "
-       f"names: {PYLIGHTNIX_RESERVED}")
+      f"While realizing {dref}: output folder '{o}' contains file '{fn}'. "
+      f"This name is reserved, please use another name. List of reserved "
+      f"names: {PYLIGHTNIX_RESERVED}")
 
   with open(reserved(o,'context.json'), 'w') as f:
     f.write(context_serialize(l))
 
-  if leader is not None: # [**]
-    tag,group_rref=leader
-    with open(reserved(o,'group.json'), 'w') as f:
-      json_dump({'tag':tag,'group':group_rref},f)
-
   rhash=dirhash(o)
   rref=mkrref(trimhash(rhash),dhash,nm)
-  rrefpath=store_rref2path(rref,S)
+  rrefpath=rref2path(rref,S)
   rreftmp=Path(rrefpath+'.tmp')
 
   replace(o,rreftmp)
@@ -640,17 +512,6 @@ def mkrealization(dref:DRef, l:Context, o:Path,
       raise
   return rref
 
-def mkrgroup(dref:DRef, ctx:Context,
-             og:Dict[Tag,Path], S=None)->RRefGroup:
-  """ Create [realization group](#pylightnix.types.Group) in storage `S` by
-  iteratively calling [mkrealization](#pylightnix.core.mkrealization). """
-  rrefg={}
-  rrefg[tag_out()]=mkrealization(dref,ctx,og[tag_out()],leader=None,S=S)
-  for tag,o in og.items():
-    if tag!=tag_out():
-      rrefg[tag]=mkrealization(dref,ctx,o,leader=(tag,rrefg[tag_out()]),S=S)
-  return rrefg
-
 #   ____            _            _
 #  / ___|___  _ __ | |_ _____  _| |_
 # | |   / _ \| '_ \| __/ _ \ \/ / __|
@@ -661,23 +522,27 @@ def mkrgroup(dref:DRef, ctx:Context,
 def mkcontext()->Context:
   return {}
 
-
 def context_eq(a:Context,b:Context)->bool:
   return json_dumps(a)==json_dumps(b)
 
 def context_add(ctx:Context, dref:DRef, rrefs:List[RRef])->Context:
+  """ Add a pair `(dref,rrefs)` into a context `ctx`. `rrefs` are supposed to
+  form (a subset of) the realizations of `dref`.
+  Return a new context. """
   assert dref not in ctx, (
     f"Attempting to re-introduce DRef {dref} to context with a "
     f"different realization.\n"
     f" * Old realization: {ctx[dref]}\n"
-    f" * New realization: {rrefs}\n" )
+    f" * New realization: {rrefs}\n")
   return dict(sorted([(dref,list(sorted(rrefs)))]+list(ctx.items())))
 
-def context_deref(context:Context, dref:DRef, S=None)->List[RRefGroup]:
+def context_deref(context:Context, dref:DRef)->List[RRef]:
+  """ TODO: Should it return Output (aka `UniformList`) rather than Python list?
+  """
   assert dref in context, (
-      f"Context {context} doesn't declare {dref} among it's dependencies so we "
-      f"can't dereference it." )
-  return rrefs2groups(context[dref],S)
+    f"Context {context} doesn't declare {dref} among it's dependencies so we "
+    f"can't dereference it.")
+  return context[dref]
 
 def context_serialize(c:Context)->str:
   assert_valid_context(c)
@@ -691,37 +556,34 @@ def context_serialize(c:Context)->str:
 #           |_|
 
 
-#: Promise is a magic constant required to create
-#: [PromisePath](#pylightnix.types.PromisePath), where it is used as a start
-#: marker. Promise paths do exist only during
-#: [instantiation](#pylightnix.core.instantiate) pass. The core replaces all
-#: PromisePaths with corresponding [RefPaths](#pylightnix.type.RefPath)
-#: automatically before it starts the realization pass (see
-#: [store_config](#pylightnix.core.store_config)).
-#:
-#: Ex-PromisePaths may be later converted into filesystem paths by
-#: [build_path](#pylightnix.core.build_path) or by
-#: [Lenses](#pylightnix.lens.Lens) as usual.
-promise = PYLIGHTNIX_PROMISE_TAG
+def output_validate(dref:DRef, o:Output[Path], S=None)->List[Path]:
+    failed=[]
+    for key,promisepath in cfgsp(drefcfg_(dref,S)):
+      for p in o.val:
+        ppath=join(p,*promisepath[1:])
+        if not (isfile(ppath) or isdir(ppath) or islink(ppath)):
+          failed.append((p,promisepath))
+    if len(failed)>0:
+      raise PromiseException(dref, failed)
+    return o.val
 
-#: Claim is a [promise](#pylightnix.core.promise) which is not checked by the
-#: Pylightnix. All other properties of promises are valid for claims.  All
-#: PromisPaths which start from `claim` are substituted with corresponding
-#: RefPaths by Pylightnix and may be later converted into system paths.
-claim = PYLIGHTNIX_CLAIM_TAG
 
-def assert_promise_fulfilled(k:str, p:PromisePath, o:Path)->None:
-  ppath=join(o,*p[1:])
-  assert isfile(ppath) or isdir(ppath) or islink(ppath), (
-      f"Promise '{k}' of {p[0]} is not fulfilled. "
-      f"{ppath} is expected to be a file or a directory.")
+def output_realizer(f:RealizerO)->Realizer:
+  def _r(S:Optional[StorageSettings], dref:DRef, ctx:Context,
+         ra:RealizeArg)->List[Path]:
+    return output_validate(dref,f(S,dref,ctx,ra),S=S)
+  return _r
 
+def output_matcher(m:MatcherO)->Matcher:
+  def _m(S:Optional[StorageSettings],rrefs:List[RRef])->Optional[List[RRef]]:
+    r=m(S,Output(rrefs))
+    return r.val if r is not None else None
+  return _m
 
 def mkdrv(m:Manager,
           config:Config,
           matcher:Matcher,
-          realizer:Realizer,
-          check_promises:bool=True)->DRef:
+          realizer:Realizer)->DRef:
   """ Run the instantiation of a particular stage. Create a
   [Derivation](#pylightnix.types.Derivation) object out of three main
   components: the Derivation reference, the Matcher and the Realizer. Register
@@ -731,9 +593,6 @@ def mkdrv(m:Manager,
 
   Arguments:
   - `m:Manager`: A Manager to update with a new derivation
-  - `check_promises:bool=True`: Make sure that all
-    [PromisePath](#pylightnix.types.PromisePaths) of stage's configuration
-    correspond to existing files or firectories.
 
   Example:
   ```python
@@ -746,27 +605,15 @@ def mkdrv(m:Manager,
   rref:RRef=realize(instantiate(somestage))
   ```
   """
-  dref=mkdrv_(config,m.storage)
+  dref=mkdrv_(config,S=m.S)
   if dref in m.builders:
     if not m.in_redefine:
       warning((f"Overwriting either the matcher or the realizer of derivation "
                f"'{dref}'. It could be intended (e.g. a result of `redefine`), "
                f"but now we see a different situation. Could it be  "
                f"a recursive call to `instantiate`?\n"
-               f"Derivation config:\n{store_config_(dref,m.storage)}"))
-
-  def _promise_aware(realizer)->Realizer:
-    def _realizer(S:SPath,dref:DRef,ctx:Context,rarg:RealizeArg)->List[Dict[Tag,Path]]:
-      outgroups=realizer(S,dref,ctx,rarg)
-      for key,refpath in config_promises(store_config_(dref,S),dref):
-        for g in outgroups:
-          assert_promise_fulfilled(key,refpath,g[tag_out()])
-      return outgroups
-    return _realizer
-
-  m.builders[dref]=Derivation(dref=dref,
-                              matcher=matcher,
-                              realizer=_promise_aware(realizer) if check_promises else realizer)
+               f"Derivation config:\n{drefcfg_(dref,m.S)}"))
+  m.builders[dref]=Derivation(dref, matcher, realizer)
   return dref
 
 def instantiate_(m:Manager, stage:Any, *args, **kwargs)->Closure:
@@ -779,7 +626,7 @@ def instantiate_(m:Manager, stage:Any, *args, **kwargs)->Closure:
   finally:
     m.in_instantiate=False
   assert_have_realizers(m,[target_dref])
-  return Closure(target_dref,list(m.builders.values()),m.storage)
+  return Closure(target_dref,list(m.builders.values()),S=m.S)
 
 def instantiate(stage:Any, *args, S=None, **kwargs)->Closure:
   """ Instantiate takes the [Stage](#pylightnix.types.Stage) function and
@@ -788,11 +635,14 @@ def instantiate(stage:Any, *args, S=None, **kwargs)->Closure:
   All new derivations are added to the storage.
   See also [realizeMany](#pylightnix.core.realizeMany)
   """
-  return instantiate_(Manager(storage(S)), stage, *args, **kwargs)
+  return instantiate_(Manager(S), stage, *args, **kwargs)
 
-RealizeSeqGen = Generator[Tuple[SPath,DRef,Context,Derivation,RealizeArg],
-                          Tuple[Optional[List[RRefGroup]],bool],
-                          List[RRefGroup]]
+
+RealizeSeqGen = Generator[
+  Tuple[Optional[StorageSettings],DRef,Context,Derivation,RealizeArg],
+  Tuple[Optional[List[RRef]],bool],
+  List[RRef]]
+
 
 def realize(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
                              assert_realized:List[DRef]=[])->RRef:
@@ -802,18 +652,16 @@ def realize(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
   assert len(rrefs)==1, (
       f"`realize` is to be used with single-output derivations. Derivation "
       f"{closure.dref} has {len(rrefs)} outputs:\n{rrefs}\n"
-      f"Consider using `realizeMany` or `realizeGroups`." )
+      f"Consider using `realizeMany`." )
   return rrefs[0]
 
-def realizeGroups(closure:Closure,
-                 force_rebuild:Union[List[DRef],bool]=[],
-                 assert_realized:List[DRef]=[],
-                 realize_args:Dict[DRef,RealizeArg]={})->List[RRefGroup]:
+
+def realizeMany(closure:Closure,
+                force_rebuild:Union[List[DRef],bool]=[],
+                assert_realized:List[DRef]=[],
+                realize_args:Dict[DRef,RealizeArg]={})->List[RRef]:
   """ Obtain one or more [Closure](#pylightnix.types.Closure) realizations of a
   stage.
-
-  Returned value is a collection of tagged
-  [realizations](#pylightnix.types.RRef) references.
 
   The function returns [matching](#pylightnix.types.Matcher) realizations
   immediately if they are exist.
@@ -827,11 +675,11 @@ def realizeGroups(closure:Closure,
     return mkdrv(m, ...)
 
   clo:Closure=instantiate(mystage)
-  rrefgs:List[RRefGroup]=realizeGroups(clo)
-  print([mklen(rref).syspath for grp[tag_out()] in rrefgs])
+  rrefs:List[RRef]=realizeMany(clo)
+  print([mklen(rref).syspath for rref in rrefs])
   ```
 
-  Pylightnix contains the following alternatives to `realizeGroup`:
+  Pylightnix contains the following alternatives to `realizeMany`:
 
   * [realize](#pylightnix.core.realize) - A single-output version
   * [repl_realize](#pylightnix.repl.repl_realize) - A REPL-friendly version
@@ -839,11 +687,10 @@ def realizeGroups(closure:Closure,
     version which uses a global derivation Manager.
 
   - FIXME: Stage's context is calculated inefficiently. Maybe one should track
-    dep.tree to avoid calling `store_deepdeps` within the cycle.
+    dep.tree to avoid calling `drefdeps` within the cycle.
   - FIXME: Update derivation's matcher after forced rebuilds. Matchers should
     remember and reproduce user's preferences.
   """
-  res:List[RRefGroup]
   force_interrupt:List[DRef]=[]
   if isinstance(force_rebuild,bool):
     if force_rebuild:
@@ -853,9 +700,7 @@ def realizeGroups(closure:Closure,
   else:
     assert False, "Ivalid type of `force_rebuild` argument"
   try:
-    gen=realizeSeq(closure,force_interrupt=force_interrupt,
-                           assert_realized=assert_realized,
-                           realize_args=realize_args)
+    gen=realizeSeq(closure, force_interrupt, assert_realized, realize_args)
     next(gen)
     while True:
       gen.send((None,False)) # Ask for default action
@@ -863,16 +708,12 @@ def realizeGroups(closure:Closure,
     res=e.value
   return res
 
-def realizeMany(closure:Closure,
-                force_rebuild:Union[List[DRef],bool]=[],
-                assert_realized:List[DRef]=[],
-                realize_args:Dict[DRef,RealizeArg]={})->List[RRef]:
-  return groups2rrefs(realizeGroups(
-    closure, force_rebuild, assert_realized, realize_args))
 
-def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
-                                assert_realized:List[DRef]=[],
-                                realize_args:Dict[DRef,RealizeArg]={})->RealizeSeqGen:
+def realizeSeq(closure:Closure,
+               force_interrupt:List[DRef]=[],
+               assert_realized:List[DRef]=[],
+               realize_args:Dict[DRef,RealizeArg]={}
+               )->RealizeSeqGen:
   """ Sequentially realize the closure by issuing steps via Python's generator
   interface. `realizeSeq` encodes low-level details of the realization
   algorithm. Consider calling [realizeMany](#pylightnix.core.realizeMany) or
@@ -880,236 +721,101 @@ def realizeSeq(closure:Closure, force_interrupt:List[DRef]=[],
 
   FIXME: `assert_realized` may probably be implemented by calling `redefine`
   with appropriate failing realizer on every Derivation. """
-  S=closure.storage
+  S=closure.S
   assert_valid_closure(closure)
   force_interrupt_:Set[DRef]=set(force_interrupt)
   context_acc:Context={}
   target_dref=closure.dref
-  target_deps=store_deepdeps([target_dref],S)
+  target_deps=drefdeps([target_dref],S)
   for drv in closure.derivations:
     dref=drv.dref
-    rrefgs:Optional[List[RRefGroup]]
+    rrefs:Optional[List[RRef]]
     if dref in target_deps or dref==target_dref:
-      dref_deps=store_deepdeps([dref],S)
+      dref_deps=drefdeps([dref],S)
       dref_context={k:v for k,v in context_acc.items() if k in dref_deps} # I
       if dref in force_interrupt_:
-        rrefgs,abort=yield (S,dref,dref_context,drv,realize_args.get(dref,{}))
+        rrefs,abort=yield (S,dref,dref_context,drv,realize_args.get(dref,{}))
         if abort:
           return []
       else:
-        rrefgs=drv.matcher(S,dref,dref_context)
-      if rrefgs is None:
+        rrefs=drv.matcher(S, list(drefrrefsC(dref,dref_context,S)))
+      if rrefs is None:
         assert dref not in assert_realized, (
           f"Stage '{dref}' was assumed to be already realized. "
           f"Unfortunately, it is not the case. Config:\n"
-          f"{store_config(dref)}"
-          )
-        rrefgs_existed=store_rrefs(dref,dref_context,S)
-        gpaths:List[Dict[Tag,Path]]=drv.realizer(S,dref,dref_context,realize_args.get(dref,{}))
-        rrefgs_built=[mkrgroup(dref,dref_context,g,S) for g in gpaths]
-        if sum(len(g.values()) for g in gpaths)!=len(set.union(*[set(g.values()) for g in rrefgs_built])):
+          f"{drefcfg_(dref)}")
+        rrefs_existed=drefrrefsC(dref,dref_context,S)
+        rpaths:List[Path]=drv.realizer(S,dref,dref_context,
+                                       realize_args.get(dref,{}))
+        rrefs_built:List[RRef]=[mkrealization(dref,dref_context,rp,S)
+                                for rp in rpaths]
+        if len(rpaths)!=len(set(rrefs_built)):
           warning(f"Realizer of {dref} produced duplicated realizations")
-        rrefgs_matched=drv.matcher(S,dref,dref_context)
-        assert rrefgs_matched is not None, (
+        rrefs_matched=drv.matcher(S,list(drefrrefsC(dref,dref_context,S)))
+        assert rrefs_matched is not None, (
           f"The matcher of {dref} is not satisfied with its realizatons. "
           f"The following newly obtained realizations were ignored:\n"
-          f"  {rrefgs_built}\n"
+          f"  {rrefs_built}\n"
           f"The following realizations already existed:\n"
-          f"  {rrefgs_existed}")
-        if (set(groups2rrefs(rrefgs_built)) & set(groups2rrefs(rrefgs_matched))) == set() and \
-           (set(groups2rrefs(rrefgs_built)) | set(groups2rrefs(rrefgs_matched))) != set():
+          f"  {rrefs_existed}")
+        if (set(rrefs_built) & set(rrefs_matched)) == set() and \
+           (set(rrefs_built) | set(rrefs_matched)) != set():
           warning(f"None of the newly obtained {dref} realizations "
                   f"were matched by the matcher. To capture those "
                   f"realizations explicitly, try `matcher([exact(..)])`")
-        rrefgs=rrefgs_matched
-      context_acc=context_add(context_acc,dref,groups2rrefs(rrefgs))
-  assert rrefgs is not None
-  return rrefgs
+        rrefs=rrefs_matched
+      assert rrefs is not None
+      context_acc=context_add(context_acc,dref,rrefs)
+  assert rrefs is not None
+  return rrefs
+
 
 def evaluate(stage, *args, **kwargs)->RRef:
   return realize(instantiate(stage,*args,**kwargs))
 
-def linkrref(rref:RRef,
-             destdir:Optional[Path]=None,
-             name:Optional[str]=None,
-             withtime:bool=False,
-             S=None)->Path:
-  """ Helper function that creates a symbolic link to a particular realization
-  reference. The link is created under the current directory by default or under
-  the `destdir` directory.
-
-  Create a symlink pointing to realization `rref`. Other arguments define
-  symlink name and location. Informally,
-  `{tgtpath}/{timeprefix}{name} --> $PYLIGHTNIX_STORE/{dref}/{rref}`.
-  Overwrite existing symlinks. Folder named `tgtpath` should exist.
-  """
-  destdir_='.' if destdir is None else destdir
-  name_:str=name if name is not None else (
-    '_result-'+config_name(store_config(rref,S)) if destdir is None else
-    'result-'+config_name(store_config(rref,S)))
-  ts:Optional[str]=store_buildtime(rref,S) if withtime else None
-  timetag_=f'{ts}_' if ts is not None else ''
-  symlink=Path(join(destdir_,f"{timetag_}{name_}"))
-  forcelink(Path(relpath(store_rref2path(rref,S), destdir_)), symlink)
-  return symlink
 
 
-def linkdref(dref:DRef,
-             destdir:Optional[Path]=None,
-             name:Optional[str]=None,
-             S=None)->Path:
-  destdir_='.' if destdir is None else destdir
-  name_:str=name if name is not None else (
-    '_result-'+config_name(store_config(dref,S)) if destdir is None else
-    'result-'+config_name(store_config(dref,S)))
-  symlink=Path(join(destdir_,name_))
-  forcelink(Path(relpath(store_dref2path(dref,S), destdir_)), symlink)
-  return symlink
-
-
-def linkrrefs(rrefs:Iterable[RRef], destdir:Optional[Path]=None,
-              withtime:bool=False,
-              S=None)->List[Path]:
-  """ A Wrapper around `linkrref` for linking a set of RRefs. """
-  acc=[]
-  for r in rrefs:
-    acc.append(linkrref(r, destdir=destdir, name=None, withtime=withtime, S=S))
-  return acc
-
-
-def mksymlink(rref:RRef, tgtpath:Path, name:str, withtime:bool=True, S=None)->Path:
-  """ A wrapper for `linkrref`, for backward compatibility """
-  assert isdir(tgtpath), f"Target link directory doesn't exist: '{tgtpath}'"
-  return linkrref(rref, destdir=tgtpath, name=name, withtime=withtime, S=S)
-
-#  __  __       _       _
-# |  \/  | __ _| |_ ___| |__   ___ _ __ ___
-# | |\/| |/ _` | __/ __| '_ \ / _ \ '__/ __|
-# | |  | | (_| | || (__| | | |  __/ |  \__ \
-# |_|  |_|\__,_|\__\___|_| |_|\___|_|  |___/
-
-def mkmatch(keys:List[Key], topN:Optional[int]=None)->Matcher:
-  """ Create a [Matcher](#pylightnix.types.Matcher) by combining different
-  sorting keys and selecting a top-n threshold.
-
-  Only realizations which have [tag](#pylightnix.types.Tag) 'out' (which is a
-  default tag name) participate in matching. After the matching, Pylightnix
-  adds all non-'out' realizations which share [group](#pylightnix.types.Group)
-  with at least one matched realization.
-
-  Arguments:
-  - `keys`: A list of [Key](#pylightnix.types.Key) functions.
-  - `topN`: Limits the number of best matches to thin number.
-  """
-  keys=keys+[texthash()]
-  def _matcher(S:SPath, dref:DRef, context:Context)->Optional[List[RRefGroup]]:
-    # Find realizations tagged with 'out' among the available realizations
-    grps={grouprref(gr):gr for gr in store_rrefs(dref,context,S)}
-    # Calculate a list of keys for every group
-    keymap:Dict[RRef,List[Optional[Union[int,float,str]]]]=\
-      {rref:[k(gr,S) for k in keys] for rref,gr in grps.items()}
-    # Filter-out None results and sort the remaining groups by keys
-    goodkeys=\
-      sorted(filter(lambda rref: None not in keymap[rref], grps.keys()),
-             key=lambda rref:keymap[rref], reverse=True)
-    # Return topN best matches
-    return [grps[gk] for gk in goodkeys][:topN]
+def match_predicate(paccept:Callable[[List[RRef]],bool],
+                    passert:Callable[[List[RRef]],bool]):
+  def _matcher(S:SPath, rrefs:List[RRef])->Optional[List[RRef]]:
+    if passert(rrefs):
+      assert False, f"Matching is impossible for {rrefs}"
+    if paccept(rrefs):
+      return rrefs
+    return None
   return _matcher
 
-def exact(grps:List[RRefGroup])->Key:
-  signs=[group2sign(g) for g in grps]
-  def _key(grp:RRefGroup,S=None)->Optional[Union[int,float,str]]:
-    return 1 if group2sign(grp) in signs else None
-  return _key
 
-def latest()->Key:
-  def _key(gr:RRefGroup,S=None)->Optional[Union[int,float,str]]:
-    try:
-      with open(join(store_rref2path(grouprref(gr),S),'__buildtime__.txt'),'r') as f:
-        t=parsetime(f.read())
-        return float(0 if t is None else t)
-    except OSError:
-      return float(0)
-  return _key
+def match_only():
+  return match_predicate(paccept=lambda l: len(l)==1,
+                         passert=lambda l: len(l)>=2)
 
-def best(filename:str)->Key:
-  def _key(gr:RRefGroup,S=None)->Optional[Union[int,float,str]]:
-    try:
-      with open(join(store_rref2path(grouprref(gr),S),filename),'r') as f:
-        return float(f.readline())
-    except OSError:
-      return float('-inf')
-    except ValueError:
-      return float('-inf')
-  return _key
 
-def texthash()->Key:
-  def _key(gr:RRefGroup,S=None)->Optional[Union[int,float,str]]:
-    return str(unrref(grouprref(gr))[0])
-  return _key
+def match_some(n:int):
+  return match_predicate(paccept=lambda l: len(l)>=n,
+                         passert=lambda l: False)
 
-def mappred(pred:Callable[[List[RRefGroup]],bool], ma:Matcher)->Matcher:
-  """ Calls for a realizer if the number of matches is below the minimum """
-  def _matcher(S:SPath, dref:DRef, ctx:Context)->Optional[List[RRefGroup]]:
-    grps=ma(S,dref,ctx)
-    if grps is None:
+
+def match_exact(rrefs:List[RRef]):
+  """ Expects the realizer to produce a very specific set of rrefs """
+  def _matcher(S:SPath, existing_rrefs:List[RRef])->Optional[List[RRef]]:
+    if not set(rrefs).issubset(set(existing_rrefs)):
       return None
-    if not pred(grps):
-      return None
-    return grps
+    return rrefs
   return _matcher
 
-def mapmin(minN:int, ma:Matcher)->Matcher:
-  """ Call for a realizer if the number of matches is below the number """
-  return mappred(lambda grps:len(grps)>=minN,ma)
 
-def mapsome(ma:Matcher)->Matcher:
-  """ Call for a realizer if the number of matches is zero. """
-  return mapmin(1,ma)
+def cfgsp(c:Config)->List[Tuple[str,RefPath]]:
+  """ Returns the list of self-references (aka self-paths) in the config. """
+  selfpaths=[]
+  def _mut(key:Any, val:Any):
+    nonlocal selfpaths
+    if isselfpath(val):
+      selfpaths.append((str(key),val))
+    return val
+  traverse_dict(config_dict(c),_mut)
+  return selfpaths
 
-def maponly(ma:Matcher)->Matcher:
-  def _matcher(S:SPath, dref:DRef, ctx:Context)->Optional[List[RRefGroup]]:
-    grps=ma(S,dref,ctx)
-    if grps is None:
-      return None
-    assert len(grps)==1, (
-      f"Matcher expects exactly one realization, but there are {len(grps)}:\n"
-      f"{grps}")
-    return grps
-  return _matcher
-
-def match_all()->Matcher:
-  """ [Match](#pylightnix.types.Matcher) **all** the available realizations,
-  including zero. Never call to a realizer. """
-  return mkmatch([])
-
-def match_some(minN:int=1)->Matcher:
-  """ Call to a realizer if there are less than `minN` realizations in storage.
-  Matche `minN` or more realizations. """
-  assert minN>=0, f"Arguement of match_some should be >=0, not {minN}"
-  return mapmin(minN, match_all())
-
-def match_only()->Matcher:
-  """ Matches one or more realizations, but asserts if there are more than one
-  realizations matched. """
-  return maponly(match_some(minN=1))
-
-def match_latest(minN:int=1, topN:int=1)->Matcher:
-  """ Match up to `topN` oldest realizations. Call to a realizer if there are
-  less than `minN` realizations available. """
-  # assert topN>=minN, "Invalid match_latest arguments, should be topN>=minN"
-  return mapmin(minN, mkmatch([latest()],topN=topN))
-
-def match_best(filename:str, minN:int=1, topN:int=1)->Matcher:
-  """ [Match](#pylightnix.types.Matcher) up to `topN` best matches, but not
-  less than minN. The score is expected to reside in a file named `filename`.
-  """
-  # assert topN>=minN, "Invalid match_best arguments, should be topN>=minN"
-  return mapmin(minN,mkmatch([best(filename)],topN=topN))
-
-def match_exact(grps:List[RRefGroup])->Matcher:
-  """ Match exact these groups. Call to a realizer if no groups were seen."""
-  return mapmin(1,mkmatch([exact(grps)]))
 
 #     _                      _
 #    / \   ___ ___  ___ _ __| |_ ___
@@ -1178,7 +884,7 @@ def assert_rref_deps(c:Config)->None:
 
 def assert_have_realizers(m:Manager, drefs:List[DRef])->None:
   have_drefs=set(m.builders.keys())
-  need_drefs=store_deepdeps(drefs,m.storage) | set(drefs)
+  need_drefs=drefdeps(drefs,m.S) | set(drefs)
   missing=list(need_drefs-have_drefs)
   assert len(missing)==0, (
     f"The following derivations don't have realizers associated with them:\n"

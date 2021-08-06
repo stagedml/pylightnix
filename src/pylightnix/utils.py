@@ -26,8 +26,7 @@ from pylightnix.imports import (datetime, gmtime, timegm, join, makedirs,
 
 from pylightnix.types import (Union, Hash, Path, List, Any, Optional,
                               Iterable, IO, DRef, RRef, Tuple, Callable,
-                              PYLIGHTNIX_PROMISE_TAG, PYLIGHTNIX_CLAIM_TAG,
-                              Set)
+                              Set, PYLIGHTNIX_SELF_TAG)
 
 from typing import TypeVar
 from pylightnix.tz import tzlocal
@@ -117,7 +116,18 @@ def datahash(data:Iterable[Tuple[str,bytes]],
     warning("datahash() was called with empty iterator")
   return Hash(e.hexdigest())
 
-def dirhash(path:Path, verbose:bool=False)->Hash:
+def dirhash_iter(path:Path)->Iterable[Tuple[str,bytes]]:
+  assert isdir(path), f"dirhash() expects directory path, not '{path}'"
+  for root, dirs, filenames in walk(abspath(path), topdown=True):
+    for filename in sorted(filenames):
+      if len(filename)>0 and filename[0] != '_':
+        localpath=abspath(join(root, filename))
+        if islink(localpath):
+          yield (f'link:{localpath}',encode(readlink(localpath)))
+        with open(localpath,'rb') as f:
+          yield (localpath,f.read())
+
+def dirshash(paths:Iterable[Path], verbose:bool=False)->Hash:
   """ Calculate recursive SHA256 hash of a directory. Ignore files with names
   starting with underscope ('_'). For symbolic links, hash the result of
   `readlink(link)`.
@@ -126,19 +136,11 @@ def dirhash(path:Path, verbose:bool=False)->Hash:
   FIXME: Figure out how does sha265sum handle symlinks and do the same thing.
   FIXME: Stop loading whole files in memory for calculating hashes
   """
-  assert isdir(path), f"dirhash() expects directory path, not '{path}'"
+  return datahash(chain.from_iterable([dirhash_iter(p) for p in paths]),
+                  verbose=verbose)
 
-  def _iter()->Iterable[Tuple[str,bytes]]:
-    for root, dirs, filenames in walk(abspath(path), topdown=True):
-      for filename in sorted(filenames):
-        if len(filename)>0 and filename[0] != '_':
-          localpath=abspath(join(root, filename))
-          if islink(localpath):
-            yield (f'link:{localpath}',encode(readlink(localpath)))
-          with open(localpath,'rb') as f:
-            yield (localpath,f.read())
-
-  return datahash(_iter(), verbose=verbose)
+def dirhash(path:Path, verbose:bool=False)->Hash:
+  return dirshash([path], verbose=verbose)
 
 def filehash(path:Path)->Hash:
   assert isfile(path), f"filehash() expects a file path, not '{path}'"
@@ -226,22 +228,12 @@ def isrref(ref:Any)->bool:
 def isdref(ref:Any)->bool:
   return isinstance(ref,str) and len(ref)>=5+32 and ref[:5]=='dref:'
 
-def ispromisepath(p:Any)->bool:
-  return isinstance(p,list) and len(p)>0 and all([isinstance(x,str) for x in p]) and \
-         p[0]==PYLIGHTNIX_PROMISE_TAG
-
 def isrefpath(p:Any)->bool:
   return isinstance(p,list) and len(p)>0 and isdref(p[0]) and all([isinstance(x,str) for x in p])
 
-def ispromiselike(p:Any, ptag:str):
-  return isinstance(p,list) and len(p)>0 and (p[0]==ptag) and \
-         all([isinstance(x,str) for x in p])
-
-def ispromise(p:Any)->bool:
-  return ispromiselike(p,PYLIGHTNIX_PROMISE_TAG)
-
-def isclaim(p:Any)->bool:
-  return ispromiselike(p,PYLIGHTNIX_CLAIM_TAG)
+def isselfpath(p:Any)->bool:
+  return isinstance(p,list) and len(p)>0 and all([isinstance(x,str) for x in p]) and \
+         p[0]==PYLIGHTNIX_SELF_TAG
 
 def isclosure(x:Any)->bool:
   return isinstance(x,tuple) and len(x)==3 and isdref(x[0]) \
@@ -435,7 +427,8 @@ def kahntsort(nodes:Iterable[Any],
 
 def dagroots(sorted_nodes:List[Any],
              inbounds:Callable[[Any],Set[Any]])->Set[Any]:
-  """ Return a set og root nodes of a DAG."""
+  """ Return a set of root nodes of a DAG. DAG should be topologically sorted.
+  """
   nonroots=set()
   acc=set()
   for node in reversed(sorted_nodes):

@@ -1,8 +1,8 @@
-from pylightnix import (
-    Manager, DRef, RRef, Path, mklogdir, dirhash, mknode, store_deps,
-    store_deepdeps, store_rref2path, Manager, mkcontext, instantiate, realize,
-    instantiate_inplace, realize_inplace, assert_valid_rref, store_rrefs_,
-    alldrefs, assert_valid_dref )
+from pylightnix import ( Manager, DRef, RRef, Path, mklogdir, dirhash,
+                        drefdeps1, rref2path, Manager, mkcontext,
+                        instantiate, realize, instantiate_inplace,
+                        realize_inplace, assert_valid_rref, drefrrefs, alldrefs,
+                        assert_valid_dref )
 
 from tests.imports import (
     given, assume, example, note, settings, text, decimals, integers, rmtree,
@@ -12,14 +12,14 @@ from tests.imports import (
 
 from tests.generators import (configs, dicts, artifacts)
 
-from tests.setup import (setup_storage, setup_inplace_reset,
+from tests.setup import (setup_storage2, setup_inplace_reset,
                          mkstage)
 
 
 
 def test_inplace():
-  with setup_storage('test_inplace'):
-    setup_inplace_reset()
+  with setup_storage2('test_inplace') as S:
+    setup_inplace_reset(S)
 
     n1 = instantiate_inplace(mkstage, {'a':'1'})
     n2 = instantiate_inplace(mkstage, {'b':'2'})
@@ -31,10 +31,10 @@ def test_inplace():
     rref_n3 = realize_inplace(n3)
     assert_valid_rref(rref_n3)
 
-    all_drefs = list(alldrefs())
+    all_drefs = list(alldrefs(S=S))
     assert len(all_drefs)==4
-    assert len(list(store_rrefs_(n1)))==1
-    assert len(list(store_rrefs_(n2)))==0
-    assert len(list(store_rrefs_(n3)))==1
-    assert len(list(store_rrefs_(n4)))==0
+    assert len(list(drefrrefs(n1,S=S)))==1
+    assert len(list(drefrrefs(n2,S=S)))==0
+    assert len(list(drefrrefs(n3,S=S)))==1
+    assert len(list(drefrrefs(n4,S=S)))==0
 

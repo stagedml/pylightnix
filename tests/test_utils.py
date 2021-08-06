@@ -1,11 +1,11 @@
 from pylightnix import (instantiate, DRef, RRef, Path, mklogdir, dirhash,
-                        assert_valid_dref, assert_valid_rref, mknode,
-                        store_deps, store_deepdeps, store_gc,
-                        assert_valid_hash, assert_valid_config, Manager,
-                        mkcontext, store_rrefs, mkdref, mkrref, unrref, undref,
-                        realize, rref2dref, store_initialize, mkconfig,
+                        assert_valid_dref, assert_valid_rref, mknode, drefdeps1,
+                        store_gc, assert_valid_hash, assert_valid_config,
+                        Manager, mkcontext, mkdref, mkrref, unrref, undref,
+                        realize, rref2dref, fsinit, mkconfig,
                         timestring, parsetime, traverse_dict, isrref, isdref,
-                        scanref_dict, filehash, readjson, writejson, kahntsort)
+                        scanref_dict, filehash, readjson, writejson, kahntsort,
+                        fstmpdir)
 
 from tests.imports import (given, text, isdir, isfile, join, from_regex,
                            islink, get_executable, run, dictionaries, binary,
@@ -15,7 +15,7 @@ from tests.imports import (given, text, isdir, isfile, join, from_regex,
 from tests.generators import (rrefs, drefs, configs, dicts, prims,
                               dicts_with_refs, intdags, intdags_permutations)
 
-from tests.setup import (ShouldHaveFailed, setup_storage, setup_storage2)
+from tests.setup import (ShouldHaveFailed, setup_storage2)
 
 
 SHA256SUM=get_executable('sha256sum', 'Please install `sha256sum` tool from `coreutils` package')
@@ -42,40 +42,41 @@ def test_rref(rref):
 
 
 @given(cfg=configs())
-def test_config(cfg):
+def test_configs(cfg):
   assert_valid_config(cfg)
 
-def test_config2()->None:
+def test_configs2()->None:
   try:
     c = mkconfig({'a':(3,1)})
     raise ShouldHaveFailed(f'RConfig {c} is surprizingly valid')
   except AssertionError:
     pass
 
-def test_setup_storage()->None:
-  setup_storage('a')
-  setup_storage('a')
+# def test_setup_storage()->None:
+#   setup_storage('a')
+#   setup_storage('a')
 
-def test_store_initialize()->None:
-  with setup_storage('test_store_initialize') as p:
-    import pylightnix.core
-    try:
-      pylightnix.core.PYLIGHTNIX_TMP=join(p,'tmp')
-      pylightnix.core.PYLIGHTNIX_STORE=join(p,'store')
-      store_initialize(custom_store=None, custom_tmp=None)
-      assert isdir(join(p,'tmp'))
-      assert isdir(join(p,'store'))
-      store_initialize(custom_store=None, custom_tmp=None)
-      assert isdir(join(p,'tmp'))
-      assert isdir(join(p,'store'))
-    finally:
-      pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
-      pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
+# def test_fsinit()->None:
+#   with setup_storage2('test_fsinit') as S:
+#     # import pylightnix.core
+#     try:
+#       # pylightnix.core.PYLIGHTNIX_TMP=join(p,'tmp')
+#       # pylightnix.core.PYLIGHTNIX_STORE=join(p,'store')
+#       fsinit(S=S)
+#       assert isdir(join(p,'tmp'))
+#       assert isdir(join(p,'store'))
+#       fsinit(custom_store=None, custom_tmp=None)
+#       assert isdir(join(p,'tmp'))
+#       assert isdir(join(p,'store'))
+#     finally:
+#       pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
+#       pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
 
 
 
 def test_mklogdir1()->None:
-  with setup_storage('mklogdir1') as path:
+  with setup_storage2('mklogdir1') as S:
+    path=fstmpdir(S)
     logdir=mklogdir(tag='testtag',logrootdir=path)
     assert isdir(logdir)
     logdir=mklogdir(tag='testtag',logrootdir=path, subdirs=['a','b'])
@@ -85,7 +86,8 @@ def test_mklogdir1()->None:
 @given(strtag=from_regex(r'[a-zA-Z0-9_:-]+', fullmatch=True),
        timetag=from_regex(r'[a-zA-Z0-9_:-]+', fullmatch=True))
 def test_mklogdir2(strtag,timetag)->None:
-  with setup_storage('mklogdir2') as path:
+  with setup_storage2('mklogdir2') as S:
+    path=fstmpdir(S)
     linkpath=join(path,f'_{strtag}_latest')
     logdir=mklogdir(tag=strtag,logrootdir=Path(path), timetag=timetag)
     open(join(logdir,'a'),'w').write('a')
@@ -99,7 +101,8 @@ def test_mklogdir2(strtag,timetag)->None:
     assert isfile(join(linkpath,'b'))
 
 def test_dirhash()->None:
-  with setup_storage('dirhash') as path:
+  with setup_storage2('dirhash') as S:
+    path=fstmpdir(S)
     h1=dirhash(path)
     assert_valid_hash(h1)
     with open(join(path,'_a'),'w') as f:
@@ -115,27 +118,28 @@ def test_dirhash()->None:
 
 @given(b=binary())
 def test_dirhash2(b)->None:
-  with setup_storage('dirhash2') as path:
+  with setup_storage2('dirhash2') as S:
+    path=fstmpdir(S)
     with open(join(path,'a'),'wb') as f:
       f.write(b)
     p=run([SHA256SUM, join(path,'a')], stdout=-1, check=True, cwd=path)
     h=dirhash(path)
     assert (p.stdout[:len(h)].decode('utf-8'))==h
 
-@settings(suppress_health_check=(HealthCheck.too_slow,))
 @given(d=dicts())
 def test_dirhash3(d)->None:
-  with setup_storage('dirhash3') as path:
+  with setup_storage2('dirhash3') as S:
+    path=fstmpdir(S)
     with open(join(path,'a'),'w') as f:
       f.write(str(d))
     p=run([SHA256SUM, join(path,'a')], stdout=-1, check=True, cwd=path)
     h=dirhash(path)
     assert (p.stdout[:len(h)].decode('utf-8'))==h
 
-@settings(suppress_health_check=(HealthCheck.too_slow,))
 @given(d=dicts())
 def test_dirhash4(d)->None:
-  with setup_storage('dirhash4') as path:
+  with setup_storage2('dirhash4') as S:
+    path=fstmpdir(S)
     with open(join(path,'a'),'w') as f:
       f.write(str(d))
     dh=dirhash(path)
@@ -161,7 +165,8 @@ def test_traverse(d)->None:
 
 @given(d=dicts())
 def test_readwrite(d)->None:
-  with setup_storage('test_readwrite') as p:
+  with setup_storage2('test_readwrite') as S:
+    p=fstmpdir(S)
     f=join(p,'testfile.json')
     writejson(f,d)
     assert str(readjson(f)) == str(d)
@@ -178,9 +183,9 @@ def run_kahntsort(dag):
     seen.add(n)
   return res
 
-@given(dags=intdags_permutations())
+@given(dags=intdags_permutations(min_size=1, max_size=4))
 def test_kahntsort(dags)->None:
-  with setup_storage2('test_kahntsort') as (T,S):
+  with setup_storage2('test_kahntsort') as S:
     res0=None
     for dag in dags:
       res=run_kahntsort(dag)

@@ -1,21 +1,10 @@
 from pylightnix import (instantiate, DRef, RRef, Path, mklogdir, dirhash,
-                        assert_valid_dref, assert_valid_rref, store_deps,
-                        store_deepdeps, store_gc, assert_valid_hash,
-                        assert_valid_config, Manager, mkcontext, mkrgroup,
-                        store_rrefs, mkdref, mkrref, unrref, undref, realize,
-                        rref2dref, store_config, mkconfig, Build, Context,
-                        build_outpath, mkdrv, store_deref,
-                        store_rref2path, store_rrefs_, config_cattrs,
-                        mksymlink, store_cattrs, build_deref, build_path,
-                        mkrefpath, build_config, alldrefs, store_rrefs,
-                        build_wrapper, build_cattrs, build_name,
-                        tryread, trywrite, latest, best, exact, Key,
-                        realizeMany, build_outpaths, scanref_dict, config_dict,
-                        promise, mklens, isrref, Config, RConfig,
-                        build_setoutpaths, partial, path2rref, Tag, Group,
-                        RRefGroup, concat, linkrrefs, instantiate_,
-                        store_dref2path, path2dref, linkdref, realizeGroups,
-                        groups2rrefs, allrrefs)
+                        assert_valid_dref, assert_valid_rref, drefdeps1,
+                        drefdeps, assert_valid_hash, assert_valid_config,
+                        Manager, mkcontext, mkdref, mkrref, unrref, undref,
+                        realize, rref2dref, mkconfig, Build, Context,
+                        build_outpath, mkdrv, rref2path, alldrefs,
+                        selfref, allrrefs, realizeMany)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink,
                            isfile, islink, List, randint, sleep, rmtree,
@@ -34,43 +23,51 @@ from pylightnix.arch import (pack,unpack)
 
 
 def test_pack1()->None:
-  with setup_storage2('test_pack1') as (T,S):
+  with setup_storage2('test_pack1') as S:
     def _stage(m):
-      s1=mkstage(m, {'name':'1', 'promise':[promise,'artifact']})
-      s2=mkstage(m,{'name':'2', 'maman': s1,
-                       'promise':[promise,'artifact']})
-      s3=mkstage(m,{'name':'3', 'papa': s2,
-                       'promise':[promise,'artifact']})
+      s1=mkstage(m, {'name':'n1',
+                     'promise':[selfref,'artifact']})
+      s2=mkstage(m, {'name':'n2',
+                     'maman':s1,
+                     'promise':[selfref,'artifact']})
+      s3=mkstage(m, {'name':'n3',
+                     'papa':s2,
+                     'promise':[selfref,'artifact']})
       return s3
 
     rref3=realize(instantiate(_stage,S=S))
-    arch_path=Path(join(T,'archive.zip'))
+    print('===================')
+    print(list(allrrefs(S)))
+    print('===================')
+    arch_path=Path(join(S.tmpdir,'archive.zip'))
     pack([rref3], arch_path, S=S)
     unpack(arch_path, S=S)
     assert isfile(arch_path)
 
 
-# @reproduce_failure('5.30.0', b'AAAAAAA=')
-# @reproduce_failure('5.30.0', b'AAEBAAAAAAAAAA==')
-# @reproduce_failure('5.30.0', b'AXicJUwJDsAwCOJw7f7/4oGLBCMCrwBKpAURWeEfhkWDnSNODtcKFyEMZ+XhfSod6ibGZjdnueaWCFuaVF8fMEIAwQ==')
-# @reproduce_failure('5.30.0', b'AXicFYlJDgAxDMIw1rTH/v+3k4hFAr+TxDLNTfkiYPbBVsK4GTl7sShdMMkPENwAbg==')
-@settings(max_examples=10, print_blob=True, deadline=None, phases=[Phase.generate])
+# # @reproduce_failure('5.30.0', b'AAAAAAA=')
+# # @reproduce_failure('5.30.0', b'AAEBAAAAAAAAAA==')
+# # @reproduce_failure('5.30.0', b'AXicJUwJDsAwCOJw7f7/4oGLBCMCrwBKpAURWeEfhkWDnSNODtcKFyEMZ+XhfSod6ibGZjdnueaWCFuaVF8fMEIAwQ==')
+# # @reproduce_failure('5.30.0', b'AXicFYlJDgAxDMIw1rTH/v+3k4hFAr+TxDLNTfkiYPbBVsK4GTl7sShdMMkPENwAbg==')
+# @reproduce_failure('4.41.0', b'AAAAAA==')
+# @reproduce_failure('4.41.0', b'AA4NApYAAwADAgEBBAMFBgIAAQA=')
+# @reproduce_failure('4.41.0', b'AAAAAA==')
+@settings(max_examples=10, phases=[Phase.generate])
 @given(stages=rootstages())
 def test_pack2(stages)->None:
   archives=[]
-  with setup_storage2('test_pack_src') as (T1,S1):
+  with setup_storage2('test_pack_src') as S1:
     for nstage,stage in enumerate(stages):
-      rgs=realizeGroups(instantiate(stage,S=S1))
-      for ngroup,rg in enumerate(rgs):
-        ap=Path(join(T1,f'archive_{nstage:02d}_{ngroup:02d}.zip'))
+      rrefs=realizeMany(instantiate(stage,S=S1))
+      for nrref,rref in enumerate(rrefs):
+        ap=Path(join(S1.tmpdir,f'archive_{nstage:02d}_{nrref:02d}.zip'))
         print(f'Packing {ap}')
-        pack(groups2rrefs([rg]), ap, S=S1)
+        pack([rref], ap, S=S1)
         archives.append(ap)
 
   print('PACK done')
-  # set_trace()
 
-  with setup_storage2('test_pack_dst') as (T2,S2):
+  with setup_storage2('test_pack_dst') as S2:
     for ap in archives:
       print(f'Unpacking {ap}')
       unpack(Path(ap), S=S2)

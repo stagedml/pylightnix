@@ -15,10 +15,10 @@
 """ Simple functions imitating unix shell tools.  """
 
 from pylightnix import (instantiate, DRef, RRef, Path, Build, Manager, mklens,
-                        mkdrv, promise, match_some, build_wrapper, instantiate,
-                        realize, isrref, isdref, store_cattrs, build_cattrs,
-                        build_outpath, build_path, mkconfig, assert_valid_rref,
-                        isrefpath, isclosure)
+                        mkdrv, selfref, match_some, build_wrapper, instantiate,
+                        realize, isrref, isdref, build_cattrs, build_outpath,
+                        build_path, mkconfig, assert_valid_rref, isrefpath,
+                        isclosure, match_only)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink,
                            isfile, List, randint, sleep, rmtree, system,
@@ -26,80 +26,80 @@ from tests.imports import (given, Any, Callable, join, Optional, islink,
 
 from tests.generators import (rrefs, drefs, configs, dicts)
 
-from tests.setup import (ShouldHaveFailed, setup_storage, mkstage)
+from tests.setup import (ShouldHaveFailed, setup_storage2, mkstage)
 
 
 
 
 def test_lens():
-  with setup_storage('test_lens'):
+  with setup_storage2('test_lens') as S:
     def _setting(m:Manager)->DRef:
-      n1=mkstage(m, {'name':'1', 'promise':[promise,'artifact']})
-      n2=mkstage(m, {'name':'2', 'promise':[promise,'artifact'],
+      n1=mkstage(m, {'name':'1', 'selfref':[selfref,'artifact']})
+      n2=mkstage(m, {'name':'2', 'selfref':[selfref,'artifact'],
                         'dict':{'d1':1} })
 
       def _realize(b:Build):
         o=build_outpath(b)
         c=build_cattrs(b)
-        assert isrefpath(mklens(b).maman.promise.refpath)
-        assert isfile(mklens(b).papa.promise.syspath)
-        assert o in mklens(b).promise.syspath
+        assert isrefpath(mklens(b).maman.selfref.refpath)
+        assert isfile(mklens(b).papa.selfref.syspath)
+        assert o in mklens(b).selfref.syspath
         assert o == mklens(b).syspath
         assert mklens(b).papa.name.val == '2'
         assert mklens(b).papa.dref == c.papa
 
-        with open(mklens(b).promise.syspath,'w') as f:
+        with open(mklens(b).selfref.syspath,'w') as f:
           f.write('chickenpoop')
 
       return mkdrv(m,
         mkconfig({'name':'3', 'maman':n1, 'papa':n2,
-                  'promise':[promise,'artifact'],
+                  'selfref':[selfref,'artifact'],
                   }),
-                 matcher=match_some(),
+                 matcher=match_only(),
                  realizer=build_wrapper(_realize))
 
-    clo=instantiate(_setting)
-    assert isrefpath(mklens(clo.dref).maman.promise.refpath)
-    assert isdir(mklens(clo.dref).syspath)
+    clo=instantiate(_setting, S=S)
+    assert isrefpath(mklens(clo.dref,S=S).maman.selfref.refpath)
+    assert isdir(mklens(clo.dref,S=S).syspath)
     rref=realize(clo)
     assert_valid_rref(rref)
-    assert isrefpath(mklens(rref).maman.promise.refpath)
-    assert isfile(mklens(rref).maman.promise.syspath)
-    assert mklens(rref).rref == rref
-    assert isrefpath(mklens(rref).papa.promise.refpath)
-    assert mklens(rref).papa.dict.d1.val == 1
-    assert mklens(rref).dref == clo.dref
-    assert isdir(mklens(rref).syspath)
+    assert isrefpath(mklens(rref,S=S).maman.selfref.refpath)
+    assert isfile(mklens(rref,S=S).maman.selfref.syspath)
+    assert mklens(rref,S=S).rref == rref
+    assert isrefpath(mklens(rref,S=S).papa.selfref.refpath)
+    assert mklens(rref,S=S).papa.dict.d1.val == 1
+    assert mklens(rref,S=S).dref == clo.dref
+    assert isdir(mklens(rref,S=S).syspath)
 
     try:
-      print(mklens(clo.dref).maman.promise.syspath)
+      print(mklens(clo.dref,S=S).maman.selfref.syspath)
       raise ShouldHaveFailed()
     except AssertionError:
       pass
 
     try:
-      print(mklens(rref).papa.dict.d1.get('xxx'))
+      print(mklens(rref,S=S).papa.dict.d1.get('xxx'))
       raise ShouldHaveFailed()
     except AssertionError:
       pass
 
     try:
-      print(mklens(rref).papa.dict.d1.syspath)
+      print(mklens(rref,S=S).papa.dict.d1.syspath)
       raise ShouldHaveFailed()
     except AssertionError:
       pass
 
     try:
-      mklens(rref).papa.dict.d1.val=42 # can't mutate rref
+      mklens(rref,S=S).papa.dict.d1.val=42 # can't mutate rref
       raise ShouldHaveFailed()
     except AssertionError:
       pass
 
     d={'foo':'foo','bar':'bar'}
-    mklens(d).foo.val='zzz'
+    mklens(d,S=S).foo.val='zzz'
     assert d['foo']=='zzz'
     try:
-      mklens(d).x.val=42 # can't set new values
+      mklens(d,S=S).x.val=42 # can't set new values
       raise ShouldHaveFailed()
     except AssertionError:
       pass
@@ -108,17 +108,17 @@ def test_lens():
 
 
 def test_lens_closures():
-  with setup_storage('test_lens_closures'):
+  with setup_storage2('test_lens_closures') as S:
     def _setting(m:Manager)->DRef:
-      n1=mkstage(m, {'name':'1', 'x':33, 'promise':[promise,'artifact']})
+      n1=mkstage(m, {'name':'1', 'x':33, 'selfref':[selfref,'artifact']})
       n2=mkstage(m, {'name':'2', 'papa':n1, 'dict':{'d1':1} })
       n3=mkstage(m, {'name':'3', 'maman':n2 })
       return n3
 
-    clo=instantiate(_setting)
+    clo=instantiate(_setting, S=S)
     assert isclosure(clo)
 
-    rref=realize(mklens(clo).maman.papa.closure)
-    assert mklens(rref).x.val==33
-    assert open(mklens(rref).promise.syspath).read()=='0'
+    rref=realize(mklens(clo,S=S).maman.papa.closure)
+    assert mklens(rref,S=S).x.val==33
+    assert open(mklens(rref,S=S).selfref.syspath).read()=='0'
 

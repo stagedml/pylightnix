@@ -17,14 +17,14 @@ functions. Inplace functions store closures in their own global dependency
 resolution [Manager](#pylightnix.types.Manager) and thus offer a simpler API,
 but add usual risks of using gloabl variables. """
 
-from pylightnix.types import ( Any, DRef, Stage, Manager, Derivation, List,
-                              RRef, Closure, SPath )
-from pylightnix.core import ( instantiate_, realize, storage )
+from pylightnix.types import (Any, DRef, Stage, Manager, Derivation, List,
+                              RRef, Closure, SPath)
+from pylightnix.core import (instantiate_, realize)
 
 
 #: The Global [Derivation manager](#pylightnix.types.Manager) used by
 #: `instantiate_inplace` and `realize_inplace` functions of this module.
-PYLIGHTNIX_MANAGER = Manager(storage(None))
+PYLIGHTNIX_MANAGER = Manager(None)
 
 
 def instantiate_inplace(stage:Any, *args, **kwargs)->DRef:
@@ -32,8 +32,7 @@ def instantiate_inplace(stage:Any, *args, **kwargs)->DRef:
   Return derivation reference of the top-level stage. """
   global PYLIGHTNIX_MANAGER
   closure = instantiate_(PYLIGHTNIX_MANAGER,
-                         lambda m: stage(m, *args, **kwargs)
-                         )
+                         lambda m: stage(m, *args, **kwargs))
   return closure.dref
 
 
@@ -44,6 +43,6 @@ def realize_inplace(dref:DRef, force_rebuild:List[DRef]=[])->RRef:
   """
   global PYLIGHTNIX_MANAGER
   return realize(Closure(dref,list(PYLIGHTNIX_MANAGER.builders.values()),
-                         storage=PYLIGHTNIX_MANAGER.storage),
+                         S=PYLIGHTNIX_MANAGER.S),
                  force_rebuild=force_rebuild)
 

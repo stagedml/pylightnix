@@ -1,7 +1,7 @@
 .DEFAULT_GOAL = all
 VERSION = $(shell python3 setup.py --version)
 WHEEL = dist/pylightnix-$(VERSION)-py3-none-any.whl
-SRC = $(shell find src -name '*\.py')
+SRC = $(shell find src -name '*\.py' | grep -v version.py)
 TEX = $(shell find docs -name '*\.tex')
 TESTS = $(shell find tests -name '*\.py')
 
@@ -44,6 +44,10 @@ docs-manual: docs/Manual.pdf
 docs/Manual.pdf: $(SRC) $(TEX) ./docs/compile.sh .stamp_check
 	/bin/sh ./docs/compile.sh docs/Manual.tex
 
+.PHONY: docs
+docs: docs-manual docs-quickstart docs-reference
+
+
 .PHONY: publish-quickstart
 publish-quickstart: docs/QuickStart.pdf
 	/bin/sh ./docs/publish.sh docs/QuickStart.pdf $(VERSION)
@@ -52,6 +56,8 @@ publish-quickstart: docs/QuickStart.pdf
 publish-manual: docs/Manual.pdf
 	/bin/sh ./docs/publish.sh docs/Manual.pdf $(VERSION)
 
+.PHONY: publish-docs
+publish-docs: publish-manual publish-quickstart
 
 .coverage.xml: $(SRC) $(TESTS) .stamp_check
 	rm coverage.xml || true
@@ -79,7 +85,7 @@ test: coverage
 		echo "Go and get it at https://codecov.io/gh/stagedml/pylightnix/settings" >&2 ;\
 		exit 1 ;\
 	fi
-	codecov -t `cat .codecovrc` -f $<
+	codecov --required -t `cat .codecovrc` -f $<
 	touch $@
 
 .PHONY: coverage-upload
@@ -145,7 +151,7 @@ check: $(WHEEL)
 		echo 'Did you install pylightnix systemwide by running `sudo -H make install` ?' ; exit 1 ; )
 
 .PHONY: all
-all: wheels coverage demos docs
+all: coverage docs wheel
 
 
 

@@ -18,9 +18,11 @@ from pylightnix.imports import (sha256 as sha256sum, sha1 as sha1sum, urlparse,
     Popen, remove, basename, join, rename, isfile, copyfile, environ, getLogger )
 from pylightnix.types import ( DRef, Manager, Build, Context, Name,
     Path, Optional, List, Config )
-from pylightnix.core import ( mkconfig, mkdrv, match_only, promise )
-from pylightnix.build import ( mkbuild, build_outpath, build_setoutpaths,
-    build_paths, build_deref_, build_cattrs, build_wrapper, build_wrapper )
+from pylightnix.core import ( mkconfig, mkdrv, match_only, config_cattrs,
+                             selfref, fstmpdir )
+from pylightnix.build import ( build_outpath, build_paths, build_deref_,
+                              build_wrapper, build_wrapper,
+                              build_config )
 from pylightnix.utils import ( try_executable, makedirs )
 from pylightnix.lens import ( mklens )
 
@@ -94,12 +96,11 @@ def fetchurl(m:Manager,
       sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b')
 
   rref:RRef=realize(instantiate(hello_src))
-  print(store_rref2path(rref))
+  print(rref2path(rref))
   ```
   """
 
-  import pylightnix.core
-  tmpfetchdir=join(pylightnix.core.PYLIGHTNIX_TMP,'fetchurl')
+  tmpfetchdir=join(fstmpdir(m.S),'fetchurl')
 
   fname=filename or basename(urlparse(url).path)
   assert len(fname)>0, ("Downloadable filename shouldn't be empty. "
@@ -124,11 +125,11 @@ def fetchurl(m:Manager,
     else:
       assert False, 'Either sha256 or sha1 arguments should be set'
     if 'unpack' not in mode:
-      kwargs.update({'out_path': [promise, fname]})
+      kwargs.update({'out_path': [selfref, fname]})
     return mkconfig(kwargs)
 
   def _realize(b:Build)->None:
-    c=build_cattrs(b)
+    c=config_cattrs(build_config(b))
     o=build_outpath(b)
 
     download_dir=o if force_download else tmpfetchdir
@@ -165,8 +166,7 @@ def fetchurl(m:Manager,
       error(f"Keeping temporary directory {o}")
       raise
 
-  return mkdrv(m, _instantiate(), match_only(), build_wrapper(_realize),
-                  check_promises=check_promises)
+  return mkdrv(m, _instantiate(), match_only(), build_wrapper(_realize))
 
 
 
@@ -216,11 +216,11 @@ def fetchlocal(m:Manager, sha256:str,
       kwargs.update({'envname':envname})
     kwargs.update({'sha256':sha256, 'mode':mode})
     if 'unpack' not in mode:
-      kwargs.update({'out_path': [promise, fname]})
+      kwargs.update({'out_path': [selfref, fname]})
     return mkconfig(kwargs)
 
   def _realize(b:Build)->None:
-    c=build_cattrs(b)
+    c=config_cattrs(build_config(b))
     o=build_outpath(b)
 
     try:

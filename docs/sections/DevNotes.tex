@@ -1,0 +1,90 @@
+\section{Development}
+
+\subsection{Environment setup}
+
+While Pylightnix enjoys minimum run-time dependencies, it does require lots of
+development dependencies to be installed.  We recomend to install
+\href{https://nixos.org/nix}{Nix} package manager to install all these
+dependencies automatically. There are following options available:
+
+\begin{itemize}
+
+  \item File \texttt{default.nix} contains the expression for building the
+    end-user Python package. To run the build, execute \texttt{nix-build} in the
+    project's root folder:
+
+    \begin{shellcode}
+    $ nix-build
+    \end{shellcode}
+
+    The result will appear under the symbolic link \texttt{./result} in the
+    current folder.
+
+  \item In \texttt{shell.nix} we define dependencies and specify configuration
+    of the development shell. Use standard \texttt{nix-shell} tool to enter this
+    shell:
+
+    \begin{shellcode}
+    $ nix-shell
+    \end{shellcode}
+
+    Inside the shell, one would use \texttt{GNU Make} with the following
+    targets.
+
+    \begin{itemize}
+      \item \texttt{make tc} - Typechecks the project using MyPy
+      \item \texttt{make coverage} and \texttt{make test} (a synonym) - Run
+        Pylightnix test and prepare the coverage reports.
+      \item \texttt{make docs} - Builds the Pylightnix API reference and Tex
+        documentation.
+      \item \texttt{make wheel} - Builds the wheel pip package
+      \item \texttt{sudo -H make install} - For non-Nix systems: installs the
+        package systemwide. This target should be called after a successful call
+        to \texttt{make wheel}. Nix users should import \texttt{default.nix}
+        where requred or use \texttt{nix-build}.
+    \end{itemize}
+
+    The below utilitary targets rely on private account credentials which are
+    not included. One would need to adjust some settings in order to make it
+    work.
+
+    \begin{itemize}
+
+      \item \texttt{make publish-docs} - Commits documentation PDFs to
+        Author's docs repository. Change the repository URL in the Makefile
+        before using this target.
+
+      \item \texttt{make coverage-upload} Uploads the test coverage report to
+        the Author's CodeCov account. There must be a file \texttt{.codecovrc}
+        containing the CodeCov access token.
+
+    \end{itemize}
+
+\end{itemize}
+
+
+\subsection{References}
+
+\begin{itemize}
+  \item Python:
+    \begin{itemize}
+      \item
+        \href{https://packaging.python.org/guides/single-sourcing-package-version/}{Approaches}
+        to versioning
+      \item
+        \href{https://pypi.org/project/setuptools-scm/}{Setuptool-scm} versioning
+      \item
+        \href{https://docs.python.org/3.7/distutils/sourcedist.html#manifest-template}{On Manifests}. Manifests seem to be useless in our case.
+    \end{itemize}
+
+  \item Tex
+    \begin{itemize}
+      \item\href{https://tex.stackexchange.com/questions/209863/how-to-add-mathematical-notation-of-a-set}{Link}
+       TexOverflow answer about math notation with a nice math-syntax example
+      \item\href{https://www.geeksforgeeks.org/set-notations-in-latex/}{Link}
+       A hint on the Set theory markup:
+    \end{itemize}
+\end{itemize}
+
+
+

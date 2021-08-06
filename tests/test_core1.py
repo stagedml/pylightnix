@@ -1,95 +1,92 @@
-from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir,
-                        dirhash, assert_valid_dref, assert_valid_rref,
-                        store_deps, store_deepdeps, store_gc,
-                        assert_valid_hash, assert_valid_config, Manager,
-                        mkcontext, mkrgroup, store_rrefs, mkdref, mkrref,
-                        unrref, undref, realize, rref2dref, store_config,
-                        mkconfig, Build, Context, build_outpath,
-                        mkdrv, store_deref, store_rref2path, store_rrefs_,
-                        config_cattrs, mksymlink, store_cattrs, build_deref,
-                        build_path, mkrefpath, build_config, alldrefs,
-                        store_rrefs, build_wrapper, build_cattrs, build_name,
-                        match_best, tryread, trywrite, mkmatch, latest, best,
-                        exact, Key, match_latest, match_all, match_exact,
-                        realizeMany, build_outpaths, scanref_dict,
-                        config_dict, promise, mklens, isrref, Config, RConfig,
-                        build_setoutpaths, partial, path2rref, Tag, Group,
-                        RRefGroup, concat, linkrrefs, instantiate_,
-                        store_dref2path, path2dref, linkdref, storage,
-                        store_deepdepRrefs, drefrrefs, allrrefs, match_some)
+from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir, dirhash,
+                        assert_valid_dref, assert_valid_rref, drefdeps1,
+                        drefdeps, store_gc, assert_valid_config, Manager,
+                        mkcontext, allrrefs, mkdref, mkrref, unrref, undref,
+                        realize, rref2dref, drefcfg, mkconfig, Build, Context,
+                        build_outpath, mkdrv, rref2path, config_cattrs,
+                        drefattrs, build_deref, build_path, mkrefpath,
+                        build_config, alldrefs, build_wrapper, build_cattrs,
+                        build_name, tryread, trywrite, realizeMany,
+                        scanref_dict, config_dict, mklens, isrref, Config,
+                        RConfig, partial, path2rref, concat, linkrrefs,
+                        instantiate_, dref2path, path2dref, linkdref, rrefdeps,
+                        drefrrefs, allrrefs, match_only, drefrrefs, drefrrefsC,
+                        rrefctx, context_deref, rrefattrs, rrefbstart )
 
-from tests.imports import (given, Any, Callable, join, Optional, islink,
-                           isfile, islink, List, randint, sleep, rmtree, system,
-                           S_IWRITE, S_IREAD, S_IEXEC, chmod, Popen, PIPE, data)
+from tests.imports import (given, Any, Callable, join, Optional, islink, isfile,
+                           islink, isdir, dirname, List, randint, sleep, rmtree,
+                           system, S_IWRITE, S_IREAD, S_IEXEC, chmod, Popen,
+                           PIPE, data, readlink)
 
-from tests.generators import (rrefs, drefs, configs, dicts, rootstages)
+from tests.generators import (rrefs, drefs, configs, dicts, rootstages,
+                              settings)
 
-from tests.setup import ( ShouldHaveFailed, setup_storage, setup_storage2,
-                         mkstage, mkstage, pipe_stdout )
+from tests.setup import ( ShouldHaveFailed, setup_storage2,
+                         mkstage, pipe_stdout )
 
 
-@given(d=dicts())
-def test_realize_base(d)->None:
-  with setup_storage2('test_realize_base') as (T,S):
-    m=Manager(storage(S))
-    mkstage(m, d)
-    dref=list(m.builders.values())[-1].dref
-    assert_valid_dref(dref)
-    assert len(list(store_rrefs(dref, mkcontext(), S))) == 0
-    rrefgs=list(m.builders.values())[-1].matcher(S, dref, mkcontext())
-    assert rrefgs is None
-    rrefg=mkrgroup(dref, mkcontext(),
-        list(m.builders.values())[-1].realizer(S, dref, mkcontext(),{})[0], S)
-    assert len(list(store_rrefs(dref, mkcontext(), S))) == 1
-    assert_valid_rref(rrefg[Tag('out')])
-    rrefgs2=list(m.builders.values())[-1].matcher(S, dref, mkcontext())
-    assert rrefgs2 is not None
-    rrefg2=rrefgs2[0]
-    assert rrefg==rrefg2
+# @given(d=dicts())
+# def test_realize_base(d)->None:
+#   with setup_storage2('test_realize_base') as S:
+#     m=Manager(storage(S))
+#     mkstage(m, d)
+#     dref=list(m.builders.values())[-1].dref
+#     assert_valid_dref(dref)
+#     assert len(list(drefrrefsC(dref, mkcontext(), S))) == 0
+#     rrefgs=list(m.builders.values())[-1].matcher(S, dref, mkcontext())
+#     assert rrefgs is None
+#     rrefg=mkrgroup(dref, mkcontext(),
+#         list(m.builders.values())[-1].realizer(S, dref, mkcontext(),{})[0], S)
+#     assert len(list(store_rrefs(dref, mkcontext(), S))) == 1
+#     assert_valid_rref(rrefg[Tag('out')])
+#     rrefgs2=list(m.builders.values())[-1].matcher(S, dref, mkcontext())
+#     assert rrefgs2 is not None
+#     rrefg2=rrefgs2[0]
+#     assert rrefg==rrefg2
 
 
-def test_realize_dependencies()->None:
-  with setup_storage2('test_realize_dependencies') as (T,S):
-    n1=None; n2=None; n3=None; toplevel=None
+# def test_realize_dependencies()->None:
+#   with setup_storage2('test_realize_dependencies') as S:
+#     n1=None; n2=None; n3=None; toplevel=None
 
-    def _setup(m):
-      nonlocal n1,n2,n3,toplevel
-      n1=mkstage(m, {'a':1})
-      n2=mkstage(m, {'parent1':n1})
-      n3=mkstage(m, {'parent2':n1})
-      toplevel=mkstage(m, {'n2':n2,'n3':n3})
-      return toplevel
+#     def _setup(m):
+#       nonlocal n1,n2,n3,toplevel
+#       n1=mkstage(m, {'a':1})
+#       n2=mkstage(m, {'parent1':n1})
+#       n3=mkstage(m, {'parent2':n1})
+#       toplevel=mkstage(m, {'n2':n2,'n3':n3})
+#       return toplevel
 
-    rref=realize(instantiate(_setup,S=S))
-    assert_valid_rref(rref)
-    assert n1 is not None
-    assert n2 is not None
-    assert n3 is not None
-    assert toplevel is not None
+#     rref=realize(instantiate(_setup,S=S))
+#     assert_valid_rref(rref)
+#     assert n1 is not None
+#     assert n2 is not None
+#     assert n3 is not None
+#     assert toplevel is not None
 
-    c=store_config(rref,S)
-    assert_valid_config(c)
-    cro=store_cattrs(rref,S)
-    assert_valid_dref(getattr(cro,'n2'))
-    assert_valid_dref(getattr(cro,'n3'))
+#     c=drefcfg(rref,S)
+#     assert_valid_config(c)
+#     cro=store_cattrs(rref,S)
+#     assert_valid_dref(getattr(cro,'n2'))
+#     assert_valid_dref(getattr(cro,'n3'))
 
-    assert set(store_deps([n1],S)) == set([])
-    assert set(store_deps([n2,n3],S)) == set([n1])
-    assert set(store_deps([toplevel],S)) == set([n2,n3])
+#     assert set(drefdeps1([n1],S)) == set([])
+#     assert set(drefdeps1([n2,n3],S)) == set([n1])
+#     assert set(drefdeps1([toplevel],S)) == set([n2,n3])
 
-    assert store_deepdeps([n1],S) == set([])
-    assert store_deepdeps([n2,n3],S) == set([n1])
-    assert store_deepdeps([toplevel],S) == set([n1,n2,n3])
+#     assert drefdeps([n1],S) == set([])
+#     assert drefdeps([n2,n3],S) == set([n1])
+#     assert drefdeps([toplevel],S) == set([n1,n2,n3])
 
 # def test_detect_rref_deps()->None:
 #   with setup_storage('test_detect_rref_deps'):
 #     rref=realize(instantiate(mkstage,{'a':1}))
 #     clo=instantiate(mkstage,{'a':1,'maman':rref})
-#     _,rrefs=scanref_dict(config_dict(store_config(clo.dref)))
+#     _,rrefs=scanref_dict(config_dict(drefcfg(clo.dref)))
 #     assert len(rrefs)>0
 
 def test_no_dref_deps_without_realizers()->None:
-  with setup_storage2('test_no_dref_deps_without_realizers') as (T,S):
+  with setup_storage2('test_no_dref_deps_without_realizers') as S:
     try:
       clo=instantiate(mkstage,{'a':1},S=S)
       _=realize(instantiate(mkstage,{'maman':clo.dref},S=S))
@@ -98,7 +95,7 @@ def test_no_dref_deps_without_realizers()->None:
       pass
 
 def test_repeated_instantiate()->None:
-  with setup_storage2('test_repeated_instantiate') as (T,S):
+  with setup_storage2('test_repeated_instantiate') as S:
     def _setting(m:Manager)->DRef:
       return mkstage(m, {'a':'1'})
 
@@ -111,7 +108,7 @@ def test_repeated_instantiate()->None:
 
 
 def test_repeated_realize()->None:
-  with setup_storage2('test_repeated_realize') as (T,S):
+  with setup_storage2('test_repeated_realize') as S:
     def _setting(m:Manager)->DRef:
       return mkstage(m, {'a':'1'})
     clo=instantiate(_setting,S=S)
@@ -126,18 +123,18 @@ def test_repeated_realize()->None:
       pass
 
 def test_realize_readonly()->None:
-  with setup_storage2('test_realize_readonly') as (T,S):
+  with setup_storage2('test_realize_readonly') as S:
     rref1 = realize(instantiate(mkstage, {'a':'1'},S=S))
 
     try:
-      with open(join(store_rref2path(rref1,S),'newfile'),'w') as f:
+      with open(join(rref2path(rref1,S),'newfile'),'w') as f:
         f.write('foo')
       raise ShouldHaveFailed('No write-protection??')
     except OSError:
       pass
 
     try:
-      rmtree(store_rref2path(rref1,S))
+      rmtree(rref2path(rref1,S))
       raise ShouldHaveFailed('No remove-protection??')
     except OSError:
       pass
@@ -147,13 +144,13 @@ def test_realize_readonly()->None:
         f.write('#!/bin/sh\necho "Fooo"')
       chmod(join(build_outpath(b),'exe'), S_IWRITE|S_IREAD|S_IEXEC)
     rref2=realize(instantiate(mkdrv, Config({}),
-                              match_some(), build_wrapper(_realize),S=S))
-    assert pipe_stdout([join(store_rref2path(rref2,S),'exe')])=='Fooo\n', \
+                              match_only(), build_wrapper(_realize),S=S))
+    assert pipe_stdout([join(rref2path(rref2,S),'exe')])=='Fooo\n', \
       "Did we lost exec permission?"
 
 
 def test_minimal_closure()->None:
-  with setup_storage2('test_minimal_closure') as (T,S):
+  with setup_storage2('test_minimal_closure') as S:
 
     def _somenode(m):
       return mkstage(m,{'a':0})
@@ -166,56 +163,58 @@ def test_minimal_closure()->None:
 
     rref1=realize(instantiate(_somenode,S=S))
     rref=realize(instantiate(_anothernode,S=S))
-    rref2=store_deref(rref,store_cattrs(rref,S=S).papa,S=S)[Tag('out')]
+    rref2=context_deref(rrefctx(rref,S),rrefattrs(rref,S=S).papa)[0]
     assert rref1==rref2, '''
       Nodes with no dependencies should have empty context, regardless of their
       position in the closure.
       '''
 
-def test_realize_nondetermenistic()->None:
-  with setup_storage2('test_realize_nondetermenistic') as (T,S):
-    DATA:int; n1:DRef; n2:DRef; n3:DRef
+# FIXME make sure that contexts are inequal
+# def test_realize_nondetermenistic()->None:
+#   with setup_storage2('test_realize_nondetermenistic') as S:
+#     DATA:int; n1:DRef; n2:DRef; n3:DRef
 
-    def _gen(i,tag)->int:
-      nonlocal DATA
-      return DATA
+#     def _gen(i)->int:
+#       nonlocal DATA
+#       return DATA
 
-    def _setup(m):
-      nonlocal n1, n2, n3
-      n1 = mkstage(m, {'a':'1'})
-      n2 = mkstage(m,{'maman':n1},_gen)
-      n3 = mkstage(m,{'papa':n2})
-      return n3
+#     def _setup(m):
+#       nonlocal n1, n2, n3
+#       n1 = mkstage(m, {'a':'1'})
+#       n2 = mkstage(m,{'maman':n1},_gen)
+#       n3 = mkstage(m,{'papa':n2})
+#       return n3
 
-    DATA = 1
-    rref1 = realize(instantiate(_setup,S=S))
-    DATA = 2
-    rref2 = realize(instantiate(_setup,S=S), force_rebuild=[n2])
+#     DATA = 1
+#     rref1 = realize(instantiate(_setup,S=S))
+#     DATA = 2
+#     rref2 = realize(instantiate(_setup,S=S), force_rebuild=[n2])
 
-    assert len(list(drefrrefs(n1,S))) == 1
-    assert len(list(drefrrefs(n2,S))) == 2
-    assert len(list(drefrrefs(n3,S))) == 2
-    assert rref1 != rref2
+#     assert len(list(drefrrefs(n1,S))) == 1
+#     assert len(list(drefrrefs(n2,S))) == 2
+#     assert len(list(drefrrefs(n3,S))) == 2
+#     assert rref1 != rref2
 
-    n2_gr1 = store_deref(rref1, n2,S)
-    n2_gr2 = store_deref(rref2, n2,S)
-    assert n2_gr1 != n2_gr2
+#     n2_gr1 = store_deref(rref1, n2,S)
+#     n2_gr2 = store_deref(rref2, n2,S)
+#     assert n2_gr1 != n2_gr2
 
 
 def test_no_foreign_dref_deps()->None:
-  with setup_storage2('test_no_foreign_dref_deps') as (T,S):
-    def _setup(m):
-      clo=instantiate(mkstage, {'foo':'bar'})
-      return mkstage(m,{'bogus':clo.dref})
-    try:
-      dref = instantiate(_setup,S=S)
-      raise ShouldHaveFailed(f"Should fail, but got {dref}")
-    except AssertionError:
-      pass
+  with setup_storage2('test_no_foreign_dref_deps') as S:
+    with setup_storage2('test_no_foreign_dref_deps_2') as S2:
+      def _setup(m):
+        clo=instantiate(mkstage, {'name':'foreign', 'foo':'bar'}, S=S2)
+        return mkstage(m,{'bogus':clo.dref})
+      try:
+        dref = instantiate(_setup,S=S)
+        raise ShouldHaveFailed(f"Should fail, but got {dref}")
+      except FileNotFoundError:
+        pass
 
 
 def test_no_rref_deps()->None:
-  with setup_storage2('test_no_rref_deps') as (T,S):
+  with setup_storage2('test_no_rref_deps') as S:
     def _setup(m):
       rref=realize(instantiate(mkstage, {'foo':'bar'}))
       n2 = mkstage(m,{'bogus':rref})
@@ -228,7 +227,7 @@ def test_no_rref_deps()->None:
 
 
 def test_no_recursive_instantiate_with_same_manager()->None:
-  with setup_storage2('test_no_recursive_instantiate_with_same_manager') as (T,S):
+  with setup_storage2('test_no_recursive_instantiate_with_same_manager') as S:
     def _setup(m):
       derivs = instantiate_(m,_setup)
       n2 = mkstage(m,{'bogus':derivs.dref})
@@ -241,7 +240,7 @@ def test_no_recursive_instantiate_with_same_manager()->None:
 
 
 def test_recursive_realize_with_another_manager()->None:
-  with setup_storage2('test_recursive_realize_with_another_manager') as (T,S):
+  with setup_storage2('test_recursive_realize_with_another_manager') as S:
     rref_inner=None
     def _setup_inner(m):
       return mkstage(m,{'foo':'bar'})
@@ -251,8 +250,8 @@ def test_recursive_realize_with_another_manager()->None:
       return mkstage(m,{'baz':mklens(rref_inner,S=S).foo.val})
     rref=realize(instantiate(_setup_outer,S=S))
     assert rref_inner is not None
-    assert len(store_deepdeps([rref2dref(rref)],S=S))==0
-    assert len(store_deepdeps([rref2dref(rref_inner)],S=S))==0
+    assert len(drefdeps([rref2dref(rref)],S=S))==0
+    assert len(drefdeps([rref2dref(rref_inner)],S=S))==0
     assert mklens(rref_inner,S=S).foo.val=='bar'
     assert mklens(rref,S=S).baz.val=='bar'
 
@@ -265,41 +264,8 @@ def test_config_ro():
     assert getattr(cro,k) == d[k]
 
 
-def test_mksymlink()->None:
-  with setup_storage2('test_mksymlink') as (T,S):
-    tp=T
-
-    def _setting1(m:Manager)->DRef:
-      return mkstage(m, {'a':'1'}, lambda i,tag:33, buildtime=False)
-    def _setting2(m:Manager)->DRef:
-      return mkstage(m, {'a':'1'}, lambda i,tag:42, buildtime=True)
-
-    clo=instantiate(_setting1,S=S)
-    rref=realize(clo)
-
-    clo2=instantiate(_setting2,S=S)
-    rref2=realize(clo2, force_rebuild=True)
-
-    assert clo.dref==clo2.dref
-    assert rref2!=rref
-
-    s=mksymlink(rref, tgtpath=tp, name='thelink',S=S)
-    assert islink(s)
-    assert not isfile(join(s,'__buildtime__.txt'))
-    assert tp in s
-
-    s2=mksymlink(rref2, tgtpath=tp, name='thelink',S=S)
-    assert islink(s2)
-    assert isfile(join(s2,'__buildtime__.txt'))
-    assert tp in s
-
-    assert s2!=s, "s2 should have timestamp"
-
-    s3=mksymlink(rref2, tgtpath=tp, name='thelink', withtime=False,S=S)
-    assert s3==s
-
 def test_ignored_stage()->None:
-  with setup_storage2('test_ignored_stage') as (T,S):
+  with setup_storage2('test_ignored_stage') as S:
     n1:DRef; n2:DRef; n3:DRef; n4:DRef
     def _setting(m:Manager)->DRef:
       nonlocal n1, n2, n3, n4
@@ -321,13 +287,13 @@ def test_ignored_stage()->None:
 
 
 def test_overwrite_realizer()->None:
-  with setup_storage2('test_overwrite_realizer') as (T,S):
+  with setup_storage2('test_overwrite_realizer') as S:
     n1:DRef; n2:DRef; n3:DRef; n4:DRef
     def _setting(m:Manager)->DRef:
       nonlocal n1, n2, n3, n4
-      n1 = mkstage(m, {'a':'1'}, lambda i,t:33)
+      n1 = mkstage(m, {'a':'1'}, lambda i:33)
       n2 = mkstage(m, {'maman':n1})
-      n3 = mkstage(m, {'a':'1'}, lambda i,t:42)
+      n3 = mkstage(m, {'a':'1'}, lambda i:42)
       assert n1 == n3
       return n2
 
@@ -335,13 +301,13 @@ def test_overwrite_realizer()->None:
     all_drefs = list(alldrefs(S))
     assert len(all_drefs)==2
 
-    rref_n3=store_deref(rref_n2, store_cattrs(rref_n2, S).maman, S)[Tag('out')]
-    assert open(join(store_rref2path(rref_n3, S),'artifact'),'r').read() == '42'
+    rref_n3=context_deref(rrefctx(rref_n2,S), rrefattrs(rref_n2, S).maman)[0]
+    assert open(join(rref2path(rref_n3, S),'artifact'),'r').read() == '42'
 
 
 
 def test_gc()->None:
-  with setup_storage2('test_gc') as (T,S):
+  with setup_storage2('test_gc') as S:
     def _node1(m:Manager)->DRef:
       return mkstage(m, {'name':'1'})
     def _node2(m:Manager)->DRef:
@@ -357,71 +323,61 @@ def test_gc()->None:
     assert rm_drefs=={rref2dref(r) for r in [r3]}
     assert rm_rrefs=={x for x in [r3]}
 
-def test_promise()->None:
-  with setup_storage2('test_promise') as (T,S):
-    def _setting(m:Manager, fullfill:bool)->DRef:
-      n1=mkstage(m, {'name':'1', 'promise':[promise,'artifact']})
-      def _realize(b:Build):
-        o=build_outpath(b)
-        c=build_cattrs(b)
-        assert b.dref in c.promise
-        assert n1 in store_cattrs(c.maman,S).promise
-        assert build_path(b,c.promise)==join(o,'uber-artifact')
-        assert build_path(b,store_cattrs(c.maman,S).promise)==build_path(b,c.maman_promise)
-        if fullfill:
-          with open(build_path(b,c.promise),'w') as f:
-            f.write('chickenpoop')
+# def test_promise()->None:
+#   with setup_storage2('test_promise') as S:
+#     def _setting(m:Manager, fullfill:bool)->DRef:
+#       n1=mkstage(m, {'name':'1', 'promise':[promise,'artifact']})
+#       def _realize(b:Build):
+#         o=build_outpath(b)
+#         c=build_cattrs(b)
+#         assert b.dref in c.promise
+#         assert n1 in store_cattrs(c.maman,S).promise
+#         assert build_path(b,c.promise)==join(o,'uber-artifact')
+#         assert build_path(b,store_cattrs(c.maman,S).promise)==build_path(b,c.maman_promise)
+#         if fullfill:
+#           with open(build_path(b,c.promise),'w') as f:
+#             f.write('chickenpoop')
 
-      return mkdrv(m, mkconfig({'name':'2', 'maman':n1,
-                                'promise':[promise,'uber-artifact'],
-                                'maman_promise':[n1,'artifact']}),
-                      matcher=match_some(),
-                      realizer=build_wrapper(_realize))
+#       return mkdrv(m, mkconfig({'name':'2', 'maman':n1,
+#                                 'promise':[promise,'uber-artifact'],
+#                                 'maman_promise':[n1,'artifact']}),
+#                       matcher=match_only(),
+#                       realizer=build_wrapper(_realize))
 
-    try:
-      rref=realize(instantiate(_setting,False,S=S))
-      raise ShouldHaveFailed('Promise trigger')
-    except AssertionError:
-      pass
-    rref=realize(instantiate(_setting,True,S=S))
-    assert_valid_rref(rref)
+#     try:
+#       rref=realize(instantiate(_setting,False,S=S))
+#       raise ShouldHaveFailed('Promise trigger')
+#     except AssertionError:
+#       pass
+#     rref=realize(instantiate(_setting,True,S=S))
+#     assert_valid_rref(rref)
 
-def test_path2rref()->None:
-  with setup_storage2('test_path2rref') as (T,S):
-    s1=partial(mkstage, config={'name':'1', 'promise':[promise,'artifact']})
-    rref1=realize(instantiate(s1,S=S))
-    rref2=path2rref(store_rref2path(rref1,S))
-    assert rref1==rref2
-    l=mksymlink(rref1, S, 'result', S=S)
-    assert path2rref(Path(l))==rref1
-    rref3=path2rref(Path("/foo/00000000000000000000000000000000-bar/11111111111111111111111111111111"))
-    assert rref3=='rref:11111111111111111111111111111111-00000000000000000000000000000000-bar'
-    for x in [path2rref(Path('')),path2rref(Path('foo'))]:
-      assert x is None
 
-def test_path2dref()->None:
-  with setup_storage2('test_path2dref') as (T,S):
-    s1=partial(mkstage, config={'name':'1', 'promise':[promise,'artifact']})
-    clo1=instantiate(s1,S=S)
-    dref1=clo1.dref
-    rref1=realize(clo1)
-    dref2=path2dref(store_dref2path(rref2dref(rref1),S=S))
-    assert dref1==dref2
-    l=linkdref(dref1, S, 'result_dref', S=S)
-    assert path2dref(Path(l))==dref1
-    dref3=path2dref(Path("/foo/00000000000000000000000000000000-bar"))
-    assert dref3=='dref:00000000000000000000000000000000-bar'
-    for x in [path2dref(Path('')),path2dref(Path('foo'))]:
-      assert x is None
+@settings(max_examples=10)
+@given(dref=drefs())
+def test_path2dref(dref):
+  with setup_storage2('test_path2dref') as S:
+    p=dref2path(dref,S)
+    assert isdir(dirname(p))
+    dref2=path2dref(p)
+    assert dref==dref2
 
-def test_linkrrefs()->None:
-  with setup_storage2('test_linkrefs') as (T,S):
-    s1=partial(mkstage, config={'name':'1', 'promise':[promise,'artifact']})
-    rref1=realize(instantiate(s1,S=S))
-    l=linkrrefs([rref1, rref1], destdir=S, S=S)
-    assert len(l)==2
-    assert str(l[0])==join(S,'result-1')
-    assert islink(join(S,'result-1'))
-    l=linkrrefs([rref1], destdir=S, withtime=True, S=S)
-    assert S in l[0]
+@settings(max_examples=10)
+@given(rref=rrefs())
+def test_path2rref(rref):
+  with setup_storage2('test_path2rref') as S:
+    p=rref2path(rref,S)
+    assert isdir(dirname(dirname(p)))
+    rref2=path2rref(p)
+    assert rref==rref2
+
+def test_linkdref()->None:
+  with setup_storage2('test_linkdref') as S:
+    s1=partial(mkstage, config={'name':'NaMe'})
+    dref1=instantiate(s1,S=S).dref
+    l=linkdref(dref1, destdir=S.storage, format='result-%(N)s', S=S)
+    assert str(l)==join(S.storage,'result-NaMe')
+    assert islink(join(S.storage,'result-NaMe'))
+    assert S.storage in l
+    assert undref(dref1)[0] in readlink(l)
 

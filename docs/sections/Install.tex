@@ -1,45 +1,56 @@
 \section{Install}
 
-Pylightnix could be installed either by running Pip package manager as usual or
-by bundling the package from source. Since we are in deep betas, you probably
-should prefer source-based installation. We will also need
-\href{https://curl.se/}{Curl} and \href{https://www.nongnu.org/atool/}{ATool}
-system packages later in this manual.
-
 \subsection{Install with Pip}
 
 \begin{shellcode}
 $ pip3 install pylightnix
 \end{shellcode}
 
+Note that Pylightnix is currenlty under development. PyPi database may contain
+an outdated version.
+
 \subsection{Build from source}
 
 \begin{enumerate}
   \item Clone the repo
+
     \begin{shellcode}
     $ git clone https://github.com/stagedml/pylightnix
     $ cd pylightnix
     \end{shellcode}
-  \item Either
+
+    As a suggestion, consider making Pylightnix a part of a larger project.
+    In Git VCS, one would typically use \texttt{git submodule add} to link
+    Pylightnix to a project as a submodule.
+
+  \item Either:
     \begin{itemize}
-      \item Setup `PYTHONPATH` to point to the sources.
+
+      \item Set the \texttt{PYTHONPATH} environment variable to import
+        Pylightnix in-place. Currently we recommend to prefer this way of
+        importing the library.
+
         \begin{shellcode}
         $ export PYTHONPATH="`pwd`/src:$PYTHONPATH"
         \end{shellcode}
-      \item Build and install pylightnix wheel.
+
+        MyPy type checker may also requre a setting of \texttt{MYPYPATH}
+        environment variable: \texttt{export MYPYPATH=`pwd`/src:`pwd`/tests}
+
+      \item Build and install the wheel package.
         \begin{shellcode}
         $ make wheel
         $ sudo -H make install
         \end{shellcode}
-      \item Nix users may refer to \texttt{default.nix} and
-        \texttt{shell.nix} expressions.
+
     \end{itemize}
   % \item (Optional) Run the tests.
   % \item (Optional) Make docs
   % \item (Optional) Build the demos
 \end{enumerate}
 
-\subsection{Open the development environment}
+See the Development section of the Manual for a detailed guidance on operating a
+development environment.
 
 \subsection{Install the recommended system packages}
 
@@ -55,9 +66,9 @@ $ aunpack --version | head -n1
 atool 0.39.0
 \end{shellcode}
 
-\subsection{Make sure GNU Autotools are available}
+\subsection{Make sure GCC and GNU Autotools are available}
 
-We will also need GNU Autotools for the sake of demonstration. Make sure they
-are installed in the system.
+Some demonstration code from this manual also uses GCC and GNU Autotools. Make
+sure they are installed.
 
 

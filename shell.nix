@@ -2,6 +2,7 @@
 , stdenv ? pkgs.stdenv
 } :
 let
+
   mypython = pkgs.python37.withPackages (
     pp: let
       pyls = pp.python-language-server.override { providers=["pycodestyle"]; };
@@ -18,6 +19,23 @@ let
     pyyaml
     wheel
   ]);
+
+  codecov = pkgs.python37Packages.buildPythonPackage rec {
+    pname = "codecov";
+    version = "2.1.10";
+
+    src = pkgs.python37Packages.fetchPypi {
+      inherit pname version;
+      sha256 = "d30ad6084501224b1ba699cbf018a340bb9553eb2701301c14133995fdd84f33";
+    };
+    checkInputs = with pkgs.python37Packages; [ unittest2 ]; # Tests only
+    propagatedBuildInputs = with pkgs.python37Packages; [ requests coverage ];
+    postPatch = ''
+      sed -i 's/, "argparse"//' setup.py
+    '';
+    # No tests in archive
+    doCheck = false;
+  };
 
   nr-types = pkgs.python37Packages.buildPythonPackage rec {
     name = "nr.types";
@@ -54,6 +72,7 @@ let
       gnumake
       mypython
       pydoc-markdown
+      codecov
 
       (let
          mytexlive = texlive.override { python=mypython; };

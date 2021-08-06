@@ -1,6 +1,5 @@
-from pylightnix import (Manager, SPath, RConfig, datahash, PYLIGHTNIX_NAMEPAT,
-                        mkdref, mkrref, trimhash, encode, instantiate_,
-                        dagroots, tag_out)
+from pylightnix import (Manager, RConfig, datahash, PYLIGHTNIX_NAMEPAT, mkdref,
+                        mkrref, trimhash, encode, instantiate_, dagroots, List)
 
 from tests.imports import (given, assume, example, note, settings, text,
                            decimals, integers, rmtree, characters, gettempdir,
@@ -86,59 +85,57 @@ def intdags(draw, min_size:int=1, max_size:int=10):
   return acc
 
 @composite
-def intdags_permutations(draw):
-  """ Return a list of instances of a same DAG. Instances are not nesessarily
+def intdags_permutations(draw, min_size:int=1, max_size:int=10):
+  """ Produce instances of a same DAG. Instances are not nesessarily
   topologically sorted """
-  return draw(lists(permutations(draw(intdags())),min_size=3,max_size=3))
+  return draw(lists(permutations(draw(intdags())),
+                    min_size=min_size,
+                    max_size=max_size))
 
 @composite
-def tagsets(draw):
-  N=draw(integers(min_value=1,max_value=3))
-  acc=[]
-  for ngroup in range(N):
-    ntags=draw(integers(min_value=1,max_value=3))
-    acc.append([f"tag{n}" for n in range(ntags-1)]+[tag_out()])
-  return acc
-
-@composite
-def rootstages(draw, min_size:int=1, max_size:int=10, partial_matches:bool=True):
+def rootstages(draw,
+               min_size:int=1,
+               max_size:int=10,
+               partial_matches:bool=True,
+               failchances:List[int]=[],
+               stagefn=mkstage):
+  """ Produce Pylightnix stage hierarchies
+  Note: A signature of `nondets` is: (NodeID -> (RRefID -> NonDetValue))
+  `failchances` indicates how many errors to introduce into a hierarchy. For
+  example, setting it to `[100,100]` would make 2 attempts to mark some stage
+  with a 'deliberate error' flag.
+  """
+  assert all([x>=0 and x<=100 for x in failchances])
   dag=draw(intdags(min_size=min_size,
                    max_size=max_size).filter(lambda dag: len(dag)>0))
   note(f"DAG: {dag}")
   roots=dagroots([n for n,_ in dag], lambda n:dag[n][1])
-  # Signature: (NodeID -> ListOfGroups[ListOfTags]])
-  tss={n:draw(tagsets()) for n,_ in dag}
-  note(f"Tagset: {tss}")
-  # tss={n[0]:[[tag_out()], [tag_out()]] for n in dag}
-  # print(tss)
-  if partial_matches:
-    nmatches={n:draw(integers(min_value=1,max_value=2)) for n,_ in dag}
-  else:
-    nmatches={n:len(tss[n]) for n,_ in dag}
-  # nmatches={n[0]:99 for n in dag}
+  nrrefs={n:draw(integers(min_value=1,max_value=3)) for n,_ in dag}
+  note(f"Rref numbers: {nrrefs}")
+  nmatches={n:draw(integers(min_value=1,max_value=max(1,nrrefs[n]-1)))
+            for n,_ in dag} if partial_matches else {n:nrrefs[n] for n,_ in dag}
   note(f"NMatches {nmatches}")
-  # Signature: (NodeID -> (GroupID -> NonDetValue))
-  nondets={n:{i:draw(integers(min_value=1,max_value=5)) for i in range(len(tss[n]))} for n,_ in dag}
-  note(f"nondets: {nondets}")
-  # print(tss)
-  # nondets={n[0]:{i:0 for i in range(len(tss[n[0]]))} for n in dag}
+  nondets={n:{i:draw(integers(min_value=1,max_value=5))
+              for i in range(nrrefs[n])} for n,_ in dag}
+  nfails={n:False for n,_ in dag}
+  for pfail in failchances:
+    fail=draw(sampled_from(([True]*pfail)+([False]*(100-pfail))))
+    if fail:
+      nfails[draw(sampled_from([n for n,_ in dag]))]=True
+
+  def _nondet(ngroup,nn):
+    return nondets[nn][ngroup]
 
   def _stage(m, root):
     drefs:dict={}
     for n,deps in list(dag):
-
-      def _nondet(ngroup,tag,nn):
-        a=nondets[nn]
-        # note(str(({nn:(a,'[',ngroup,']')})))
-        return a[ngroup]
-
-      drefs[n]=mkstage(m,
+      drefs[n]=stagefn(m,
                        config={'name':f'node_{n}',
                                'parents':[drefs[d] for d in deps]},
-                       tagset=tss[n],
-                       # nondet=lambda i,tag: nondets[n][i],
                        nondet=partial(_nondet,nn=n),
-                       nmatch=nmatches[n])
+                       nrrefs=nrrefs[n],
+                       nmatch=nmatches[n],
+                       mustfail=nfails[n])
     return drefs[root]
   return [partial(_stage, root=root) for root in roots]
 

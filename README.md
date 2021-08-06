@@ -3,22 +3,24 @@
 Pylightnix
 ==========
 
-Pylightnix is a Python domain-specific language library for managing
-filesystem-based immutable data objects, inspired by
-[Purely Functional Software Deployment Model thesis by Eelco Dolstra](https://edolstra.github.io/pubs/phd-thesis.pdf) and the [Nix](https://nixos.org) package manager. In contrast to Nix, Pylightnix
-is primarily focused on managing the data for computer science experiments.
-Traditional use case of domain-specific package management, as well as other
-[blackboard application use cases](https://en.wikipedia.org/wiki/Blackboard_design_pattern)
-are supported. Pylightnix applications:
+Pylightnix is a minimalistic Python library for managing filesystem-based
+immutable data objects, inspired by [Purely Functional Software Deployment Model
+thesis by Eelco Dolstra](https://edolstra.github.io/pubs/phd-thesis.pdf) and the
+[Nix](https://nixos.org) package manager.
 
-* Store the data in form of linked immutable filesystem objects here
-  called **stages**.
-* Create (or, in our terms, **realize**) such objects, access its
-  data, navigate through dependencies.
-* Manager multiple object instances by setting up the **match** logic.
-* Handle the outcomes of **non-deterministic** realizations. As one example,
-  users may define a Pylightnix stage to depend on top-10 (in a user-defined
-  sense) random instances of a trained machine learning model.
+Pylightnix may be thought as of API for creating a chaching wrappers for a
+subset of Python functions. Pylightnix does:
+
+* Prepare (or, in our terms, **instantiate**) the computation plan aimed at
+  creating a tree of linked immutable **stages** objects, stored in the
+  filesystem.
+* Implement ( **realize** ) the prepared computation plan, access the resulting
+  artifacts. Pylightnix is able to handle possible **non-deterministic** results
+  of the computation. As one example, users may define a deployment stage to
+  depend on top-10 instances (in a user-defined sense) of trained
+  machine-learing model stages.
+* Handle the changes in computation plan, repeat the realization while trying to
+  re-use the existing artifacts.
 
 Documentation
 -------------

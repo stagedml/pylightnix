@@ -110,7 +110,8 @@ from tempfile import TemporaryDirectory
 from shutil import copytree
 from os import getcwd, chdir, system
 from pylightnix import (Config, Path, Build, mkconfig, mkdrv,
-  build_wrapper, match_only, dirrw, promise, build_setoutpaths)
+  build_wrapper, match_only, dirrw, promise, build_setoutpaths,
+  __version__ as pylightnix_version)
 
 def stage_build(m:Manager)->DRef:                            # ST \label{ST}
   def _config()->Config:                                     # CFG \label{CFG}
@@ -118,6 +119,7 @@ def stage_build(m:Manager)->DRef:                            # ST \label{ST}
     fetch_ref:DRef = stage_fetch(m)                          # DEP \label{DEP}
     src:RefPath = [fetch_ref, f'hello-{hello_version}']      # RP1 \label{RP1}
     bin:RefPath = [promise, 'usr', 'bin', 'hello']           # RP2 \label{RP2}
+    built_with = pylightnix_version                          # VER \label{VER}
     return mkconfig(locals())                                # LOC \label{LOC}
   def _realize(b:Build)->None:                               # RE \label{RE}
     build_setoutpaths(b,1)                                   # OP \label{OP}
@@ -154,22 +156,25 @@ Output:
 
     \begin{itemize}
 
-      \item \textbf{Manager} utility object. Just pass the Manager we get from
-        the stage function arguments.
+      \item \textbf{Manager} utility object. Managers describe dependency
+        resolution contexts and have no special meaning for end-users. We just
+        pass the object we obtain as a stage function argument down to the stage
+        constructor.
 
-      \item \textbf{Config} should be a dictionary-like object representing
-        stage's prerequisites. Configs may only contain JSON-serializable
-        fields, that is strings, numbers, booleans, lists or other dictionaries.
+      \item \textbf{Config} dictionary-like object. Configs represent stage's
+        prerequisites. Configs may contain any JSON-serializable values of
+        standard Python: strings, numbers, booleans, lists or other dictionaries
+        (but no tuples).
 
-      \item \textbf{Matcher} function lets Pylightnix decide whether to run
-        realizer or to re-use an existing object or objects.
+      \item \textbf{Matcher} function. Matchers let Pylightnix decide whether to
+        run realizer or to re-use an existing object or objects.
 
-      \item \textbf{Realizer} function knows how to create a new stage object
-        out of prerequisites.
+      \item \textbf{Realizer} function. Realizers specify how to create a new
+        stage object out of its prerequisites.
 
     \end{itemize}
 
-    In this example we expect to get exactly one outcome. We use a simple
+    In this example we expect to get exactly one outcome. We use a pre-defined
     \textbf{match\_only} matcher which ensures that our stage has only one
     realization.
 
@@ -177,19 +182,41 @@ Output:
     convenience we user a Python lifehack - call \texttt{local()} to convert
     local variables of \texttt{\_config()} into a dictionary.
 
-  \item At line \ref{RP1} we define a \textbf{RefPath}, a path, relative to a
-    stage realization folder. This particular path refers to a GNU hello source
-    folder which we expect to see among \texttt{stage\_fetch}'s data.
-    \texttt{mklens} knows how to convert such paths into a regulat system paths.
+  \item What to put into prerequisites? Basically, anything that we think may
+    affect the results of stage's realization. For this example we choose the
+    following fields:
 
-  \item At line \ref{RP2} we also define a \textbf{Promise Path}. Pylightnix
-    will replace promise markers with a derivation reference of the stage
-    being built and checks that said object does really exist in the filesystem.
+    \begin{itemize}
 
-  \item By mentioning derivation \texttt{fetch\_ref} at line \ref{DEP}, we say
-    that \texttt{stage\_build} depends on \texttt{stage\_fetch}. Later we use
-    this dependency at line \ref{LE} to access the \texttt{stage\_fetch}'s
-    output data.
+      \item \textbf{Name}. In Pylightnix, names are optinoal fields with a special
+        meaning. If specified, Pylightnix appends it to derivation and
+        realization references as a visual hint.
+
+      \item \textbf{Dependency derivation references}. In this example, we let
+        Pylightnix know that \texttt{stage\_build} depends on
+        \texttt{stage\_fetch} by mentioning \texttt{fetch\_ref} at line
+        \ref{DEP}. Later we use a lens at line \ref{LE} to access the
+        \texttt{stage\_fetch}'s output data.
+
+      \item \textbf{RefPaths}. At line \ref{RP1} we use Python list to define a
+        relative path, pointing to a folder inside the dependency's realization.
+        Realization objects may not yet exist at the configuration pass, but
+        they become accessible during the realization.
+
+      \item At line \ref{RP2} we also define a \textbf{Promise Path}. Pylightnix
+        will replace promise markers with a derivation references of the stage
+        being built. After the completion of realization algorithm, it will also
+        check that said objects have appeared in the filesystem.
+
+      \item We may add anything we want Pylightnix to track for us. At line
+        \ref{VER} we ask it to remember its own version. Thanks to this
+        assignment, Pylightnix re-runs the realization algorithm on every API
+        change and by this helps the author to keep this manual up-to-date.
+        Similarly, we could add a Git hash of an important source, sha256
+        checksum of a machine learning dataset or other task-specific
+        information.
+
+    \end{itemize}
 
   \item With \texttt{mklens} we could explore dependencies in-depth. The
     definition at line \ref{DEP} allows us to read the parent's prerequisites as
