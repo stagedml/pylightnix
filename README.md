@@ -14,7 +14,7 @@ subset of Python functions. Pylightnix does:
 * Prepare (or, in our terms, **instantiate**) the computation plan aimed at
   creating a tree of linked immutable **stages** objects, stored in the
   filesystem.
-* Implement ( **realize** ) the prepared computation plan, access the resulting
+* Implement (**realize**) the prepared computation plan, access the resulting
   artifacts. Pylightnix is able to handle possible **non-deterministic** results
   of the computation. As one example, users may define a deployment stage to
   depend on top-10 instances (in a user-defined sense) of trained
