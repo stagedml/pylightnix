@@ -110,21 +110,20 @@ from tempfile import TemporaryDirectory
 from shutil import copytree
 from os import getcwd, chdir, system
 from pylightnix import (Config, Path, Build, mkconfig, mkdrv,
-  build_wrapper, match_only, dirrw, promise, build_setoutpaths,
+  build_wrapper, match_only, dirrw, selfref,
   __version__ as pylightnix_version)
 
-def stage_build(m:Manager)->DRef:                            # ST \label{ST}
-  def _config()->Config:                                     # CFG \label{CFG}
+def stage_build(m:Manager)->DRef:                           # ST \label{ST}
+  def _config()->Config:                                    # CFG \label{CFG}
     name:str = 'hello-bin'
-    fetch_ref:DRef = stage_fetch(m)                          # DEP \label{DEP}
-    src:RefPath = [fetch_ref, f'hello-{hello_version}']      # RP1 \label{RP1}
-    bin:RefPath = [promise, 'usr', 'bin', 'hello']           # RP2 \label{RP2}
-    built_with = pylightnix_version                          # VER \label{VER}
-    return mkconfig(locals())                                # LOC \label{LOC}
-  def _realize(b:Build)->None:                               # RE \label{RE}
-    build_setoutpaths(b,1)                                   # OP \label{OP}
+    fetchref:DRef = stage_fetch(m)                          # DEP \label{DEP}
+    src:RefPath = [fetchref, f'hello-{hello_version}']      # RP1 \label{RP1}
+    bin:RefPath = [selfref, 'usr', 'bin', 'hello']          # RP2 \label{RP2}
+    built_with = pylightnix_version                         # VER \label{VER}
+    return mkconfig(locals())                               # LOC \label{LOC}
+  def _realize(b:Build)->None:                              # RE \label{RE}
     with TemporaryDirectory() as tmp:
-      copytree(mklens(b).src.syspath, join(tmp,'src'))       # LE \label{LE}
+      copytree(mklens(b).src.syspath, join(tmp,'src'))      # LE \label{LE}
       dirrw(Path(join(tmp,'src')))
       cwd = getcwd()
       try:
@@ -223,8 +222,8 @@ Output:
     follows:
 
     \begin{pythontexcode}
-    print(mklens(build_rref).fetch_ref.rref)
-    print(mklens(build_rref).fetch_ref.url.val)
+    print(mklens(build_rref).fetchref.rref)
+    print(mklens(build_rref).fetchref.url.val)
     \end{pythontexcode}
 
     Output:

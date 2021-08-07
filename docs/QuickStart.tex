@@ -1,37 +1,4 @@
-\documentclass{article}
-\usepackage[T1]{fontenc}
-\usepackage[utf8]{inputenc}
-\usepackage{amsmath,amssymb}
-\usepackage[russian,english]{babel}
-\usepackage{minted}
-\renewcommand{\MintedPygmentize}{/nix/store/9r8n35slzprv3q4hfdnc0fz3r70z2y64-python3.7-Pygments-2.7.2/bin/pygmentize}
-\usepackage[gobble=auto, rerun=always, pygopt={texcomments=true}]{pythontex}
-\usepackage{lscape}
-\usepackage[a4paper]{geometry}
-\usepackage{pdflscape}
-\usepackage{longtable}
-\usepackage{hyperref}
-\usepackage{mdframed}
-\usepackage{import}
-
-\fvset{breaklines, breakafter=0123456789-/}
-\setpythontexfv{breaklines, breakafter=0123456789-/, commandchars=\\\{\}}
-
-\newenvironment{shellcode}
-  {\VerbatimEnvironment\begin{minted}[escapeinside=!!, breaklines, breakafter=0123456789-/]{sh}}
-  {\end{minted}}
-\newenvironment{pythoncode}
-  {\VerbatimEnvironment\begin{minted}[escapeinside=!!, breaklines, breakafter=0123456789-/]{python}}
-  {\end{minted}}
-
-\newenvironment{pythontexcode}
-  {\VerbatimEnvironment\begin{mdframed}[leftline=false,rightline=false]\begin{pyblock}[stdout][numbers=left]}
-  {\end{pyblock}\end{mdframed}}
-
-\newcommand{\mystdout}{\begin{mdframed}\small{\texttt{\stdoutpythontex[verbatim][breaklines,breakafter=0123456789-/]}}\end{mdframed}}
-
-\newcommand{\mysmallstdout}{\begin{mdframed}\footnotesize{\texttt{\stdoutpythontex[verbatim][breaklines,breakafter=0123456789-/]}}\end{mdframed}}
-
+\include{Preamble}
 
 \begin{document}
 

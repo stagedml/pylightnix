@@ -1,26 +1,27 @@
 \begin{abstract}
 
-Pylightnix is a Python domain specific language library for managing
-filesystem-based immutable data objects, inspired by
+Pylightnix is a minimalistic Python library for managing filesystem-based
+immutable data objects, inspired by
 \href{https://edolstra.github.io/pubs/phd-thesis.pdf}{Purely Functional
 Software Deployment Model thesis by Eelco Dolstra} and the
-\href{https://nixos.org}{Nix} package manager. In contrast to Nix, Pylightnix
-is primarily focused on managing the data for computer science experiments.
-Traditional use case of domain-specific package management, as well as other
-\href{https://en.wikipedia.org/wiki/Blackboard_design_pattern}{blackboard
-application use cases} are supported. Pylightnix applications:
+\href{https://nixos.org}{Nix} package manager.
+
+The library may be thought as of low-level API for creating caching wrappers
+for a subset of Python functions. In particular, Pylightnix allows user to
 
 \begin{itemize}
-  \item Store the data in form of linked immutable filesystem objects here
-    called \textbf{stages}.
-  \item Create (or, in our terms, \textbf{realize}) such objects, access its
-    data, navigate through dependencies.
-  \item Manage multiple object instances by setting up the \textbf{match}
-    logic.
-  \item Handle the outcomes of \textbf{non-deterministic} stage realizations.
-    As one example, users may define a Pylightnix stage to depend (in a
-    user-defined sense) on top-10 random instances of a trained machine learning
-    model.
+  \item Prepare (or, in our terms, \textbf{instantiate}) the computation plan
+    aimed at creating a tree of linked immutable \textbf{stage} objects, stored
+    in the filesystem.
+  \item Implement (\textbf{realize}) the prepared computation plan, access the
+    resulting artifacts. Pylightnix is able to handle possible
+    \textbf{non-deterministic} results of the computation. As one example, it is
+    possible to define a stage depending on best top-10 instances (in a
+    user-defined sence) of prerequisite stages.
+  \item Handle changes in the computation plan, re-use the existing artifacts
+    whenever possible.
+  \item Gain full control over all aspects of the cached data including the
+    garbage-collection.
 \end{itemize}
 
 \end{abstract}

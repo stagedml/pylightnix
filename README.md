@@ -8,19 +8,20 @@ immutable data objects, inspired by [Purely Functional Software Deployment Model
 thesis by Eelco Dolstra](https://edolstra.github.io/pubs/phd-thesis.pdf) and the
 [Nix](https://nixos.org) package manager.
 
-Pylightnix may be thought as of API for creating a chaching wrappers for a
-subset of Python functions. Pylightnix does:
+The library may be thought as of low-level API for creating caching wrappers
+for a subset of Python functions. In particular, Pylightnix allows user to
 
 * Prepare (or, in our terms, **instantiate**) the computation plan aimed at
   creating a tree of linked immutable **stages** objects, stored in the
   filesystem.
 * Implement (**realize**) the prepared computation plan, access the resulting
   artifacts. Pylightnix is able to handle possible **non-deterministic** results
-  of the computation. As one example, users may define a deployment stage to
-  depend on top-10 instances (in a user-defined sense) of trained
-  machine-learing model stages.
-* Handle the changes in computation plan, repeat the realization while trying to
-  re-use the existing artifacts.
+  of the computation. As one example, it is possible to define a stage depending
+  on best top-10 instances (in a user-defined sence) of prerequisite stages.
+* Handle changes in the computation plan, re-use the existing artifacts
+  whenever possible.
+* Gain full control over all aspects of the cached data including the
+  garbage-collection.
 
 Documentation
 -------------

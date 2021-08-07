@@ -6,6 +6,7 @@ F=$(basename "$1")
 D=$(basename "$1" .tex).pdf
 cd -P $(dirname "$1")
 
+which pygmentize > .pygmentize
 rm -rf pythontex-files-* || true
 pdflatex --shell-escape -interaction=nonstopmode "$F" || { rm "$D" ; exit 1; }
 pythontex "$F"

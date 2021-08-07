@@ -22,6 +22,14 @@ TESTS = $(shell find tests -name '*\.py')
 	fi
 	touch $@
 
+.stamp_check_codecovrc:
+	@if ! test -f '.codecovrc' ; then \
+		echo "Need '.codecovrc' file containing a codecov token." ;\
+		echo "Go and get it at https://codecov.io/gh/stagedml/pylightnix/settings" >&2 ;\
+		exit 1 ;\
+	fi
+	touch $@
+
 ./docs/Reference.md: $(SRC) .stamp_check
 	pydoc-markdown \
 		--modules \
@@ -75,16 +83,7 @@ coverage: .coverage.xml
 	coverage report -m
 test: coverage
 
-.stamp_codecov: .coverage.xml .stamp_check .codecovrc
-	@if ! which codecov >/dev/null ; then \
-		echo "codecov not found. Install it with 'sudo -H pip3 install codecov'" ;\
-		exit 1 ;\
-	fi
-	@if ! test -f '.codecovrc' ; then \
-		echo "Need .codecovrc file containing a codecov token." ;\
-		echo "Go and get it at https://codecov.io/gh/stagedml/pylightnix/settings" >&2 ;\
-		exit 1 ;\
-	fi
+.stamp_codecov: .stamp_check .stamp_check_codecovrc .coverage.xml .codecovrc
 	codecov --required -t `cat .codecovrc` -f $<
 	touch $@
 
@@ -145,10 +144,13 @@ install: # To be run by root
 	pip3 hash $(WHEEL) > .stamp_installhash_$(HOSTNAME)
 
 .PHONY: check
-check: $(WHEEL)
-	pip3 hash $(WHEEL) > .stamp_piphash_$(HOSTNAME)
-	@diff -u .stamp_piphash_$(HOSTNAME) .stamp_installhash_$(HOSTNAME) || ( \
-		echo 'Did you install pylightnix systemwide by running `sudo -H make install` ?' ; exit 1 ; )
+check: .stamp_check
+
+# .PHONY: check
+# check: $(WHEEL)
+# 	pip3 hash $(WHEEL) > .stamp_piphash_$(HOSTNAME)
+# 	@diff -u .stamp_piphash_$(HOSTNAME) .stamp_installhash_$(HOSTNAME) || ( \
+# 		echo 'Did you install pylightnix systemwide by running `sudo -H make install` ?' ; exit 1 ; )
 
 .PHONY: all
 all: coverage docs wheel
