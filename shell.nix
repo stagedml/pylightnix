@@ -18,6 +18,8 @@ let
     pyls-mypy
     pyyaml
     wheel
+    scipy
+    pyqt5
   ]);
 
   codecov = pkgs.python37Packages.buildPythonPackage rec {
@@ -89,8 +91,10 @@ let
     shellHook = with pkgs; ''
       export PYTHONPATH=`pwd`/src:$PYTHONPATH
       export MYPYPATH=`pwd`/src:`pwd`/tests
+      export QT_QPA_PLATFORM_PLUGIN_PATH=`echo ${pkgs.qt5.qtbase.bin}/lib/qt-*/plugins/platforms/`
       # 1980 workaround https://github.com/NixOS/nixpkgs/issues/270#issuecomment-467583872
       export SOURCE_DATE_EPOCH=315532800
+      alias ipython="sh $(pwd)/ipython.sh"
     '';
   };
 in

@@ -24,7 +24,7 @@ from os import (
     walk, lstat, chmod, stat, readlink, scandir )
 from os.path import (
     basename, join, isfile, isdir, islink, relpath, abspath, dirname, split,
-    getsize, isabs, splitext )
+    getsize, isabs, splitext, normpath, realpath )
 from stat import ( S_IWRITE, S_IREAD, S_IRGRP, S_IROTH, S_IXUSR, S_IXGRP,
     S_IXOTH, ST_MODE, S_IWGRP, S_IWRITE, S_IWOTH )
 from hashlib import sha1, sha256

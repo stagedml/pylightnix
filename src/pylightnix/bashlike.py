@@ -74,9 +74,9 @@ def rmref(r:Union[RRef,DRef], S=None)->None:
   care of possible race conditions.
   """
   if isrref(r):
-    dirrm(rref2path(RRef(r),S=S))
+    dirrm(rref2path(RRef(r),S=S), ignore_not_found=False)
   elif isdref(r):
-    dirrm(dref2path(DRef(r),S=S))
+    dirrm(dref2path(DRef(r),S=S), ignore_not_found=False)
   else:
     assert False, f"Invalid reference {r}"
 

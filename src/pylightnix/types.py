@@ -138,6 +138,9 @@ class PylightnixException(Exception):
 
 class PromiseException(PylightnixException):
   def __init__(self, dref:DRef, failed:List[Tuple[Path,RefPath]]):
+    super(PromiseException, self).__init__(
+      f"The realizer of '{dref}' has failed to produce an artifact "
+      f"to be referenced as {['/'.join(f[1][1:]) for f in failed]}")
     self.dref=dref
     self.failed=failed
 
@@ -429,7 +432,7 @@ class Manager:
   def __init__(self, S:Optional[StorageSettings]):
     self.builders:Dict[DRef,Derivation]=OrderedDict()
     self.in_instantiate:bool=False
-    self.in_redefine:bool=False
+    self.warn_redefine:bool=True
     self.S:Optional[StorageSettings]=S
 
 

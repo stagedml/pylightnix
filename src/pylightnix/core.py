@@ -68,20 +68,21 @@ def fstmpdir(S:Optional[StorageSettings]=None)->Path:
   else:
     return S.tmpdir
 
-def fsstorage(S:Optional[StorageSettings]=None)->Path:
+def fsstorage_(S:Optional[StorageSettings]=None)->Path:
   """ Returns the location to Pylightnix storage, defaulting to
-  PYLIGHTNIX_STORE """
+  PYLIGHTNIX_STORAGE """
   if S is None or S.storage is None:
-    return Path(environ.get('PYLIGHTNIX_STORAGE',
-                            join(fsroot(), storagename())))
+    return Path(environ.get('PYLIGHTNIX_STORAGE', fsroot()))
   else:
     return S.storage
 
+def fsstorage(S:Optional[StorageSettings]=None)->Path:
+  return Path(join(fsstorage_(S),storagename()))
 
 def assert_fsinit(S:Optional[StorageSettings]=None)->None:
   assert isdir(fsstorage(S)), \
     (f"Looks like the Pylightnix storage ('{fsstorage(S)}') is not "
-     f"initialized. Did you set `S` parameter correctly?")
+     f"initialized. Did you set the `S` parameter correctly?")
   assert isdir(fstmpdir(S)), \
     (f"Looks like the Pylightnix tmp ('{fstmpdir(S)}') is not initialized. Did "
      f"you call `initialize`?")
@@ -91,9 +92,9 @@ def assert_fsinit(S:Optional[StorageSettings]=None)->None:
      f"PYLIGHTNIX_TMP to be on the same device with PYLIGHTNIX_STORE")
 
 def fsinit(S:Optional[StorageSettings]=None,
-           check_not_exist:bool=False)->None:
+           check_not_exist:bool=False)->StorageSettings:
   """ Create the storage and/or temp direcory if they don't exist. Default
-  locations are determined by `PYLIGHTNIX_STOREAGE` and `PYLIGHTNIX_TMP` env
+  locations are determined by `PYLIGHTNIX_STORAGE` and `PYLIGHTNIX_TMP` env
   variables.
 
   Parameters:
@@ -107,6 +108,7 @@ def fsinit(S:Optional[StorageSettings]=None,
   makedirs(fsstorage(S), exist_ok=False if check_not_exist else True)
   makedirs(fstmpdir(S), exist_ok=True)
   assert_fsinit(S)
+  return StorageSettings(fsstorage_(S),fstmpdir(S))
 
 #: Set the regular expression pattern for valid name characters.
 PYLIGHTNIX_NAMEPAT="[a-zA-Z0-9_-]"
@@ -607,12 +609,13 @@ def mkdrv(m:Manager,
   """
   dref=mkdrv_(config,S=m.S)
   if dref in m.builders:
-    if not m.in_redefine:
-      warning((f"Overwriting either the matcher or the realizer of derivation "
-               f"'{dref}'. It could be intended (e.g. a result of `redefine`), "
-               f"but now we see a different situation. Could it be  "
-               f"a recursive call to `instantiate`?\n"
-               f"Derivation config:\n{drefcfg_(dref,m.S)}"))
+    if m.warn_redefine:
+      warning((f"Pylightnix is going to overwrite the matcher and realizer "
+               f"of '{dref}'. Pylightnix treats the old and new "
+               f"realizers the same. "
+               f"In order to make it notice the difference, please change "
+               f"the derivation config. "
+               f"Current derivation config:\n{drefcfg_(dref,m.S)}"))
   m.builders[dref]=Derivation(dref, matcher, realizer)
   return dref
 
@@ -845,7 +848,8 @@ def assert_valid_rref(ref:str)->None:
   assert isrref(ref), error_msg
 
 def assert_valid_hashpart(hp:HashPart)->None:
-  assert len(hp)==32, f"HashPart should have length of 32, but len({hp})=={len(hp)}"
+  assert len(hp)==32, f"HashPart should have length of 32, but " \
+                      f"len({hp})=={len(hp)}"
   for s in ['-','_','/']:
     assert s not in hp, f"Invalid symbol '{s}' found in {hp}"
 

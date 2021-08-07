@@ -1,31 +1,28 @@
-from pylightnix.imports import (sha256, deepcopy, isdir, islink, makedirs,
-                                join, json_dump, json_load, json_dumps,
-                                json_loads, isfile, relpath, listdir, rmtree,
-                                mkdtemp, replace, environ, split, re_match,
-                                ENOTEMPTY, get_ident, contextmanager,
-                                OrderedDict, lstat, maxsize, readlink, chain,
-                                getLogger, walk, abspath)
+from pylightnix.imports import (sha256, deepcopy, isdir, islink, makedirs, join,
+                                json_dump, json_load, json_dumps, json_loads,
+                                isfile, relpath, listdir, rmtree, mkdtemp,
+                                replace, environ, split, re_match, ENOTEMPTY,
+                                get_ident, contextmanager, OrderedDict, lstat,
+                                maxsize, readlink, chain, getLogger, walk,
+                                abspath)
 
 from pylightnix.utils import (dirhash, assert_serializable, assert_valid_dict,
                               dicthash, scanref_dict, scanref_list, forcelink,
                               timestring, parsetime, datahash, readjson,
                               tryread, encode, dirchmod, dirrm, filero, isrref,
-                              isdref, traverse_dict, ispromise, isclaim,
-                              tryread_def, tryreadjson_def, isrefpath,
-                              dirsize)
+                              isdref, traverse_dict, tryread_def,
+                              tryreadjson_def, isrefpath, dirsize)
 
-from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional,
-                              Iterable, IO, Path, SPath, Hash, DRef, RRef,
-                              RefPath, PromisePath, HashPart, Callable,
-                              Context, Name, NamedTuple, Build, RConfig,
-                              ConfigAttrs, Derivation, Stage, Manager, Matcher,
-                              Realizer, Set, Closure, Generator, Key,
-                              BuildArgs, PYLIGHTNIX_PROMISE_TAG,
-                              PYLIGHTNIX_CLAIM_TAG, Config, RealizeArg,
-                              InstantiateArg, Tag, Group, RRefGroup)
+from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional, Iterable,
+                              IO, Path, SPath, Hash, DRef, RRef, RefPath,
+                              HashPart, Callable, Context, Name, NamedTuple,
+                              Build, RConfig, ConfigAttrs, Derivation, Stage,
+                              Manager, Matcher, Realizer, Set, Closure,
+                              Generator, BuildArgs, Config, RealizeArg,
+                              InstantiateArg)
 
 from pylightnix.core import (instantiate, realize, path2rref, path2dref,
-                             store_gc, rref2path, storage)
+                             store_gc, rref2path)
 
 from pylightnix.bashlike import (rmref)
 
@@ -67,12 +64,12 @@ def gc_exceptions(keep_paths:List[Path])->Tuple[List[DRef],List[RRef]]:
 
 
 def gc_candidates(keep:Tuple[List[DRef],List[RRef]],S=None)->Tuple[Set[DRef],Set[RRef]]:
-  """ Query the garbage collector. GC removes any model which is not symlinked under
-  `keep_dir` folder.
+  """ Query the garbage collector. GC removes any model which is not symlinked
+  under `keep_dir` folder.
 
   Return the links to be removed. Run `gc(force=True)` to actually remove the
   links.  """
-  return store_gc(keep_drefs=keep[0], keep_rrefs=keep[1], S=storage(S))
+  return store_gc(keep_drefs=keep[0], keep_rrefs=keep[1], S=S)
 
 
 def gc(keep_dirs:List[Path],
@@ -89,8 +86,8 @@ def gc(keep_dirs:List[Path],
   import sys
   assert (not interactive) or sys.__stdin__.isatty(), (
     "`gc` needs TTY to be called with `interactive=True`" )
-  assert not (verbose and not interactive), (
-    "gc: `verbose=True` implies `interactive=True`" )
+  assert not (interactive and not verbose), (
+    "gc: `interactive=True` implies `verbose=True`" )
 
   drefs,rrefs=gc_candidates(gc_exceptions(keep_dirs),S=S)
 
@@ -115,7 +112,7 @@ def gc(keep_dirs:List[Path],
       return
 
   for rref in rrefs:
-    rmref(rref)
+    rmref(rref,S=S)
   for dref in drefs:
-    rmref(dref)
+    rmref(dref,S=S)
 

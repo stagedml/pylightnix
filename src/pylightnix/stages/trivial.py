@@ -94,11 +94,12 @@ def redefine(stage:Any,
                              else m.builders[dref].matcher
     new_realizer_=new_realizer if new_realizer is not None\
                                else m.builders[dref].realizer
-    m.in_redefine=True
+    warn_redefine=m.warn_redefine
+    m.warn_redefine=True
     try:
       dref=mkdrv(m, mkconfig(d), new_matcher_, new_realizer_)
     finally:
-      m.in_redefine=False
+      m.warn_redefine=warn_redefine
     return dref
   return _new_stage
 

@@ -9,7 +9,8 @@ from pylightnix.bashlike import *
 from pylightnix.repl import *
 from pylightnix.lens import *
 from pylightnix.either import *
-# from pylightnix.groups import *
+from pylightnix.garb import *
+from pylightnix.arch import *
 # from pylightnix.matchers import *
 
 try:
