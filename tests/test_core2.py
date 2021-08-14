@@ -6,16 +6,17 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, drefdeps,
                         rrefdeps, drefrrefs, allrrefs,
                         realizeMany, redefine, match_only, PromiseException,
                         output_matcher, output_realizer, cfgsp, drefcfg_,
-                        rootrrefs, rootdrefs)
+                        rootrrefs, rootdrefs, match_exact, match_latest,
+                        timestring, rrefbstart, parsetime)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink,
                            isfile, islink, List, randint, sleep, rmtree,
                            system, S_IWRITE, S_IREAD, S_IEXEC, chmod, Popen,
                            PIPE, data, event, settings, reproduce_failure,
-                           lists, remove, isfile, isdir)
+                           lists, remove, isfile, isdir, note, partial)
 
 from tests.generators import (rrefs, drefs, configs, dicts, rootstages,
-                              integers)
+                              integers, composite, hierarchies)
 
 from tests.setup import ( ShouldHaveFailed, setup_storage2, mkstage, mkstage,
                          pipe_stdout , setup_test_realize, setup_test_match,
@@ -115,23 +116,23 @@ def test_match_some(stages,n):
 #       event(f'match_best ngroups {len(arts)}')
 #       assert sorted(artsM)==sorted(arts)[-len(artsM):]
 
-# @settings(max_examples=30)
-# @given(stages=rootstages(max_size=3, partial_matches=False),
-#        subs=lists(integers(min_value=1, max_value=3),max_size=3))
-# def test_match_exact(stages,subs):
-#   with setup_storage2('test_match_exact') as S:
-#     for stage in stages:
-#       rrefs=realizeMany(instantiate(stage, S=S))
-#       subset=[rrefs[s%len(rrefs)] for s in subs]
-#       try:
-#         rrefsM=realizeMany(
-#                instantiate(
-#                  redefine(stage,new_matcher=match_exact(subset)), S=S))
-#         desired=set([tuple(group2sign(g)) for g in subset])
-#         actual=set([tuple(rrefsM)])
-#         assert actual==desired
-#       except AssertionError:
-#         assert len(subset)==0
+@settings(max_examples=30)
+@given(stages=rootstages(max_size=3, partial_matches=False),
+       subs=lists(integers(min_value=1, max_value=3),max_size=3))
+def test_match_exact(stages,subs):
+  with setup_storage2('test_match_exact') as S:
+    for stage in stages:
+      rrefs=realizeMany(instantiate(stage, S=S))
+      note(f"rrefs {rrefs}")
+      subset=list(set(rrefs[s%len(rrefs)] for s in subs))
+      note(f"subset {subset}")
+      try:
+        actual=realizeMany(instantiate(
+          redefine(stage,new_matcher=match_exact(subset)), S=S))
+        note(f"actual {actual}")
+        assert set(actual)==set(subset)
+      except AssertionError:
+        assert len(subset)==0
 
 # @settings(max_examples=30)
 # @given(stages=rootstages(max_size=3, partial_matches=False))
@@ -147,6 +148,35 @@ def test_match_some(stages,n):
 #               instantiate(
 #                 redefine(stage,new_matcher=match_all()), S=S))
 #         assert len(grs3)==len(grs2)
+
+
+# def mkstageL(draw, m:Manager, name:str, artifact:int, buildstart:str)->DRef:
+#   def _r(S, dref:DRef, c:Context, ra:RealizeArg)->Output[Path]:
+#     r=setup_test_realize(1, buildstart, lambda i:artifact, mustfail=False)
+#     return r(S,dref,c,ra)
+#   return mkdrv(m, setup_test_config({'name':name}),
+#                   output_matcher(setup_test_match(1)),
+#                   output_realizer(_r))
+
+@composite
+def stagesL(draw):
+  return (lambda m,cfg,t,a:mkdrv(m, setup_test_config(cfg),
+                  match_latest(),
+                  output_realizer(setup_test_realize(
+                    1, timestring(sec=float(t)), lambda i:a, False))))
+
+@given(h=hierarchies(stages=stagesL))
+def test_match_latest(h):
+  with setup_storage2('test_match_latest') as S:
+    for t in range(2):
+      note(f"t={t}")
+      clo=instantiate(h, t=t, a=t, S=S)
+      rrefs=realizeMany(clo, force_rebuild=[d.dref for d in clo.derivations])
+      for rref in rrefdeps(rrefs,S=S)|set(rrefs):
+        bstart=rrefbstart(rref,S=S)
+        assert bstart is not None
+        note(f"{rref}: bstart {bstart}")
+        assert parsetime(bstart)==t
 
 # FIXME: repair this test
 # def test_match_latest()->None:

@@ -114,7 +114,7 @@ def fsinit(S:Optional[StorageSettings]=None,
 PYLIGHTNIX_NAMEPAT="[a-zA-Z0-9_-]"
 
 #: Reserved file names are treated specially be the core. Users should
-#: not normally create or alter files with this names.
+#: not normally create or alter files with these names.
 PYLIGHTNIX_RESERVED=['context.json','group.json']
 
 def reserved(folder:Path, name:str)->Path:
@@ -776,37 +776,74 @@ def realizeSeq(closure:Closure,
 def evaluate(stage, *args, **kwargs)->RRef:
   return realize(instantiate(stage,*args,**kwargs))
 
+Key = Callable[[RRef],Optional[Union[int,float,str]]]
 
+def texthash()->Key:
+  def _key(rref:RRef)->Optional[Union[int,float,str]]:
+    return str(unrref(rref)[0])
+  return _key
 
-def match_predicate(paccept:Callable[[List[RRef]],bool],
-                    passert:Callable[[List[RRef]],bool]):
-  def _matcher(S:SPath, rrefs:List[RRef])->Optional[List[RRef]]:
-    if passert(rrefs):
-      assert False, f"Matching is impossible for {rrefs}"
-    if paccept(rrefs):
-      return rrefs
-    return None
+def latest()->Key:
+  def _key(rref:RRef)->Optional[Union[int,float,str]]:
+    try:
+      with open(join(rref2path(rref),'__buildstart__.txt'),'r') as f:
+        t=parsetime(f.read())
+        return float(0 if t is None else t)
+    except OSError as e:
+      return float(0)
+  return _key
+
+def exact(expected:List[RRef])->Key:
+  def _key(rref:RRef)->Optional[Union[int,float,str]]:
+    return 1 if rref in expected else None
+  return _key
+
+def match(pnext:Matcher,
+          keys:Optional[List[Key]]=None)->Matcher:
+  """ Create a [Matcher](#pylightnix.types.Matcher) by combining different
+  sorting keys and selecting a top-n threshold.
+
+  Only realizations which have [tag](#pylightnix.types.Tag) 'out' (which is a
+  default tag name) participate in matching. After the matching, Pylightnix
+  adds all non-'out' realizations which share [group](#pylightnix.types.Group)
+  with at least one matched realization.
+
+  Arguments:
+  - `keys`: List of [Key](#pylightnix.types.Key) functions. Defaults ot
+  """
+  keys_or_hash=(keys or [])+[texthash()]
+  def _matcher(S:Optional[StorageSettings],
+               rrefs:List[RRef])->Optional[List[RRef]]:
+    # Match only among realizations tagged as 'out'
+    keymap={rref:[k(rref) for k in keys_or_hash] for rref in rrefs}
+
+    # Apply filters and filter outputs
+    res:List[RRef]=sorted(filter(lambda rref: None not in keymap[rref], rrefs),
+                          key=lambda rref:keymap[rref], reverse=True)
+    return pnext(S,res)
+    # if passert(res):
+    #   assert False, f"Matching is impossible for {rrefs}"
+    # if paccept(res):
+    #   return res
+    # return None
   return _matcher
-
 
 def match_only():
-  return match_predicate(paccept=lambda l: len(l)==1,
-                         passert=lambda l: len(l)>=2)
+  return match(paccept=lambda l: len(l)==1,
+               passert=lambda l: len(l)>=2)
 
+def match_some(n:int=1, keys=None):
+  return match(paccept=lambda l: len(l)>=n,
+               passert=lambda l: False,
+               keys=keys)
 
-def match_some(n:int):
-  return match_predicate(paccept=lambda l: len(l)>=n,
-                         passert=lambda l: False)
-
+def match_latest(n:int=1)->Matcher:
+  return match_some(n, keys=[latest()])
 
 def match_exact(rrefs:List[RRef]):
-  """ Expects the realizer to produce a very specific set of rrefs """
-  def _matcher(S:SPath, existing_rrefs:List[RRef])->Optional[List[RRef]]:
-    if not set(rrefs).issubset(set(existing_rrefs)):
-      return None
-    return rrefs
-  return _matcher
-
+  return match(paccept=lambda l: True,
+               passert=lambda l: False,
+               keys=[exact(rrefs)])
 
 def cfgsp(c:Config)->List[Tuple[str,RefPath]]:
   """ Returns the list of self-references (aka self-paths) in the config. """
