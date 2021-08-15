@@ -828,6 +828,7 @@ def match_all(S,rrefs):
   return rrefs if len(rrefs)>0 else None
 
 def match_some(n:int=1, key=None):
+  assert n>=0
   _key=key or texthash()
   def _trim(rrefs):
     return rrefs[:n] if len(rrefs)>=n else None
@@ -837,7 +838,7 @@ def match_only():
   def _trim(rrefs):
     if len(rrefs)>1:
       assert False, f"Only one realization expected, got {len(rrefs)}"
-    return rrefs[0] if len(rrefs)==1 else None
+    return rrefs[:1] if len(rrefs)==1 else None
   return match(texthash(), _trim)
 
 def match_latest(n:int=1)->Matcher:
