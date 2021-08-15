@@ -54,7 +54,7 @@ def setup_storage2(tn:str):
   except FileNotFoundError:
     pass
   S=StorageSettings(testroot,tmppath)
-  fsinit(S)
+  fsinit(S, check_not_exist=True)
   assert 0==len(listdir(storepath))
   yield S
 
