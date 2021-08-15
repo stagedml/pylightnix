@@ -776,17 +776,17 @@ def realizeSeq(closure:Closure,
 def evaluate(stage, *args, **kwargs)->RRef:
   return realize(instantiate(stage,*args,**kwargs))
 
-Key = Callable[[RRef],Optional[Union[int,float,str]]]
+Key = Callable[[Optional[StorageSettings], RRef],Optional[Union[int,float,str]]]
 
 def texthash()->Key:
-  def _key(rref:RRef)->Optional[Union[int,float,str]]:
+  def _key(S, rref:RRef)->Optional[Union[int,float,str]]:
     return str(unrref(rref)[0])
   return _key
 
 def latest()->Key:
-  def _key(rref:RRef)->Optional[Union[int,float,str]]:
+  def _key(S, rref:RRef)->Optional[Union[int,float,str]]:
     try:
-      with open(join(rref2path(rref),'__buildstart__.txt'),'r') as f:
+      with open(join(rref2path(rref, S=S),'__buildstart__.txt'),'r') as f:
         t=parsetime(f.read())
         return float(0 if t is None else t)
     except OSError as e:
@@ -794,7 +794,7 @@ def latest()->Key:
   return _key
 
 def exact(expected:List[RRef])->Key:
-  def _key(rref:RRef)->Optional[Union[int,float,str]]:
+  def _key(S, rref:RRef)->Optional[Union[int,float,str]]:
     return 1 if rref in expected else None
   return _key
 
@@ -816,8 +816,7 @@ def match(key:Key,
   def _matcher(S:Optional[StorageSettings],
                rrefs:List[RRef])->Optional[List[RRef]]:
     # Match only among realizations tagged as 'out'
-    keymap={rref:key(rref) for rref in rrefs}
-    print(f"keymap {keymap}")
+    keymap={rref:key(S,rref) for rref in rrefs}
 
     # Apply filters and filter outputs
     res=trim(sorted(filter(lambda rref: keymap[rref] is not None, rrefs),
