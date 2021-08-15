@@ -168,7 +168,7 @@ def stagesL(draw):
 @given(h=hierarchies(stages=stagesL))
 def test_match_latest(h):
   with setup_storage2('test_match_latest') as S:
-    for t in range(2):
+    for t in range(3):
       note(f"t={t}")
       clo=instantiate(h, t=t, a=t, S=S)
       rrefs=realizeMany(clo, force_rebuild=[d.dref for d in clo.derivations])

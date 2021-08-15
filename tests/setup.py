@@ -50,7 +50,7 @@ def setup_storage2(tn:str):
   tmppath=Path(join(testroot, 'tmp'))
   try:
     dirchmod(testroot, 'rw')
-    rmtree(testroot)
+    rmtree(testroot, ignore_errors=False)
   except FileNotFoundError:
     pass
   S=StorageSettings(testroot,tmppath)

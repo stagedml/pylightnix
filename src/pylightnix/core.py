@@ -756,11 +756,11 @@ def realizeSeq(closure:Closure,
           warning(f"Realizer of {dref} produced duplicated realizations")
         rrefs_matched=drv.matcher(S,list(drefrrefsC(dref,dref_context,S)))
         assert rrefs_matched is not None, (
-          f"The matcher of {dref} is not satisfied with its realizatons. "
+          f"The matcher of '{dref}' is not satisfied with its realizatons. "
           f"The following newly obtained realizations were ignored:\n"
           f"  {rrefs_built}\n"
-          f"The following realizations already existed:\n"
-          f"  {rrefs_existed}")
+          f"The following realizations currently exist:\n"
+          f"  {list(rrefs_existed)}")
         if (set(rrefs_built) & set(rrefs_matched)) == set() and \
            (set(rrefs_built) | set(rrefs_matched)) != set():
           warning(f"None of the newly obtained {dref} realizations "
@@ -798,8 +798,10 @@ def exact(expected:List[RRef])->Key:
     return 1 if rref in expected else None
   return _key
 
-def match(pnext:Matcher,
-          keys:Optional[List[Key]]=None)->Matcher:
+def match(key:Key,
+          trim:Callable[[List[RRef]],Optional[List[RRef]]],
+          mnext:Optional[Matcher]=None,
+          )->Matcher:
   """ Create a [Matcher](#pylightnix.types.Matcher) by combining different
   sorting keys and selecting a top-n threshold.
 
@@ -811,39 +813,40 @@ def match(pnext:Matcher,
   Arguments:
   - `keys`: List of [Key](#pylightnix.types.Key) functions. Defaults ot
   """
-  keys_or_hash=(keys or [])+[texthash()]
   def _matcher(S:Optional[StorageSettings],
                rrefs:List[RRef])->Optional[List[RRef]]:
     # Match only among realizations tagged as 'out'
-    keymap={rref:[k(rref) for k in keys_or_hash] for rref in rrefs}
+    keymap={rref:key(rref) for rref in rrefs}
+    print(f"keymap {keymap}")
 
     # Apply filters and filter outputs
-    res:List[RRef]=sorted(filter(lambda rref: None not in keymap[rref], rrefs),
-                          key=lambda rref:keymap[rref], reverse=True)
-    return pnext(S,res)
-    # if passert(res):
-    #   assert False, f"Matching is impossible for {rrefs}"
-    # if paccept(res):
-    #   return res
-    # return None
+    res=trim(sorted(filter(lambda rref: keymap[rref] is not None, rrefs),
+                    key=lambda rref: keymap[rref], reverse=True))
+    return (mnext(S,res) if res else None) if mnext else res
   return _matcher
 
-def match_only():
-  return match(paccept=lambda l: len(l)==1,
-               passert=lambda l: len(l)>=2)
+def match_all(S,rrefs):
+  return rrefs if len(rrefs)>0 else None
 
-def match_some(n:int=1, keys=None):
-  return match(paccept=lambda l: len(l)>=n,
-               passert=lambda l: False,
-               keys=keys)
+def match_some(n:int=1, key=None):
+  _key=key or texthash()
+  def _trim(rrefs):
+    return rrefs[:n] if len(rrefs)>=n else None
+  return match(_key, _trim, match_all)
+
+def match_only():
+  def _trim(rrefs):
+    if len(rrefs)>1:
+      assert False, f"Only one realization expected, got {len(rrefs)}"
+    return rrefs[0] if len(rrefs)==1 else None
+  return match(texthash(), _trim)
 
 def match_latest(n:int=1)->Matcher:
-  return match_some(n, keys=[latest()])
+  return match_some(n, key=latest())
 
 def match_exact(rrefs:List[RRef]):
-  return match(paccept=lambda l: True,
-               passert=lambda l: False,
-               keys=[exact(rrefs)])
+  return match_some(n=len(rrefs), key=exact(rrefs))
+
 
 def cfgsp(c:Config)->List[Tuple[str,RefPath]]:
   """ Returns the list of self-references (aka self-paths) in the config. """
