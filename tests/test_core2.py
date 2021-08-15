@@ -83,7 +83,7 @@ def test_match_only(stages):
 
 @settings(max_examples=10)
 @given(stages=rootstages(max_size=3, partial_matches=False),
-       n=integers(min_value=0, max_value=3))
+       n=integers(min_value=1, max_value=3))
 def test_match_some(stages,n):
   with setup_storage2('test_match_some') as S:
     for stage in stages:
@@ -91,7 +91,7 @@ def test_match_some(stages,n):
         rrefs=realizeMany(
               instantiate(
                 redefine(stage,new_matcher=match_some(n)), S=S))
-        assert len(rrefs)>=n
+        assert len(rrefs)==n
         event('match_some positive')
       except AssertionError:
         rrefs=realizeMany(instantiate(stage,S=S))
