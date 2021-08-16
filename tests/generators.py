@@ -1,5 +1,6 @@
 from pylightnix import (Manager, RConfig, datahash, PYLIGHTNIX_NAMEPAT, mkdref,
-                        mkrref, trimhash, encode, instantiate_, dagroots, List)
+                        mkrref, trimhash, encode, instantiate_, dagroots, List,
+                        DRef, Callable)
 
 from tests.imports import (given, assume, example, note, settings, text,
                            decimals, integers, rmtree, characters, gettempdir,
@@ -37,7 +38,6 @@ def dicts(draw, prims=none()):
                   dictionaries(text(printable), children),
                   max_leaves=10)
       ))
-  event(str(d))
   return d
 
 def dicts_with_refs():
@@ -104,6 +104,8 @@ def rootstages(draw,
   `failchances` indicates how many errors to introduce into a hierarchy. For
   example, setting it to `[100,100]` would make 2 attempts to mark some stage
   with a 'deliberate error' flag.
+
+  DEPRECATED in favor of `hierarchies`
   """
   assert all([x>=0 and x<=100 for x in failchances])
   dag=draw(intdags(min_size=min_size,
@@ -138,5 +140,42 @@ def rootstages(draw,
                        mustfail=nfails[n])
     return drefs[root]
   return [partial(_stage, root=root) for root in roots]
+
+
+@composite
+def stages(draw,
+           min_nrrefs=1, max_nrrefs=3,
+           min_nmatch=1, max_nmatch=3,
+           pfail=0):
+  assert pfail>=0 and pfail<=100
+  nrrefs=draw(integers(min_value=min_nrrefs,max_value=max_nrrefs))
+  nmatch=draw(integers(min_value=min_nmatch,max_value=max_nmatch))
+  mustfail=draw(sampled_from(([True]*pfail)+([False]*(100-pfail))))
+  return (lambda m,config:mkstage(m,
+                 config=config,
+                 nondet=lambda n:0,
+                 starttime='AUTO',
+                 nrrefs=nrrefs,
+                 nmatch=nmatch,
+                 mustfail=mustfail
+                 ))
+
+
+@composite
+def hierarchies(draw, min_size=1, max_size=10, stages=stages):
+  dag=draw(intdags(min_size=min_size,
+                   max_size=max_size).filter(lambda dag: len(dag)>0))
+  nroot=draw(sampled_from(list(dagroots([n for n,_ in dag],
+                                        lambda n:dag[n][1]))))
+  ss=[]
+  for n,_ in list(dag):
+    ss.append(draw(stages()))
+  def _hierarchy(m, **kwargs):
+    drefs:dict={}
+    for s,(n,ps) in zip(ss,dag):
+      drefs[n]=s(m,{"name":f"teststage_{n}",
+                    "parents":[drefs[p] for p in ps]}, **kwargs)
+    return drefs[nroot]
+  return _hierarchy
 
 

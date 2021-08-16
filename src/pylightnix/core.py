@@ -114,7 +114,7 @@ def fsinit(S:Optional[StorageSettings]=None,
 PYLIGHTNIX_NAMEPAT="[a-zA-Z0-9_-]"
 
 #: Reserved file names are treated specially be the core. Users should
-#: not normally create or alter files with this names.
+#: not normally create or alter files with these names.
 PYLIGHTNIX_RESERVED=['context.json','group.json']
 
 def reserved(folder:Path, name:str)->Path:
@@ -756,11 +756,11 @@ def realizeSeq(closure:Closure,
           warning(f"Realizer of {dref} produced duplicated realizations")
         rrefs_matched=drv.matcher(S,list(drefrrefsC(dref,dref_context,S)))
         assert rrefs_matched is not None, (
-          f"The matcher of {dref} is not satisfied with its realizatons. "
+          f"The matcher of '{dref}' is not satisfied with its realizatons. "
           f"The following newly obtained realizations were ignored:\n"
           f"  {rrefs_built}\n"
-          f"The following realizations already existed:\n"
-          f"  {rrefs_existed}")
+          f"The following realizations currently exist:\n"
+          f"  {list(rrefs_existed)}")
         if (set(rrefs_built) & set(rrefs_matched)) == set() and \
            (set(rrefs_built) | set(rrefs_matched)) != set():
           warning(f"None of the newly obtained {dref} realizations "
@@ -776,36 +776,76 @@ def realizeSeq(closure:Closure,
 def evaluate(stage, *args, **kwargs)->RRef:
   return realize(instantiate(stage,*args,**kwargs))
 
+Key = Callable[[Optional[StorageSettings], RRef],Optional[Union[int,float,str]]]
 
+def texthash()->Key:
+  def _key(S, rref:RRef)->Optional[Union[int,float,str]]:
+    return str(unrref(rref)[0])
+  return _key
 
-def match_predicate(paccept:Callable[[List[RRef]],bool],
-                    passert:Callable[[List[RRef]],bool]):
-  def _matcher(S:SPath, rrefs:List[RRef])->Optional[List[RRef]]:
-    if passert(rrefs):
-      assert False, f"Matching is impossible for {rrefs}"
-    if paccept(rrefs):
-      return rrefs
-    return None
+def latest()->Key:
+  def _key(S, rref:RRef)->Optional[Union[int,float,str]]:
+    try:
+      with open(join(rref2path(rref, S=S),'__buildstart__.txt'),'r') as f:
+        t=parsetime(f.read())
+        return float(0 if t is None else t)
+    except OSError as e:
+      return float(0)
+  return _key
+
+def exact(expected:List[RRef])->Key:
+  def _key(S, rref:RRef)->Optional[Union[int,float,str]]:
+    return 1 if rref in expected else None
+  return _key
+
+def match(key:Key,
+          trim:Callable[[List[RRef]],Optional[List[RRef]]],
+          mnext:Optional[Matcher]=None,
+          )->Matcher:
+  """ Create a [Matcher](#pylightnix.types.Matcher) by combining different
+  sorting keys and selecting a top-n threshold.
+
+  Only realizations which have [tag](#pylightnix.types.Tag) 'out' (which is a
+  default tag name) participate in matching. After the matching, Pylightnix
+  adds all non-'out' realizations which share [group](#pylightnix.types.Group)
+  with at least one matched realization.
+
+  Arguments:
+  - `keys`: List of [Key](#pylightnix.types.Key) functions. Defaults ot
+  """
+  def _matcher(S:Optional[StorageSettings],
+               rrefs:List[RRef])->Optional[List[RRef]]:
+    # Match only among realizations tagged as 'out'
+    keymap={rref:key(S,rref) for rref in rrefs}
+
+    # Apply filters and filter outputs
+    res=trim(sorted(filter(lambda rref: keymap[rref] is not None, rrefs),
+                    key=lambda rref: keymap[rref], reverse=True))
+    return (mnext(S,res) if res else None) if mnext else res
   return _matcher
 
+def match_all(S,rrefs):
+  return rrefs if len(rrefs)>0 else None
+
+def match_some(n:int=1, key=None):
+  assert n>=0
+  _key=key or texthash()
+  def _trim(rrefs):
+    return rrefs[:n] if len(rrefs)>=n else None
+  return match(_key, _trim, match_all)
 
 def match_only():
-  return match_predicate(paccept=lambda l: len(l)==1,
-                         passert=lambda l: len(l)>=2)
+  def _trim(rrefs):
+    if len(rrefs)>1:
+      assert False, f"Only one realization expected, got {len(rrefs)}"
+    return rrefs[:1] if len(rrefs)==1 else None
+  return match(texthash(), _trim)
 
-
-def match_some(n:int):
-  return match_predicate(paccept=lambda l: len(l)>=n,
-                         passert=lambda l: False)
-
+def match_latest(n:int=1)->Matcher:
+  return match_some(n, key=latest())
 
 def match_exact(rrefs:List[RRef]):
-  """ Expects the realizer to produce a very specific set of rrefs """
-  def _matcher(S:SPath, existing_rrefs:List[RRef])->Optional[List[RRef]]:
-    if not set(rrefs).issubset(set(existing_rrefs)):
-      return None
-    return rrefs
-  return _matcher
+  return match_some(n=len(rrefs), key=exact(rrefs))
 
 
 def cfgsp(c:Config)->List[Tuple[str,RefPath]]:
