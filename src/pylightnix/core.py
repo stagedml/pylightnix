@@ -610,12 +610,12 @@ def mkdrv(m:Manager,
   dref=mkdrv_(config,S=m.S)
   if dref in m.builders:
     if m.warn_redefine:
-      warning((f"Pylightnix is going to overwrite the matcher and realizer "
+      warning((f"Pylightnix is going to overwrite the matcher or the realizer "
                f"of '{dref}'. Pylightnix treats the old and new "
-               f"realizers the same. "
-               f"In order to make it notice the difference, please change "
-               f"the derivation config. "
-               f"Current derivation config:\n{drefcfg_(dref,m.S)}"))
+               f"realizers the same. If your goal is to make it notice the "
+               f"difference, please make some changes in the config of the "
+               f"derivation.\n"
+               f"Current config:\n{drefcfg_(dref,m.S)}"))
   m.builders[dref]=Derivation(dref, matcher, realizer)
   return dref
 
