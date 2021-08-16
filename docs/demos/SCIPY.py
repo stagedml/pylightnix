@@ -4,7 +4,7 @@ from pylightnix import (StorageSettings, Matcher, Build, Context, Path, RefPath,
                         tryread, fetchurl, instantiate, realize, match_only,
                         build_wrapper, selfref, mklens, instantiate_inplace,
                         realize_inplace, rmref, fsinit, pack, unpack, allrrefs,
-                        gc, redefine, match_some)
+                        gc, redefine, match_some, match_latest, dirrm)
 
 from numpy import vstack, array, save, load
 from numpy.random import rand
@@ -59,7 +59,7 @@ def stage_plot(m:Manager, ref_cluster:DRef)->DRef:
   return mkdrv(m, mkconfig(_config()), match_only(), build_wrapper(_make))
 
 
-def run():
+def run1():
   ds=instantiate_inplace(stage_dataset)
   cl=instantiate_inplace(stage_cluster,ds)
   vis=instantiate_inplace(stage_plot,cl)
@@ -73,18 +73,22 @@ def stage_all(m:Manager):
   vis=stage_plot(m,cl)
   return vis
 
+def run2():
+  return realize(instantiate(stage_all))
 
 # 3. Several storages
 
-Sa=fsinit(StorageSettings(Path('_storageA'),None))
-Sb=fsinit(StorageSettings(Path('_storageB'),None))
+dirrm(Path('_storageA'))
+dirrm(Path('_storageB'))
+Sa=fsinit(StorageSettings(Path('_storageA'),None), check_not_exist=True)
+Sb=fsinit(StorageSettings(Path('_storageB'),None), check_not_exist=True)
 
 def run_storages():
-  gc([],interactive=False,S=Sa)
-  gc([],interactive=False,S=Sb)
-  assert len(list(allrrefs(Sa)))==0
-  assert len(list(allrrefs(Sb)))==0
-  print(Sa, Sb)
+  # gc([],interactive=False,S=Sa)
+  # gc([],interactive=False,S=Sb)
+  # assert len(list(allrrefs(Sa)))==0
+  # assert len(list(allrrefs(Sb)))==0
+  # print(Sa, Sb)
 
   rrefA=realize(instantiate(stage_all, S=Sa))
   rrefB=realize(instantiate(stage_all, S=Sb))
@@ -98,9 +102,9 @@ def run_storages():
 
 
 def stage_all2(m:Manager):
-  ds=redefine(stage_dataset, new_matcher=match_some(1))(m)
-  cl=redefine(stage_cluster, new_matcher=match_some(1))(m,ds)
-  vis=redefine(stage_plot, new_matcher=match_some(1))(m,cl)
+  ds=redefine(stage_dataset, new_matcher=match_latest())(m)
+  cl=redefine(stage_cluster, new_matcher=match_latest())(m,ds)
+  vis=redefine(stage_plot, new_matcher=match_latest())(m,cl)
   return vis
 
 
