@@ -38,7 +38,6 @@ def dicts(draw, prims=none()):
                   dictionaries(text(printable), children),
                   max_leaves=10)
       ))
-  event(str(d))
   return d
 
 def dicts_with_refs():
