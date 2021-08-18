@@ -12,6 +12,7 @@ from scipy.cluster.vq import kmeans,vq,whiten
 
 import matplotlib.pyplot as plt
 
+from contextlib import contextmanager
 
 # https://www.tutorialkart.com/python/scipy/scipy-kmeans/
 # https://numpy.org/doc/stable/reference/generated/numpy.save.html
@@ -108,5 +109,22 @@ def stage_all2(m:Manager):
   return vis
 
 
+IMGDIR='img'
+from os.path import join
+from os import makedirs
+from tempfile import NamedTemporaryFile
+from subprocess import call
 
+@contextmanager
+def kittyupload():
+  with NamedTemporaryFile(suffix='.png') as f:
+    yield f
+    ret=call(['upload-terminal-image.sh', f.name])
+    assert ret==0, f"upload-terminal-image.sh returned {ret}"
+
+from shutil import copyfileobj
+def kittyplot(path:str)->None:
+  with kittyupload() as d:
+    with open(path,'rb') as s:
+      copyfileobj(s,d)
 
