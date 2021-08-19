@@ -51,6 +51,7 @@ warning=logger.warning
 PYLIGHTNIX_STORE_VERSION=0
 
 def storagename():
+  """ Return the name of Pylightnix storage filder. """
   return f"store-v{PYLIGHTNIX_STORE_VERSION}"
 
 def fsroot()->Path:
@@ -62,6 +63,8 @@ def fsroot()->Path:
     join(environ.get('HOME','/var/run'), '_pylightnix')))
 
 def fstmpdir(S:Optional[StorageSettings]=None)->Path:
+  """ Return the location of current Pylightnix temporary folder, defaulting to
+  the path set by PYLIGHTNIX_TMP environment variable. """
   if S is None or S.tmpdir is None:
     return Path(environ.get('PYLIGHTNIX_TMP',
                             join(fsroot(),'tmp')))
@@ -69,46 +72,47 @@ def fstmpdir(S:Optional[StorageSettings]=None)->Path:
     return S.tmpdir
 
 def fsstorage_(S:Optional[StorageSettings]=None)->Path:
-  """ Returns the location to Pylightnix storage, defaulting to
-  PYLIGHTNIX_STORAGE """
+  """ See `fsstorage` """
   if S is None or S.storage is None:
     return Path(environ.get('PYLIGHTNIX_STORAGE', fsroot()))
   else:
     return S.storage
 
 def fsstorage(S:Optional[StorageSettings]=None)->Path:
+  """ Return the location of current Pylightnix storage folder, defaulting to
+  the path set by PYLIGHTNIX_STORAGE environment variable. """
   return Path(join(fsstorage_(S),storagename()))
 
-def assert_fsinit(S:Optional[StorageSettings]=None)->None:
+def assert_valid_storage(S:Optional[StorageSettings]=None)->None:
   assert isdir(fsstorage(S)), \
-    (f"Looks like the Pylightnix storage ('{fsstorage(S)}') is not "
-     f"initialized. Did you set the `S` parameter correctly?")
+    (f"Looks like the Pylightnix storage ('{fsstorage(S)}') does not "
+     f"exist. Consider calling `fsinit` first.")
   assert isdir(fstmpdir(S)), \
-    (f"Looks like the Pylightnix tmp ('{fstmpdir(S)}') is not initialized. Did "
-     f"you call `initialize`?")
+    (f"Looks like the Pylightnix tmp ('{fstmpdir(S)}') does not exist. "
+     f"Consider calling `fsinit` first.")
   assert lstat((fsstorage(S))).st_dev == lstat(fstmpdir(S)).st_dev, \
-    (f"Looks like Pylightnix store and tmp directories belong to different "
-     f"filesystems. This case is not supported yet. Consider setting "
-     f"PYLIGHTNIX_TMP to be on the same device with PYLIGHTNIX_STORE")
+    (f"Pylightnix storage ({fsstorage(S)}) and temp ({fstmpdir(S)}) "
+     f"directories belong to different filesystems. This case is not "
+     f"supported yet.")
+
+def mksettings(stordir:str, tmpdir:Optional[str]=None)->StorageSettings:
+  return StorageSettings(Path(stordir), Path(tmpdir) if tmpdir else None)
 
 def fsinit(S:Optional[StorageSettings]=None,
-           check_not_exist:bool=False)->StorageSettings:
+           check_not_exist:bool=False,
+           remove_existing:bool=False)->None:
   """ Create the storage and/or temp direcory if they don't exist. Default
   locations are determined by `PYLIGHTNIX_STORAGE` and `PYLIGHTNIX_TMP` env
-  variables.
-
-  Parameters:
-  - `custom_store:Optional[Path]=None`: If not None, create new storage located
-    here.
-  - `custom_tmp:Optional[Path]=None`: If not None, set the temp files directory
-    here.
-  - `check_not_exist:bool=False`: Set to True to assert on already existing
-    storages. Good to become sure that newly created storage is empty.
-  """
-  makedirs(fsstorage(S), exist_ok=False if check_not_exist else True)
-  makedirs(fstmpdir(S), exist_ok=True)
-  assert_fsinit(S)
-  return StorageSettings(fsstorage_(S),fstmpdir(S))
+  variables. """
+  if remove_existing:
+    dirrm(fsstorage(S))
+    dirrm(fstmpdir(S))
+    makedirs(fsstorage(S), exist_ok=False)
+    makedirs(fstmpdir(S), exist_ok=False)
+  else:
+    makedirs(fsstorage(S), exist_ok=False if check_not_exist else True)
+    makedirs(fstmpdir(S), exist_ok=False if check_not_exist else True)
+  assert_valid_storage(S)
 
 #: Set the regular expression pattern for valid name characters.
 PYLIGHTNIX_NAMEPAT="[a-zA-Z0-9_-]"
@@ -407,7 +411,7 @@ def store_gc(keep_drefs:List[DRef],
   Default location of `S` may be changed.
 
   See also [rmref](#pylightnix.bashlike.rmref)"""
-  assert_fsinit(S)
+  assert_valid_storage(S)
   keep_rrefs_=set(keep_rrefs)
   keep_drefs_=set(keep_drefs)
   closure_rrefs=rrefdeps(keep_rrefs_,S) | keep_rrefs_
@@ -432,8 +436,7 @@ def mkdrv_(c:Config,S=None)->DRef:
 
   FIXME: Assert or handle possible (but improbable) hash collision [*]
   """
-  assert_fsinit(S)
-  # c=cp.config
+  assert_valid_storage(S)
   assert_valid_config(c)
   assert_rref_deps(c)
 
@@ -837,7 +840,10 @@ def match_some(n:int=1, key=None):
 def match_only():
   def _trim(rrefs):
     if len(rrefs)>1:
-      assert False, f"Only one realization expected, got {len(rrefs)}"
+      assert False, (
+        f"Matcher `match_only` expected to see no more than one realization "
+        f"of '{rref2dref(rrefs[0])}', but there are {len(rrefs)} of them. "
+        f"Consider using a better matcher.")
     return rrefs[:1] if len(rrefs)==1 else None
   return match(texthash(), _trim)
 
