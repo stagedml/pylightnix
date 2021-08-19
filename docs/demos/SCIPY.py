@@ -4,8 +4,10 @@ from pylightnix import (StorageSettings, Matcher, Build, Context, Path, RefPath,
                         tryread, fetchurl, instantiate, realize, match_only,
                         build_wrapper, selfref, mklens, instantiate_inplace,
                         realize_inplace, rmref, fsinit, pack, unpack, allrrefs,
-                        gc, redefine, match_some, match_latest, dirrm)
+                        gc, redefine, match_some, match_latest, dirrm,
+                        mksettings, readstr, writestr)
 
+from typing import List, Optional
 from numpy import vstack, array, save, load
 from numpy.random import rand
 from scipy.cluster.vq import kmeans,vq,whiten
@@ -17,6 +19,8 @@ from contextlib import contextmanager
 # https://www.tutorialkart.com/python/scipy/scipy-kmeans/
 # https://numpy.org/doc/stable/reference/generated/numpy.save.html
 
+
+# 1.
 
 def stage_dataset(m:Manager)->DRef:
   def _config():
@@ -37,11 +41,13 @@ def stage_cluster(m:Manager, ref_dataset:DRef)->DRef:
     name = 'cluster'
     nonlocal ref_dataset
     out = [selfref, 'clusters.npy']
+    distortion = [selfref, 'distortion.txt']
     return locals()
   def _make(b:Build):
     data = load(mklens(b).ref_dataset.out.syspath)
-    clusters,distorsion=kmeans(data, len(mklens(b).ref_dataset.centers.val))
+    clusters,distortion=kmeans(data, len(mklens(b).ref_dataset.centers.val))
     save(mklens(b).out.syspath,clusters)
+    writestr(mklens(b).distortion.syspath, str(distortion))
   return mkdrv(m, mkconfig(_config()), match_only(), build_wrapper(_make))
 
 
@@ -74,23 +80,17 @@ def stage_all(m:Manager):
   vis=stage_plot(m,cl)
   return vis
 
-def run2():
-  return realize(instantiate(stage_all))
+def run2(S=None):
+  return realize(instantiate(stage_all,S=S))
 
-# 3. Several storages
+# 3. Different storages
 
-dirrm(Path('_storageA'))
-dirrm(Path('_storageB'))
-Sa=fsinit(StorageSettings(Path('_storageA'),None), check_not_exist=True)
-Sb=fsinit(StorageSettings(Path('_storageB'),None), check_not_exist=True)
+Sa=mksettings('_storageA')
+Sb=mksettings('_storageB')
+fsinit(Sa,remove_existing=True)
+fsinit(Sb,remove_existing=True)
 
-def run_storages():
-  # gc([],interactive=False,S=Sa)
-  # gc([],interactive=False,S=Sb)
-  # assert len(list(allrrefs(Sa)))==0
-  # assert len(list(allrrefs(Sb)))==0
-  # print(Sa, Sb)
-
+def run_copystorage():
   rrefA=realize(instantiate(stage_all, S=Sa))
   rrefB=realize(instantiate(stage_all, S=Sb))
   print(rrefA)
@@ -101,13 +101,27 @@ def run_storages():
   unpack(arch, S=Sb)
   print('After', list(allrrefs(S=Sb)))
 
+# 4. Overwriting matchers
+
+def match_min_distortion(S:Optional[StorageSettings],
+                         rrefs:List[RRef])->List[RRef]:
+  distortions=[float(readstr(mklens(rref,S=S).distortion.syspath)) for rref in rrefs]
+  best:RRef=sorted(zip(distortions,rrefs))[0][1]
+  return [best]
+
 
 def stage_all2(m:Manager):
   ds=redefine(stage_dataset, new_matcher=match_latest())(m)
-  cl=redefine(stage_cluster, new_matcher=match_latest())(m,ds)
+  cl=redefine(stage_cluster, new_matcher=match_min_distortion)(m,ds)
   vis=redefine(stage_plot, new_matcher=match_latest())(m,cl)
   return vis
 
+def run_matchers():
+  # Call after run_copystorage
+  return realize(instantiate(stage_all2,S=Sb))
+
+
+#############################################################
 
 IMGDIR='img'
 from os.path import join
