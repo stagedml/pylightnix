@@ -614,7 +614,9 @@ def mkdrv(m:Manager,
   ```
   """
   dref=mkdrv_(config,S=m.S)
-  assert dref not in m.builders
+  if dref in m.builders:
+    warning(f"Overwriting the derivation of '{dref}'. This could be a "
+            f"result of calling the same `mkdrv` twice with the same Manager.")
   m.builders[dref]=Derivation(dref, matcher, realizer)
   return dref
 
