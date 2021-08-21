@@ -30,17 +30,19 @@ TESTS = $(shell find tests -name '*\.py')
 	fi
 	touch $@
 
-./docs/Reference.md: $(SRC) .stamp_check
+./docs/Reference.md: $(SRC) .stamp_check Makefile
 	pydoc-markdown \
 		--modules \
 			pylightnix.types pylightnix.core pylightnix.build \
 			pylightnix.inplace pylightnix.repl pylightnix.stages \
 			pylightnix.bashlike pylightnix.lens pylightnix.either \
+			pylightnix.arch \
 		--search-path \
 			$(shell python3 -c "import sys; print(' '.join(sys.path))") >$@  # "
 
-.PHONY: docs-reference
+.PHONY: docs-reference dr
 docs-reference: ./docs/Reference.md
+dr: docs-reference
 
 .PHONY: docs-quickstart
 docs-quickstart: docs/QuickStart.pdf

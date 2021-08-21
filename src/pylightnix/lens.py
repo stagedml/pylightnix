@@ -140,18 +140,16 @@ def lens_repr(l, accessor:str)->str:
 
 
 class Lens:
-  """ Lens is a helper `sugar` object which could traverse through various
-  Python and Pylightnix tree-like structures in a uniform way.
+  """ A Lens is a "syntactic sugar" helper object which could traverse through
+  various Python and Pylightnix tree-like structures in a uniform way.
 
   The list of supported structures include:
 
   * Python dicts
-  * Pylightnix DRefs, which are converted to Python dicts of their
-    configuration parameters
-  * Pylightnix RRefs (which are DRefs plus realizations)
-  * Pylightnix Build objects (which are DRefs plus temporary build folder)
-  * Pylightnix Closures (which are DRefs with accompanying library of
-    Derivations)
+  * Pylightnix [DRefs](#pylightnix.types.DRef)
+  * Pylightnix [RRefs](#pylightnix.types.RRef)
+  * Pylightnix [Build](#pylightnix.build.Build) objects
+  * Pylightnix [Closures](#pylightnix.types.Closure) objects
 
   Lens lifecycle typically consists of three stages:
   1. Lens creation with [mklens](#pylightnix.lens.mklens) helper function.
@@ -160,6 +158,9 @@ class Lens:
   3. Access to the raw value which could no longer be converted into a Lens. In
      this case the raw value is returned. See `val`, `optval`, `rref`, `dref`,
      etc.
+
+  Lenses are not inteded to be created directly, consider using
+  [mklens](#pylightnix.lens.mklens) constructor.
   """
   def __init__(self, ctx:LensContext, start:Any, steps:List[str])->None:
     """
@@ -273,7 +274,7 @@ def mklens(x:Any, o:Optional[Path]=None,
   - `build_output_idx:int=0` For `Builds`, specify the index of output path,
     defaulted to zero
 
-  Examples:
+  Example:
   ```Python
   stage=partial(fetchurl, url='http://example.com',
                           sha256='...',

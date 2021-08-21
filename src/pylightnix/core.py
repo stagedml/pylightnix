@@ -429,13 +429,10 @@ def store_gc(keep_drefs:List[DRef],
 
 
 def mkdrv_(c:Config,S=None)->DRef:
-  """ Create new derivation in storage `S`.
+  """ See [mkdrv](#pylightnix.core.mkdrv) """
 
-  We attempt to do it atomically by creating temp directory first and then
-  renaming it right into it's place in the storage.
-
-  FIXME: Assert or handle possible (but improbable) hash collision [*]
-  """
+  # FIXME: Assert or handle possible (but improbable) hash collision [*]
+  #
   assert_valid_storage(S)
   assert_valid_config(c)
   assert_rref_deps(c)
@@ -465,8 +462,9 @@ def mkdrv_(c:Config,S=None)->DRef:
   return dref
 
 def mkrealization(dref:DRef, l:Context, o:Path, S=None)->RRef:
-  """ Create the [Realization](#pylightnix.types.RRef) object in the storage
-  `S`. Return new Realization reference.
+  """ Inserts the newly-obtaind [Stage](#pylightnix.types.Stage) artifacts into
+  the Storage, return the [realization reference](#pylightnix.types.RRef). Not
+  intended to be called by user.
 
   Parameters:
   - `dref:DRef`: Derivation reference to create the realization of.
@@ -475,10 +473,11 @@ def mkrealization(dref:DRef, l:Context, o:Path, S=None)->RRef:
     prepared by the [Realizer](#pylightnix.types.Realizer).
   - `leader`: Tag name and Group identifier of the Group leader. By default,
     we use name `out` and derivation's own rref.
-
-  FIXME: Assert or handle possible but improbable hash collision[*]
-  FIXME: Timestamps are not overwritten, because they are not hashed
   """
+
+  # FIXME: Assert or handle possible but improbable hash collision[*]
+  # FIXME: Timestamps are not overwritten, because they are not hashed
+
   assert_valid_config(drefcfg_(dref,S))
   (dhash,nm)=undref(dref)
 
@@ -592,12 +591,11 @@ def mkdrv(m:Manager,
           config:Config,
           matcher:Matcher,
           realizer:Realizer)->DRef:
-  """ Run the instantiation of a particular stage. Create a
-  [Derivation](#pylightnix.types.Derivation) object out of three main
-  components: the Derivation reference, the Matcher and the Realizer. Register
-  the derivation in a [Manager](#pylightnix.types.Manager) to aid dependency
-  resolution. Return [Derivation reference](#pylightnix.types.DRef) of the
-  derivation produced.
+  """ Construct a [Derivation](#pylightnix.types.Derivation) object out of its
+  [Config](#pylightnix.types.Config), the [Matcher](#pylightnix.types.Matcher)
+  and the [Realizer](#pylightnix.types.Realizer). Register the derivation in the
+  dependency-resolution [Manager](#pylightnix.types.Manager). Return [Derivation
+  reference](#pylightnix.types.DRef) of the newly-obrained derivation.
 
   Arguments:
   - `m:Manager`: A Manager to update with a new derivation
@@ -621,6 +619,7 @@ def mkdrv(m:Manager,
   return dref
 
 def instantiate_(m:Manager, stage:Any, *args, **kwargs)->Closure:
+  """ See [instantiate](#pylightnix.types.instantiate) """
   assert not m.in_instantiate, (
     "Recursion detected. `instantiate` should not be called recursively "
     "by stage functions with the same `Manager` as argument")
@@ -633,11 +632,12 @@ def instantiate_(m:Manager, stage:Any, *args, **kwargs)->Closure:
   return Closure(target_dref,list(m.builders.values()),S=m.S)
 
 def instantiate(stage:Any, *args, S=None, **kwargs)->Closure:
-  """ Instantiate takes the [Stage](#pylightnix.types.Stage) function and
-  calculates the [Closure](#pylightnix.types.Closure) of it's
-  [Derivations](#pylightnix.types.Derivation).
-  All new derivations are added to the storage.
-  See also [realizeMany](#pylightnix.core.realizeMany)
+  """ Instantiate function evaluates [Stage](#pylightnix.types.Stage) functions
+  by calling them and collecting the [Closure](#pylightnix.types.Closure) of
+  nested [Derivations](#pylightnix.types.Derivation).
+
+  The returned closure typically goes to [realize](#pylightnix.core.realize) or
+  its analogs.
   """
   return instantiate_(Manager(S), stage, *args, **kwargs)
 
@@ -650,8 +650,35 @@ RealizeSeqGen = Generator[
 
 def realize(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
                              assert_realized:List[DRef]=[])->RRef:
-  """ A simplified version of [realizeMany](#pylightnix.core.realizeMany).
-  Expects only one output path. """
+  """ Realize gets the results of building the [Stage](#pylightnix.types.Stage).
+  Returns either the [matching](#pylightnix.types.Matcher) realizations
+  immediately, or launches the user-defined [realization
+  procedure](#pylightnix.types.Realizer).
+
+  Example:
+  ```python
+  def mystage(m:Manager)->DRef:
+    ...
+    return mkdrv(m, ...)
+
+  rrefs=realize(instantiate(mystage))
+  print(mklen(rref).syspath)
+  ```
+
+  Pylightnix contains the following specialized alternatives to `realize`:
+
+  * [realizeMany](#pylightnix.core.realizeMany) - A version for multiple-output
+  stages.
+  * [repl_realize](#pylightnix.repl.repl_realize) - A REPL-friendly version.
+  * [realize_inplace](#pylightnix.inplace.realize_inplace) - A simplified
+    version which uses a hardcoded global [Manager](#pylightnix.types.Manager).
+  """
+
+  # FIXME: Stage's context is calculated inefficiently. Maybe one should track
+  # dep.tree to avoid calling `drefdeps` within the cycle.
+  # FIXME: Update derivation's matcher after forced rebuilds. Matchers should
+  # remember and reproduce user's preferences.
+
   rrefs=realizeMany(closure, force_rebuild, assert_realized)
   assert len(rrefs)==1, (
       f"`realize` is to be used with single-output derivations. Derivation "
@@ -664,36 +691,8 @@ def realizeMany(closure:Closure,
                 force_rebuild:Union[List[DRef],bool]=[],
                 assert_realized:List[DRef]=[],
                 realize_args:Dict[DRef,RealizeArg]={})->List[RRef]:
-  """ Obtain one or more [Closure](#pylightnix.types.Closure) realizations of a
-  stage.
-
-  The function returns [matching](#pylightnix.types.Matcher) realizations
-  immediately if they are exist.
-
-  Otherwize, a number of [Realizers](#pylightnix.types.Realizer) are called.
-
-  Example:
-  ```python
-  def mystage(m:Manager)->DRef:
-    ...
-    return mkdrv(m, ...)
-
-  clo:Closure=instantiate(mystage)
-  rrefs:List[RRef]=realizeMany(clo)
-  print([mklen(rref).syspath for rref in rrefs])
-  ```
-
-  Pylightnix contains the following alternatives to `realizeMany`:
-
-  * [realize](#pylightnix.core.realize) - A single-output version
-  * [repl_realize](#pylightnix.repl.repl_realize) - A REPL-friendly version
-  * [realize_inplace](#pylightnix.inplace.realize_inplace) - A simplified
-    version which uses a global derivation Manager.
-
-  - FIXME: Stage's context is calculated inefficiently. Maybe one should track
-    dep.tree to avoid calling `drefdeps` within the cycle.
-  - FIXME: Update derivation's matcher after forced rebuilds. Matchers should
-    remember and reproduce user's preferences.
+  """ A generic version of [realize](#pylightnix.core.realize).  Allows the
+  realizer to return several alternative (in a user-defined sence) realizations.
   """
   force_interrupt:List[DRef]=[]
   if isinstance(force_rebuild,bool):

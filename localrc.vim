@@ -13,3 +13,4 @@ if &filetype == 'python'
 endif
 
 set wrap
+set conceallevel=0
