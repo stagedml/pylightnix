@@ -477,6 +477,7 @@ def mkrealization(dref:DRef, l:Context, o:Path, S=None)->RRef:
     we use name `out` and derivation's own rref.
 
   FIXME: Assert or handle possible but improbable hash collision[*]
+  FIXME: Timestamps are not overwritten, because they are not hashed
   """
   assert_valid_config(drefcfg_(dref,S))
   (dhash,nm)=undref(dref)
@@ -509,6 +510,8 @@ def mkrealization(dref:DRef, l:Context, o:Path, S=None)->RRef:
       # Folder name contain the hash of the content, so getting here
       # probably[*] means that we already have this object in storage so we
       # just remove temp folder.
+      warning(f'Realization collision: {rref} already exist, unhashed files '
+              f'(__*__.*) may differ.')
       dirrm(rreftmp, ignore_not_found=False)
     else:
       # Attempt to roll-back
@@ -611,14 +614,7 @@ def mkdrv(m:Manager,
   ```
   """
   dref=mkdrv_(config,S=m.S)
-  if dref in m.builders:
-    if m.warn_redefine:
-      warning((f"Pylightnix is going to overwrite the matcher or the realizer "
-               f"of '{dref}'. Pylightnix treats the old and new "
-               f"realizers the same. If your goal is to make it notice the "
-               f"difference, please make some changes in the config of the "
-               f"derivation.\n"
-               f"Current config:\n{drefcfg_(dref,m.S)}"))
+  assert dref not in m.builders
   m.builders[dref]=Derivation(dref, matcher, realizer)
   return dref
 
@@ -832,7 +828,7 @@ def match_all(S,rrefs):
 
 def match_some(n:int=1, key=None):
   assert n>=0
-  _key=key or texthash()
+  _key=key if key is not None else texthash()
   def _trim(rrefs):
     return rrefs[:n] if len(rrefs)>=n else None
   return match(_key, _trim, match_all)

@@ -105,7 +105,8 @@ def run_copystorage():
 
 def match_min_distortion(S:Optional[StorageSettings],
                          rrefs:List[RRef])->List[RRef]:
-  distortions=[float(readstr(mklens(rref,S=S).distortion.syspath)) for rref in rrefs]
+  distortions=[float(readstr(mklens(rref,S=S).distortion.syspath)) \
+               for rref in rrefs]
   best:RRef=sorted(zip(distortions,rrefs))[0][1]
   return [best]
 

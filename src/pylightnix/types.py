@@ -432,7 +432,6 @@ class Manager:
   def __init__(self, S:Optional[StorageSettings]):
     self.builders:Dict[DRef,Derivation]=OrderedDict()
     self.in_instantiate:bool=False
-    self.warn_redefine:bool=True
     self.S:Optional[StorageSettings]=S
 
 

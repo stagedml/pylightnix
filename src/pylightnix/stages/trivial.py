@@ -83,8 +83,6 @@ def redefine(stage:Any,
 
   FIXME: Updating configs is dangerous: it changes its dref and thus breaks
   dependencies. Only top-level stages should use `new_confid` currently.
-
-  FIXME: Unify with `mapclosure`
   """
   def _new_stage(m:Manager,*args,**kwargs)->DRef:
     dref=stage(m,*args,**kwargs) # type:ignore
@@ -94,13 +92,8 @@ def redefine(stage:Any,
                              else m.builders[dref].matcher
     new_realizer_=new_realizer if new_realizer is not None\
                                else m.builders[dref].realizer
-    warn_redefine=m.warn_redefine
-    m.warn_redefine=True
-    try:
-      dref=mkdrv(m, mkconfig(d), new_matcher_, new_realizer_)
-    finally:
-      m.warn_redefine=warn_redefine
-    return dref
+    del m.builders[dref] # Pretend that it did not exist
+    return mkdrv(m, mkconfig(d), new_matcher_, new_realizer_)
   return _new_stage
 
 def realized(stage:Any)->Stage:

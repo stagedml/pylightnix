@@ -113,7 +113,7 @@ def build_wrapper_(f:Callable[[_B],None],
     except Exception as e:
       build_markstop_noexcept(b) # type:ignore
       error(f"Build wrapper of {dref} raised an exception. Remaining "
-            f"build directories are: {b.outpaths}")
+            f"build directories are: {b.outpaths.val if b.outpaths else '?'}")
       raise BuildError(S,dref,b.outpaths,e)
     assert b.outpaths is not None, \
       "Builder should produce at least one output path"
@@ -123,8 +123,8 @@ def build_wrapper_(f:Callable[[_B],None],
 
 def build_wrapper(f:Callable[[Build],None],
                   nouts:Optional[int]=1,
-                  starttime:Optional[str]=None,
-                  stoptime:Optional[str]=None)->Realizer:
+                  starttime:Optional[str]='AUTO',
+                  stoptime:Optional[str]='AUTO')->Realizer:
   """ Build Adapter which convers user-defined realizers which use
   [Build](#pylightnix.types.Build) API into a low-level
   [Realizer](#pylightnix.types.Realizer) """
@@ -155,9 +155,9 @@ def build_markstart(b:Build, nouts:int)->List[Path]:
   tmp=fstmpdir(b.S)
   h=config_hash(build_config(b))[:8]
   if b.starttime is not None:
-    paths=[Path(mkdtemp(prefix=f'{b.starttime}_{h}_', dir=tmp))
-           for _ in range(nouts)]
     starttime=timestring() if b.starttime=='AUTO' else b.starttime
+    paths=[Path(mkdtemp(prefix=f'{starttime}_{h}_', dir=tmp))
+           for _ in range(nouts)]
     for o in paths:
       with open(join(o,'__buildstart__.txt'), 'w') as f:
         f.write(starttime)
