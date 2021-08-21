@@ -9,7 +9,7 @@ from pylightnix import (instantiate, DRef, RRef, Path, mklogdir, dirhash,
 from tests.imports import (given, Any, Callable, join, Optional, islink,
                            isfile, islink, List, randint, sleep, rmtree,
                            system, S_IWRITE, S_IREAD, S_IEXEC, chmod, Popen,
-                           PIPE, settings, reproduce_failure, Phase)
+                           PIPE, settings, reproduce_failure, Phase, note)
 
 from tests.generators import (
     rrefs, drefs, configs, dicts, rootstages )
@@ -61,18 +61,18 @@ def test_pack2(stages)->None:
       rrefs=realizeMany(instantiate(stage,S=S1))
       for nrref,rref in enumerate(rrefs):
         ap=Path(join(S1.tmpdir,f'archive_{nstage:02d}_{nrref:02d}.zip'))
-        print(f'Packing {ap}')
+        note(f'Packing {ap}:{rref}')
         pack([rref], ap, S=S1)
         archives.append(ap)
 
-  print('PACK done')
+  note('PACK done')
 
   with setup_storage2('test_pack_dst') as S2:
     for ap in archives:
-      print(f'Unpacking {ap}')
+      note(f'Unpacking {ap}')
       unpack(Path(ap), S=S2)
 
   assert set(alldrefs(S=S1)) == set(alldrefs(S=S2))
   assert set(allrrefs(S=S1)) == set(allrrefs(S=S2))
-  print('OK!')
+  note('OK!')
 

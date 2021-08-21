@@ -294,7 +294,6 @@ def test_overwrite_realizer()->None:
       n1 = mkstage(m, {'a':'1'}, lambda i:33)
       n2 = mkstage(m, {'maman':n1})
       n3 = mkstage(m, {'a':'1'}, lambda i:42)
-      assert n1 == n3
       return n2
 
     rref_n2=realize(instantiate(_setting, S=S))
