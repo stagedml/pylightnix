@@ -174,3 +174,66 @@ print(rref_all)
 \mystdout
 
 
+\subsection{Collaborative work}
+
+Alice and Bob runs the same experiment using their machines. We model
+this situation by running Pylightnix with different storage settings.
+
+\begin{pythontexcode}
+Sa=mksettings('_storageA')
+Sb=mksettings('_storageB')
+fsinit(Sa,remove_existing=True)
+fsinit(Sb,remove_existing=True)
+rrefA=realize(instantiate(stage_all, S=Sa))
+rrefB=realize(instantiate(stage_all, S=Sb))
+print(rrefA)
+print(rrefB)
+\end{pythontexcode}
+
+Our annealing problem is stochastic by nature so the results naturally differ.
+
+\subsection{Synchronization}
+
+Alice sends her results to Bob, so he faces a problem of picking the best
+realizaion.
+
+\begin{pythontexcode}
+print("Bob's storage before the sync:")
+for rref in allrrefs(S=Sb):
+  print(rref)
+arch=Path('archive.zip')
+pack([rrefA], arch, S=Sa)
+# Alice transfers archive to Bob using her favorite pigeon post service.
+unpack(arch, S=Sb)
+print("Bob's storage after the sync:")
+for rref in allrrefs(S=Sb):
+  print(rref)
+\end{pythontexcode}
+
+\mystdout
+
+
+Bob writes a custom matcher that selects the realization which has the best
+annealing result.
+
+\begin{pythontexcode}
+def match_min(S, rrefs:List[RRef])->List[RRef]:
+  avail=[np.load(mklens(rref,S=S).trace_fs.syspath)[-1] for rref in rrefs]
+  best=sorted(zip(avail,rrefs))[0]
+  if best[1] in allrrefs(Sa):
+    print(f"Picking Alice ({best[0]}) out of {avail}")
+  else:
+    print(f"Picking Bob ({best[0]}) out of {avail}")
+  return [best[1]]
+
+def stage_all2(m:Manager):
+  ds=stage_params(m)
+  cl=redefine(stage_anneal, new_matcher=match_min)(m,ds)
+  vis=stage_plot(m,cl)
+  return vis
+
+rref_best=realize(instantiate(stage_all2,S=Sb))
+print(rref_best)
+\end{pythontexcode}
+
+\mystdout
