@@ -43,3 +43,7 @@
 \NewDocumentCommand{\setargs}{>{\SplitArgument{1}{;}}m}{\setargsaux#1}
 \NewDocumentCommand{\setargsaux}{mm}{\IfNoValueTF{#2}{#1} {#1\,\delimsize|\,\mathopen{}#2}}%{#1\:;\:#2}
 
+% URLs
+\newcommand{\refbase}{https://github.com/stagedml/pylightnix/blob/master/docs/Reference.md}
+\newcommand{\pref}[2]{\href{\refbase\##2}{#1}}
+

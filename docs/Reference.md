@@ -173,10 +173,6 @@
     * [repl\_rref](#pylightnix.repl.repl_rref)
     * [repl\_cancel](#pylightnix.repl.repl_cancel)
   * [pylightnix.stages](#pylightnix.stages)
-  * [pylightnix.stages.trivial](#pylightnix.stages.trivial)
-    * [mknode](#pylightnix.stages.trivial.mknode)
-    * [redefine](#pylightnix.stages.trivial.redefine)
-    * [realized](#pylightnix.stages.trivial.realized)
   * [pylightnix.stages.fetch2](#pylightnix.stages.fetch2)
     * [logger](#pylightnix.stages.fetch2.logger)
     * [info](#pylightnix.stages.fetch2.info)
@@ -192,6 +188,10 @@
     * [\_unpack\_inplace](#pylightnix.stages.fetch._unpack_inplace)
     * [fetchurl](#pylightnix.stages.fetch.fetchurl)
     * [fetchlocal](#pylightnix.stages.fetch.fetchlocal)
+  * [pylightnix.stages.trivial](#pylightnix.stages.trivial)
+    * [mknode](#pylightnix.stages.trivial.mknode)
+    * [redefine](#pylightnix.stages.trivial.redefine)
+    * [realized](#pylightnix.stages.trivial.realized)
   * [pylightnix.bashlike](#pylightnix.bashlike)
     * [lsdref\_](#pylightnix.bashlike.lsdref_)
     * [lsrref\_](#pylightnix.bashlike.lsrref_)
@@ -458,11 +458,11 @@ Matcher = Callable[[Optional[StorageSettings],List[RRef]],
                    Optional[List[RRef]]]
 ```
 
-Matchers are user-defined functions with fixed signature. They are to serve
-two purposes:
-1. Decide whether to launch a new realization or re-use the existing
+Matchers are user-defined functions with fixed signature. They serve two
+purposes:
+1. Decide whether to launch a new realization or re-use existing
 realizations.
-2. Filter a matched subset of realization groups out of the set of
+2. Filter a matched subset of a realization groups out of the set of
 available realizations.
 
 Matchers answer 'yes' to the first question by returning None. Non-none value
@@ -601,11 +601,10 @@ attributes. Together with [Realizers](#pylightnix.types.Realizer) and
 [Matchers](#pylightnix.types.Matcher), configs describe
 [Stage](#pylightnix.types.Stage) objects.
 
-Configs are to match the requirements of `assert_valid_config`. Typically,
-it's `val` dictionary should only contain JSON-serializable types: strings,
-bools, ints, floats, lists or other dicts. No bytes, `numpy.float32` or
-lambdas are allowed. Tuples are also forbidden because they are not preserved
-(decoded into lists). Special emphasis is placed on
+Configs carry Python dictionaries that should contain JSON-serializable types.
+Strings, bools, ints, floats, lists or other dicts are fine, but no bytes,
+`numpy.float32` or lambdas are allowed. Tuples are also forbidden because they
+are not preserved (decoded into lists). Special emphasis is placed on
 [DRef](#pylightnix.types.DRef) support which link dependent stages together.
 
 Config of a derivation can't include the Derivation reference to itself,
@@ -1058,11 +1057,10 @@ presence of such an object in storage
 def mkconfig(d: dict) -> Config
 ```
 
-Create Config object out of config dictionary. Asserts if the dictionary
-is not JSON-compatible. As a handy hack, filter out `m:Manager` variable
-which likely is an utility [Manager](#pylightnix.types.Manager) object.
-
-FIXME: Should we assert on invalid Config here?
+Create a [Config](#pylightnix.types.Config) object out of config
+dictionary. Asserts if the dictionary is not JSON-compatible. As a handy hack,
+filter out `m:Manager` variable which likely is an utility
+[Manager](#pylightnix.types.Manager) object.
 
 <a name="pylightnix.core.config_dict"></a>
 ## `config_dict()`
@@ -2209,69 +2207,6 @@ def repl_cancel(rh: Optional[ReplHelper] = None) -> None
 # `pylightnix.stages`
 
 
-<a name="pylightnix.stages.trivial"></a>
-# `pylightnix.stages.trivial`
-
-Trivial builtin stages
-
-<a name="pylightnix.stages.trivial.mknode"></a>
-## `mknode()`
-
-```python
-def mknode(m: Manager, config_dict: dict, artifacts: Dict[Name,bytes] = {}, name: str = 'mknode') -> DRef
-```
-
-
-<a name="pylightnix.stages.trivial.redefine"></a>
-## `redefine()`
-
-```python
-def redefine(stage: Any, new_config: Callable[[dict],None] = lambda x:None, new_matcher: Optional[Matcher] = None, new_realizer: Optional[Realizer] = None) -> Any
-```
-
-Define a new Derivation based on the existing one, by updating it's
-config, optionally re-writing it's matcher, or it's realizer.
-
-Arguments:
-- `stage:Any` a `Stage` function, accepting arbitrary keyword arguments
-- `new_config:Callable[[dict],None]` A function to update the `dref`'s config.
-  Default varsion makes no changes.
-- `new_matcher:Optional[Matcher]=None` Optional new matcher (defaults to the
-  existing matcher)
-- `new_realizer:Optional[Realizer]=None` Optional new realizer (defaults to
-  the existing realizer)
-
-Return:
-A callable `Stage`, accepting pass-through arguments
-
-Example:
-```python
-def _new_config(old_config):
-  old_config['learning_rate'] = 1e-5
-  return mkconfig(old_config)
-realize(instantiate(redefine(myMLmodel, _new_config)))
-```
-
-FIXME: Updating configs is dangerous: it changes its dref and thus breaks
-dependencies. Only top-level stages should use `new_confid` currently.
-
-<a name="pylightnix.stages.trivial.realized"></a>
-## `realized()`
-
-```python
-def realized(stage: Any) -> Stage
-```
-
-Asserts that the stage doesn't requre running its realizer.
-[Re-defines](#pylightnix.stages.trivial.redefine) stage realizer with a dummy
-realizer triggering an assertion.
-
-Example:
-```python
-rref:RRef=realize(instantiate(realized(my_long_running_stage, arg="bla")))
-# ^^^ Fail if `my_long_running_stage` is not yet realized.
-```
-
 <a name="pylightnix.stages.fetch2"></a>
 # `pylightnix.stages.fetch2`
 
@@ -2472,6 +2407,69 @@ See `fetchurl` for arguments description.
 If 'unpack' is not expected, then the promise named 'out_path' is created.
 
 FIXME: Switch regular `fetchurl` to `curl` and call it with `file://` URLs.
+
+<a name="pylightnix.stages.trivial"></a>
+# `pylightnix.stages.trivial`
+
+Trivial builtin stages
+
+<a name="pylightnix.stages.trivial.mknode"></a>
+## `mknode()`
+
+```python
+def mknode(m: Manager, config_dict: dict, artifacts: Dict[Name,bytes] = {}, name: str = 'mknode') -> DRef
+```
+
+
+<a name="pylightnix.stages.trivial.redefine"></a>
+## `redefine()`
+
+```python
+def redefine(stage: Any, new_config: Callable[[dict],None] = lambda x:None, new_matcher: Optional[Matcher] = None, new_realizer: Optional[Realizer] = None) -> Any
+```
+
+Define a new Derivation based on the existing one, by updating it's
+config, optionally re-writing it's matcher, or it's realizer.
+
+Arguments:
+- `stage:Any` a `Stage` function, accepting arbitrary keyword arguments
+- `new_config:Callable[[dict],None]` A function to update the `dref`'s config.
+  Default varsion makes no changes.
+- `new_matcher:Optional[Matcher]=None` Optional new matcher (defaults to the
+  existing matcher)
+- `new_realizer:Optional[Realizer]=None` Optional new realizer (defaults to
+  the existing realizer)
+
+Return:
+A callable `Stage`, accepting pass-through arguments
+
+Example:
+```python
+def _new_config(old_config):
+  old_config['learning_rate'] = 1e-5
+  return mkconfig(old_config)
+realize(instantiate(redefine(myMLmodel, _new_config)))
+```
+
+FIXME: Updating configs is dangerous: it changes its dref and thus breaks
+dependencies. Only top-level stages should use `new_confid` currently.
+
+<a name="pylightnix.stages.trivial.realized"></a>
+## `realized()`
+
+```python
+def realized(stage: Any) -> Stage
+```
+
+Asserts that the stage doesn't requre running its realizer.
+[Re-defines](#pylightnix.stages.trivial.redefine) stage realizer with a dummy
+realizer triggering an assertion.
+
+Example:
+```python
+rref:RRef=realize(instantiate(realized(my_long_running_stage, arg="bla")))
+# ^^^ Fail if `my_long_running_stage` is not yet realized.
+```
 
 <a name="pylightnix.bashlike"></a>
 # `pylightnix.bashlike`
