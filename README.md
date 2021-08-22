@@ -12,7 +12,7 @@ The library may be thought as of low-level API for creating caching wrappers
 for a subset of Python functions. In particular, Pylightnix allows user to
 
 * Prepare (or, in our terms, **instantiate**) the computation plan aimed at
-  creating a tree of linked immutable **stages** objects, stored in the
+  creating a tree of linked immutable stage objects, stored in the
   filesystem.
 * Implement (**realize**) the prepared computation plan, access the resulting
   artifacts. Pylightnix is able to handle possible **non-deterministic** results
