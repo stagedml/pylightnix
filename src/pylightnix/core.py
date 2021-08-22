@@ -203,12 +203,12 @@ def path2rref(p:Path)->Optional[RRef]:
 
 
 def mkconfig(d:dict)->Config:
-  """ Create Config object out of config dictionary. Asserts if the dictionary
-  is not JSON-compatible. As a handy hack, filter out `m:Manager` variable
-  which likely is an utility [Manager](#pylightnix.types.Manager) object.
-
-  FIXME: Should we assert on invalid Config here?
+  """ Create a [Config](#pylightnix.types.Config) object out of config
+  dictionary. Asserts if the dictionary is not JSON-compatible. As a handy hack,
+  filter out `m:Manager` variable which likely is an utility
+  [Manager](#pylightnix.types.Manager) object.
   """
+  # FIXME: Should we assert on invalid Config here?
   return Config(assert_valid_dict(
     {k:v for k,v in d.items()
      if not (k=='m' and 'Manager' in str(type(v)))},'dict'))

@@ -278,11 +278,10 @@ class Config:
   [Matchers](#pylightnix.types.Matcher), configs describe
   [Stage](#pylightnix.types.Stage) objects.
 
-  Configs are to match the requirements of `assert_valid_config`. Typically,
-  it's `val` dictionary should only contain JSON-serializable types: strings,
-  bools, ints, floats, lists or other dicts. No bytes, `numpy.float32` or
-  lambdas are allowed. Tuples are also forbidden because they are not preserved
-  (decoded into lists). Special emphasis is placed on
+  Configs carry Python dictionaries that should contain JSON-serializable types.
+  Strings, bools, ints, floats, lists or other dicts are fine, but no bytes,
+  `numpy.float32` or lambdas are allowed. Tuples are also forbidden because they
+  are not preserved (decoded into lists). Special emphasis is placed on
   [DRef](#pylightnix.types.DRef) support which link dependent stages together.
 
   Config of a derivation can't include the Derivation reference to itself,
