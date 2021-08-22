@@ -12,4 +12,18 @@ coverage.xml
 pythontex-*
 version.py
 
-*
+*out
+*aux
+*pdf
+*4ct
+*4tc
+*pytxcode
+*aux
+*css
+*dvi
+*idv
+*lg
+*html
+*xref
+*tmp
+*zip
