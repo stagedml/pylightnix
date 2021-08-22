@@ -77,7 +77,7 @@ from pylightnix import (
   Manager, DRef, RRef, Config, RefPath,
   mkconfig, Path, Build, build_outpath, mkdrv,
   build_wrapper, match_latest, dirrw, mklens,
-  instantiate, realize, fetchurl, promise)
+  instantiate, realize, fetchurl, selfref)
 
 version = '2.10'
 url = f'http://ftp.gnu.org/gnu/hello/hello-{version}.tar.gz'
@@ -90,7 +90,7 @@ def stage_hello(m:Manager)->DRef:
     src:RefPath = fetchurl(m, name='hello-src',
                               url=url,
                               sha256=sha256)
-    out_bin = [promise, 'usr', 'bin', 'hello']
+    out_bin = [selfref, 'usr', 'bin', 'hello']
     return locals()
 
   def _make(b:Build)->None:
