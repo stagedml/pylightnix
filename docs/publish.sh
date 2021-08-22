@@ -26,5 +26,5 @@ rm "$FL" || true
 cp "$FT" "$FL"
 git add "$FT"
 git add "$FL"
-git commit -m "Add $FT"
+git commit -m "Add $FT" || true
 git push
