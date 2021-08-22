@@ -11,13 +11,13 @@ thesis by Eelco Dolstra](https://edolstra.github.io/pubs/phd-thesis.pdf) and the
 The library may be thought as of low-level API for creating caching wrappers
 for a subset of Python functions. In particular, Pylightnix allows user to
 
-* Prepare (or, in our terms, **instantiate**) the computation plan aimed at
-  creating a tree of linked immutable stage objects, stored in the
-  filesystem.
-* Implement (**realize**) the prepared computation plan, access the resulting
-  artifacts. Pylightnix is able to handle possible **non-deterministic** results
-  of the computation. As one example, it is possible to define a stage depending
-  on best top-10 instances (in a user-defined sence) of prerequisite stages.
+* Prepare (or, in our terms - **instantiate**) the computation plan aimed at
+  creating a tree of linked immutable stage objects, stored in the filesystem.
+* Implement (in our terms - **realize**) the prepared computation plan, access
+  the resulting artifacts. Pylightnix is able to handle **non-deterministic**
+  results of the computation. As one example, it is possible to define a stage
+  depending on best top-10 instances (in a user-defined sense) of prerequisite
+  stages.
 * Handle changes in the computation plan, re-use the existing artifacts
   whenever possible.
 * Gain full control over all aspects of the cached data including the
