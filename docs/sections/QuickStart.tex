@@ -1,10 +1,10 @@
 \section{Quick start}
 
 We illustrate Pylightnix principles by showing how to use it for making a mock
-data science task. We'll follow the
+data science task. We will follow the
 \href{https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.dual_annealing.html}{SciPy
-anneal example} but imagine that we want to save some intermediate results and
-also that there are several people working on this task.
+annealing example} but imagine that we additionally want to save some intermediate results
+and also that there are several people working on this task.
 
 We start by importing the required Python modules.
 
@@ -18,8 +18,9 @@ from pylightnix import *
 
 \subsection{The problem}
 
-The annealing example begins with defining a complex parametric function
-\texttt{f} for what we need to find a minimum point as close as possible.
+The problem begins with defining a parametric function \texttt{f} for which we
+need to find an approximate minimum by running the simulated annealing
+algorithm.
 
 \begin{pythontexcode}
 def f(z, *params):
@@ -32,14 +33,13 @@ def f(z, *params):
 
 \subsection{Stages basics}
 
-Lets assume that we are to get the \texttt{f}'s parameters from elsewhere and
-that we want to get the following results: (a) the starting parameters
-themselves (b) the annealing result and statistics and (c) visual plot of the
-results.
+Suppose we are to get the \texttt{f}'s parameters from elsewhere and
+that we want to get the following results: (a) the parameters themselves (b)
+the result of the annealing simulation and (c) a visual plot of the result.
 
 \subsubsection{Parameter stage}
 
-The Pylightnix \pref{Stage}{pylightnix.types.Stage} is a Python function that
+Pylightnix \pref{Stage}{pylightnix.types.Stage} is a Python function that
 registers a user-defined action in the Manager and returns a
 \pref{DRef}{pylightnix.types.DRef} reference stating that the action is
 accepted.
@@ -55,37 +55,38 @@ def stage_params(m:Manager)->DRef:
   return mkdrv(m, mkconfig(_config()), match_only(), build_wrapper(_make))
 \end{pythontexcode}
 
-The actual registration is done by the \pref{mkdrv}{pylightnix.core.mkdrv}
-function which accepts the manager and the following three arguments (a) the
-action \pref{Config}{pylightnix.types.Config} object; (b) the
-\pref{Matcher}{pylightnix.types.Matcher} callback function; (c) the action
-callback accepting the \pref{Build}{pylightnix.types.Build} task description. In
-this example we are pretending to receive input parameters from a
-thirdparty. We could just as well have downloaded them from the Internet using
-the \pref{fetchurl}{pylightnix.stages.fetchurl2} pre-defined stage.
+Here, a user-defind action \texttt{\_make} goes to Pylightnix by calling the
+\pref{mkdrv}{pylightnix.core.mkdrv} with the Manager and the following three
+arguments: (a) the set of \pref{prerequisites}{pylightnix.types.Config} for the
+action; (b) the \pref{Matcher}{pylightnix.types.Matcher} callback function; (c)
+the action itself that takes a \pref{Build}{pylightnix.types.Build} context as
+an argument. In this example we are pretending to receive input parameters from
+a third-party. We could just as well have downloaded them from the Internet using
+a pre-defined stage \pref{fetchurl}{pylightnix.stages.fetchurl2}.
 
 \hfill \break \noindent
 A few notes on the above code:
 
 \begin{itemize}
-  \item We define configuraiton dictionary by reading a local variables of a
-    helper function named \texttt{\_config()}. The resulting dictionary should
-    match the \pref{Config}{pylightnix.types.Config} requirements. As often in
-    Pylightnix, we use a standalone \pref{mkconfig}{pylightnix.core.mkconfig}
-    construcor rather than create the object directly.
-  \item By specifying a \texttt{selfref} output path we promise to produce an
-    artifact with this name. Pylightnix will throw an error if it does not find
+  \item We define configuration object by reading a local variables of a helper
+    function named \texttt{\_config()}. The resulting dictionary should match
+    the \pref{Config}{pylightnix.types.Config} requirements. As is often the
+    case in Pylightnix, we use a standalone
+    \pref{mkconfig}{pylightnix.core.mkconfig} constructor rather than create the
+    object directly.
+  \item We promise to produce an artifact named \texttt{out} by specifying its
+    \texttt{selfref} path. Pylightnix will throw an error if it does not find
     such an artifact after the build action completes.
   \item When inside the build action, we refer to the pylightnix config items by
-    using the \pref{mklens}{pylightnix.lens.mklens} swiss knife helper.
+    using the \pref{mklens}{pylightnix.lens.mklens} swiss knife function.
     \texttt{mklens} returns the \pref{Lens}{pylightnix.lens.Lens} object which
     has an overloaded dot "\texttt{.}" operator. The middle part of the lens
     expression encodes the path in the configuration and the last word
-    "\texttt{syspath}" encodes the format of the result.
+    "\texttt{syspath}" encodes the format of the expression result.
   \item We pass a \pref{match\_only()}{pylightnix.core.match\_only} matcher in
-    the third argument of \texttt{mkdrv}. By this we expect our action to return
-    a determenistic result. Pylightnix will throw an error if it is not the
-    case.
+    the third argument of \texttt{mkdrv}. By this we say that we expect our
+    action to return a deterministic result. Later we will see how to deal with
+    non-deterministic actions.
   \end{itemize}
 
 \subsubsection{Annealing stage}
@@ -138,6 +139,11 @@ def stage_plot(m:Manager, ref_anneal:DRef)->DRef:
 
 \subsubsection{Running the experiment}
 
+To run the experiment we register all the stages in the internal manager by
+calling \texttt{instantiate\_inplace} and ask Pylightnix to provide us with the
+\pref{realization reference}{pylightnix.types.RRef} by calling
+\texttt{realize\_inplace}.
+
 \begin{pythontexcode}
 ds=instantiate_inplace(stage_params)
 cl=instantiate_inplace(stage_anneal,ds)
@@ -151,9 +157,9 @@ print(rref)
 \subsection{Nested stages}
 
 In the previous sections we implicitly used a global
-\pref{Manager}{pylightnix.types.Manager} to register our stages. A more clean
-approach requires us to define a nested stage covering the whole experiment.
-This way we pospone the problem of choosing which Manager to use.
+\pref{Manager}{pylightnix.types.Manager} to register stages. To eliminate
+side-effects associated with the usage of a global object, we now define an
+umbrella stage covering the whole experiment.
 
 \begin{pythontexcode}
 def stage_all(m:Manager):
@@ -163,7 +169,9 @@ def stage_all(m:Manager):
   return vis
 \end{pythontexcode}
 
-The nested stage may be instantiated and realized in one go.
+Now we can use reentrable \texttt{instantiate} and \texttt{realize}
+functions which rely on a temporary local Manager, disposing it before
+returning the result.
 
 \begin{pythontexcode}
 rref_all=realize(instantiate(stage_all))
