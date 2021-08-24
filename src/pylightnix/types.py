@@ -163,8 +163,8 @@ InstantiateArg=Dict[str,Any]
 #: Type of user-defined arguments to pass to the Realizer
 RealizeArg=Dict[str,Any]
 
-#: Matchers are user-defined functions with fixed signature. They serve two
-#: purposes:
+#: Matchers are user-defined Python functions with fixed signature. They serve
+#: two purposes:
 #: 1. Decide whether to launch a new realization or re-use existing
 #:    realizations.
 #: 2. Filter a matched subset of a realization groups out of the set of
@@ -196,15 +196,15 @@ MatcherO = Callable[[Optional[StorageSettings],Output[RRef]],
 # `force_interrupt` argument.
 
 
-#: Realizer is a type of user-defined Python function. Realizers typically
+#: Realizers are user-defined Python functions. Realizers typically
 #: implement [application-specific algorithms](#pylightnix.core.realize) which
 #: take some configuration parameters and produce some artifacts.
 #:
 #: Realizer accepts the following arguments:
 #:
 #: - Path to a global Pylightnix storage
-#: - [Derivation reference](#pylightnix.types.DRef) being build
-#: - [Context](#pylightnix.types.Context) encoding the results of dependency
+#: - A [Derivation reference](#pylightnix.types.DRef) being built
+#: - A [Context](#pylightnix.types.Context) encoding the results of dependency
 #:   resolution.
 #: - Set of additional user-defined arguments
 #:

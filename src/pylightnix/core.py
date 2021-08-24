@@ -594,7 +594,7 @@ def mkdrv(m:Manager,
   [Config](#pylightnix.types.Config), [Matcher](#pylightnix.types.Matcher) and
   [Realizer](#pylightnix.types.Realizer). Register the derivation in the
   dependency-resolution [Manager](#pylightnix.types.Manager). Return [Derivation
-  reference](#pylightnix.types.DRef) of the newly-obrained derivation.
+  reference](#pylightnix.types.DRef) of the newly-obtained derivation.
 
   Arguments:
   - `m:Manager`: A Manager to update with a new derivation
