@@ -37,7 +37,7 @@ embedded in Python language. Our program is a Python script, which could be
 executed by a common `python3` interpreter. In this demo we will need certain
 standard Python functions. Later we will import Pylightnix functions as needed.
 
-```python
+```{.python .cb.nb show=none, live_output=true}
 from os.path import join
 from os import system, chdir, getcwd
 from shutil import copytree
@@ -51,24 +51,13 @@ data object (or stages) which could depend on each other. This storage is
 global, it is the central part of library. In order to check or create it, we
 call `initialize`:
 
-```python
-from pylightnix import Path, initialize, dirrm
-dirrm(Path('/tmp/pylightnix_hello_demo'))
-initialize(custom_store='/tmp/pylightnix_hello_demo', custom_tmp='/tmp')
+```{.python .cb.nb}
+from os import environ
+from pylightnix import fsinit
+
+environ['PYLIGHTNIX_ROOT']='/tmp/pylightnix_hello_demo'
+fsinit(remove_existing=True)
 ```
-
-(Here we also call `dirrm` to *clear* the storage to demonstrate how do
-realizers work)
-
-Location of the storage is kept in an internal global variable and normally
-shouldn't be changed during the work, but since Pylightnix doesnt run any
-background services, it is totally up ot you. Read the [initialize
-docstring reference](../Reference.md#pylightnix.core.initialize) for
-details.
-
-Note that in most applications we don't really need to initialize a separate
-storage, but could safely use the default one. To check or initialize default
-storage, just call `initialize()` without arguments.
 
 ### Basic terms
 
@@ -77,8 +66,8 @@ called **stages**. We will define a custom stage later, for now we use a
 builtin stage `fetchurl` (which is an analog of `fetchurl` expression of Nix
 package manager).
 
-```python
-from pylightnix import DRef, instantiate_inplace, fetchurl, promise
+```{.python .cb.nb}
+from pylightnix import DRef, instantiate_inplace, fetchurl, selfref
 
 hello_version = '2.10'
 
@@ -88,7 +77,7 @@ hello_src:DRef = \
     name='hello-src',
     url=f'http://ftp.gnu.org/gnu/hello/hello-{hello_version}.tar.gz',
     sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b',
-    src=[promise, f'hello-{hello_version}'])
+    src=[selfref, f'hello-{hello_version}'])
 ```
 
 By this definition we created `hello_src` variable of type
@@ -114,7 +103,7 @@ output data will contain the contents of URL, after downloading and
 unpacking. In this case, we expect to see `hello-2.10` folder, containing the
 hello's sources. Let's check it:
 
-```python, complete=True, wrap=False
+```{.python .cb.nb}
 from pylightnix import RRef, realize_inplace
 
 hello_rref:RRef = realize_inplace(hello_src)
@@ -130,7 +119,7 @@ data in the Pylightnix filesystem storage.
 Any RRef could be converted to system by calling
 [rref2path](../Reference.md#pylightnix.core.rref2path) function:
 
-```python
+```{.python .cb.nb}
 from pylightnix import rref2path
 
 print(rref2path(hello_rref))
@@ -139,7 +128,7 @@ print(rref2path(hello_rref))
 Also, Pylightnix offers a shell-like helper functions to quickly examine the
 content of references. One of them is `lsref`:
 
-```python
+```{.python .cb.nb}
 from pylightnix import lsref
 
 print(lsref(hello_rref))
@@ -167,7 +156,7 @@ build result.
 
 Let's deal with other two components. We start by defining a configuration:
 
-```python, complete=True, wrap=False
+```{.python .cb.nb}
 from pylightnix import Config, mkconfig, mklens
 
 def hello_config()->Config:
@@ -195,12 +184,10 @@ realize functions_
 
 Let's now move to the realization part of our Hello builder stage:
 
-```python, complete=True, wrap=False
+```{.python .cb.nb}
 from pylightnix import ( Path, Build, build_cattrs, build_outpath, build_path, dirrw )
 
 def hello_realize(b:Build)->None:
-  c:Any = build_cattrs(b)
-  o:Path = build_outpath(b)
   with TemporaryDirectory() as tmp:
     copytree(mklens(b).src.syspath,join(tmp,'src'))
     dirrw(Path(join(tmp,'src')))
@@ -209,21 +196,11 @@ def hello_realize(b:Build)->None:
       chdir(join(tmp,'src'))
       system(f'./configure --prefix=/usr')
       system(f'make')
-      system(f'make install DESTDIR={o}')
+      system(f'make install DESTDIR={mklens(b).syspath}')
     finally:
       chdir(cwd)
 
 ```
-
-As we may see here, `hello_realize` function accepts a
-[Build](../Reference.md#pylightnix.types.Build) helper object. It brings to us
-two important variables:
-* `c:ConfigAttrs` is a copy of configuration that we defined earlier. It has
-  `name` and `src` attributes that could be accessed with Python dot-operator.
-  Note, that there is a `build_config` function which returns current
-  stage's config as-is, i.e. as a Python dictionary.
-* `o:Path` is the name of **output folder** where we should save the results of
-  our build process.
 
 Another interesting thing is the call to `build_path` function. It is the point
 where we **Dereference refpaths** by converting them into system paths.
@@ -237,7 +214,7 @@ configure-make-install on it.
 
 Finally, we introduce our new stage to Pylightnix:
 
-```python, complete=True, wrap=False
+```{.python .cb.nb}
 from pylightnix import mkdrv, build_wrapper, match_only
 
 hello:DRef = \
@@ -251,15 +228,14 @@ stands for 'make derivation') plays the role of `fetchurl` from the previous
 stage. As before, we first get a `DRef`, which means that basic checks were
 passed, and then call `realize`:
 
-```python, complete=True, wrap=False
+```{.python .cb.nb}
 rref:RRef=realize_inplace(hello)
 print(rref)
 ```
 
 Now we could convert RRef to the system path and run the GNU Hello binary.
 
-```python, complete=True, wrap=False
-
+```{.python .cb.nb}
 hello_bin=join(rref2path(rref),'usr/bin/hello')
 print(Popen([hello_bin], stdout=PIPE, shell=True).stdout.read()) # type:ignore
 ```

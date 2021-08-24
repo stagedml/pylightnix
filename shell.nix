@@ -3,16 +3,19 @@
 } :
 let
 
+
   mypython = pkgs.python37.withPackages (
     pp: let
       pyls = pp.python-language-server.override { providers=["pycodestyle"]; };
       pyls-mypy = pp.pyls-mypy.override { python-language-server=pyls; };
     in with pp; [
+    setuptools
+    setuptools_scm
     ipython
     hypothesis
     pytest
     pytest-mypy
-    Pweave
+    # Pweave
     coverage
     pyls
     pyls-mypy
@@ -21,6 +24,30 @@ let
     scipy
     pyqt5
   ]);
+
+  bespon = pkgs.python37Packages.buildPythonPackage rec {
+    pname = "bespon_py";
+    version = "0.6.0";
+    src = pkgs.fetchFromGitHub {
+      owner = "gpoore";
+      repo = pname;
+      rev = "183d0a49146025969266fc1b4157392d5ffda609";
+      sha256 = "sha256:0x1ifklhh88fa6i693zgpb63646jxsyhj4j64lrvarckrb31wk23";
+    };
+  };
+
+  codebraid = pkgs.python37Packages.buildPythonPackage rec {
+    pname = "codebraid";
+    version = "0.5.0";
+
+    propagatedBuildInputs =  with pkgs.python37Packages ; [bespon];
+    src = pkgs.fetchFromGitHub {
+      owner = "gpoore";
+      repo = pname;
+      rev = "21ef9399918e750852e5aa70c443e44052250d78";
+      sha256 = "sha256:05754y0rbj6qcm2r772r3asln8rp2n958mi04s29my18mrjqwdhn";
+    };
+  };
 
   codecov = pkgs.python37Packages.buildPythonPackage rec {
     pname = "codecov";
@@ -286,6 +313,8 @@ let
       mypython
       pydoc-markdown
       codecov
+      pandoc
+      codebraid
 
       (let
          mytexlive = texlive.override { python=mypython; };

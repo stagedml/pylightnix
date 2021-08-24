@@ -5,16 +5,11 @@ SRC = $(shell find src -name '*\.py' | grep -v version.py)
 TEX = $(shell find docs -name '*\.tex')
 TESTS = $(shell find tests -name '*\.py')
 
-.stamp_check: $(SRC) $(TESTS) docs/demos/MNIST.pmd
+.stamp_check: $(SRC) $(TESTS)
 	@if ! which pydoc-markdown >/dev/null 2>&1 ; then \
 		echo "pydoc-markdown not found. Please install it with"; \
 		echo "> sudo -H pip3 install git+https://github.com/stagedml/pydoc-markdown.git@develop" ;\
 		exit 1 ;\
-	fi
-	@if ! which pweave >/dev/null 2>&1 ; then \
-		echo "pweave not found. Please install it with" ; \
-		echo "> sudo -H pip3 install pweave" ; \
-		exit 1 ; \
 	fi
 	@if ! which coverage >/dev/null ; then \
 		echo "coverage not found. Install it with 'sudo -H pip3 install coverage'" ;\
@@ -102,12 +97,11 @@ docs/demos/MNIST.py: docs/demos/MNIST.pmd $(SRC) .stamp_check
 .PHONY: demo_mnist
 demo_mnist: docs/demos/MNIST.md docs/demos/MNIST.py
 
-docs/demos/HELLO.md: docs/demos/HELLO.pmd $(SRC) .stamp_check
-	pweave -f markdown $<
-	! grep -i traceback $@
+docs/demos/HELLO.md: docs/demos/HELLO.md.in $(SRC) .stamp_check
+	./docs/demos/compile.sh $< $@
 
-docs/demos/HELLO.py: docs/demos/HELLO.pmd $(SRC) .stamp_check
-	ptangle $<
+# docs/demos/HELLO.py: docs/demos/HELLO.pmd $(SRC) .stamp_check
+# 	ptangle $<
 
 .PHONY: demo_hello
 demo_hello: docs/demos/HELLO.md docs/demos/HELLO.py
