@@ -21,7 +21,7 @@ from pylightnix.imports import (sha256 as sha256sum, sha1 as sha1sum, urlparse,
 from pylightnix.types import ( DRef, Manager, Build, Context, Name,
     Path, Optional, List, Config )
 from pylightnix.core import ( mkconfig, mkdrv, match_only,
-                             PYLIGHTNIX_NAMEPAT, config_cattrs, selfref,
+                             PYLIGHTNIX_NAMEPAT, cfgcattrs, selfref,
                              fstmpdir )
 from pylightnix.build import ( build_outpath,
     build_paths, build_deref_, build_config, build_wrapper, build_wrapper )
@@ -117,7 +117,7 @@ def fetchurl2(m:Manager,
     return args
 
   def _make(b:Build)->None:
-    c=config_cattrs(build_config(b))
+    c=cfgcattrs(build_config(b))
     o=build_outpath(b)
 
     download_dir=o if force_download else tmpfetchdir

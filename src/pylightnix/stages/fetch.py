@@ -18,7 +18,7 @@ from pylightnix.imports import (sha256 as sha256sum, sha1 as sha1sum, urlparse,
     Popen, remove, basename, join, rename, isfile, copyfile, environ, getLogger )
 from pylightnix.types import ( DRef, Manager, Build, Context, Name,
     Path, Optional, List, Config )
-from pylightnix.core import ( mkconfig, mkdrv, match_only, config_cattrs,
+from pylightnix.core import ( mkconfig, mkdrv, match_only, cfgcattrs,
                              selfref, fstmpdir )
 from pylightnix.build import ( build_outpath, build_paths, build_deref_,
                               build_wrapper, build_wrapper,
@@ -129,7 +129,7 @@ def fetchurl(m:Manager,
     return mkconfig(kwargs)
 
   def _realize(b:Build)->None:
-    c=config_cattrs(build_config(b))
+    c=cfgcattrs(build_config(b))
     o=build_outpath(b)
 
     download_dir=o if force_download else tmpfetchdir
@@ -220,7 +220,7 @@ def fetchlocal(m:Manager, sha256:str,
     return mkconfig(kwargs)
 
   def _realize(b:Build)->None:
-    c=config_cattrs(build_config(b))
+    c=cfgcattrs(build_config(b))
     o=build_outpath(b)
 
     try:

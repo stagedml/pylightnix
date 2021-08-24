@@ -17,7 +17,7 @@
 from pylightnix.imports import (join, deepcopy, dirname, makedirs, isfile,
                                 isdir, defaultdict)
 from pylightnix.core import (mkdrv, mkconfig, assert_valid_name,
-                             datahash, config_dict,
+                             datahash, cfgdict,
                              assert_valid_refpath, rref2path,
                              drefcfg_, match_only)
 from pylightnix.build import (build_outpath,
@@ -30,10 +30,10 @@ from pylightnix.utils import (forcelink, isrefpath, traverse_dict)
 
 
 def mknode(m:Manager,
-           config_dict:dict,
+           cfgdict:dict,
            artifacts:Dict[Name,bytes]={},
            name:str='mknode')->DRef:
-  config=deepcopy(config_dict)
+  config=deepcopy(cfgdict)
   config['name']=name
   assert '__artifacts__' not in config, \
       "config shouldn't contain reserved field '__artifacts__'"
@@ -86,7 +86,7 @@ def redefine(stage:Any,
   """
   def _new_stage(m:Manager,*args,**kwargs)->DRef:
     dref=stage(m,*args,**kwargs) # type:ignore
-    d=config_dict(drefcfg_(dref,S=m.S))
+    d=cfgdict(drefcfg_(dref,S=m.S))
     new_config(d)
     new_matcher_=new_matcher if new_matcher is not None\
                              else m.builders[dref].matcher
