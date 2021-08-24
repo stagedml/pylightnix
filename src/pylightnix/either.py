@@ -6,8 +6,8 @@ from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional, Config,
                               Matcher, MatcherO, Manager, Output, Closure,
                               NamedTuple, StorageSettings)
 
-from pylightnix.core import (assert_valid_config, drefcfg_, config_cattrs,
-                             config_hash, config_name, context_deref,
+from pylightnix.core import (assert_valid_config, drefcfg_, cfgcattrs,
+                             cfghash, cfgname, context_deref,
                              assert_valid_refpath, rref2path, drefdeps1, mkdrv,
                              realizeMany, output_validate, fstmpdir)
 

@@ -23,9 +23,9 @@ from pylightnix.types import (RRef, List, Dict, Path, Iterable, Optional,
 
 from pylightnix.core import (drefdeps, rrefdeps, rref2path, dref2path,
                              fsstorage, fstmpdir, storagename, alldrefs,
-                             rootdrefs, rootrrefs, rref2dref, config_deps,
+                             rootdrefs, rootrrefs, rref2dref, cfgdeps,
                              drefcfg_, mkdrv, realize, realizeMany, instantiate,
-                             rrefdata, config_name, match_exact, drefrrefsC,
+                             rrefdata, cfgname, match_exact, drefrrefsC,
                              resolve, rrefctx)
 
 from pylightnix.build import (build_markstart, build_wrapper)
@@ -115,7 +115,7 @@ def copyclosure(rrefs_S:Iterable[RRef],
       cfg=drefcfg_(dref,S=S)
       # print(f"Instantiating {cfg}")
       if dref not in visited_drefs:
-        for dep_dref in config_deps(resolve(cfg,dref)):
+        for dep_dref in cfgdeps(resolve(cfg,dref)):
           if dep_dref!=dref:
             _stage(m, dep_dref)
 

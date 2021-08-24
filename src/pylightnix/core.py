@@ -212,24 +212,24 @@ def mkconfig(d:dict)->Config:
     {k:v for k,v in d.items()
      if not (k=='m' and 'Manager' in str(type(v)))},'dict'))
 
-def config_dict(cp:Config)->dict:
+def cfgdict(cp:Config)->dict:
   return deepcopy(cp.val)
 
-def config_cattrs(c:RConfig)->Any:
-  return ConfigAttrs(config_dict(c))
+def cfgcattrs(c:RConfig)->Any:
+  return ConfigAttrs(cfgdict(c))
 
-def config_serialize(c:Config)->str:
-  return json_dumps(config_dict(c), indent=4)
+def cfgserialize(c:Config)->str:
+  return json_dumps(cfgdict(c), indent=4)
 
-def config_hash(c:Config)->Hash:
-  return datahash([(config_name(c),encode(config_serialize(c)))])
+def cfghash(c:Config)->Hash:
+  return datahash([(cfgname(c),encode(cfgserialize(c)))])
 
-def config_name(c:Config)->Name:
+def cfgname(c:Config)->Name:
   """ Return a `name` field of a config `c`, defaulting to string "unnmaed". """
-  return mkname(config_dict(c).get('name','unnamed'))
+  return mkname(cfgdict(c).get('name','unnamed'))
 
-def config_deps(c:Config)->Set[DRef]:
-  drefs,_=scanref_dict(config_dict(c))
+def cfgdeps(c:Config)->Set[DRef]:
+  drefs,_=scanref_dict(cfgdict(c))
   return set(drefs)
 
 def mkrefpath(r:DRef, items:List[str]=[])->RefPath:
@@ -249,7 +249,7 @@ def mkrefpath(r:DRef, items:List[str]=[])->RefPath:
 def resolve(c:Config, r:DRef)->RConfig:
   """ Replace all Promise tags with DRef `r`. In particular, all PromisePaths
   are converted into RefPaths. """
-  d=config_dict(c)
+  d=cfgdict(c)
   def _mut(k:Any,val:Any):
     if isselfpath(val):
       return [DRef(r)]+val[1:]
@@ -287,7 +287,7 @@ def drefattrs(r:DRef, S=None)->Any:
   """ Read the [ConfigAttrs](#pylightnix.types.ConfigAttr) of the storage node `r`.
   Note, that it is a kind of 'syntactic sugar' for `drefcfg`. Both
   functions do the same thing. """
-  return config_cattrs(drefcfg(r,S))
+  return cfgcattrs(drefcfg(r,S))
 
 def rrefattrs(r:RRef, S=None)->Any:
   """ Read the [ConfigAttrs](#pylightnix.types.ConfigAttr) of the storage node `r`.
@@ -300,7 +300,7 @@ def drefdeps1(drefs:Iterable[DRef],S=None)->Set[DRef]:
   themselves. """
   acc=set()
   for dref in drefs:
-    acc.update(config_deps(drefcfg_(dref,S)))
+    acc.update(cfgdeps(drefcfg_(dref,S)))
   return acc
 
 def rrefdeps1(rrefs:Iterable[RRef],S=None)->Set[RRef]:
@@ -436,14 +436,14 @@ def mkdrv_(c:Config,S=None)->DRef:
   assert_valid_config(c)
   assert_rref_deps(c)
 
-  refname=config_name(c)
-  dhash=config_hash(c)
+  refname=cfgname(c)
+  dhash=cfghash(c)
 
   dref=mkdref(trimhash(dhash),refname)
 
   o=Path(mkdtemp(prefix=refname, dir=fstmpdir(S)))
   with open(join(o,'config.json'), 'w') as f:
-    f.write(config_serialize(c))
+    f.write(cfgserialize(c))
 
   filero(Path(join(o,'config.json')))
   drefpath=dref2path(dref,S)
@@ -858,7 +858,7 @@ def cfgsp(c:Config)->List[Tuple[str,RefPath]]:
     if isselfpath(val):
       selfpaths.append((str(key),val))
     return val
-  traverse_dict(config_dict(c),_mut)
+  traverse_dict(cfgdict(c),_mut)
   return selfpaths
 
 
@@ -876,8 +876,8 @@ def assert_valid_refpath(refpath:RefPath)->None:
 
 def assert_valid_config(c:Config)->Config:
   assert c is not None, "Expected `Config` object, but None was passed"
-  assert_valid_name(config_name(c))
-  assert_valid_dict(config_dict(c), 'Config')
+  assert_valid_name(cfgname(c))
+  assert_valid_dict(cfgdict(c), 'Config')
   return c
 
 def assert_valid_name(s:Name)->None:
@@ -920,10 +920,10 @@ def assert_valid_closure(closure:Closure)->None:
     "Closure should contain target derivation"
 
 def assert_rref_deps(c:Config)->None:
-  _,rrefs=scanref_dict(config_dict(c))
+  _,rrefs=scanref_dict(cfgdict(c))
   assert len(rrefs)==0, (
     f"Realization references were found in configuration:\n"
-    f"{config_dict(c)}:\n"
+    f"{cfgdict(c)}:\n"
     f"Normally derivations should not contain references to "
     f"realizations, because Pylightnix doesn't keep "
     f"records of how did we build it.\n")

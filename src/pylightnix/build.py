@@ -40,10 +40,10 @@ from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional, Iterable,
                               RealizeArg, InstantiateArg, SupportsAbs, Output,
                               PylightnixException, StorageSettings)
 
-from pylightnix.core import (assert_valid_config, config_cattrs,
-                             config_hash, config_name, context_deref,
+from pylightnix.core import (assert_valid_config, cfgcattrs,
+                             cfghash, cfgname, context_deref,
                              assert_valid_refpath, rref2path, drefdeps1,
-                             config_dict, drefcfg, output_realizer, fstmpdir)
+                             cfgdict, drefcfg, output_realizer, fstmpdir)
 
 from pylightnix.repl import (ReplHelper, repl_continue, ERR_INVALID_RH,
                              ERR_INACTIVE_RH, repl_cancel)
@@ -140,7 +140,7 @@ def build_cattrs(b:Build)->Any:
   """ Cache and return `ConfigAttrs`. Cache allows realizers to update it's
   value during the build process, e.g. to use it as a storage. """
   if b.cattrs_cache is None:
-    b.cattrs_cache=config_cattrs(build_config(b))
+    b.cattrs_cache=cfgcattrs(build_config(b))
   return b.cattrs_cache
 
 def build_markstart(b:Build, nouts:int)->List[Path]:
@@ -149,7 +149,7 @@ def build_markstart(b:Build, nouts:int)->List[Path]:
     f"Attempt to repeatedly set build output paths. "\
     f"Previously set to:\n{b.outpaths}"
   tmp=fstmpdir(b.S)
-  h=config_hash(build_config(b))[:8]
+  h=cfghash(build_config(b))[:8]
   if b.starttime is not None:
     starttime=timestring() if b.starttime=='AUTO' else b.starttime
     paths=[Path(mkdtemp(prefix=f'{starttime}_{h}_', dir=tmp))
@@ -220,7 +220,7 @@ def build_outpath(b:Build)->Path:
 
 def build_name(b:Build)->Name:
   """ Return the name of a derivation being built. """
-  return Name(config_name(build_config(b)))
+  return Name(cfgname(build_config(b)))
 
 def build_deref_(b:Build, dref:DRef)->List[RRef]:
   """ For any [realization](#pylightnix.core.realize) process described with
@@ -266,7 +266,7 @@ def build_environ(b:Build, env:Optional[Any]=None)->dict:
   if env is None:
     env=environ
   acc=dict(deepcopy(env))
-  be=config_dict(build_config(b))
+  be=cfgdict(build_config(b))
   for k,v in be.items():
     if isrefpath(v):
       syspaths=build_paths(b,v)

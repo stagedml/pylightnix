@@ -20,7 +20,7 @@ from pylightnix.types import (Any, Dict, List, Build, DRef, RRef, Optional,
                               RefPath, Tuple, Union, Path, Context, NamedTuple,
                               Context, Closure, SPath, StorageSettings)
 from pylightnix.utils import (isrefpath, isdref, isrref, tryreadjson )
-from pylightnix.core import (rref2dref, rref2path, config_dict,
+from pylightnix.core import (rref2dref, rref2path, cfgdict,
                              dref2path, rrefctx, context_deref,
                              context_add, drefcfg)
 from pylightnix.build import (build_outpaths, build_config, build_context)
@@ -37,16 +37,16 @@ def val2dict(v:Any, ctx:LensContext)->Optional[dict]:
   the dictionary allows for creating new lenses """
   S=ctx.S
   if isdref(v):
-    return config_dict(drefcfg(DRef(v), S))
+    return cfgdict(drefcfg(DRef(v), S))
   elif isrref(v):
-    return config_dict(drefcfg(rref2dref(RRef(v)),S))
+    return cfgdict(drefcfg(rref2dref(RRef(v)),S))
   elif isrefpath(v):
     j=tryreadjson(val2path(v, ctx))
     assert j is not None, f"RefPath {v} doesn't belong to a valid JSON file"
     assert isinstance(j, dict), f"A file with RefPath {v} doesn't contain valid JSON dict"
     return j
   elif isinstance(v,Build):
-    return config_dict(build_config(v))
+    return cfgdict(build_config(v))
   elif isinstance(v,dict):
     return v
   elif isinstance(v,Closure):

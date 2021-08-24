@@ -19,7 +19,7 @@ from pylightnix.types import (Iterable, List, Union, Optional, DRef, RRef,
 from pylightnix.imports import (isfile, isdir, listdir, join, rmtree, environ,
     Popen, rename, getsize, fnmatch, dirname, relpath)
 from pylightnix.core import (dref2path, rref2path, isrref, isdref,
-    alldrefs, drefrrefs, drefcfg_, config_name,
+    alldrefs, drefrrefs, drefcfg_, cfgname,
     instantiate, drefcfgpath, rref2dref, fsstorage)
 from pylightnix.utils import (dirchmod, dirrm, dirsize, parsetime, timestring,
                               forcelink)
@@ -159,11 +159,11 @@ def find(name:Optional[Union[Stage,str]]=None,
       name_=name
     else:
       stage=name
-      name_=config_name(drefcfg_(instantiate(stage,S=S).dref, S=S))
+      name_=cfgname(drefcfg_(instantiate(stage,S=S).dref, S=S))
   for dref in alldrefs(S=S):
     for rref in drefrrefs(dref,S=S):
       if name_ is not None:
-        if not fnmatch(config_name(drefcfg_(rref2dref(rref),S=S)),name_):
+        if not fnmatch(cfgname(drefcfg_(rref2dref(rref),S=S)),name_):
           continue
       if newer is not None:
         if newer<=0:
@@ -222,7 +222,7 @@ def linkrref(rref:RRef,
   The function overwrites existing symlinks.
   """
   timetag_:str=rrefbstart(rref,S) or ''
-  nametag_:str=config_name(drefcfg_(rref2dref(rref),S))
+  nametag_:str=cfgname(drefcfg_(rref2dref(rref),S))
   destdir_=destdir if destdir is not None else '.'
   symlink=Path(join(destdir_,format %{'T':timetag_,'N':nametag_}))
   forcelink(Path(relpath(rref2path(rref,S), destdir_)), symlink)
@@ -233,7 +233,7 @@ def linkdref(dref:DRef,
              destdir:Optional[Path]=None,
              format:str='_rref_%(N)s',
              S=None)->Path:
-  nametag_:str=config_name(drefcfg_(dref,S))
+  nametag_:str=cfgname(drefcfg_(dref,S))
   destdir_=destdir if destdir is not None else '.'
   symlink=Path(join(destdir_,format %{'N':nametag_}))
   forcelink(Path(relpath(dref2path(dref,S), destdir_)), symlink)
