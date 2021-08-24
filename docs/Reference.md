@@ -1416,9 +1416,9 @@ def output_matcher(m: MatcherO) -> Matcher
 def mkdrv(m: Manager, config: Config, matcher: Matcher, realizer: Realizer) -> DRef
 ```
 
-Construct a [Derivation](#pylightnix.types.Derivation) object out of its
-[Config](#pylightnix.types.Config), the [Matcher](#pylightnix.types.Matcher)
-and the [Realizer](#pylightnix.types.Realizer). Register the derivation in the
+Construct a [Derivation](#pylightnix.types.Derivation) object out of
+[Config](#pylightnix.types.Config), [Matcher](#pylightnix.types.Matcher) and
+[Realizer](#pylightnix.types.Realizer). Register the derivation in the
 dependency-resolution [Manager](#pylightnix.types.Manager). Return [Derivation
 reference](#pylightnix.types.DRef) of the newly-obrained derivation.
 
