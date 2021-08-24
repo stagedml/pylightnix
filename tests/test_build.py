@@ -3,10 +3,10 @@ from pylightnix import (instantiate, DRef, RRef, Path, mklogdir, dirhash,
                         assert_valid_hash, assert_valid_config, Manager,
                         mkcontext, mkdref, mkrref, unrref, undref, realize,
                         rref2dref, drefcfg, mkconfig, Build, Context,
-                        build_outpath, mkdrv, rref2path, config_cattrs,
+                        build_outpath, mkdrv, rref2path, cfgcattrs,
                         build_deref, build_path, mkrefpath, build_wrapper,
                         build_cattrs, build_name, tryread, trywrite, match_only,
-                        realizeMany, build_outpaths, scanref_dict, config_dict,
+                        realizeMany, build_outpaths, scanref_dict, cfgdict,
                         mklens, isrref, Config, partial,
                         path2rref, BuildError)
 

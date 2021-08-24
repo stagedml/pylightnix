@@ -37,7 +37,7 @@ def test_mknode_with_artifacts(d,a)->None:
   with setup_storage2('test_mknode_with_artifacts') as S:
 
     def _setting(m:Manager)->DRef:
-      return mknode(m, config_dict=d, artifacts=a)
+      return mknode(m, cfgdict=d, artifacts=a)
 
     cl = instantiate(_setting,S=S)
     assert len(cl.derivations)==1

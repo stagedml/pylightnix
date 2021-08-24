@@ -3,11 +3,11 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir, dirhash,
                         drefdeps, store_gc, assert_valid_config, Manager,
                         mkcontext, allrrefs, mkdref, mkrref, unrref, undref,
                         realize, rref2dref, drefcfg, mkconfig, Build, Context,
-                        build_outpath, mkdrv, rref2path, config_cattrs,
+                        build_outpath, mkdrv, rref2path, cfgcattrs,
                         drefattrs, build_deref, build_path, mkrefpath,
                         build_config, alldrefs, build_wrapper, build_cattrs,
                         build_name, tryread, trywrite, realizeMany,
-                        scanref_dict, config_dict, mklens, isrref, Config,
+                        scanref_dict, cfgdict, mklens, isrref, Config,
                         RConfig, partial, path2rref, concat, linkrrefs,
                         instantiate_, dref2path, path2dref, linkdref, rrefdeps,
                         drefrrefs, allrrefs, match_only, drefrrefs, drefrrefsC,
@@ -82,7 +82,7 @@ from tests.setup import ( ShouldHaveFailed, setup_storage2,
 #   with setup_storage('test_detect_rref_deps'):
 #     rref=realize(instantiate(mkstage,{'a':1}))
 #     clo=instantiate(mkstage,{'a':1,'maman':rref})
-#     _,rrefs=scanref_dict(config_dict(drefcfg(clo.dref)))
+#     _,rrefs=scanref_dict(cfgdict(drefcfg(clo.dref)))
 #     assert len(rrefs)>0
 
 def test_no_dref_deps_without_realizers()->None:
@@ -259,7 +259,7 @@ def test_recursive_realize_with_another_manager()->None:
 def test_config_ro():
   d={'a':1,'b':33}
   c=mkconfig(d)
-  cro=config_cattrs(RConfig(config_dict(c))) # We sure we don't have promises here
+  cro=cfgcattrs(RConfig(cfgdict(c))) # We sure we don't have promises here
   for k in d.keys():
     assert getattr(cro,k) == d[k]
 
