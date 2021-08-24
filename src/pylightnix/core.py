@@ -30,7 +30,7 @@ from pylightnix.utils import (dirhash, assert_serializable, assert_valid_dict,
                               tryread, encode, dirchmod, dirrm, filero, isrref,
                               isdref, traverse_dict, tryread_def,
                               tryreadjson_def, isrefpath, kahntsort, dagroots,
-                              isselfpath)
+                              isselfpath, selfref)
 
 from pylightnix.types import (StorageSettings, Dict, List, Any, Tuple, Union,
                               Optional, Iterable, IO, Path, SPath, Hash, DRef,
@@ -39,8 +39,7 @@ from pylightnix.types import (StorageSettings, Dict, List, Any, Tuple, Union,
                               Derivation, Stage, Manager, Matcher, MatcherO,
                               Realizer, RealizerO, Set, Closure, Generator,
                               BuildArgs, Config, RealizeArg, InstantiateArg,
-                              PYLIGHTNIX_SELF_TAG, Output, TypeVar,
-                              PromiseException)
+                              Output, TypeVar, PromiseException)
 
 
 #: *Do not change!*
@@ -53,6 +52,7 @@ PYLIGHTNIX_NAMEPAT="[a-zA-Z0-9_-]"
 #: Reserved file names are treated specially be the core. Users should
 #: not normally create or alter files with these names.
 PYLIGHTNIX_RESERVED=['context.json','group.json']
+
 
 logger=getLogger(__name__)
 info=logger.info
@@ -126,8 +126,6 @@ def reserved(folder:Path, name:str)->Path:
   assert name in PYLIGHTNIX_RESERVED, \
     f"File name '{name}' expected to be reserved"
   return Path(join(folder,name))
-
-selfref = PYLIGHTNIX_SELF_TAG
 
 #  ____       __
 # |  _ \ ___ / _|___

@@ -21,7 +21,6 @@ from typing import (List, Any, Tuple, Union, Optional, Iterable, IO, Callable,
                     Dict, NamedTuple, Set, Generator, TypeVar, NewType,
                     SupportsAbs, Generic)
 
-
 class Path(str):
   """ `Path` is an alias for string. It is used in pylightnix to
   tell the typechecker that a given string contains a filesystem path. """
@@ -138,14 +137,14 @@ class PromiseException(PylightnixException):
     self.dref=dref
     self.failed=failed
 
-#: Placeholder for self-reference
-PYLIGHTNIX_SELF_TAG = "__self__"
-
-#: Type variable intended to be either a Path or RRef
+#: Type variable intended to be either a `Path` or `RRef`
 _REF=TypeVar('_REF')
 
 class Output(Generic[_REF]):
-  """ TODO: Rename into something which has a meaning of `PromisedOuput` """
+  """ Output is a base class for 'organized collections of realizations', either
+  in form of temporary Paths or RRefs.
+
+  TODO: Rename into something which has a meaning of `PromisedOuput` """
   def __init__(self,val:Iterable[_REF]):
     self.val:List[_REF]=list(val)
 

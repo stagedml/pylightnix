@@ -17,19 +17,23 @@ from pylightnix.utils import (readstr, writestr, readstr, tryread)
 # `RealizeError`
 from pylightnix.build import BuildError
 
+#: _REF is either `Path` or `RRef`
 _REF=TypeVar('_REF')
+
+#: Alias for exception text
 ExceptionText = str
+
 class Either(Generic[_REF]):
-  """ Either encodes a poor-man's `(EitherT Exception Ouput)` monad.  The
-  structure contains either RIGHT realization results or (LEFT) error report
-  together with half-done results which should nevertheless be kept.
+  """ Either is a poor-man's `(EitherT Exception Ouput)` monad. It contains
+  either (RIGHT) result of a realization or (LEFT) error report together with
+  half-done results to show to the user.
 
   `Either` should be considered as an "upgrade" for regular Output, which allows
   user to record the fact of realization failure into the special kind of
   realization result rather than rasing an exception.
 
   TODO: Stress the attention on the fact that Either now encodes the list of
-  items which may not have the same meaning. Some of items may now be 'failed'
+  items which may not have the same meaning. Some items may now be 'failed'
   and we may need a mapping function to apply matchers to them.
 
   TODO: Think about whether we should mark the fact that a stage uses Either
@@ -44,9 +48,11 @@ class Either(Generic[_REF]):
     self.left=left
 
 def mkright(o:Output[_REF])->Either[_REF]:
+  """ Create a RIGHT Either """
   return Either(o,None)
 
 def mkleft(paths:List[Path], exc:ExceptionText)->Either[Path]:
+  """ Create a LEFT Either """
   for o in paths:
     assert not isfile(join(o,'either_status.txt')), (
       f"Realization '{o}' already contains a reserved file 'exception.txt'.")

@@ -83,10 +83,6 @@ def mkbuildargs(S:Optional[StorageSettings], dref:DRef, context:Context,
   assert_valid_config(drefcfg(dref,S))
   return BuildArgs(S, dref, context, starttime, stoptime, iarg, rarg)
 
-# def mkbuild(S:SPath, dref:DRef, context:Context, buildtime:bool=True)->Build:
-#   timeprefix=timestring() if buildtime else None
-#   return Build(mkbuildargs(S,dref,context,timeprefix,{},{}))
-
 _B=TypeVar('_B', bound=Build)
 def build_wrapper_(f:Callable[[_B],None],
                    ctr:Callable[[BuildArgs],_B],

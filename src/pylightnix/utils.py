@@ -26,21 +26,26 @@ from pylightnix.imports import (datetime, gmtime, timegm, join, makedirs,
 
 from pylightnix.types import (Union, Hash, Path, List, Any, Optional,
                               Iterable, IO, DRef, RRef, Tuple, Callable,
-                              Set, PYLIGHTNIX_SELF_TAG)
+                              Set)
 
 from typing import TypeVar
 from pylightnix.tz import tzlocal
 
+#: Defines the `strftime`-compatible format of time, used in e.g.
+#: `__buildtime__.txt` files. Do not change!
+PYLIGHTNIX_TIME="%y%m%d-%H:%M:%S:%f%z"
+
+#: Placeholder for self-reference
+PYLIGHTNIX_SELF_TAG = "__self__"
+
+#: Self-reference marker. Intended to be used as a first item of `RefPath`s.
+selfref = PYLIGHTNIX_SELF_TAG
 
 logger=getLogger(__name__)
 warning=logger.warning
 info=logger.info
 debug=logger.debug
 
-
-#: Defines the `strftime`-compatible format of time, used in e.g.
-#: `__buildtime__.txt` files. Do not change!
-PYLIGHTNIX_TIME="%y%m%d-%H:%M:%S:%f%z"
 
 def timestring(sec:Optional[float]=None)->str:
   """ Return a time string, representing the local time, with a timezone
