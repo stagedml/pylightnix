@@ -42,13 +42,21 @@ from pylightnix.types import (StorageSettings, Dict, List, Any, Tuple, Union,
                               PYLIGHTNIX_SELF_TAG, Output, TypeVar,
                               PromiseException)
 
-logger=getLogger(__name__)
-info=logger.info
-warning=logger.warning
 
 #: *Do not change!*
 #: Tracks the version of pylightnix storage
 PYLIGHTNIX_STORE_VERSION=0
+
+#: Set the regular expression pattern for valid name characters.
+PYLIGHTNIX_NAMEPAT="[a-zA-Z0-9_-]"
+
+#: Reserved file names are treated specially be the core. Users should
+#: not normally create or alter files with these names.
+PYLIGHTNIX_RESERVED=['context.json','group.json']
+
+logger=getLogger(__name__)
+info=logger.info
+warning=logger.warning
 
 def storagename():
   """ Return the name of Pylightnix storage filder. """
@@ -113,13 +121,6 @@ def fsinit(S:Optional[StorageSettings]=None,
     makedirs(fsstorage(S), exist_ok=False if check_not_exist else True)
     makedirs(fstmpdir(S), exist_ok=False if check_not_exist else True)
   assert_valid_storage(S)
-
-#: Set the regular expression pattern for valid name characters.
-PYLIGHTNIX_NAMEPAT="[a-zA-Z0-9_-]"
-
-#: Reserved file names are treated specially be the core. Users should
-#: not normally create or alter files with these names.
-PYLIGHTNIX_RESERVED=['context.json','group.json']
 
 def reserved(folder:Path, name:str)->Path:
   assert name in PYLIGHTNIX_RESERVED, \

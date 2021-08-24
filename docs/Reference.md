@@ -33,10 +33,12 @@
     * [DRefLike](#pylightnix.types.DRefLike)
     * [Stage](#pylightnix.types.Stage)
   * [pylightnix.core](#pylightnix.core)
+    * [PYLIGHTNIX\_STORE\_VERSION](#pylightnix.core.PYLIGHTNIX_STORE_VERSION)
+    * [PYLIGHTNIX\_NAMEPAT](#pylightnix.core.PYLIGHTNIX_NAMEPAT)
+    * [PYLIGHTNIX\_RESERVED](#pylightnix.core.PYLIGHTNIX_RESERVED)
     * [logger](#pylightnix.core.logger)
     * [info](#pylightnix.core.info)
     * [warning](#pylightnix.core.warning)
-    * [PYLIGHTNIX\_STORE\_VERSION](#pylightnix.core.PYLIGHTNIX_STORE_VERSION)
     * [storagename](#pylightnix.core.storagename)
     * [fsroot](#pylightnix.core.fsroot)
     * [fstmpdir](#pylightnix.core.fstmpdir)
@@ -45,8 +47,6 @@
     * [assert\_valid\_storage](#pylightnix.core.assert_valid_storage)
     * [mksettings](#pylightnix.core.mksettings)
     * [fsinit](#pylightnix.core.fsinit)
-    * [PYLIGHTNIX\_NAMEPAT](#pylightnix.core.PYLIGHTNIX_NAMEPAT)
-    * [PYLIGHTNIX\_RESERVED](#pylightnix.core.PYLIGHTNIX_RESERVED)
     * [reserved](#pylightnix.core.reserved)
     * [selfref](#pylightnix.core.selfref)
     * [trimhash](#pylightnix.core.trimhash)
@@ -819,6 +819,35 @@ which could be either used in other stages, or
 
 Core Pylightnix definitions
 
+<a name="pylightnix.core.PYLIGHTNIX_STORE_VERSION"></a>
+## `PYLIGHTNIX_STORE_VERSION`
+
+```python
+PYLIGHTNIX_STORE_VERSION = 0
+```
+
+*Do not change!*
+Tracks the version of pylightnix storage
+
+<a name="pylightnix.core.PYLIGHTNIX_NAMEPAT"></a>
+## `PYLIGHTNIX_NAMEPAT`
+
+```python
+PYLIGHTNIX_NAMEPAT = "[a-zA-Z0-9_-]"
+```
+
+Set the regular expression pattern for valid name characters.
+
+<a name="pylightnix.core.PYLIGHTNIX_RESERVED"></a>
+## `PYLIGHTNIX_RESERVED`
+
+```python
+PYLIGHTNIX_RESERVED = ['context.json','group.json']
+```
+
+Reserved file names are treated specially be the core. Users should
+not normally create or alter files with these names.
+
 <a name="pylightnix.core.logger"></a>
 ## `logger`
 
@@ -842,16 +871,6 @@ info = logger.info
 warning = logger.warning
 ```
 
-
-<a name="pylightnix.core.PYLIGHTNIX_STORE_VERSION"></a>
-## `PYLIGHTNIX_STORE_VERSION`
-
-```python
-PYLIGHTNIX_STORE_VERSION = 0
-```
-
-*Do not change!*
-Tracks the version of pylightnix storage
 
 <a name="pylightnix.core.storagename"></a>
 ## `storagename()`
@@ -929,25 +948,6 @@ def fsinit(S: Optional[StorageSettings] = None, check_not_exist: bool = False, r
 Create the storage and/or temp direcory if they don't exist. Default
 locations are determined by `PYLIGHTNIX_STORAGE` and `PYLIGHTNIX_TMP` env
 variables.
-
-<a name="pylightnix.core.PYLIGHTNIX_NAMEPAT"></a>
-## `PYLIGHTNIX_NAMEPAT`
-
-```python
-PYLIGHTNIX_NAMEPAT = "[a-zA-Z0-9_-]"
-```
-
-Set the regular expression pattern for valid name characters.
-
-<a name="pylightnix.core.PYLIGHTNIX_RESERVED"></a>
-## `PYLIGHTNIX_RESERVED`
-
-```python
-PYLIGHTNIX_RESERVED = ['context.json','group.json']
-```
-
-Reserved file names are treated specially be the core. Users should
-not normally create or alter files with these names.
 
 <a name="pylightnix.core.reserved"></a>
 ## `reserved()`
