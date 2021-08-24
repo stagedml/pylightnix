@@ -12,7 +12,6 @@
     * [RefPath](#pylightnix.types.RefPath)
     * [PylightnixException](#pylightnix.types.PylightnixException)
     * [PromiseException](#pylightnix.types.PromiseException)
-    * [PYLIGHTNIX\_SELF\_TAG](#pylightnix.types.PYLIGHTNIX_SELF_TAG)
     * [\_REF](#pylightnix.types._REF)
     * [Output](#pylightnix.types.Output)
     * [Context](#pylightnix.types.Context)
@@ -48,7 +47,6 @@
     * [mksettings](#pylightnix.core.mksettings)
     * [fsinit](#pylightnix.core.fsinit)
     * [reserved](#pylightnix.core.reserved)
-    * [selfref](#pylightnix.core.selfref)
     * [trimhash](#pylightnix.core.trimhash)
     * [mkdref](#pylightnix.core.mkdref)
     * [rref2dref](#pylightnix.core.rref2dref)
@@ -59,12 +57,12 @@
     * [path2dref](#pylightnix.core.path2dref)
     * [path2rref](#pylightnix.core.path2rref)
     * [mkconfig](#pylightnix.core.mkconfig)
-    * [config\_dict](#pylightnix.core.config_dict)
-    * [config\_cattrs](#pylightnix.core.config_cattrs)
-    * [config\_serialize](#pylightnix.core.config_serialize)
-    * [config\_hash](#pylightnix.core.config_hash)
-    * [config\_name](#pylightnix.core.config_name)
-    * [config\_deps](#pylightnix.core.config_deps)
+    * [cfgdict](#pylightnix.core.cfgdict)
+    * [cfgcattrs](#pylightnix.core.cfgcattrs)
+    * [cfgserialize](#pylightnix.core.cfgserialize)
+    * [cfghash](#pylightnix.core.cfghash)
+    * [cfgname](#pylightnix.core.cfgname)
+    * [cfgdeps](#pylightnix.core.cfgdeps)
     * [mkrefpath](#pylightnix.core.mkrefpath)
     * [resolve](#pylightnix.core.resolve)
     * [dref2path](#pylightnix.core.dref2path)
@@ -173,6 +171,10 @@
     * [repl\_rref](#pylightnix.repl.repl_rref)
     * [repl\_cancel](#pylightnix.repl.repl_cancel)
   * [pylightnix.stages](#pylightnix.stages)
+  * [pylightnix.stages.trivial](#pylightnix.stages.trivial)
+    * [mknode](#pylightnix.stages.trivial.mknode)
+    * [redefine](#pylightnix.stages.trivial.redefine)
+    * [realized](#pylightnix.stages.trivial.realized)
   * [pylightnix.stages.fetch2](#pylightnix.stages.fetch2)
     * [logger](#pylightnix.stages.fetch2.logger)
     * [info](#pylightnix.stages.fetch2.info)
@@ -188,10 +190,6 @@
     * [\_unpack\_inplace](#pylightnix.stages.fetch._unpack_inplace)
     * [fetchurl](#pylightnix.stages.fetch.fetchurl)
     * [fetchlocal](#pylightnix.stages.fetch.fetchlocal)
-  * [pylightnix.stages.trivial](#pylightnix.stages.trivial)
-    * [mknode](#pylightnix.stages.trivial.mknode)
-    * [redefine](#pylightnix.stages.trivial.redefine)
-    * [realized](#pylightnix.stages.trivial.realized)
   * [pylightnix.bashlike](#pylightnix.bashlike)
     * [lsdref\_](#pylightnix.bashlike.lsdref_)
     * [lsrref\_](#pylightnix.bashlike.lsrref_)
@@ -390,14 +388,6 @@ def __init__(self, dref: DRef, failed: List[Tuple[Path,RefPath]])
 ```
 
 
-<a name="pylightnix.types.PYLIGHTNIX_SELF_TAG"></a>
-## `PYLIGHTNIX_SELF_TAG`
-
-```python
-PYLIGHTNIX_SELF_TAG = "__self__"
-```
-
-
 <a name="pylightnix.types._REF"></a>
 ## `_REF`
 
@@ -405,7 +395,6 @@ PYLIGHTNIX_SELF_TAG = "__self__"
 _REF = TypeVar('_REF')
 ```
 
-Type variable intended to be either a Path or RRef
 
 <a name="pylightnix.types.Output"></a>
 ## `Output` Objects
@@ -413,6 +402,9 @@ Type variable intended to be either a Path or RRef
 ```python
 def __init__(self, val: Iterable[_REF])
 ```
+
+Output is a base class for 'organized collections of realizations', either
+in form of temporary Paths or RRefs.
 
 TODO: Rename into something which has a meaning of `PromisedOuput`
 
@@ -957,14 +949,6 @@ def reserved(folder: Path, name: str) -> Path
 ```
 
 
-<a name="pylightnix.core.selfref"></a>
-## `selfref`
-
-```python
-selfref = PYLIGHTNIX_SELF_TAG
-```
-
-
 <a name="pylightnix.core.trimhash"></a>
 ## `trimhash()`
 
@@ -1062,52 +1046,52 @@ dictionary. Asserts if the dictionary is not JSON-compatible. As a handy hack,
 filter out `m:Manager` variable which likely is an utility
 [Manager](#pylightnix.types.Manager) object.
 
-<a name="pylightnix.core.config_dict"></a>
-## `config_dict()`
+<a name="pylightnix.core.cfgdict"></a>
+## `cfgdict()`
 
 ```python
-def config_dict(cp: Config) -> dict
+def cfgdict(cp: Config) -> dict
 ```
 
 
-<a name="pylightnix.core.config_cattrs"></a>
-## `config_cattrs()`
+<a name="pylightnix.core.cfgcattrs"></a>
+## `cfgcattrs()`
 
 ```python
-def config_cattrs(c: RConfig) -> Any
+def cfgcattrs(c: RConfig) -> Any
 ```
 
 
-<a name="pylightnix.core.config_serialize"></a>
-## `config_serialize()`
+<a name="pylightnix.core.cfgserialize"></a>
+## `cfgserialize()`
 
 ```python
-def config_serialize(c: Config) -> str
+def cfgserialize(c: Config) -> str
 ```
 
 
-<a name="pylightnix.core.config_hash"></a>
-## `config_hash()`
+<a name="pylightnix.core.cfghash"></a>
+## `cfghash()`
 
 ```python
-def config_hash(c: Config) -> Hash
+def cfghash(c: Config) -> Hash
 ```
 
 
-<a name="pylightnix.core.config_name"></a>
-## `config_name()`
+<a name="pylightnix.core.cfgname"></a>
+## `cfgname()`
 
 ```python
-def config_name(c: Config) -> Name
+def cfgname(c: Config) -> Name
 ```
 
 Return a `name` field of a config `c`, defaulting to string "unnmaed".
 
-<a name="pylightnix.core.config_deps"></a>
-## `config_deps()`
+<a name="pylightnix.core.cfgdeps"></a>
+## `cfgdeps()`
 
 ```python
-def config_deps(c: Config) -> Set[DRef]
+def cfgdeps(c: Config) -> Set[DRef]
 ```
 
 
@@ -2207,6 +2191,69 @@ def repl_cancel(rh: Optional[ReplHelper] = None) -> None
 # `pylightnix.stages`
 
 
+<a name="pylightnix.stages.trivial"></a>
+# `pylightnix.stages.trivial`
+
+Trivial builtin stages
+
+<a name="pylightnix.stages.trivial.mknode"></a>
+## `mknode()`
+
+```python
+def mknode(m: Manager, cfgdict: dict, artifacts: Dict[Name,bytes] = {}, name: str = 'mknode') -> DRef
+```
+
+
+<a name="pylightnix.stages.trivial.redefine"></a>
+## `redefine()`
+
+```python
+def redefine(stage: Any, new_config: Callable[[dict],None] = lambda x:None, new_matcher: Optional[Matcher] = None, new_realizer: Optional[Realizer] = None) -> Any
+```
+
+Define a new Derivation based on the existing one, by updating it's
+config, optionally re-writing it's matcher, or it's realizer.
+
+Arguments:
+- `stage:Any` a `Stage` function, accepting arbitrary keyword arguments
+- `new_config:Callable[[dict],None]` A function to update the `dref`'s config.
+  Default varsion makes no changes.
+- `new_matcher:Optional[Matcher]=None` Optional new matcher (defaults to the
+  existing matcher)
+- `new_realizer:Optional[Realizer]=None` Optional new realizer (defaults to
+  the existing realizer)
+
+Return:
+A callable `Stage`, accepting pass-through arguments
+
+Example:
+```python
+def _new_config(old_config):
+  old_config['learning_rate'] = 1e-5
+  return mkconfig(old_config)
+realize(instantiate(redefine(myMLmodel, _new_config)))
+```
+
+FIXME: Updating configs is dangerous: it changes its dref and thus breaks
+dependencies. Only top-level stages should use `new_confid` currently.
+
+<a name="pylightnix.stages.trivial.realized"></a>
+## `realized()`
+
+```python
+def realized(stage: Any) -> Stage
+```
+
+Asserts that the stage doesn't requre running its realizer.
+[Re-defines](#pylightnix.stages.trivial.redefine) stage realizer with a dummy
+realizer triggering an assertion.
+
+Example:
+```python
+rref:RRef=realize(instantiate(realized(my_long_running_stage, arg="bla")))
+# ^^^ Fail if `my_long_running_stage` is not yet realized.
+```
+
 <a name="pylightnix.stages.fetch2"></a>
 # `pylightnix.stages.fetch2`
 
@@ -2407,69 +2454,6 @@ See `fetchurl` for arguments description.
 If 'unpack' is not expected, then the promise named 'out_path' is created.
 
 FIXME: Switch regular `fetchurl` to `curl` and call it with `file://` URLs.
-
-<a name="pylightnix.stages.trivial"></a>
-# `pylightnix.stages.trivial`
-
-Trivial builtin stages
-
-<a name="pylightnix.stages.trivial.mknode"></a>
-## `mknode()`
-
-```python
-def mknode(m: Manager, config_dict: dict, artifacts: Dict[Name,bytes] = {}, name: str = 'mknode') -> DRef
-```
-
-
-<a name="pylightnix.stages.trivial.redefine"></a>
-## `redefine()`
-
-```python
-def redefine(stage: Any, new_config: Callable[[dict],None] = lambda x:None, new_matcher: Optional[Matcher] = None, new_realizer: Optional[Realizer] = None) -> Any
-```
-
-Define a new Derivation based on the existing one, by updating it's
-config, optionally re-writing it's matcher, or it's realizer.
-
-Arguments:
-- `stage:Any` a `Stage` function, accepting arbitrary keyword arguments
-- `new_config:Callable[[dict],None]` A function to update the `dref`'s config.
-  Default varsion makes no changes.
-- `new_matcher:Optional[Matcher]=None` Optional new matcher (defaults to the
-  existing matcher)
-- `new_realizer:Optional[Realizer]=None` Optional new realizer (defaults to
-  the existing realizer)
-
-Return:
-A callable `Stage`, accepting pass-through arguments
-
-Example:
-```python
-def _new_config(old_config):
-  old_config['learning_rate'] = 1e-5
-  return mkconfig(old_config)
-realize(instantiate(redefine(myMLmodel, _new_config)))
-```
-
-FIXME: Updating configs is dangerous: it changes its dref and thus breaks
-dependencies. Only top-level stages should use `new_confid` currently.
-
-<a name="pylightnix.stages.trivial.realized"></a>
-## `realized()`
-
-```python
-def realized(stage: Any) -> Stage
-```
-
-Asserts that the stage doesn't requre running its realizer.
-[Re-defines](#pylightnix.stages.trivial.redefine) stage realizer with a dummy
-realizer triggering an assertion.
-
-Example:
-```python
-rref:RRef=realize(instantiate(realized(my_long_running_stage, arg="bla")))
-# ^^^ Fail if `my_long_running_stage` is not yet realized.
-```
 
 <a name="pylightnix.bashlike"></a>
 # `pylightnix.bashlike`
@@ -2913,6 +2897,7 @@ mklens(rref).output.syspath  # Return output as a system path
 _REF = TypeVar('_REF')
 ```
 
+_REF is either `Path` or `RRef`
 
 <a name="pylightnix.either.ExceptionText"></a>
 ## `ExceptionText`
@@ -2921,6 +2906,7 @@ _REF = TypeVar('_REF')
 ExceptionText = str
 ```
 
+Alias for exception text
 
 <a name="pylightnix.either.Either"></a>
 ## `Either` Objects
@@ -2929,16 +2915,16 @@ ExceptionText = str
 def __init__(self, right: Optional[Output[_REF]] = None, left: Optional[Tuple[List[_REF],ExceptionText]] = None)
 ```
 
-Either encodes a poor-man's `(EitherT Exception Ouput)` monad.  The
-structure contains either RIGHT realization results or (LEFT) error report
-together with half-done results which should nevertheless be kept.
+Either is a poor-man's `(EitherT Exception Ouput)` monad. It contains
+either (RIGHT) result of a realization or (LEFT) error report together with
+half-done results to show to the user.
 
 `Either` should be considered as an "upgrade" for regular Output, which allows
 user to record the fact of realization failure into the special kind of
 realization result rather than rasing an exception.
 
 TODO: Stress the attention on the fact that Either now encodes the list of
-items which may not have the same meaning. Some of items may now be 'failed'
+items which may not have the same meaning. Some items may now be 'failed'
 and we may need a mapping function to apply matchers to them.
 
 TODO: Think about whether we should mark the fact that a stage uses Either
@@ -2961,6 +2947,7 @@ def __init__(self, right: Optional[Output[_REF]] = None, left: Optional[Tuple[Li
 def mkright(o: Output[_REF]) -> Either[_REF]
 ```
 
+Create a RIGHT Either
 
 <a name="pylightnix.either.mkleft"></a>
 ## `mkleft()`
@@ -2969,6 +2956,7 @@ def mkright(o: Output[_REF]) -> Either[_REF]
 def mkleft(paths: List[Path], exc: ExceptionText) -> Either[Path]
 ```
 
+Create a LEFT Either
 
 <a name="pylightnix.either.either_paths"></a>
 ## `either_paths()`
