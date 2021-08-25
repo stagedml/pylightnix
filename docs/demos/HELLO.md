@@ -2,7 +2,8 @@
     -   [Task](#task)
     -   [Implementation](#implementation)
         -   [Fetchurl and Unpack stages](#fetchurl-and-unpack-stages)
-        -   [Compile stage](#compile-stage)
+        -   [A custom compile stage](#a-custom-compile-stage)
+        -   [Accessing the results](#accessing-the-results)
 
 GNU Hello demo
 ==============
@@ -450,8 +451,8 @@ rref:b557aecd2a8cc4615100d8b4a5129874-60333c6d4a9ccf5392405086013c0a3b-unpack-he
                                  Dload  Upload   Total   Spent    Left  Speed
 
   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
- 30  708k   30  213k    0     0   263k      0  0:00:02 --:--:--  0:00:02  263k
-100  708k  100  708k    0     0   749k      0 --:--:-- --:--:-- --:--:--  748k
+  6  708k    6 44434    0     0  97442      0  0:00:07 --:--:--  0:00:07 97229
+100  708k  100  708k    0     0   860k      0 --:--:-- --:--:-- --:--:--  859k
 hello-2.10.tar.gz: extracted to `hello-2.10'
 ```
 
@@ -488,7 +489,7 @@ print(lsref(hello_rref))
 ['context.json', '__buildstart__.txt', 'hello-2.10', '__buildstop__.txt']
 ```
 
-### Compile stage
+### A custom compile stage
 
 In this section we define a custom stage to build the newly obtained
 sources of GNU Hello application.
@@ -568,8 +569,10 @@ print(rref)
 ```
 
 ``` stdout
-rref:1c37dd04c97d0d62521f1593fd1f099a-c33deedd371c5de747a5610dc3900dcf-hello-bin
+rref:64fb50c1c2689c34a236708cabef62e9-c33deedd371c5de747a5610dc3900dcf-hello-bin
 ```
+
+### Accessing the results
 
 Finally, we convert RRef to the system path and run the GNU Hello
 binary.

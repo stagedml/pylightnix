@@ -137,7 +137,7 @@ from pylightnix import lsref
 print(lsref(hello_rref))
 ```
 
-### Compile stage
+### A custom compile stage
 
 In this section we define a custom stage to build the newly obtained sources of
 GNU Hello application.
@@ -211,6 +211,8 @@ then call a `realize` on it:
 rref:RRef=realize_inplace(hello)
 print(rref)
 ```
+
+### Accessing the results
 
 Finally, we convert RRef to the system path and run the GNU Hello binary.
 
