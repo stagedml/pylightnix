@@ -1,5 +1,5 @@
 -   [GNU Hello demo](#gnu-hello-demo)
-    -   [Task](#task)
+    -   [The task](#the-task)
     -   [Implementation](#implementation)
         -   [Fetchurl and Unpack stages](#fetchurl-and-unpack-stages)
         -   [A custom compile stage](#a-custom-compile-stage)
@@ -15,27 +15,25 @@ provides core API for checking, creating and querying such objects using
 files and folders as a data sotrage. One kind of applications which
 could benefit from this API is package managers.
 
-Task
-----
+The task
+--------
 
-Here we illustrate basic concepts by designing a toy build script for
-compiling and running [GNU hello](https://www.gnu.org/software/hello)
-program. Note, that this script will miss an important feature of
-package managers, namely build isolation, which is out of the
-Pylightnix’ scope.
+We illustrate the basic concepts by designing a toy package manager able
+to compile and run the [GNU hello](https://www.gnu.org/software/hello)
+program.
 
 GNU Hello is a demo application which prints ‘Hello world!’ on its
 standard output. It’s purpose is to demonstrate the usage of Automake
 tools. We will see how Pylighnix could help us to solve this quest. We
 assume that the host system provides an access to the GNU Automake
-toolchain, that is, Autoconf, Automake, gcc, etc.
+toolchain, that is, paths to Autoconf, Automake, gcc, etc should present
+in system PATH variable.
 
 We go through the following plan of actions:
 
-1.  Define a rule for downloading GNU Hello sources, using builtin
-    `fetchurl` stage.
-2.  Define a custom rule for compiling GNU Hello from sources.
-3.  Interact with the storage.
+1.  Use built-in rules to download and unpack the GNU Hello sources.
+2.  Define a custom rule for compiling the GNU Hello from sources.
+3.  Run the application by querying the Pylightnix artifact storage.
 
 Implementation
 --------------
@@ -451,8 +449,8 @@ rref:b557aecd2a8cc4615100d8b4a5129874-60333c6d4a9ccf5392405086013c0a3b-unpack-he
                                  Dload  Upload   Total   Spent    Left  Speed
 
   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
-  6  708k    6 44434    0     0  97442      0  0:00:07 --:--:--  0:00:07 97229
-100  708k  100  708k    0     0   860k      0 --:--:-- --:--:-- --:--:--  859k
+  2  708k    2 15474    0     0  44338      0  0:00:16 --:--:--  0:00:16 44211
+100  708k  100  708k    0     0   848k      0 --:--:-- --:--:-- --:--:--  846k
 hello-2.10.tar.gz: extracted to `hello-2.10'
 ```
 
@@ -569,7 +567,7 @@ print(rref)
 ```
 
 ``` stdout
-rref:64fb50c1c2689c34a236708cabef62e9-c33deedd371c5de747a5610dc3900dcf-hello-bin
+rref:d600952f0192536aedd91af3afef71d7-c33deedd371c5de747a5610dc3900dcf-hello-bin
 ```
 
 ### Accessing the results
