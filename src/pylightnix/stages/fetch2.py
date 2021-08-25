@@ -19,7 +19,7 @@ from pylightnix.imports import (sha256 as sha256sum, sha1 as sha1sum, urlparse,
                                 copyfile, environ, getLogger, isabs, isdir,
                                 splitext, re_sub )
 from pylightnix.types import ( DRef, Manager, Build, Context, Name,
-    Path, Optional, List, Config )
+    Path, Optional, List, Config, RefPath )
 from pylightnix.core import ( mkconfig, mkdrv, match_only,
                              PYLIGHTNIX_NAMEPAT, cfgcattrs, selfref,
                              fstmpdir )
@@ -38,6 +38,11 @@ CURL=try_executable('curl',
                     'pacakge or set PYLIGHTNIX_CURL env var.',
                     '`fetchurl2` stage will fail.')
 
+AUNPACK=try_executable('aunpack',
+                       'PYLIGHTNIX_AUNPACK',
+                       '`aunpack` executable not found. Please install `atool` '
+                       'system package or set PYLIGHTNIX_AUNPACK env var.',
+                       '`unpack` stage will fail')
 
 def fetchurl2(m:Manager,
               url:str,
@@ -49,19 +54,13 @@ def fetchurl2(m:Manager,
               **kwargs)->DRef:
   """ Download file given it's URL addess.
 
-  Downloading is done by calling `wget` application. Optional unpacking is
-  performed with the `aunpack` script from `atool` package. `sha256` defines the
-  expected SHA-256 hashsum of the stored data. `mode` allows to tweak the
-  stage's behavior: adding word 'unpack' instructs fetchurl to unpack the
-  package, adding 'remove' instructs it to remove the archive after unpacking.
-
-  If 'unpack' is not expected, then the promise named 'out_path' is created.
+  Downloading is done by calling `curl` application. The path to the executable
+  may be altered by setting the `PYLIGHTNIX_CURL` environment variable.
 
   Agruments:
   - `m:Manager` the dependency resolution [Manager](#pylightnix.types.Manager).
   - `url:str` URL to download from. Should point to a single file.
   - `sha256:str` SHA-256 hash sum of the file.
-  - `model:str='unpack,remove'` Additional options. Format: `[unpack[,remove]]`.
   - `name:Optional[str]`: Name of the Derivation. The stage will attempt to
     deduce the name if not specified.
   - `filename:Optional[str]=None` Name of the filename on disk after downloading.
@@ -86,7 +85,7 @@ def fetchurl2(m:Manager,
   """
 
   tmpfetchdir=join(fstmpdir(m.S),'fetchurl2')
-  assert isabs(tmpfetchdir), (f"Expect absolute PYLIGHTNIX_TMP path, "
+  assert isabs(tmpfetchdir), (f"Expected an absolute PYLIGHTNIX_TMP path, "
                               f"got {tmpfetchdir}")
 
   filename_=filename or basename(urlparse(url).path)
@@ -153,5 +152,41 @@ def fetchurl2(m:Manager,
                build_wrapper(_make))
 
 
+def unpack(m:Manager,
+           path:Optional[str]=None,
+           refpath:Optional[RefPath]=None,
+           name:Optional[str]=None,
+           sha256:Optional[str]=None,
+           sha1:Optional[str]=None,
+           **kwargs):
 
+  if path:
+    assert refpath is None
+  if refpath:
+    assert path is None
+  assert path or refpath
+
+  def _config()->dict:
+    args={}
+    if sha1 is not None:
+      args.update({'sha1':sha1})
+    if sha256 is not None:
+      args.update({'sha256':sha256})
+    args.update({'name':name if name else 'unpack',
+                 'path':path,
+                 'refpath':refpath})
+    args.update(**kwargs)
+    return args
+
+  def _make(b:Build):
+    if mklens(b).get('refpath').optval is not None:
+      fullpath=mklens(b).get('refpath').syspath
+    if mklens(b).get('path').optval is not None:
+      fullpath=mklens(b).get('path').syspath
+    assert fullpath is not None
+    info(f"Unpacking {fullpath}..")
+    p=Popen([AUNPACK(), fullpath], cwd=mklens(b).syspath)
+    p.wait()
+    assert p.returncode == 0, f"Unpack failed, errcode '{p.returncode}'"
+  return mkdrv(m, mkconfig(_config()), match_only(), build_wrapper(_make))
 
