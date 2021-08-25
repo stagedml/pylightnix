@@ -32,7 +32,8 @@ API Referece [[MD]](./docs/Reference.md)
 
 Demos:
 
-* [Hello](./docs/demos/HELLO.md), building GNU Hello with a toy package manager.
+* [Compiling GNU Hello](./docs/demos/HELLO.md), turns Pylightnix into a toy
+  package manager to build the GNU Hello sources.
 * [Ultimatum tutorial](https://github.com/grwlf/ultimatum-game/blob/master/docs/Pylightnix.md),
   managing experiments.
 * [MNIST demo](./docs/demos/MNIST.md) shows some machine learning specific.
