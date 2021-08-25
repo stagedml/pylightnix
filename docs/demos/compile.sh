@@ -7,4 +7,3 @@ codebraid pandoc \
 pandoc -f markdown \
   --to=markdown-smart-simple_tables-multiline_tables-grid_tables-fenced_code_attributes-inline_code_attributes-raw_attribute-pandoc_title_block-yaml_metadata_block \
   --toc -s _tmp.md -o "$TGT"
-

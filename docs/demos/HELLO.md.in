@@ -37,7 +37,7 @@ embedded in Python language. Our program is a Python script, which could be
 executed by a common `python3` interpreter. In this demo we will need certain
 standard Python functions. Later we will import Pylightnix functions as needed.
 
-```{.python .cb.nb show=none, live_output=true}
+```{.python .cb.nb live_output=true}
 from os.path import join
 from os import system, chdir, getcwd
 from shutil import copytree
@@ -59,74 +59,77 @@ environ['PYLIGHTNIX_ROOT']='/tmp/pylightnix_hello_demo'
 fsinit(remove_existing=True)
 ```
 
-### Basic terms
+### Fetchurl and Unpack stages
 
 Pylightnix allows us to define, check and execute data processing operations
-called **stages**. We will define a custom stage later, for now we use a
-builtin stage `fetchurl` (which is an analog of `fetchurl` expression of Nix
-package manager).
+called **Stages**. Stages may be defined by writing Python functions (as we will
+do later) or imported from a small builtin collection.
+
+
+Here we import stages `fetchurl2` and `unpack`, along with other Pylightnix API
+functions.
 
 ```{.python .cb.nb}
-from pylightnix import DRef, instantiate_inplace, fetchurl, selfref
+from pylightnix import (fetchurl2, unpack, DRef, RRef, instantiate_inplace,
+                        realize_inplace, mklens, selfref)
+```
 
+Our goal is to prepare stages for execution by **instantiating** them.
+`fetchurl2` is the curl-based web downloader, which accepts the URL address, the
+hash and the expected `out` path.  We call `instantiate_inplace` API function on
+it and get the `tarball` derivation reference, which identifies both the stage
+and its parameters in the Pylightnix storage. No actual work is performed yet.
+
+```{.python .cb.nb}
 hello_version = '2.10'
 
-hello_src:DRef = \
+tarball:DRef = \
   instantiate_inplace(
-    fetchurl,
+    fetchurl2,
     name='hello-src',
     url=f'http://ftp.gnu.org/gnu/hello/hello-{hello_version}.tar.gz',
     sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b',
+    out=[selfref, f'hello-{hello_version}.tar.gz'])
+```
+
+Next we pass the path to the tarball to the `unpack` stage by dereferencing its
+`out` attribute using the [mklens](../Reference.md#pylightnix.lens.mklens)
+helper function. Pylightnix notes the fact that `unpack` has a reference to
+`tarball` in its configuration.
+
+```{.python .cb.nb}
+hello_src:DRef = \
+  instantiate_inplace(
+    unpack,
+    name='unpack-hello',
+    refpath=mklens(tarball).out.refpath,
     src=[selfref, f'hello-{hello_version}'])
 ```
 
-By this definition we created `hello_src` variable of type
-[DRef](../Reference.md#pylightnix.types.DRef) which holds a reference to a
-**Derivation** of fetchurl stage. By specifying **PromisePath** src, we promise
-that realizations of this derivation will contain named file or folder. In this
-case we expect that 'hello-2.10' folder will exist. Pylightnix will check this
-promise and raise the exception if it is not fulfilled.
-
-Having a `hello_src` derivation reference means several things:
-
-* (a) Configuration of the corresponding stage has passed certain checks and
-  does exist in the storage as a JSON object.
-* (b) Pylighnix knows how to **Realize** this stage, i.e. it has a Python
-  function to produce some data (files) to put them in storage.
-* (c) Pylightnix noted the
-  [promise](../Reference.md#pylightnix.types.PromisePath) made by `hello_src`.
-  After it's realization, it will check that `hello-2.10` folder appears among
-  build artifacts.
-
-For [fetchurl](../Reference.md#pylightnix.stages.fetchurl.fetchurl), the
-output data will contain the contents of URL, after downloading and
-unpacking. In this case, we expect to see `hello-2.10` folder, containing the
-hello's sources. Let's check it:
+Now, we ask Pylightnix to give us the artifacts of `unpack` stage by
+**realizing** it. Pylightnix does the dependency handling and decides to execute
+both fetchurl and unpack. The results of realization is available via
+realization reference `hello_rref`.
 
 ```{.python .cb.nb}
-from pylightnix import RRef, realize_inplace
-
 hello_rref:RRef = realize_inplace(hello_src)
 print(hello_rref)
 ```
-
-OK, now we should see the signs of actual work being done. Something was just
-downloaded and we also see a string starting with 'rref:...' in _stdout_.  This
-string is a **Realization reference** of type
-[RRef](../Reference.md#pylightnix.types.RRef), it uniquely identifies some
-data in the Pylightnix filesystem storage.
-
-Any RRef could be converted to system by calling
-[rref2path](../Reference.md#pylightnix.core.rref2path) function:
+Any RRef could be converted to the system path by calling
+[rref2path](../Reference.md#pylightnix.core.rref2path) function or by using a
+more feature-rich `mklens`:
 
 ```{.python .cb.nb}
 from pylightnix import rref2path
 
 print(rref2path(hello_rref))
+print(mklens(hello_rref).val)
+print(mklens(hello_rref).syspath)
+print(mklens(hello_rref).src.syspath)
 ```
 
-Also, Pylightnix offers a shell-like helper functions to quickly examine the
-content of references. One of them is `lsref`:
+Pylightnix offers a number of other shell-like helper functions for accessing
+realization, like `lsref`:
 
 ```{.python .cb.nb}
 from pylightnix import lsref
@@ -134,58 +137,44 @@ from pylightnix import lsref
 print(lsref(hello_rref))
 ```
 
-### Custom stages
+### Compile stage
 
-We want to build the GNU hello, so we need some code to do this job. Pylighnix
-aims at providing only a generic minimalistic API, so it doesn't have a builtin
-stage for compiling applications. Luckily, it is not hard to define it, as we
-should see.
+In this section we define a custom stage to build the newly obtained sources of
+GNU Hello application.
 
-All Pylighnix stages consist of three important components:
+Defining Pylighnix stages requires us to provide Pylightnix with the following
+components:
 
-* The configuration, which is a JSON-Object of parameters and references
-* The matcher, which is a Python function for dealing with non-determenistic builds.
-* The realizer, which is a Python function encoding the actual build process
+* The JSON-like configuration object.
+* The matcher Python function, dealing with non-determenistic builds.
+* The realizer Python function which specifies the actual build process.
 
-The matcher business is beyond the scope of this tutorial. We will use trivial
-`match_only` matcher which asks the core to build the stage and then returns
-build result.
+The matcher business is beyond the scope of this tutorial. We will use a trivial
+`match_only` matcher which instructs Pylightnix to expect no more than one
+realization of a stage in its storage.
 
-
-#### Configuration
-
-Let's deal with other two components. We start by defining a configuration:
+We produce a  `Config` object by returning it from a `_config` function. Note,
+that `locals()` is a Python builtin function which returns a `dict` of current
+function's local variables.
 
 ```{.python .cb.nb}
-from pylightnix import Config, mkconfig, mklens
+from pylightnix import Config, mkconfig, mklens, selfref
 
 def hello_config()->Config:
   name = 'hello-bin'
   src = mklens(hello_src).src.refpath
+  out_hello = [selfref, 'usr', 'bin', 'hello']
+  out_log = [selfref, 'build.log']
   return mkconfig(locals())
 ```
 
-Here, we specify two configuration attributes: a name and a
-[RefPath](../Reference.md#pylightnix.types.RefPath) which links our new stage
-with some realization of the previous stage. RefPath is normally a Python list
-`[hello_src, 'hello-2.10']`, but the
-[Lens](../Reference.md#pylightnix.lens.Lens) helper gets this value for us based
-on a promise made by this dependency.  We will convert it into a system path at
-the time of realization, as we will see soon.
-
-As a side note, `locals()` is a Python builtin function which returns a `dict`
-of current function's local variables.
-
-_Note, we should only use **Derivation references** in configurations.
-Realization references are accessible either from global scope or from
-realize functions_
-
-#### Realization
-
-Let's now move to the realization part of our Hello builder stage:
+Realizer is another Python function accepting a `Build` context. We could use
+`mklens` to query the parameters of the derivation being built just as we used
+it for querying parameters of completed realizations.
 
 ```{.python .cb.nb}
-from pylightnix import ( Path, Build, build_cattrs, build_outpath, build_path, dirrw )
+from pylightnix import (Path, Build, build_cattrs, build_outpath, build_path,
+                        dirrw )
 
 def hello_realize(b:Build)->None:
   with TemporaryDirectory() as tmp:
@@ -194,25 +183,17 @@ def hello_realize(b:Build)->None:
     cwd = getcwd()
     try:
       chdir(join(tmp,'src'))
-      system(f'./configure --prefix=/usr')
-      system(f'make')
-      system(f'make install DESTDIR={mklens(b).syspath}')
+      system(f'( ./configure --prefix=/usr && '
+             f'  make &&'
+             f'  make install DESTDIR={mklens(b).syspath}'
+             f')>{mklens(b).out_log.syspath} 2>&1')
     finally:
       chdir(cwd)
 
 ```
 
-Another interesting thing is the call to `build_path` function. It is the point
-where we **Dereference refpaths** by converting them into system paths.
-Pylightnix guarantees that referenced stages are already realized at the time of
-dereferencing.
-
-The rest is simple. We copy sources to the temp folder and perform the usual
-configure-make-install on it.
-
-#### Running the stage
-
-Finally, we introduce our new stage to Pylightnix:
+Finally, we introduce a new stage to Pylightnix by instantiating a generic
+[mkdrv](../Reference.md#pylightnix.core.mkdrv) stage:
 
 ```{.python .cb.nb}
 from pylightnix import mkdrv, build_wrapper, match_only
@@ -223,21 +204,19 @@ hello:DRef = \
 print(hello)
 ```
 
-In this instantiation, [mkdrv](../Reference.md#pylightnix.core.mkdrv) (which
-stands for 'make derivation') plays the role of `fetchurl` from the previous
-stage. As before, we first get a `DRef`, which means that basic checks were
-passed, and then call `realize`:
+As before, we get a `DRef`, which means that basic checks were passed, and
+then call a `realize` on it:
 
 ```{.python .cb.nb}
 rref:RRef=realize_inplace(hello)
 print(rref)
 ```
 
-Now we could convert RRef to the system path and run the GNU Hello binary.
+Finally, we convert RRef to the system path and run the GNU Hello binary.
 
 ```{.python .cb.nb}
-hello_bin=join(rref2path(rref),'usr/bin/hello')
-print(Popen([hello_bin], stdout=PIPE, shell=True).stdout.read()) # type:ignore
+print(Popen([mklens(rref).out_hello.syspath],
+            stdout=PIPE, shell=True).stdout.read()) # type:ignore
 ```
 
 

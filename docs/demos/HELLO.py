@@ -6,58 +6,81 @@ from tempfile import TemporaryDirectory
 from typing import Any
 from subprocess import Popen, PIPE
 
-from pylightnix import Path, initialize, dirrm
-dirrm(Path('/tmp/pylightnix_hello_demo'))
-initialize(custom_store='/tmp/pylightnix_hello_demo', custom_tmp='/tmp')
 
-from pylightnix import DRef, instantiate_inplace, fetchurl, promise
+from os import environ
+from pylightnix import fsinit
+
+environ['PYLIGHTNIX_ROOT']='/tmp/pylightnix_hello_demo'
+fsinit(remove_existing=True)
+
+
+from pylightnix import (fetchurl2, unpack, DRef, RRef, instantiate_inplace,
+                        realize_inplace, mklens, selfref)
+
 
 hello_version = '2.10'
 
-hello_src:DRef = \
+tarball:DRef = \
   instantiate_inplace(
-    fetchurl,
+    fetchurl2,
     name='hello-src',
     url=f'http://ftp.gnu.org/gnu/hello/hello-{hello_version}.tar.gz',
     sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b',
-    src=[promise, f'hello-{hello_version}'])
+    out=[selfref, f'hello-{hello_version}.tar.gz'])
 
-from pylightnix import RRef, realize_inplace
+
+hello_src:DRef = \
+  instantiate_inplace(
+    unpack,
+    name='unpack-hello',
+    refpath=mklens(tarball).out.refpath,
+    src=[selfref, f'hello-{hello_version}'])
+
 
 hello_rref:RRef = realize_inplace(hello_src)
 print(hello_rref)
 
+
 from pylightnix import rref2path
 
 print(rref2path(hello_rref))
+print(mklens(hello_rref).val)
+print(mklens(hello_rref).syspath)
+print(mklens(hello_rref).src.syspath)
+
 
 from pylightnix import lsref
 
 print(lsref(hello_rref))
 
-from pylightnix import Config, mkconfig, mklens
+
+from pylightnix import Config, mkconfig, mklens, selfref
 
 def hello_config()->Config:
   name = 'hello-bin'
   src = mklens(hello_src).src.refpath
+  out_hello = [selfref, 'usr', 'bin', 'hello']
+  out_log = [selfref, 'build.log']
   return mkconfig(locals())
 
-from pylightnix import ( Path, Build, build_cattrs, build_outpath, build_path, dirrw )
+
+from pylightnix import (Path, Build, build_cattrs, build_outpath, build_path,
+                        dirrw )
 
 def hello_realize(b:Build)->None:
-  c:Any = build_cattrs(b)
-  o:Path = build_outpath(b)
   with TemporaryDirectory() as tmp:
     copytree(mklens(b).src.syspath,join(tmp,'src'))
     dirrw(Path(join(tmp,'src')))
     cwd = getcwd()
     try:
       chdir(join(tmp,'src'))
-      system(f'./configure --prefix=/usr')
-      system(f'make')
-      system(f'make install DESTDIR={o}')
+      system(f'( ./configure --prefix=/usr && '
+             f'  make &&'
+             f'  make install DESTDIR={mklens(b).syspath}'
+             f')>{mklens(b).out_log.syspath} 2>&1')
     finally:
       chdir(cwd)
+
 
 from pylightnix import mkdrv, build_wrapper, match_only
 
@@ -66,9 +89,11 @@ hello:DRef = \
 
 print(hello)
 
+
 rref:RRef=realize_inplace(hello)
 print(rref)
 
 
-hello_bin=join(rref2path(rref),'usr/bin/hello')
-print(Popen([hello_bin], stdout=PIPE, shell=True).stdout.read()) # type:ignore
+print(Popen([mklens(rref).out_hello.syspath],
+            stdout=PIPE, shell=True).stdout.read()) # type:ignore
+

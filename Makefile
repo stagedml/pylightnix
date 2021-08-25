@@ -100,8 +100,8 @@ demo_mnist: docs/demos/MNIST.md docs/demos/MNIST.py
 docs/demos/HELLO.md: docs/demos/HELLO.md.in $(SRC) .stamp_check
 	./docs/demos/compile.sh $< $@
 
-# docs/demos/HELLO.py: docs/demos/HELLO.pmd $(SRC) .stamp_check
-# 	ptangle $<
+docs/demos/HELLO.py: docs/demos/HELLO.md ./docs/demos/tangle.sh
+	./docs/demos/tangle.sh $< $@
 
 .PHONY: demo_hello
 demo_hello: docs/demos/HELLO.md docs/demos/HELLO.py
