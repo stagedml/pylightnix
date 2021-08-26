@@ -15,14 +15,14 @@
 """ Simple functions imitating unix shell tools.  """
 
 from pylightnix.types import (Iterable, List, Union, Optional, DRef, RRef,
-    Dict, Tuple, Path, Stage, StorageSettings)
+    Dict, Tuple, Path, Stage, StorageSettings, RefPath)
 from pylightnix.imports import (isfile, isdir, listdir, join, rmtree, environ,
     Popen, rename, getsize, fnmatch, dirname, relpath)
 from pylightnix.core import (dref2path, rref2path, isrref, isdref,
     alldrefs, drefrrefs, drefcfg_, cfgname,
     instantiate, drefcfgpath, rref2dref, fsstorage)
 from pylightnix.utils import (dirchmod, dirrm, dirsize, parsetime, timestring,
-                              forcelink)
+                              forcelink, isrefpath)
 
 from pylightnix.build import (Build, rrefbstart)
 
@@ -57,10 +57,12 @@ def catrref_(r:RRef, fn:List[str], S=None)->Iterable[str]:
     for l in f.readlines():
       yield l
 
-def catref(r:RRef, fn:List[str], S=None)->List[str]:
+def catref(r:Union[RRef,RefPath,Path], fn:List[str]=[], S=None)->List[str]:
   """ Return the contents of r's artifact line by line. `fn` is a list of
   folders, relative to rref's root. """
-  if isrref(r) and isinstance(r,RRef):
+  if isinstance(r,str) and isfile(r):
+    return open(r,'r').readlines()
+  elif isrref(r) and isinstance(r,RRef):
     return list(catrref_(r,fn,S=S))
   else:
     assert False, 'not implemented'
