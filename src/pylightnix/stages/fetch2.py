@@ -158,6 +158,7 @@ def unpack(m:Manager,
            name:Optional[str]=None,
            sha256:Optional[str]=None,
            sha1:Optional[str]=None,
+           aunpack_args:List[str]=[],
            **kwargs):
 
   if path:
@@ -167,14 +168,14 @@ def unpack(m:Manager,
   assert path or refpath
 
   def _config()->dict:
-    args={}
+    args={'name':name if name else 'unpack',
+          'path':path,
+          'refpath':refpath,
+          'aunpack_args':aunpack_args}
     if sha1 is not None:
       args.update({'sha1':sha1})
     if sha256 is not None:
       args.update({'sha256':sha256})
-    args.update({'name':name if name else 'unpack',
-                 'path':path,
-                 'refpath':refpath})
     args.update(**kwargs)
     return args
 
@@ -185,7 +186,7 @@ def unpack(m:Manager,
       fullpath=mklens(b).get('path').syspath
     assert fullpath is not None
     info(f"Unpacking {fullpath}..")
-    p=Popen([AUNPACK(), fullpath], cwd=mklens(b).syspath)
+    p=Popen([AUNPACK(), fullpath]+aunpack_args, cwd=mklens(b).syspath)
     p.wait()
     assert p.returncode == 0, f"Unpack failed, errcode '{p.returncode}'"
   return mkdrv(m, mkconfig(_config()), match_only(), build_wrapper(_make))
