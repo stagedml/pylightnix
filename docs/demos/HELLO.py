@@ -34,6 +34,7 @@ hello_src:DRef = \
     unpack,
     name='unpack-hello',
     refpath=mklens(tarball).out.refpath,
+    aunpack_args=['-q'],
     src=[selfref, f'hello-{hello_version}'])
 
 
@@ -49,7 +50,7 @@ print(mklens(hello_rref).syspath)
 print(mklens(hello_rref).src.syspath)
 
 
-from pylightnix import lsref
+from pylightnix import lsref, catref
 
 print(lsref(hello_rref))
 
@@ -92,6 +93,10 @@ print(hello)
 
 rref:RRef=realize_inplace(hello)
 print(rref)
+
+
+for line in open(mklens(rref).out_log.syspath).readlines()[-10:]:
+  print(line.strip())
 
 
 print(Popen([mklens(rref).out_hello.syspath],

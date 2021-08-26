@@ -100,6 +100,7 @@ hello_src:DRef = \
     unpack,
     name='unpack-hello',
     refpath=mklens(tarball).out.refpath,
+    aunpack_args=['-q'],
     src=[selfref, f'hello-{hello_version}'])
 ```
 
@@ -129,7 +130,7 @@ Pylightnix offers a number of other shell-like helper functions for accessing
 realization, like `lsref`:
 
 ```{.python .cb.nb}
-from pylightnix import lsref
+from pylightnix import lsref, catref
 
 print(lsref(hello_rref))
 ```
@@ -150,9 +151,8 @@ The matcher business is beyond the scope of this tutorial. We will use a trivial
 `match_only` matcher which instructs Pylightnix to expect no more than one
 realization of a stage in its storage.
 
-We produce a  `Config` object by returning it from a `_config` function. Note,
-that `locals()` is a Python builtin function which returns a `dict` of current
-function's local variables.
+We produce a `Config` object by reading local variables of a helper function
+`hello_config`. We could have just call `mkconfig` on a dict.
 
 ```{.python .cb.nb}
 from pylightnix import Config, mkconfig, mklens, selfref
@@ -165,9 +165,12 @@ def hello_config()->Config:
   return mkconfig(locals())
 ```
 
-Realizer is another Python function accepting a `Build` context. We could use
-`mklens` to query the parameters of the derivation being built just as we used
-it for querying parameters of completed realizations.
+To specify Realizer we write another Python function which accepts the `Build`
+context. We use `mklens` to query the parameters of the derivation being
+built just as we used it for querying parameters of completed realizations. The
+`selfref` paths is initialized to paths inside the build temporary folder where
+we must put the build artifacts. Here we produce the GNU hello binary and a
+build log as a side-product.
 
 ```{.python .cb.nb}
 from pylightnix import (Path, Build, build_cattrs, build_outpath, build_path,
@@ -210,6 +213,13 @@ print(rref)
 ```
 
 ### Accessing the results
+
+Lets print the last few lines of the build log:
+
+```{.python .cb.nb}
+for line in open(mklens(rref).out_log.syspath).readlines()[-10:]:
+  print(line.strip())
+```
 
 Finally, we convert RRef to the system path and run the GNU Hello binary.
 

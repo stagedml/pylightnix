@@ -112,6 +112,7 @@ hello_src:DRef = \
     unpack,
     name='unpack-hello',
     refpath=mklens(tarball).out.refpath,
+    aunpack_args=['-q'],
     src=[selfref, f'hello-{hello_version}'])
 ```
 
@@ -126,322 +127,7 @@ print(hello_rref)
 ```
 
 ``` stdout
-hello-2.10/
-hello-2.10/COPYING
-hello-2.10/tests/
-hello-2.10/tests/greeting-1
-hello-2.10/tests/traditional-1
-hello-2.10/tests/greeting-2
-hello-2.10/tests/hello-1
-hello-2.10/tests/last-1
-hello-2.10/Makefile.am
-hello-2.10/config.in
-hello-2.10/maint.mk
-hello-2.10/README
-hello-2.10/INSTALL
-hello-2.10/NEWS
-hello-2.10/GNUmakefile
-hello-2.10/TODO
-hello-2.10/ABOUT-NLS
-hello-2.10/README-release
-hello-2.10/THANKS
-hello-2.10/po/
-hello-2.10/po/lv.gmo
-hello-2.10/po/he.gmo
-hello-2.10/po/hu.gmo
-hello-2.10/po/quot.sed
-hello-2.10/po/pl.gmo
-hello-2.10/po/id.gmo
-hello-2.10/po/de.po
-hello-2.10/po/sv.po
-hello-2.10/po/insert-header.sin
-hello-2.10/po/nn.gmo
-hello-2.10/po/ro.po
-hello-2.10/po/tr.po
-hello-2.10/po/sl.po
-hello-2.10/po/gl.gmo
-hello-2.10/po/nb.po
-hello-2.10/po/it.po
-hello-2.10/po/zh_TW.gmo
-hello-2.10/po/vi.gmo
-hello-2.10/po/vi.po
-hello-2.10/po/hr.gmo
-hello-2.10/po/pl.po
-hello-2.10/po/POTFILES.in
-hello-2.10/po/stamp-po
-hello-2.10/po/nl.po
-hello-2.10/po/en@boldquot.header
-hello-2.10/po/fa.gmo
-hello-2.10/po/hr.po
-hello-2.10/po/zh_CN.gmo
-hello-2.10/po/fi.po
-hello-2.10/po/th.gmo
-hello-2.10/po/pt_BR.gmo
-hello-2.10/po/es.gmo
-hello-2.10/po/nb.gmo
-hello-2.10/po/th.po
-hello-2.10/po/ka.po
-hello-2.10/po/Rules-quot
-hello-2.10/po/eu.po
-hello-2.10/po/sv.gmo
-hello-2.10/po/es.po
-hello-2.10/po/de.gmo
-hello-2.10/po/pt_BR.po
-hello-2.10/po/el.gmo
-hello-2.10/po/en@quot.header
-hello-2.10/po/ko.gmo
-hello-2.10/po/zh_CN.po
-hello-2.10/po/ka.gmo
-hello-2.10/po/hello.pot
-hello-2.10/po/fi.gmo
-hello-2.10/po/Makevars
-hello-2.10/po/ro.gmo
-hello-2.10/po/hu.po
-hello-2.10/po/fa.po
-hello-2.10/po/da.po
-hello-2.10/po/it.gmo
-hello-2.10/po/bg.gmo
-hello-2.10/po/ru.po
-hello-2.10/po/zh_TW.po
-hello-2.10/po/nn.po
-hello-2.10/po/ko.po
-hello-2.10/po/sr.gmo
-hello-2.10/po/tr.gmo
-hello-2.10/po/remove-potcdate.sin
-hello-2.10/po/LINGUAS
-hello-2.10/po/pt.po
-hello-2.10/po/ru.gmo
-hello-2.10/po/nl.gmo
-hello-2.10/po/uk.po
-hello-2.10/po/ms.po
-hello-2.10/po/ga.po
-hello-2.10/po/et.po
-hello-2.10/po/fr.po
-hello-2.10/po/gl.po
-hello-2.10/po/sl.gmo
-hello-2.10/po/bg.po
-hello-2.10/po/sk.gmo
-hello-2.10/po/ja.gmo
-hello-2.10/po/ga.gmo
-hello-2.10/po/ca.gmo
-hello-2.10/po/he.po
-hello-2.10/po/lv.po
-hello-2.10/po/boldquot.sed
-hello-2.10/po/sr.po
-hello-2.10/po/el.po
-hello-2.10/po/da.gmo
-hello-2.10/po/ChangeLog
-hello-2.10/po/ms.gmo
-hello-2.10/po/ca.po
-hello-2.10/po/Makefile.in.in
-hello-2.10/po/pt.gmo
-hello-2.10/po/uk.gmo
-hello-2.10/po/et.gmo
-hello-2.10/po/eu.gmo
-hello-2.10/po/sk.po
-hello-2.10/po/eo.gmo
-hello-2.10/po/id.po
-hello-2.10/po/ja.po
-hello-2.10/po/eo.po
-hello-2.10/po/fr.gmo
-hello-2.10/ChangeLog.O
-hello-2.10/build-aux/
-hello-2.10/build-aux/update-copyright
-hello-2.10/build-aux/mdate-sh
-hello-2.10/build-aux/config.guess
-hello-2.10/build-aux/depcomp
-hello-2.10/build-aux/config.rpath
-hello-2.10/build-aux/compile
-hello-2.10/build-aux/gitlog-to-changelog
-hello-2.10/build-aux/useless-if-before-free
-hello-2.10/build-aux/announce-gen
-hello-2.10/build-aux/test-driver
-hello-2.10/build-aux/config.sub
-hello-2.10/build-aux/install-sh
-hello-2.10/build-aux/gnupload
-hello-2.10/build-aux/gnu-web-doc-update
-hello-2.10/build-aux/texinfo.tex
-hello-2.10/build-aux/gendocs.sh
-hello-2.10/build-aux/do-release-commit-and-tag
-hello-2.10/build-aux/missing
-hello-2.10/build-aux/snippet/
-hello-2.10/build-aux/snippet/arg-nonnull.h
-hello-2.10/build-aux/snippet/warn-on-use.h
-hello-2.10/build-aux/snippet/_Noreturn.h
-hello-2.10/build-aux/snippet/c++defs.h
-hello-2.10/build-aux/vc-list-files
-hello-2.10/build-aux/prefix-gnulib-mk
-hello-2.10/AUTHORS
-hello-2.10/man/
-hello-2.10/man/hello.x
-hello-2.10/configure.ac
-hello-2.10/lib/
-hello-2.10/lib/basename-lgpl.c
-hello-2.10/lib/stdlib.in.h
-hello-2.10/lib/c-strncasecmp.c
-hello-2.10/lib/sys_types.in.h
-hello-2.10/lib/c-strcase.h
-hello-2.10/lib/stdbool.in.h
-hello-2.10/lib/localcharset.c
-hello-2.10/lib/exitfail.c
-hello-2.10/lib/mbsinit.c
-hello-2.10/lib/xstrndup.h
-hello-2.10/lib/gnulib.mk
-hello-2.10/lib/msvc-nothrow.c
-hello-2.10/lib/stddef.in.h
-hello-2.10/lib/c-ctype.h
-hello-2.10/lib/close-stream.h
-hello-2.10/lib/dirname-lgpl.c
-hello-2.10/lib/verify.h
-hello-2.10/lib/progname.h
-hello-2.10/lib/basename.c
-hello-2.10/lib/unistd.c
-hello-2.10/lib/fpending.h
-hello-2.10/lib/strnlen1.h
-hello-2.10/lib/getopt.c
-hello-2.10/lib/mbsrtowcs.c
-hello-2.10/lib/c-ctype.c
-hello-2.10/lib/localcharset.h
-hello-2.10/lib/ref-add.sin
-hello-2.10/lib/xalloc.h
-hello-2.10/lib/close-stream.c
-hello-2.10/lib/wctype-h.c
-hello-2.10/lib/closeout.h
-hello-2.10/lib/dirname.h
-hello-2.10/lib/memchr.valgrind
-hello-2.10/lib/wctype.in.h
-hello-2.10/lib/strndup.c
-hello-2.10/lib/xstrndup.c
-hello-2.10/lib/quotearg.c
-hello-2.10/lib/xalloc-oversized.h
-hello-2.10/lib/mbsrtowcs-state.c
-hello-2.10/lib/exitfail.h
-hello-2.10/lib/errno.in.h
-hello-2.10/lib/strerror.c
-hello-2.10/lib/local.mk
-hello-2.10/lib/error.c
-hello-2.10/lib/ref-del.sin
-hello-2.10/lib/xalloc-die.c
-hello-2.10/lib/getopt1.c
-hello-2.10/lib/getopt_int.h
-hello-2.10/lib/strnlen.c
-hello-2.10/lib/getopt.in.h
-hello-2.10/lib/strerror-override.c
-hello-2.10/lib/error.h
-hello-2.10/lib/strerror-override.h
-hello-2.10/lib/unistd.in.h
-hello-2.10/lib/progname.c
-hello-2.10/lib/closeout.c
-hello-2.10/lib/malloc.c
-hello-2.10/lib/msvc-inval.c
-hello-2.10/lib/mbrtowc.c
-hello-2.10/lib/gettext.h
-hello-2.10/lib/quotearg.h
-hello-2.10/lib/string.in.h
-hello-2.10/lib/wchar.in.h
-hello-2.10/lib/intprops.h
-hello-2.10/lib/streq.h
-hello-2.10/lib/stdio.in.h
-hello-2.10/lib/memchr.c
-hello-2.10/lib/fpending.c
-hello-2.10/lib/dosname.h
-hello-2.10/lib/config.charset
-hello-2.10/lib/strnlen1.c
-hello-2.10/lib/dirname.c
-hello-2.10/lib/msvc-inval.h
-hello-2.10/lib/stripslash.c
-hello-2.10/lib/c-strcaseeq.h
-hello-2.10/lib/quote.h
-hello-2.10/lib/c-strcasecmp.c
-hello-2.10/lib/mbsrtowcs-impl.h
-hello-2.10/lib/xmalloc.c
-hello-2.10/lib/msvc-nothrow.h
-hello-2.10/Makefile.in
-hello-2.10/doc/
-hello-2.10/doc/fdl.texi
-hello-2.10/doc/local.mk
-hello-2.10/doc/version.texi
-hello-2.10/doc/stamp-vti
-hello-2.10/doc/hello.texi
-hello-2.10/doc/hello.info
-hello-2.10/ChangeLog
-hello-2.10/README-dev
-hello-2.10/hello.1
-hello-2.10/configure
-hello-2.10/src/
-hello-2.10/src/hello.c
-hello-2.10/src/system.h
-hello-2.10/aclocal.m4
-hello-2.10/m4/
-hello-2.10/m4/extensions.m4
-hello-2.10/m4/localcharset.m4
-hello-2.10/m4/ssize_t.m4
-hello-2.10/m4/gnulib-cache.m4
-hello-2.10/m4/wctype_h.m4
-hello-2.10/m4/intlmacosx.m4
-hello-2.10/m4/codeset.m4
-hello-2.10/m4/include_next.m4
-hello-2.10/m4/locale-zh.m4
-hello-2.10/m4/gettext.m4
-hello-2.10/m4/strerror.m4
-hello-2.10/m4/xstrndup.m4
-hello-2.10/m4/lib-ld.m4
-hello-2.10/m4/xalloc.m4
-hello-2.10/m4/strndup.m4
-hello-2.10/m4/double-slash-root.m4
-hello-2.10/m4/mbsrtowcs.m4
-hello-2.10/m4/unistd_h.m4
-hello-2.10/m4/closeout.m4
-hello-2.10/m4/warn-on-use.m4
-hello-2.10/m4/error.m4
-hello-2.10/m4/errno_h.m4
-hello-2.10/m4/stddef_h.m4
-hello-2.10/m4/stdio_h.m4
-hello-2.10/m4/non-recursive-gnulib-prefix-hack.m4
-hello-2.10/m4/stdlib_h.m4
-hello-2.10/m4/locale-fr.m4
-hello-2.10/m4/iconv.m4
-hello-2.10/m4/memchr.m4
-hello-2.10/m4/string_h.m4
-hello-2.10/m4/gnulib-comp.m4
-hello-2.10/m4/gnulib-common.m4
-hello-2.10/m4/extern-inline.m4
-hello-2.10/m4/wchar_h.m4
-hello-2.10/m4/close-stream.m4
-hello-2.10/m4/msvc-nothrow.m4
-hello-2.10/m4/lib-prefix.m4
-hello-2.10/m4/quotearg.m4
-hello-2.10/m4/mmap-anon.m4
-hello-2.10/m4/fcntl-o.m4
-hello-2.10/m4/off_t.m4
-hello-2.10/m4/absolute-header.m4
-hello-2.10/m4/glibc21.m4
-hello-2.10/m4/wint_t.m4
-hello-2.10/m4/nls.m4
-hello-2.10/m4/malloc.m4
-hello-2.10/m4/mbsinit.m4
-hello-2.10/m4/fpending.m4
-hello-2.10/m4/00gnulib.m4
-hello-2.10/m4/po.m4
-hello-2.10/m4/strnlen.m4
-hello-2.10/m4/getopt.m4
-hello-2.10/m4/sys_types_h.m4
-hello-2.10/m4/stdbool.m4
-hello-2.10/m4/configmake.m4
-hello-2.10/m4/sys_socket_h.m4
-hello-2.10/m4/msvc-inval.m4
-hello-2.10/m4/dirname.m4
-hello-2.10/m4/nocrash.m4
-hello-2.10/m4/locale-ja.m4
-hello-2.10/m4/lib-link.m4
-hello-2.10/m4/mbstate_t.m4
-hello-2.10/m4/progtest.m4
-hello-2.10/m4/wchar_t.m4
-hello-2.10/m4/mbrtowc.m4
-hello-2.10/contrib/
-hello-2.10/contrib/evolution.txt
-hello-2.10/contrib/de_franconian_po.txt
-rref:b557aecd2a8cc4615100d8b4a5129874-60333c6d4a9ccf5392405086013c0a3b-unpack-hello
+rref:b557aecd2a8cc4615100d8b4a5129874-43323fae07b9e30f65ed0a1b6213b6f0-unpack-hello
 ```
 
 ``` stderr
@@ -449,8 +135,8 @@ rref:b557aecd2a8cc4615100d8b4a5129874-60333c6d4a9ccf5392405086013c0a3b-unpack-he
                                  Dload  Upload   Total   Spent    Left  Speed
 
   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
-  2  708k    2 15474    0     0  44338      0  0:00:16 --:--:--  0:00:16 44211
-100  708k  100  708k    0     0   848k      0 --:--:-- --:--:-- --:--:--  846k
+ 30  708k   30  213k    0     0   295k      0  0:00:02 --:--:--  0:00:02  295k
+100  708k  100  708k    0     0   819k      0 --:--:-- --:--:-- --:--:--  818k
 hello-2.10.tar.gz: extracted to `hello-2.10'
 ```
 
@@ -468,17 +154,17 @@ print(mklens(hello_rref).src.syspath)
 ```
 
 ``` stdout
-/tmp/pylightnix_hello_demo/store-v0/60333c6d4a9ccf5392405086013c0a3b-unpack-hello/b557aecd2a8cc4615100d8b4a5129874
-rref:b557aecd2a8cc4615100d8b4a5129874-60333c6d4a9ccf5392405086013c0a3b-unpack-hello
-/tmp/pylightnix_hello_demo/store-v0/60333c6d4a9ccf5392405086013c0a3b-unpack-hello/b557aecd2a8cc4615100d8b4a5129874
-/tmp/pylightnix_hello_demo/store-v0/60333c6d4a9ccf5392405086013c0a3b-unpack-hello/b557aecd2a8cc4615100d8b4a5129874/hello-2.10
+/tmp/pylightnix_hello_demo/store-v0/43323fae07b9e30f65ed0a1b6213b6f0-unpack-hello/b557aecd2a8cc4615100d8b4a5129874
+rref:b557aecd2a8cc4615100d8b4a5129874-43323fae07b9e30f65ed0a1b6213b6f0-unpack-hello
+/tmp/pylightnix_hello_demo/store-v0/43323fae07b9e30f65ed0a1b6213b6f0-unpack-hello/b557aecd2a8cc4615100d8b4a5129874
+/tmp/pylightnix_hello_demo/store-v0/43323fae07b9e30f65ed0a1b6213b6f0-unpack-hello/b557aecd2a8cc4615100d8b4a5129874/hello-2.10
 ```
 
 Pylightnix offers a number of other shell-like helper functions for
 accessing realization, like `lsref`:
 
 ``` python
-from pylightnix import lsref
+from pylightnix import lsref, catref
 
 print(lsref(hello_rref))
 ```
@@ -504,9 +190,8 @@ The matcher business is beyond the scope of this tutorial. We will use a
 trivial `match_only` matcher which instructs Pylightnix to expect no
 more than one realization of a stage in its storage.
 
-We produce a `Config` object by returning it from a `_config` function.
-Note, that `locals()` is a Python builtin function which returns a
-`dict` of current function’s local variables.
+We produce a `Config` object by reading local variables of a helper
+function `hello_config`. We could have just call `mkconfig` on a dict.
 
 ``` python
 from pylightnix import Config, mkconfig, mklens, selfref
@@ -519,9 +204,12 @@ def hello_config()->Config:
   return mkconfig(locals())
 ```
 
-Realizer is another Python function accepting a `Build` context. We
-could use `mklens` to query the parameters of the derivation being built
-just as we used it for querying parameters of completed realizations.
+To specify Realizer we write another Python function which accepts the
+`Build` context. We use `mklens` to query the parameters of the
+derivation being built just as we used it for querying parameters of
+completed realizations. The `selfref` paths is initialized to paths
+inside the build temporary folder where we must put the build artifacts.
+Here we produce the GNU hello binary and a build log as a side-product.
 
 ``` python
 from pylightnix import (Path, Build, build_cattrs, build_outpath, build_path,
@@ -555,7 +243,7 @@ print(hello)
 ```
 
 ``` stdout
-dref:c33deedd371c5de747a5610dc3900dcf-hello-bin
+dref:e48878b9f7760fe0972eb6863775045f-hello-bin
 ```
 
 As before, we get a `DRef`, which means that basic checks were passed,
@@ -567,10 +255,30 @@ print(rref)
 ```
 
 ``` stdout
-rref:d600952f0192536aedd91af3afef71d7-c33deedd371c5de747a5610dc3900dcf-hello-bin
+rref:1dc4d015ec5e1fa826aabfdb09969375-e48878b9f7760fe0972eb6863775045f-hello-bin
 ```
 
 ### Accessing the results
+
+Lets print the last few lines of the build log:
+
+``` python
+for line in open(mklens(rref).out_log.syspath).readlines()[-10:]:
+  print(line.strip())
+```
+
+``` stdout
+fi
+/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/mkdir -p '/tmp/pylightnix_hello_demo/tmp/210827-00:11:23:182473+0300_2b29fe60_sers7__6/usr/share/info'
+/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/install -c -m 644 ./doc/hello.info '/tmp/pylightnix_hello_demo/tmp/210827-00:11:23:182473+0300_2b29fe60_sers7__6/usr/share/info'
+install-info --info-dir='/tmp/pylightnix_hello_demo/tmp/210827-00:11:23:182473+0300_2b29fe60_sers7__6/usr/share/info' '/tmp/pylightnix_hello_demo/tmp/210827-00:11:23:182473+0300_2b29fe60_sers7__6/usr/share/info/hello.info'
+/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/mkdir -p '/tmp/pylightnix_hello_demo/tmp/210827-00:11:23:182473+0300_2b29fe60_sers7__6/usr/share/man/man1'
+/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/install -c -m 644 hello.1 '/tmp/pylightnix_hello_demo/tmp/210827-00:11:23:182473+0300_2b29fe60_sers7__6/usr/share/man/man1'
+make[4]: Leaving directory '/run/user/1000/tmp6potc48c/src'
+make[3]: Leaving directory '/run/user/1000/tmp6potc48c/src'
+make[2]: Leaving directory '/run/user/1000/tmp6potc48c/src'
+make[1]: выход из каталога «/run/user/1000/tmp6potc48c/src»
+```
 
 Finally, we convert RRef to the system path and run the GNU Hello
 binary.
