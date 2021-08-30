@@ -15,7 +15,7 @@
 """ Lens module defines the `Lens` helper class, which offers quick navigation
 through the dependent configurations """
 
-from pylightnix.imports import (join)
+from pylightnix.imports import (join,isfile)
 from pylightnix.types import (Any, Dict, List, Build, DRef, RRef, Optional,
                               RefPath, Tuple, Union, Path, Context, NamedTuple,
                               Context, Closure, SPath, StorageSettings)
@@ -227,6 +227,13 @@ class Lens:
     """ Check that the current value of Lens is a `Path` and return it """
     v=traverse(self, lens_repr(self,'syspath'))
     return val2path(v, self.ctx)
+
+  @property
+  def contents(self)->str:
+    """ Check that the current value of Lens is a `Path` and return it """
+    p=self.syspath
+    assert isfile(p)
+    return open(p,'r').read()
 
   @property
   def rref(self)->RRef:
