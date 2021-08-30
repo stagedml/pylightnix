@@ -87,7 +87,7 @@ def mdrun():
       res=interact(fdr,fdw,''.join(mklens(b).code.val))
       writestr(mklens(b).stdout.syspath,res)
 
-    acc=[]
+    acc:list=[]
     def _stages(m:Manager)->DRef:
       nonlocal acc
       for i,chunk in enumerate(chunks):
