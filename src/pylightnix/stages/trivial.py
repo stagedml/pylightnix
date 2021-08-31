@@ -32,7 +32,7 @@ from pylightnix.utils import (forcelink, isrefpath, traverse_dict)
 def mknode(m:Manager,
            cfgdict:dict,
            artifacts:Dict[Name,bytes]={},
-           name:str='mknode')->DRef:
+           name:str='mknode')->List[DRef]:
   config=deepcopy(cfgdict)
   config['name']=name
   assert '__artifacts__' not in config, \
@@ -84,7 +84,7 @@ def redefine(stage:Any,
   FIXME: Updating configs is dangerous: it changes its dref and thus breaks
   dependencies. Only top-level stages should use `new_confid` currently.
   """
-  def _new_stage(m:Manager,*args,**kwargs)->DRef:
+  def _new_stage(m:Manager,*args,**kwargs)->List[DRef]:
     dref=stage(m,*args,**kwargs) # type:ignore
     d=cfgdict(drefcfg_(dref,S=m.S))
     new_config(d)

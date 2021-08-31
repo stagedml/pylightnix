@@ -61,7 +61,7 @@ def fetchurl(m:Manager,
              filename:Optional[str]=None,
              force_download:bool=False,
              check_promises:bool=True,
-             **kwargs)->DRef:
+             **kwargs)->List[DRef]:
   """ Download and unpack an URL addess.
 
   Downloading is done by calling `wget` application. Optional unpacking is
@@ -177,7 +177,7 @@ def fetchlocal(m:Manager, sha256:str,
                name:Optional[str]=None,
                filename:Optional[str]=None,
                check_promises:bool=True,
-               **kwargs)->DRef:
+               **kwargs)->List[DRef]:
   """ Copy local file into Pylightnix storage. This function is typically
   intended to register application-specific files which are distributed with a
   source repository.
