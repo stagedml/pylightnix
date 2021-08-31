@@ -17,7 +17,7 @@ from tests.generators import (
 from tests.setup import ( ShouldHaveFailed, setup_storage2, mkstage, mkstage,
                          pipe_stdout )
 
-from pylightnix.arch import (pack,unpack)
+from pylightnix.arch import (spack,sunpack)
 
 
 
@@ -40,8 +40,8 @@ def test_pack1()->None:
     print(list(allrrefs(S)))
     print('===================')
     arch_path=Path(join(S.tmpdir,'archive.zip'))
-    pack([rref3], arch_path, S=S)
-    unpack(arch_path, S=S)
+    spack([rref3], arch_path, S=S)
+    sunpack(arch_path, S=S)
     assert isfile(arch_path)
 
 
@@ -62,7 +62,7 @@ def test_pack2(stages)->None:
       for nrref,rref in enumerate(rrefs):
         ap=Path(join(S1.tmpdir,f'archive_{nstage:02d}_{nrref:02d}.zip'))
         note(f'Packing {ap}:{rref}')
-        pack([rref], ap, S=S1)
+        spack([rref], ap, S=S1)
         archives.append(ap)
 
   note('PACK done')
@@ -70,7 +70,7 @@ def test_pack2(stages)->None:
   with setup_storage2('test_pack_dst') as S2:
     for ap in archives:
       note(f'Unpacking {ap}')
-      unpack(Path(ap), S=S2)
+      sunpack(Path(ap), S=S2)
 
   assert set(alldrefs(S=S1)) == set(alldrefs(S=S2))
   assert set(allrrefs(S=S1)) == set(allrrefs(S=S2))

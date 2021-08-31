@@ -15,17 +15,17 @@ from tests.imports import (isdir, environ, chmod, stat, TemporaryDirectory,
 def test_bashlike():
   with setup_storage2('test_bashlike') as S:
     clo=instantiate(mkstage, {'a':1}, lambda i:42, S=S)
-    rref1=realize(clo, force_rebuild=[clo.dref])
-    rref2=realize(clo, force_rebuild=[clo.dref])
+    rref1=realize(clo, force_rebuild=clo.targets)
+    rref2=realize(clo, force_rebuild=clo.targets)
     assert 'artifact' in lsref(rref1,S=S)
     assert 'context.json' in lsref(rref1,S=S)
     assert '__buildstart__.txt' in lsref(rref1,S=S)
     assert '__buildstop__.txt' in lsref(rref1,S=S)
     h1,_,_=unrref(rref1)
     h2,_,_=unrref(rref2)
-    assert len(lsref(clo.dref,S=S))==2
-    assert h1 in lsref(clo.dref,S=S)
-    assert h2 in lsref(clo.dref,S=S)
+    assert len(lsref(clo.targets[0],S=S))==2
+    assert h1 in lsref(clo.targets[0],S=S)
+    assert h2 in lsref(clo.targets[0],S=S)
     assert '42' in catref(rref1,['artifact'],S=S)
     try:
       lsref('foobar',S=S) # type:ignore
@@ -33,7 +33,7 @@ def test_bashlike():
     except AssertionError:
       pass
     try:
-      catref(clo.dref,['artifact'],S=S) # type:ignore
+      catref(clo.targets[0],['artifact'],S=S) # type:ignore
       raise ShouldHaveFailed('notimpl')
     except AssertionError:
       pass
@@ -41,14 +41,14 @@ def test_bashlike():
 def test_rmdref():
   with setup_storage2('test_rmdref') as S:
     clo=instantiate(mkstage, {'a':1}, lambda i:42, S=S)
-    drefpath=dref2path(clo.dref,S=S)
-    rref1=realize(clo, force_rebuild=[clo.dref])
+    drefpath=dref2path(clo.targets[0],S=S)
+    rref1=realize(clo, force_rebuild=[clo.targets[0]])
     rrefpath=rref2path(rref1, S=S)
     assert isdir(rrefpath)
     rmref(rref1,S=S)
     assert not isdir(rrefpath)
     assert isdir(drefpath)
-    rmref(clo.dref,S=S)
+    rmref(clo.targets[0],S=S)
     assert not isdir(drefpath)
     try:
       rmref('asdasd',S=S) # type:ignore
@@ -88,13 +88,13 @@ def test_du():
     assert usage=={}
     clo=instantiate(mkstage, {'name':'1'}, lambda i:42, S=S)
     usage=du(S=S)
-    assert clo.dref in usage
-    assert usage[clo.dref][0]>0
-    assert usage[clo.dref][1]=={}
+    assert clo.targets[0] in usage
+    assert usage[clo.targets[0]][0]>0
+    assert usage[clo.targets[0]][1]=={}
     rref=realize(clo)
     usage=du(S=S)
-    assert rref in usage[clo.dref][1]
-    assert usage[clo.dref][1][rref]>0
+    assert rref in usage[clo.targets[0]][1]
+    assert usage[clo.targets[0]][1][rref]>0
 
 def test_find():
   with setup_storage2('test_find') as S:
@@ -120,7 +120,7 @@ def test_diff():
   with setup_storage2('test_find') as S:
     s1=partial(mkstage, config={'name':'1'}, nondet=lambda i:42)
     s2=partial(mkstage, config={'name':'2'}, nondet=lambda i:33)
-    dref1=instantiate(s1,S=S).dref
+    dref1=instantiate(s1,S=S).targets[0]
     rref2=realize(instantiate(s2,S=S))
     diff(dref1,rref2,S=S)
     diff(dref1,s2,S=S)

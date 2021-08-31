@@ -106,7 +106,7 @@ def mkstage(m:Manager,
             starttime:Optional[str]='AUTO',
             nrrefs:int=1,
             nmatch:int=1,
-            mustfail:bool=False)->DRef:
+            mustfail:bool=False)->List[DRef]:
   return mkdrv(m, setup_test_config(config),
                   output_matcher(setup_test_match(nmatch)),
                   output_realizer(setup_test_realize(
@@ -127,7 +127,7 @@ def mkstageP(m:Manager,
             starttime:Optional[str]='AUTO',
             nrrefs:int=1,
             nmatch:int=1,
-            mustfail:bool=False)->DRef:
+            mustfail:bool=False)->List[DRef]:
   """ Makes a stage which could deliberately break the promise - i.e. fail to
   provide a promised artifact """
   def _r(S, dref:DRef, c:Context, ra:RealizeArg)->Output[Path]:
