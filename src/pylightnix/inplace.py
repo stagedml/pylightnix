@@ -27,22 +27,22 @@ from pylightnix.core import (instantiate_, realize)
 PYLIGHTNIX_MANAGER = Manager(None)
 
 
-def instantiate_inplace(stage:Any, *args, **kwargs)->DRef:
+def instantiate_inplace(stage:Any, *args, **kwargs)->List[DRef]:
   """ Instantiate a `stage`, use `PYLIGHTNIX_MANAGER` for storing derivations.
   Return derivation reference of the top-level stage. """
   global PYLIGHTNIX_MANAGER
   closure = instantiate_(PYLIGHTNIX_MANAGER,
                          lambda m: stage(m, *args, **kwargs))
-  return closure.dref
+  return closure.targets
 
 
-def realize_inplace(dref:DRef, force_rebuild:List[DRef]=[])->RRef:
+def realize_inplace(drefs:List[DRef], force_rebuild:List[DRef]=[])->RRef:
   """ Realize the derivation pointed by `dref` by constructing it's
   [Closure](#pylightnix.types.Closure) based on the contents of the global
   dependency manager and [realizing](#pylightnix.core.realizeMany) this closure.
   """
   global PYLIGHTNIX_MANAGER
-  return realize(Closure(dref,list(PYLIGHTNIX_MANAGER.builders.values()),
+  return realize(Closure(drefs,list(PYLIGHTNIX_MANAGER.builders.values()),
                          S=PYLIGHTNIX_MANAGER.S),
                  force_rebuild=force_rebuild)
 

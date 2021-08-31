@@ -267,7 +267,7 @@ Derivation = NamedTuple('Derivation', [('dref',DRef),
 #: Closures are typically obtained as a result of the
 #: [instantiate](#pylightnix.core.instantiate) and is typically consumed by the
 #: call to [realize](#pylightnix.core.realize) or it's analogs.
-Closure = NamedTuple('Closure', [('dref',DRef),
+Closure = NamedTuple('Closure', [('targets',List[DRef]),
                                  ('derivations',List[Derivation]),
                                  ('S',Optional[StorageSettings])])
 
@@ -449,6 +449,6 @@ DRefLike = TypeVar('DRefLike',bound=DRef)
 #: Stage's return value is a [derivation reference](#pylightnix.types.DRef)
 #: which could be either used in other stages, or
 #: [instantiated](#pylightnix.core.instantiate) into the stage realization plan.
-Stage = Callable[[Manager],DRefLike]
+Stage = Callable[[Manager],List[DRefLike]]
 
 

@@ -161,7 +161,9 @@ def find(name:Optional[Union[Stage,str]]=None,
       name_=name
     else:
       stage=name
-      name_=cfgname(drefcfg_(instantiate(stage,S=S).dref, S=S))
+      drefs=instantiate(stage,S=S).targets
+      assert len(drefs)==1
+      name_=cfgname(drefcfg_(drefs[0], S=S))
   for dref in alldrefs(S=S):
     for rref in drefrrefs(dref,S=S):
       if name_ is not None:
@@ -199,7 +201,9 @@ def diff(stageA:Union[RRef,DRef,Stage],
     elif isdref(s):
       return drefcfgpath(DRef(s),S=S)
     else:
-      return drefcfgpath(instantiate(s,S=S).dref,S=S)
+      drefs=instantiate(s,S=S).targets
+      assert len(drefs)==1
+      return drefcfgpath(drefs[0],S=S)
 
   Popen(['diff', '-u', _cfgpathof(stageA), _cfgpathof(stageB)],
         shell=False, cwd='/').wait()

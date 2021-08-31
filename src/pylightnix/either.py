@@ -9,7 +9,7 @@ from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional, Config,
 from pylightnix.core import (assert_valid_config, drefcfg_, cfgcattrs,
                              cfghash, cfgname, context_deref,
                              assert_valid_refpath, rref2path, drefdeps1, mkdrv,
-                             realizeMany, output_validate, fstmpdir)
+                             realizeMany, output_validate, fstmpdir, realize)
 
 from pylightnix.utils import (readstr, writestr, readstr, tryread)
 
@@ -162,13 +162,13 @@ def mkdrvE(m:Manager,
            config:Config,
            matcher:MatcherO,
            realizer:RealizerO
-           )->DRef:
+           )->List[DRef]:
   return mkdrv(m, config, either_matcher(matcher), either_realizer(realizer))
 
 def realizeE(closure:Closure,
              force_rebuild:Union[List[DRef],bool]=[],
              assert_realized:List[DRef]=[],
              realize_args:Dict[DRef,RealizeArg]={})->Either[RRef]:
-  rrefs=realizeMany(closure,force_rebuild,assert_realized,realize_args)
-  return either_loadR(rrefs,closure.S)
+  rref=realize(closure,force_rebuild,assert_realized,realize_args)
+  return either_loadR([rref],closure.S)
 

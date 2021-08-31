@@ -50,7 +50,9 @@ def val2dict(v:Any, ctx:LensContext)->Optional[dict]:
   elif isinstance(v,dict):
     return v
   elif isinstance(v,Closure):
-    return val2dict(v.dref, ctx)
+    assert len(v.targets)==1, \
+      "Lens currently support only single-targeted closures"
+    return val2dict(v.targets[0], ctx)
   else:
     return None
 
@@ -70,7 +72,8 @@ def val2rref(v:Any, ctx:LensContext)->RRef:
     else:
       assert False, f"Lens couldn't resolve '{dref}' without a context"
   elif isinstance(v,Closure):
-    return val2rref(v.dref, ctx)
+    assert len(v.targets)==1
+    return val2rref(v.targets[0], ctx)
   else:
     assert isrref(v), f"Lens expected RRef, but got '{v}'"
     return RRef(v)
@@ -110,7 +113,8 @@ def val2path(v:Any, ctx:LensContext)->Path:
     else:
       assert False, f"Lens couldn't resolve '{refpath}' without a context"
   elif isinstance(v, Closure):
-    return val2path(v.dref, ctx)
+    assert len(v.targets)==1
+    return val2path(v.targets[0], ctx)
   elif isinstance(v, Build):
     assert ctx.build_path is not None, f"Lens can't access build path of '{v}'"
     return ctx.build_path

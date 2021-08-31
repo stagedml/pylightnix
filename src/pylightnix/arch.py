@@ -35,15 +35,15 @@ APACK=try_executable('apack',
                      'PYLIGHTNIX_APACK',
                      '`apack` executable not found. Please install `atool` '
                      'system pacakge or set PYLIGHTNIX_APACK env var.',
-                     '`arch.pack` procedure will fail.')
+                     '`arch.spack` procedure will fail.')
 AUNPACK=try_executable('aunpack',
                      'PYLIGHTNIX_AUNPACK',
                      '`aunpack` executable not found. Please install `atool` '
                      'system pacakge or set PYLIGHTNIX_AUNPACK env var.',
-                     '`arch.unpack` procedure will fail.')
+                     '`arch.sunpack` procedure will fail.')
 
 
-def pack(roots:List[RRef], out:Path, S:Optional[StorageSettings]=None)->None:
+def spack(roots:List[RRef], out:Path, S:Optional[StorageSettings]=None)->None:
   rout=realpath(out)
   tmp=splitext(rout)[0]+'_tmp'+splitext(rout)[1]
   try:
@@ -74,7 +74,7 @@ def pack(roots:List[RRef], out:Path, S:Optional[StorageSettings]=None)->None:
       except FileNotFoundError:
         pass
 
-def unpack(archive:Path, S=None)->None:
+def sunpack(archive:Path, S=None)->None:
   rin=realpath(archive)
   tmppath=Path(mkdtemp(suffix=f"_{basename(rin)}", dir=fstmpdir(S)))
   try:
@@ -133,9 +133,9 @@ def copyclosure(rrefs_S:Iterable[RRef],
       # note(f"Expecting for {dref}(ctx {rref_S}): {list(rrefs_S1)}")
       dref2=mkdrv(m, cfg, match_exact(rrefs_S1),
                   build_wrapper(_make,nouts=None,starttime=None,stoptime=None))
-      visited_drefs.add(dref2)
+      visited_drefs.add(dref2[0])
       assert dref==dref2, f"{dref} != {dref2}"
-      return dref2
+      return dref2[0]
     rrefs_D=realizeMany(instantiate(_stage, dref_S, S=D))
     assert rrefs_D==[rref_S], f"{rrefs_D}!={[rref_S]}"
 

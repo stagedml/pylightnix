@@ -589,12 +589,12 @@ def output_matcher(m:MatcherO)->Matcher:
 def mkdrv(m:Manager,
           config:Config,
           matcher:Matcher,
-          realizer:Realizer)->DRef:
+          realizer:Realizer)->List[DRef]:
   """ Construct a [Derivation](#pylightnix.types.Derivation) object out of
   [Config](#pylightnix.types.Config), [Matcher](#pylightnix.types.Matcher) and
   [Realizer](#pylightnix.types.Realizer). Register the derivation in the
   dependency-resolution [Manager](#pylightnix.types.Manager). Return [Derivation
-  reference](#pylightnix.types.DRef) of the newly-obtained derivation.
+  references](#pylightnix.types.DRef) of the newly-obtained derivation.
 
   Arguments:
   - `m:Manager`: A Manager to update with a new derivation
@@ -615,7 +615,7 @@ def mkdrv(m:Manager,
     warning(f"Overwriting the derivation of '{dref}'. This could be a "
             f"result of calling the same `mkdrv` twice with the same Manager.")
   m.builders[dref]=Derivation(dref, matcher, realizer)
-  return dref
+  return [dref]
 
 def instantiate_(m:Manager, stage:Any, *args, **kwargs)->Closure:
   """ See [instantiate](#pylightnix.types.instantiate) """
@@ -624,11 +624,11 @@ def instantiate_(m:Manager, stage:Any, *args, **kwargs)->Closure:
     "by stage functions with the same `Manager` as argument")
   m.in_instantiate=True
   try:
-    target_dref=stage(m,*args,**kwargs)
+    targets=stage(m,*args,**kwargs)
   finally:
     m.in_instantiate=False
-  assert_have_realizers(m,[target_dref])
-  return Closure(target_dref,list(m.builders.values()),S=m.S)
+  assert_have_realizers(m,targets)
+  return Closure(targets,list(m.builders.values()),S=m.S)
 
 def instantiate(stage:Any, *args, S=None, **kwargs)->Closure:
   """ Instantiate function evaluates [Stage](#pylightnix.types.Stage) functions
@@ -644,11 +644,12 @@ def instantiate(stage:Any, *args, S=None, **kwargs)->Closure:
 RealizeSeqGen = Generator[
   Tuple[Optional[StorageSettings],DRef,Context,Derivation,RealizeArg],
   Tuple[Optional[List[RRef]],bool],
-  List[RRef]]
+  Context]
 
 
 def realize(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
-                             assert_realized:List[DRef]=[])->RRef:
+                             assert_realized:List[DRef]=[],
+                             realize_args:Dict[DRef,RealizeArg]={})->RRef:
   """ Realize gets the results of building the [Stage](#pylightnix.types.Stage).
   Returns either the [matching](#pylightnix.types.Matcher) realizations
   immediately, or launches the user-defined [realization
@@ -677,12 +678,12 @@ def realize(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
   # dep.tree to avoid calling `drefdeps` within the cycle.
   # FIXME: Update derivation's matcher after forced rebuilds. Matchers should
   # remember and reproduce user's preferences.
-
-  rrefs=realizeMany(closure, force_rebuild, assert_realized)
+  rrefs=realizeMany(closure, force_rebuild,
+                    assert_realized, realize_args)
   assert len(rrefs)==1, (
-      f"`realize` is to be used with single-output derivations. Derivation "
-      f"{closure.dref} has {len(rrefs)} outputs:\n{rrefs}\n"
-      f"Consider using `realizeMany`." )
+    f"`realize` is to be used with single-output derivations. "
+    f"{closure.targets} have {len(rrefs)} outputs:\n{rrefs}\n"
+    f"Consider using `realizeMany`." )
   return rrefs[0]
 
 
@@ -690,13 +691,26 @@ def realizeMany(closure:Closure,
                 force_rebuild:Union[List[DRef],bool]=[],
                 assert_realized:List[DRef]=[],
                 realize_args:Dict[DRef,RealizeArg]={})->List[RRef]:
+  assert len(closure.targets)==1, (
+    f"`realize` is to be used with single-targeted derivations. "
+    f"Current closure has {len(closure.targets)} targets:\n{closure.targets}\n"
+    f"Consider using `realizeMany`." )
+  ctx=realizeAll(closure, force_rebuild, assert_realized, realize_args)
+  rrefs=ctx[list(ctx.keys())[0]]
+  return rrefs
+
+
+def realizeAll(closure:Closure,
+                force_rebuild:Union[List[DRef],bool]=[],
+                assert_realized:List[DRef]=[],
+                realize_args:Dict[DRef,RealizeArg]={})->Context:
   """ A generic version of [realize](#pylightnix.core.realize).  Allows the
   realizer to return several alternative (in a user-defined sence) realizations.
   """
   force_interrupt:List[DRef]=[]
   if isinstance(force_rebuild,bool):
     if force_rebuild:
-      force_interrupt=[closure.dref]
+      force_interrupt=closure.targets
   elif isinstance(force_rebuild,list):
     force_interrupt=force_rebuild
   else:
@@ -727,18 +741,18 @@ def realizeSeq(closure:Closure,
   assert_valid_closure(closure)
   force_interrupt_:Set[DRef]=set(force_interrupt)
   context_acc:Context={}
-  target_dref=closure.dref
-  target_deps=drefdeps([target_dref],S)
+  target_drefs=closure.targets
+  target_deps=drefdeps(target_drefs,S)
   for drv in closure.derivations:
     dref=drv.dref
     rrefs:Optional[List[RRef]]
-    if dref in target_deps or dref==target_dref:
+    if dref in target_deps or dref in target_drefs:
       dref_deps=drefdeps([dref],S)
       dref_context={k:v for k,v in context_acc.items() if k in dref_deps} # I
       if dref in force_interrupt_:
         rrefs,abort=yield (S,dref,dref_context,drv,realize_args.get(dref,{}))
         if abort:
-          return []
+          return {}
       else:
         rrefs=drv.matcher(S, list(drefrrefsC(dref,dref_context,S)))
       if rrefs is None:
@@ -768,8 +782,7 @@ def realizeSeq(closure:Closure,
         rrefs=rrefs_matched
       assert rrefs is not None
       context_acc=context_add(context_acc,dref,rrefs)
-  assert rrefs is not None
-  return rrefs
+  return {dref:context_acc[dref] for dref in target_drefs}
 
 
 def evaluate(stage, *args, **kwargs)->RRef:
@@ -916,7 +929,8 @@ def assert_valid_context(c:Context)->None:
 def assert_valid_closure(closure:Closure)->None:
   assert len(closure.derivations)>0, \
     "Closure can not be empty"
-  assert closure.dref in [d.dref for d in closure.derivations], \
+  assert all([dref in [d.dref for d in closure.derivations] \
+             for dref in closure.targets]), \
     "Closure should contain target derivation"
 
 def assert_rref_deps(c:Config)->None:

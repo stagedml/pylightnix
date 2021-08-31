@@ -36,7 +36,7 @@ class ReplHelper:
     self.dref:Optional[DRef]=None
     self.context:Optional[Context]=None
     self.drv:Optional[Derivation]=None
-    self.rrefs:Optional[List[RRef]]=None
+    self.targets:Optional[Context]=None
     self.rarg:Optional[RealizeArg]=None
 
 ERR_INVALID_RH="Neither global, nor user-defined ReplHelper is valid"
@@ -46,7 +46,7 @@ PYLIGHTNIX_REPL_HELPER:Optional[ReplHelper]=None
 
 def repl_continueMany(out_paths:Optional[List[Path]]=None,
                       out_rrefs:Optional[List[RRef]]=None,
-                      rh:Optional[ReplHelper]=None)->Optional[List[RRef]]:
+                      rh:Optional[ReplHelper]=None)->Optional[Context]:
   global PYLIGHTNIX_REPL_HELPER
   if rh is None:
     rh=PYLIGHTNIX_REPL_HELPER
@@ -70,16 +70,18 @@ def repl_continueMany(out_paths:Optional[List[Path]]=None,
     rh.S,rh.dref,rh.context,rh.drv,rh.rarg=rh.gen.send((rrefs,False))
   except StopIteration as e:
     rh.gen=None
-    rh.rrefs=e.value
+    rh.targets=e.value
   return repl_rrefs(rh)
 
 def repl_continue(out_paths:Optional[List[Path]]=None,
                   out_rrefs:Optional[List[RRef]]=None,
                   rh:Optional[ReplHelper]=None)->Optional[RRef]:
-  rrefs=repl_continueMany(out_paths,out_rrefs,rh)
-  if rrefs is None:
+  ctx=repl_continueMany(out_paths,out_rrefs,rh)
+  if ctx is None:
     return None
-  assert len(rrefs)==1, f"Expects exactly 1 output, not {len(rrefs)}"
+  assert len(ctx)==1, f"Expected a single-targeted closure"
+  rrefs=ctx[list(ctx.keys())[0]]
+  assert len(rrefs)==1, f"Expected a single-realization derivation"
   return rrefs[0]
 
 
@@ -109,7 +111,7 @@ def repl_realize(closure:Closure,
   force_interrupt_:List[DRef]=[]
   if isinstance(force_interrupt,bool):
     if force_interrupt:
-      force_interrupt_=[closure.dref]
+      force_interrupt_=closure.targets
   elif isinstance(force_interrupt,list):
     force_interrupt_=list(force_interrupt)
   else:
@@ -121,18 +123,20 @@ def repl_realize(closure:Closure,
     rh.S,rh.dref,rh.context,rh.drv,rh.rarg=next(rh.gen)
   except StopIteration as e:
     rh.gen=None
-    rh.rrefs=e.value
+    rh.targets=e.value
   return rh
 
 
-def repl_rrefs(rh:ReplHelper)->Optional[List[RRef]]:
-  return rh.rrefs
+def repl_rrefs(rh:ReplHelper)->Optional[Context]:
+  return rh.targets
 
 
 def repl_rref(rh:ReplHelper)->Optional[RRef]:
-  rrefs=repl_rrefs(rh)
-  if rrefs is None:
+  ctx=repl_rrefs(rh)
+  if ctx is None:
     return None
+  assert len(ctx)==1
+  rrefs=ctx[list(ctx.keys())[0]]
   assert len(rrefs)==1
   return rrefs[0]
 
