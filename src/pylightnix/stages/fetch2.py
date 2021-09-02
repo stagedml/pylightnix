@@ -51,7 +51,7 @@ def fetchurl2(m:Manager,
               name:Optional[str]=None,
               filename:Optional[str]=None,
               force_download:bool=False,
-              **kwargs)->List[DRef]:
+              **kwargs)->DRef:
   """ Download file given it's URL addess.
 
   Downloading is done by calling `curl` application. The path to the executable
@@ -159,7 +159,7 @@ def unpack(m:Manager,
            sha256:Optional[str]=None,
            sha1:Optional[str]=None,
            aunpack_args:List[str]=[],
-           **kwargs)->List[DRef]:
+           **kwargs)->DRef:
 
   if path:
     assert refpath is None
