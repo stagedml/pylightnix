@@ -30,7 +30,7 @@ from tests.setup import ( ShouldHaveFailed, setup_storage2,
 #   with setup_storage2('test_realize_base') as S:
 #     m=Manager(storage(S))
 #     mkstage(m, d)
-#     dref=list(m.builders.values())[-1].dref
+#     dref=list(m.builders.values())[-1].targets[0]
 #     assert_valid_dref(dref)
 #     assert len(list(drefrrefsC(dref, mkcontext(), S))) == 0
 #     rrefgs=list(m.builders.values())[-1].matcher(S, dref, mkcontext())
@@ -82,14 +82,14 @@ from tests.setup import ( ShouldHaveFailed, setup_storage2,
 #   with setup_storage('test_detect_rref_deps'):
 #     rref=realize(instantiate(mkstage,{'a':1}))
 #     clo=instantiate(mkstage,{'a':1,'maman':rref})
-#     _,rrefs=scanref_dict(cfgdict(drefcfg(clo.dref)))
+#     _,rrefs=scanref_dict(cfgdict(drefcfg(clo.targets[0])))
 #     assert len(rrefs)>0
 
 def test_no_dref_deps_without_realizers()->None:
   with setup_storage2('test_no_dref_deps_without_realizers') as S:
     try:
       clo=instantiate(mkstage,{'a':1},S=S)
-      _=realize(instantiate(mkstage,{'maman':clo.dref},S=S))
+      _=realize(instantiate(mkstage,{'maman':clo.targets[0]},S=S))
       raise ShouldHaveFailed("We shouldn't share DRefs across managers")
     except AssertionError:
       pass
@@ -104,7 +104,7 @@ def test_repeated_instantiate()->None:
     assert len(cl1.derivations)==1
     assert len(cl2.derivations)==1
     assert cl1.derivations[0].dref == cl2.derivations[0].dref
-    assert cl1.dref == cl2.dref
+    assert cl1.targets[0] == cl2.targets[0]
 
 
 def test_repeated_realize()->None:
@@ -114,7 +114,7 @@ def test_repeated_realize()->None:
     clo=instantiate(_setting,S=S)
     rref1=realize(clo)
     rref2=realize(clo)
-    rref3=realize(clo, force_rebuild=[clo.dref])
+    rref3=realize(clo, force_rebuild=[clo.targets[0]])
     assert rref1==rref2 and rref2==rref3
     try:
       rref3=realize(clo, force_rebuild='Foobar') # type:ignore
@@ -205,7 +205,7 @@ def test_no_foreign_dref_deps()->None:
     with setup_storage2('test_no_foreign_dref_deps_2') as S2:
       def _setup(m):
         clo=instantiate(mkstage, {'name':'foreign', 'foo':'bar'}, S=S2)
-        return mkstage(m,{'bogus':clo.dref})
+        return mkstage(m,{'bogus':clo.targets[0]})
       try:
         dref = instantiate(_setup,S=S)
         raise ShouldHaveFailed(f"Should fail, but got {dref}")
@@ -230,7 +230,7 @@ def test_no_recursive_instantiate_with_same_manager()->None:
   with setup_storage2('test_no_recursive_instantiate_with_same_manager') as S:
     def _setup(m):
       derivs = instantiate_(m,_setup)
-      n2 = mkstage(m,{'bogus':derivs.dref})
+      n2 = mkstage(m,{'bogus':derivs.targets[0]})
       return n2
     try:
       dref = instantiate(_setup,S=S)
@@ -329,7 +329,7 @@ def test_gc()->None:
 #       def _realize(b:Build):
 #         o=build_outpath(b)
 #         c=build_cattrs(b)
-#         assert b.dref in c.promise
+#         assert b.targets[0] in c.promise
 #         assert n1 in store_cattrs(c.maman,S).promise
 #         assert build_path(b,c.promise)==join(o,'uber-artifact')
 #         assert build_path(b,store_cattrs(c.maman,S).promise)==build_path(b,c.maman_promise)
@@ -373,7 +373,7 @@ def test_path2rref(rref):
 def test_linkdref()->None:
   with setup_storage2('test_linkdref') as S:
     s1=partial(mkstage, config={'name':'NaMe'})
-    dref1=instantiate(s1,S=S).dref
+    dref1=instantiate(s1,S=S).targets[0]
     l=linkdref(dref1, destdir=S.storage, format='result-%(N)s', S=S)
     assert str(l)==join(S.storage,'result-NaMe')
     assert islink(join(S.storage,'result-NaMe'))

@@ -92,6 +92,6 @@ def test_build_exception()->None:
       raise ShouldHaveFailed()
     except BuildError as e:
       assert isinstance(e.exception, ValueError)
-      assert e.dref==clo.dref
+      assert e.dref==clo.targets[0]
       assert str(e.exception)=='Oops'
 

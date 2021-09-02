@@ -29,7 +29,7 @@ def test_mknode(d)->None:
     assert len(cl1.derivations)==1
     assert len(cl2.derivations)==1
     assert cl1.derivations[0].dref == cl2.derivations[0].dref
-    assert cl1.dref == cl2.dref
+    assert cl1.targets == cl2.targets
 
 
 @given(d=dicts(), a=artifacts())

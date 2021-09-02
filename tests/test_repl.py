@@ -1,4 +1,4 @@
-from pylightnix import ( Manager, DRef, RRef, Path, mklogdir, dirhash,
+from pylightnix import ( Manager, DRef, RRef, Path, List, mklogdir, dirhash,
                         rref2path, Manager, mkcontext, instantiate,
                         realize, instantiate_inplace, realize_inplace,
                         assert_valid_rref, alldrefs, assert_valid_dref,
@@ -44,10 +44,12 @@ def test_repl_basic():
 
     rh=repl_realize(clo, force_interrupt=[n1,n2])
     assert repl_rref(rh) is None
-    assert rh.dref==n1
+    assert rh.result is not None
+    assert n1 in rh.result
     repl_continue(rh=rh)
     assert repl_rref(rh) is None
-    assert rh.dref==n2
+    assert rh.result is not None
+    assert n2 in rh.result
     repl_continue(rh=rh)
     assert repl_rref(rh) is not None
 
@@ -63,7 +65,8 @@ def test_repl_race():
     clo=instantiate(_setting)
     rh=repl_realize(clo, force_interrupt=True)
     assert repl_rref(rh) is None
-    assert rh.dref==clo.dref
+    assert rh.result is not None
+    assert clo.targets[0] in rh.result
 
     clo2=instantiate(_setting)
     rref2=realize(clo2) # Realize dref while repl_realizing same dref
@@ -84,7 +87,8 @@ def test_repl_override():
 
     clo=instantiate(_setting, S=S)
     rh=repl_realize(clo, force_interrupt=[n1])
-    assert rh.dref==n1
+    assert rh.result is not None
+    assert n1 in rh.result
     b=repl_build(rh)
     with open(join(build_outpath(b),'artifact'),'w') as f:
       f.write('777')

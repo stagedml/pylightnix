@@ -59,8 +59,8 @@ def test_lens():
                  realizer=build_wrapper(_realize))
 
     clo=instantiate(_setting, S=S)
-    assert isrefpath(mklens(clo.dref,S=S).maman.selfref.refpath)
-    assert isdir(mklens(clo.dref,S=S).syspath)
+    assert isrefpath(mklens(clo.targets[0],S=S).maman.selfref.refpath)
+    assert isdir(mklens(clo.targets[0],S=S).syspath)
     rref=realize(clo)
     assert_valid_rref(rref)
     assert isrefpath(mklens(rref,S=S).maman.selfref.refpath)
@@ -68,11 +68,11 @@ def test_lens():
     assert mklens(rref,S=S).rref == rref
     assert isrefpath(mklens(rref,S=S).papa.selfref.refpath)
     assert mklens(rref,S=S).papa.dict.d1.val == 1
-    assert mklens(rref,S=S).dref == clo.dref
+    assert mklens(rref,S=S).dref == clo.targets[0]
     assert isdir(mklens(rref,S=S).syspath)
 
     try:
-      print(mklens(clo.dref,S=S).maman.selfref.syspath)
+      print(mklens(clo.targets[0],S=S).maman.selfref.syspath)
       raise ShouldHaveFailed()
     except AssertionError:
       pass
