@@ -162,7 +162,7 @@ def mkdrvE(m:Manager,
            config:Config,
            matcher:MatcherO,
            realizer:RealizerO
-           )->List[DRef]:
+           )->DRef:
   return mkdrv(m, config, either_matcher(matcher), either_realizer(realizer))
 
 def realizeE(closure:Closure,

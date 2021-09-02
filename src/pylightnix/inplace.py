@@ -18,8 +18,9 @@ resolution [Manager](#pylightnix.types.Manager) and thus offer a simpler API,
 but add usual risks of using gloabl variables. """
 
 from pylightnix.types import (Any, DRef, Stage, Manager, Derivation, List,
-                              RRef, Closure, SPath)
-from pylightnix.core import (instantiate_, realize)
+                              RRef, Closure, SPath, TypeVar, Callable, Optional,
+                              Dict, RealizeArg, Context, Union)
+from pylightnix.core import (instantiate_, realize, realizeAll)
 
 
 #: The Global [Derivation manager](#pylightnix.types.Manager) used by
@@ -27,22 +28,43 @@ from pylightnix.core import (instantiate_, realize)
 PYLIGHTNIX_MANAGER = Manager(None)
 
 
-def instantiate_inplace(stage:Any, *args, **kwargs)->List[DRef]:
+_A=TypeVar("_A")
+def instantiate_inplace(stage:Callable[[Manager,Any,Any],_A],
+                        *args:Any,**kwargs:Any)->_A:
   """ Instantiate a `stage`, use `PYLIGHTNIX_MANAGER` for storing derivations.
   Return derivation reference of the top-level stage. """
   global PYLIGHTNIX_MANAGER
-  closure = instantiate_(PYLIGHTNIX_MANAGER,
-                         lambda m: stage(m, *args, **kwargs))
-  return closure.targets
+  stage_result:Optional[_A]=None
+  def _stage(m:Manager):
+    nonlocal stage_result
+    stage_result=stage(m,*args,**kwargs) # type:ignore
+    return stage_result
+  instantiate_(PYLIGHTNIX_MANAGER, _stage)
+  assert stage_result is not None
+  return stage_result
 
 
-def realize_inplace(drefs:List[DRef], force_rebuild:List[DRef]=[])->RRef:
+def realizeAll_inplace(drefs:List[DRef],
+                       force_rebuild:List[DRef]=[],
+                       assert_realized:List[DRef]=[],
+                       realize_args:Dict[DRef,RealizeArg]={})->Context:
   """ Realize the derivation pointed by `dref` by constructing it's
   [Closure](#pylightnix.types.Closure) based on the contents of the global
   dependency manager and [realizing](#pylightnix.core.realizeMany) this closure.
   """
   global PYLIGHTNIX_MANAGER
-  return realize(Closure(drefs,list(PYLIGHTNIX_MANAGER.builders.values()),
-                         S=PYLIGHTNIX_MANAGER.S),
-                 force_rebuild=force_rebuild)
+  clo=Closure(drefs,list(PYLIGHTNIX_MANAGER.builders.values()),
+              S=PYLIGHTNIX_MANAGER.S)
+  return realizeAll(clo,force_rebuild,assert_realized,realize_args)
+
+
+def realize_inplace(dref:DRef,
+                    force_rebuild:List[DRef]=[],
+                    assert_realized:List[DRef]=[],
+                    realize_args:Dict[DRef,RealizeArg]={})->RRef:
+  rrefs=realizeAll_inplace([dref], force_rebuild, assert_realized,
+                            realize_args)[dref]
+  assert len(rrefs)==1
+  return rrefs[0]
+
 

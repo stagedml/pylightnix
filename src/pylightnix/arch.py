@@ -133,9 +133,9 @@ def copyclosure(rrefs_S:Iterable[RRef],
       # note(f"Expecting for {dref}(ctx {rref_S}): {list(rrefs_S1)}")
       dref2=mkdrv(m, cfg, match_exact(rrefs_S1),
                   build_wrapper(_make,nouts=None,starttime=None,stoptime=None))
-      visited_drefs.add(dref2[0])
+      visited_drefs.add(dref2)
       assert dref==dref2, f"{dref} != {dref2}"
-      return dref2[0]
+      return dref2
     rrefs_D=realizeMany(instantiate(_stage, dref_S, S=D))
     assert rrefs_D==[rref_S], f"{rrefs_D}!={[rref_S]}"
 

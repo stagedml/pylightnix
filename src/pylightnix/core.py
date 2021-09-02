@@ -589,7 +589,7 @@ def output_matcher(m:MatcherO)->Matcher:
 def mkdrv(m:Manager,
           config:Config,
           matcher:Matcher,
-          realizer:Realizer)->List[DRef]:
+          realizer:Realizer)->DRef:
   """ Construct a [Derivation](#pylightnix.types.Derivation) object out of
   [Config](#pylightnix.types.Config), [Matcher](#pylightnix.types.Matcher) and
   [Realizer](#pylightnix.types.Realizer). Register the derivation in the
@@ -615,7 +615,7 @@ def mkdrv(m:Manager,
     warning(f"Overwriting the derivation of '{dref}'. This could be a "
             f"result of calling the same `mkdrv` twice with the same Manager.")
   m.builders[dref]=Derivation(dref, matcher, realizer)
-  return [dref]
+  return dref
 
 def instantiate_(m:Manager, stage:Any, *args, **kwargs)->Closure:
   """ See [instantiate](#pylightnix.types.instantiate) """
@@ -624,9 +624,16 @@ def instantiate_(m:Manager, stage:Any, *args, **kwargs)->Closure:
     "by stage functions with the same `Manager` as argument")
   m.in_instantiate=True
   try:
-    targets=stage(m,*args,**kwargs)
+    result=stage(m,*args,**kwargs)
   finally:
     m.in_instantiate=False
+  targets:List[DRef]
+  if isinstance(result,list) and all([isdref(d) for d in result]):
+    targets=result
+  elif isdref(result):
+    targets=[result]
+  else:
+    assert False, f"Invalid stage result {result}"
   assert_have_realizers(m,targets)
   return Closure(targets,list(m.builders.values()),S=m.S)
 
@@ -701,9 +708,9 @@ def realizeMany(closure:Closure,
 
 
 def realizeAll(closure:Closure,
-                force_rebuild:Union[List[DRef],bool]=[],
-                assert_realized:List[DRef]=[],
-                realize_args:Dict[DRef,RealizeArg]={})->Context:
+               force_rebuild:Union[List[DRef],bool]=[],
+               assert_realized:List[DRef]=[],
+               realize_args:Dict[DRef,RealizeArg]={})->Context:
   """ A generic version of [realize](#pylightnix.core.realize).  Allows the
   realizer to return several alternative (in a user-defined sence) realizations.
   """

@@ -36,7 +36,7 @@ class ReplHelper:
     self.dref:Optional[DRef]=None
     self.context:Optional[Context]=None
     self.drv:Optional[Derivation]=None
-    self.targets:Optional[Context]=None
+    self.result:Optional[Context]=None
     self.rarg:Optional[RealizeArg]=None
 
 ERR_INVALID_RH="Neither global, nor user-defined ReplHelper is valid"
@@ -70,7 +70,7 @@ def repl_continueMany(out_paths:Optional[List[Path]]=None,
     rh.S,rh.dref,rh.context,rh.drv,rh.rarg=rh.gen.send((rrefs,False))
   except StopIteration as e:
     rh.gen=None
-    rh.targets=e.value
+    rh.result=e.value
   return repl_rrefs(rh)
 
 def repl_continue(out_paths:Optional[List[Path]]=None,
@@ -123,12 +123,12 @@ def repl_realize(closure:Closure,
     rh.S,rh.dref,rh.context,rh.drv,rh.rarg=next(rh.gen)
   except StopIteration as e:
     rh.gen=None
-    rh.targets=e.value
+    rh.result=e.value
   return rh
 
 
 def repl_rrefs(rh:ReplHelper)->Optional[Context]:
-  return rh.targets
+  return rh.result
 
 
 def repl_rref(rh:ReplHelper)->Optional[RRef]:

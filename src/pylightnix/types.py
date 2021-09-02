@@ -449,6 +449,6 @@ DRefLike = TypeVar('DRefLike',bound=DRef)
 #: Stage's return value is a [derivation reference](#pylightnix.types.DRef)
 #: which could be either used in other stages, or
 #: [instantiated](#pylightnix.core.instantiate) into the stage realization plan.
-Stage = Callable[[Manager],List[DRefLike]]
+Stage=Callable[[Manager],Union[DRefLike,List[DRefLike]]]
 
 
