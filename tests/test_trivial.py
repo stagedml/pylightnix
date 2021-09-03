@@ -8,7 +8,7 @@ from tests.imports import (
     given, assume, example, note, settings, text, decimals, integers, rmtree,
     characters, gettempdir, isdir, join, makedirs, from_regex, islink, listdir,
     get_executable, run, dictionaries, one_of, lists, recursive, printable,
-    none, booleans, floats, re_compile, composite, event, isfile )
+    none, booleans, floats, re_compile, composite, event, isfile, Verbosity )
 
 from tests.generators import (
     configs, dicts, artifacts )

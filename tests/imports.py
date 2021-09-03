@@ -6,7 +6,7 @@ from os.path import (basename, join, isfile, isdir, islink, relpath, abspath,
 from shutil import rmtree
 
 from hypothesis import (given, assume, example, note, settings, event,
-                        HealthCheck, reproduce_failure, Phase)
+                        HealthCheck, reproduce_failure, Phase, Verbosity)
 from hypothesis.strategies import (text, decimals, integers, characters,
                                    from_regex, dictionaries, one_of, lists,
                                    recursive, none, booleans, floats,

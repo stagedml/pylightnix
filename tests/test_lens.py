@@ -14,15 +14,15 @@
 
 """ Simple functions imitating unix shell tools.  """
 
-from pylightnix import (instantiate, DRef, RRef, Path, Build, Manager, mklens,
-                        mkdrv, selfref, match_some, build_wrapper, instantiate,
+from pylightnix import (DRef, RRef, Path, Build, Manager, mklens, mkdrv,
+                        selfref, match_some, build_wrapper, instantiate,
                         realize, isrref, isdref, build_cattrs, build_outpath,
                         build_path, mkconfig, assert_valid_rref, isrefpath,
                         isclosure, match_only)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink,
                            isfile, List, randint, sleep, rmtree, system,
-                           S_IWRITE, S_IREAD, S_IEXEC, isdir)
+                           S_IWRITE, S_IREAD, S_IEXEC, isdir, note)
 
 from tests.generators import (rrefs, drefs, configs, dicts)
 
@@ -109,14 +109,15 @@ def test_lens():
 
 def test_lens_closures():
   with setup_storage2('test_lens_closures') as S:
-    def _setting(m:Manager)->DRef:
+    def _stage(m:Manager)->DRef:
       n1=mkstage(m, {'name':'1', 'x':33, 'selfref':[selfref,'artifact']})
       n2=mkstage(m, {'name':'2', 'papa':n1, 'dict':{'d1':1} })
       n3=mkstage(m, {'name':'3', 'maman':n2 })
       return n3
 
-    clo=instantiate(_setting, S=S)
+    clo=instantiate(_stage, S=S)
     assert isclosure(clo)
+    print(f"{clo.targets}")
 
     rref=realize(mklens(clo,S=S).maman.papa.closure)
     assert mklens(rref,S=S).x.val==33

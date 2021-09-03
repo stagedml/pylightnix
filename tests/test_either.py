@@ -5,7 +5,7 @@ from pylightnix import (SPath, Context, RealizeArg, Path, instantiate, DRef,
                         either_isRight, either_isLeft, realizeMany, rref2path,
                         match_only, writestr, match_some, Output,
                         allrrefs, rrefdeps1, realizeE, either_paths,
-                        either_loadR, either_status)
+                        either_loadR, either_status, realizeManyE)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink,
                            isfile, List, randint, sleep, rmtree, system,
@@ -37,7 +37,7 @@ def mkstageE(m:Manager,
 def test_either_invariant(stages):
   with setup_storage2('test_either_invariant') as S:
     for stage in stages:
-      e=realizeE(instantiate(stage,S=S))
+      e=realizeManyE(instantiate(stage,S=S))
       depth=max([rrefdepth(rref,S) for rref in either_paths(e)])
       assert not (either_isLeft(e) and either_isRight(e))
       assert (either_isLeft(e) or either_isRight(e))

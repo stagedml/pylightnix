@@ -5,7 +5,8 @@ from pylightnix import ( Manager, DRef, RRef, Path, List, mklogdir, dirhash,
                         repl_realize, repl_cancel, repl_continue, repl_rref,
                         repl_build, ReplHelper, build_outpath, tryread,
                         repl_continueBuild, isrref, context_deref, rrefctx,
-                        output_validate )
+                        output_validate, repl_result, repl_continueAll,
+                        repl_realize )
 
 from tests.imports import (
     given, assume, example, note, settings, text, decimals, integers, rmtree,
@@ -19,39 +20,29 @@ from tests.generators import (
 from tests.setup import ( setup_storage2, setup_inplace_reset, mkstage, mkstage,
                          ShouldHaveFailed )
 
-# def test_repl_null():
-#   with setup_storage('test_repl_null'):
-
-#   def _setting(m:Manager)->DRef:
-#     nonlocal n1,n2
-#     n1 = mkstage(m, {'a':'1'})
-#     n2 = mkstage(m, {'maman':n1})
-#     return n2
 
 def test_repl_basic():
   with setup_storage2('test_repl_default') as S:
 
     n1:DRef; n2:DRef
-    def _setting(m:Manager)->DRef:
+    def _setting(m:Manager)->List[DRef]:
       nonlocal n1,n2
       n1 = mkstage(m, {'a':'1'})
       n2 = mkstage(m, {'maman':n1})
-      return n2
+      return [n1,n2]
 
     clo=instantiate(_setting,S=S)
     rh=repl_realize(clo, force_interrupt=False)
-    assert repl_rref(rh) is not None
-
+    assert repl_result(rh) is not None
     rh=repl_realize(clo, force_interrupt=[n1,n2])
-    assert repl_rref(rh) is None
-    assert rh.result is not None
-    assert n1 in rh.result
-    repl_continue(rh=rh)
-    assert repl_rref(rh) is None
-    assert rh.result is not None
-    assert n2 in rh.result
-    repl_continue(rh=rh)
-    assert repl_rref(rh) is not None
+    assert repl_result(rh) is None
+    repl_continueAll(rh=rh)
+    assert repl_result(rh) is None
+    repl_continueAll(rh=rh)
+    res=repl_result(rh)
+    assert res is not None
+    assert n1 in res
+    assert n2 in res
 
 
 def test_repl_race():
@@ -65,11 +56,10 @@ def test_repl_race():
     clo=instantiate(_setting)
     rh=repl_realize(clo, force_interrupt=True)
     assert repl_rref(rh) is None
-    assert rh.result is not None
-    assert clo.targets[0] in rh.result
+    assert rh.result is None
 
     clo2=instantiate(_setting)
-    rref2=realize(clo2) # Realize dref while repl_realizing same dref
+    rref2=realize(clo2) # Realize dref while repl_realizing the same dref
 
     repl_cancel(rh)
     assert_valid_rref(rref2)
@@ -87,8 +77,7 @@ def test_repl_override():
 
     clo=instantiate(_setting, S=S)
     rh=repl_realize(clo, force_interrupt=[n1])
-    assert rh.result is not None
-    assert n1 in rh.result
+    assert rh.result is None
     b=repl_build(rh)
     with open(join(build_outpath(b),'artifact'),'w') as f:
       f.write('777')
