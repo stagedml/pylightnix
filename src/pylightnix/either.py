@@ -172,3 +172,9 @@ def realizeE(closure:Closure,
   rref=realize(closure,force_rebuild,assert_realized,realize_args)
   return either_loadR([rref],closure.S)
 
+def realizeManyE(closure:Closure,
+             force_rebuild:Union[List[DRef],bool]=[],
+             assert_realized:List[DRef]=[],
+             realize_args:Dict[DRef,RealizeArg]={})->Either[RRef]:
+  rrefs=realizeMany(closure,force_rebuild,assert_realized,realize_args)
+  return either_loadR(rrefs,closure.S)

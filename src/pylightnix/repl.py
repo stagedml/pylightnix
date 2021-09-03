@@ -44,7 +44,7 @@ ERR_INACTIVE_RH="REPL session is not paused or was already unpaused"
 
 PYLIGHTNIX_REPL_HELPER:Optional[ReplHelper]=None
 
-def repl_continueMany(out_paths:Optional[List[Path]]=None,
+def repl_continueAll(out_paths:Optional[List[Path]]=None,
                       out_rrefs:Optional[List[RRef]]=None,
                       rh:Optional[ReplHelper]=None)->Optional[Context]:
   global PYLIGHTNIX_REPL_HELPER
@@ -71,17 +71,24 @@ def repl_continueMany(out_paths:Optional[List[Path]]=None,
   except StopIteration as e:
     rh.gen=None
     rh.result=e.value
-  return repl_rrefs(rh)
+  return repl_result(rh)
+
+def repl_continueMany(out_paths:Optional[List[Path]]=None,
+                  out_rrefs:Optional[List[RRef]]=None,
+                  rh:Optional[ReplHelper]=None)->Optional[List[RRef]]:
+  ctx=repl_continueAll(out_paths,out_rrefs,rh)
+  if ctx is None:
+    return None
+  assert len(ctx)==1, f"Expected a single-targeted closure"
+  return ctx[list(ctx.keys())[0]]
 
 def repl_continue(out_paths:Optional[List[Path]]=None,
                   out_rrefs:Optional[List[RRef]]=None,
                   rh:Optional[ReplHelper]=None)->Optional[RRef]:
-  ctx=repl_continueMany(out_paths,out_rrefs,rh)
-  if ctx is None:
+  rrefs=repl_continueMany(out_paths,out_rrefs,rh)
+  if rrefs is None:
     return None
-  assert len(ctx)==1, f"Expected a single-targeted closure"
-  rrefs=ctx[list(ctx.keys())[0]]
-  assert len(rrefs)==1, f"Expected a single-realization derivation"
+  assert len(rrefs)==1, f"Expected a single-result derivation"
   return rrefs[0]
 
 
@@ -113,7 +120,7 @@ def repl_realize(closure:Closure,
     if force_interrupt:
       force_interrupt_=closure.targets
   elif isinstance(force_interrupt,list):
-    force_interrupt_=list(force_interrupt)
+    force_interrupt_=force_interrupt
   else:
     assert False, "Invalid argument"
   rh=ReplHelper(realizeSeq(closure,force_interrupt_,realize_args=realize_args))
@@ -126,17 +133,20 @@ def repl_realize(closure:Closure,
     rh.result=e.value
   return rh
 
-
-def repl_rrefs(rh:ReplHelper)->Optional[Context]:
+def repl_result(rh:ReplHelper)->Optional[Context]:
   return rh.result
 
-
-def repl_rref(rh:ReplHelper)->Optional[RRef]:
-  ctx=repl_rrefs(rh)
+def repl_rrefs(rh:ReplHelper)->Optional[List[RRef]]:
+  ctx=repl_result(rh)
   if ctx is None:
     return None
   assert len(ctx)==1
-  rrefs=ctx[list(ctx.keys())[0]]
+  return ctx[list(ctx.keys())[0]]
+
+def repl_rref(rh:ReplHelper)->Optional[RRef]:
+  rrefs=repl_rrefs(rh)
+  if rrefs is None:
+    return None
   assert len(rrefs)==1
   return rrefs[0]
 
