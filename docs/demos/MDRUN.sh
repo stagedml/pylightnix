@@ -4,18 +4,33 @@
 # https://alvinalexander.com/source-code/awk-script-extract-source-code-blocks-markdown-files/
 # https://github.com/eclecticiq/rundoc
 
+chmod -R +w _mdrun && rm -rf _mdrun
 rm *pipe
 mkfifo inp.pipe
 mkfifo out.pipe
 
+# python -u -i -c '
+# import os;
+# os.open("out.pipe",os.O_WRONLY);
+# os.open("inp.pipe",os.O_WRONLY);
+# print("Hellow")'
 
-python -u -i -c 'print("HELLOOO")' <inp.pipe >out.pipe 2>&1 &
+# exit 1
+
+python -u -i -c '
+import os;
+os.open("inp.pipe",os.O_RDWR);
+os.open("out.pipe",os.O_RDWR);
+' <inp.pipe >out.pipe 2>&1 &
+# python -u -i -c 'print("Fooooo")' \
+#   <inp.pipe >out.pipe 2>&1 &
+# python -u -i -c 'print("HELLOOO")' <inp.pipe >out.pipe 2>&1 &
 # python -i -c 'print("aaaaaaa")' <inp.pipe &
 pid=$!
-sleep 999999999 >out.pipe &
-pid2=$!
-sleep 999999999 >inp.pipe &
-pid3=$!
+# sleep 999999999 >out.pipe &
+# pid2=$!
+# sleep 999999999 >inp.pipe &
+# pid3=$!
 
 echo "Pid $pid"
 trap "kill $pid $pid2 $pid3" EXIT

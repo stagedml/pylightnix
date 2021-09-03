@@ -3,17 +3,18 @@ from pylightnix import (StorageSettings, Matcher, Build, Context, Path, RefPath,
                         build_outpath, build_cattrs, mkdrv, rref2path, mkconfig,
                         tryread, fetchurl, instantiate, realize, match_only,
                         build_wrapper, selfref, mklens, instantiate_inplace,
-                        realize_inplace, rmref, fsinit, pack, unpack, allrrefs,
+                        realize_inplace, rmref, fsinit, allrrefs,
                         gc, redefine, match_some, match_latest, dirrm,
                         mksettings, readstr, writestr, context_deref, rrefctx,
-                        rref2dref)
+                        rref2dref, realizeAll)
 from typing import List, Optional
 from re import search, fullmatch, match
 from time import sleep
 import re
 import os
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, call, DEVNULL
 from select import select
+from os import environ, system, spawnl
 
 Chunk=List[str]
 
@@ -70,16 +71,17 @@ def interact(fdr, fdw, text:str, prompt:str='>>>')->str:
   return res
 
 def run():
-  fdr=os.open('out.pipe', os.O_RDONLY | os.O_SYNC)
-  fdw=os.open('inp.pipe', os.O_WRONLY | os.O_SYNC)
+  fdr=os.open('_out.pipe', os.O_RDONLY | os.O_SYNC)
+  fdw=os.open('_inp.pipe', os.O_WRONLY | os.O_SYNC)
   # interact(fdr,fdw,'3+2')
   interact(fdr,fdw,'3+2')
 
 def mdrun():
+  environ['PYLIGHTNIX_ROOT']='_pylightnix'
+  fsinit()
   chunks=scanmd('_test.md')
-  print(chunks)
-  fdr=os.open('out.pipe', os.O_RDONLY | os.O_SYNC)
-  fdw=os.open('inp.pipe', os.O_WRONLY | os.O_SYNC)
+  fdw=os.open('_inp.pipe', os.O_WRONLY | os.O_SYNC)
+  fdr=os.open('_out.pipe', os.O_RDONLY | os.O_SYNC)
   try:
 
     def _make(b:Build):
@@ -87,9 +89,8 @@ def mdrun():
       res=interact(fdr,fdw,''.join(mklens(b).code.val))
       writestr(mklens(b).stdout.syspath,res)
 
-    acc:list=[]
-    def _stages(m:Manager)->DRef:
-      nonlocal acc
+    def _stages(m:Manager)->List[DRef]:
+      acc:list=[]
       for i,chunk in enumerate(chunks):
         cfg={'name':f'chunk_{i}',
              'code':chunk,
@@ -97,14 +98,25 @@ def mdrun():
              'stdout':[selfref,'stdout.txt']}
         dref=mkdrv(m,mkconfig(cfg),match_only(),build_wrapper(_make))
         acc.append(dref)
-      return acc[-1]
+      return acc
 
-    result=realize(instantiate(_stages))
-    for i,dref in enumerate(acc):
+    ctx=realizeAll(instantiate(_stages))
+    for i,dref in enumerate(ctx):
       print(f'Querying chunk {i}')
-      rref=context_deref(rrefctx(result),dref)[0] if rref2dref(result)!=dref else result
-      print(mklens(rref).stdout.contents)
+      print(mklens(dref,ctx=ctx).stdout.contents)
   finally:
     os.close(fdr)
     os.close(fdw)
+
+def start_session():
+  system('kill $(cat _pid.txt) >/dev/null 2>&1')
+  system('chmod -R +w _pylightnix 2>/dev/null && rm -rf _pylightnix')
+  system('mkfifo _inp.pipe _out.pipe 2>/dev/null')
+  if os.fork()==0:
+    system(('python -uic "import os;'
+            'os.open(\'_inp.pipe\',os.O_RDWR);'
+            'os.open(\'_out.pipe\',os.O_RDWR);"'
+            '<_inp.pipe >_out.pipe 2>&1 & echo $! >_pid.txt'))
+
+
 
