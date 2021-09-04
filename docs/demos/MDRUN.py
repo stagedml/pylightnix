@@ -1,20 +1,11 @@
-from pylightnix import (StorageSettings, Matcher, Build, Context, Path, RefPath,
-                        Config, Manager, RRef, DRef, Path, build_path,
-                        build_outpath, build_cattrs, mkdrv, rref2path, mkconfig,
-                        tryread, fetchurl, instantiate, realize, match_only,
-                        build_wrapper, selfref, mklens, instantiate_inplace,
-                        realize_inplace, rmref, fsinit, allrrefs,
-                        gc, redefine, match_some, match_latest, dirrm,
-                        mksettings, readstr, writestr, context_deref, rrefctx,
-                        rref2dref, realizeAll)
+from pylightnix import *
 from typing import List, Optional
-from re import search, fullmatch, match
-from time import sleep
+from re import search, match as re_match
 import re
 import os
-from subprocess import Popen, PIPE, call, DEVNULL
+import sys
 from select import select
-from os import environ, system, spawnl
+from os import environ, system
 
 Chunk=List[str]
 
@@ -24,8 +15,7 @@ def scanmd(fpath:str)->List[Chunk]:
     if inchunk:
       if search('^\s*```', line):
         inchunk=False
-        acc2.append(acc)
-        acc=[]
+        acc2.append(acc); acc=[]
       else:
         acc.append(line)
     else:
@@ -44,69 +34,53 @@ def readout(fdr, prompt=mkre('>>>'),timeout:Optional[int]=10)->str:
   while select([fdr],[],[],timeout)[0] != []:
     r=os.read(fdr, 1024);
     if r==b'':
-      print('readout retval', acc.decode('utf-8').replace("\n","|"))
       return acc.decode('utf-8')
     acc+=r
-    print('... readout got', acc.decode('utf-8').replace("\n","|"))
-    m=match(prompt,acc)
+    m=re_match(prompt,acc)
     if m:
       ans=m.group(1)
-      print('readout match:', ans.decode('utf-8').replace("\n","|"))
       return ans.decode('utf-8')
-  print('readout timeout')
   return acc.decode('utf-8').replace("\n","|")
 
-
 def interact(fdr, fdw, text:str, prompt:str='>>>')->str:
-  print('Sending return')
   os.write(fdw,'32567\n'.encode())
-  print('Waiting for prompt')
   readout(fdr,prompt=mkre('32567\n>>>'))
-  print('Sending the message')
   os.write(fdw,text.encode())
   os.write(fdw,'\n'.encode())
-  print('Reading the answer')
   res=readout(fdr)
-  print('Done')
   return res
 
-def run():
-  fdr=os.open('_out.pipe', os.O_RDONLY | os.O_SYNC)
-  fdw=os.open('_inp.pipe', os.O_WRONLY | os.O_SYNC)
-  # interact(fdr,fdw,'3+2')
-  interact(fdr,fdw,'3+2')
-
-def mdrun():
+def use_session(inpath:str, outpath:str):
   environ['PYLIGHTNIX_ROOT']='_pylightnix'
   fsinit()
-  chunks=scanmd('_test.md')
+  chunks=scanmd(inpath)
   fdw=os.open('_inp.pipe', os.O_WRONLY | os.O_SYNC)
   fdr=os.open('_out.pipe', os.O_RDONLY | os.O_SYNC)
   try:
-
     def _make(b:Build):
-      print(f'Executing {mklens(b).name.val}')
+      print(f'Evaluating chunk {mklens(b).name.val}')
       res=interact(fdr,fdw,''.join(mklens(b).code.val))
       writestr(mklens(b).stdout.syspath,res)
 
-    def _stages(m:Manager)->List[DRef]:
-      acc:list=[]
+    def _stages(m:Manager)->Dict[int,DRef]:
+      cache={}; prev:Optional[DRef]=None
       for i,chunk in enumerate(chunks):
         cfg={'name':f'chunk_{i}',
              'code':chunk,
-             'prev':acc[-1] if len(acc)>0 else None,
+             'prev':prev,
              'stdout':[selfref,'stdout.txt']}
-        dref=mkdrv(m,mkconfig(cfg),match_only(),build_wrapper(_make))
-        acc.append(dref)
-      return acc
+        cache[i]=mkdrv(m,mkconfig(cfg),match_only(),build_wrapper(_make))
+        prev=cache[i]
+      return cache
 
-    ctx=realizeAll(instantiate(_stages))
-    for i,dref in enumerate(ctx):
-      print(f'Querying chunk {i}')
-      print(mklens(dref,ctx=ctx).stdout.contents)
+    cache,ctx=realizeAll(instantiate(_stages))
   finally:
     os.close(fdr)
     os.close(fdw)
+
+  for i,chunk in enumerate(chunks):
+    print(f'Querying chunk {i}:')
+    print(mklens(cache[i],ctx=ctx).stdout.contents)
 
 def start_session():
   system('kill $(cat _pid.txt) >/dev/null 2>&1')
@@ -118,5 +92,23 @@ def start_session():
             'os.open(\'_out.pipe\',os.O_RDWR);"'
             '<_inp.pipe >_out.pipe 2>&1 & echo $! >_pid.txt'))
 
-
-
+if __name__=='__main__':
+  argv=sys.argv[1:]
+  if len(argv)<2 or any([a in ['help','-h','--help'] for a in argv]):
+    print(('Usage:\n'
+           '    MDRUN [--restart] FILE.md.in FILE.md\n'
+           'Executes all the Python code sections of the input Markdown '
+           'document. Paste the result of each section below the original '
+           'section in the output document.\n'
+           'All Python code is executed in a Python interpreter running in '
+           'the background. Its pid is saved in "_pid.txt" file and the '
+           'communication go through named pipes "_inp.pipe" and "_out.pipe".\n'
+           'MDRUN assumes that the latter sections depend on the earlier ones. '
+           'Execution results are cached and stored in the Pylightnix cache '
+           'storage folder "_pylightnix".'))
+    sys.exit(1)
+  if argv[0] in ['--restart','-r']:
+    start_session(); argv=argv[1:]
+  if not os.path.isfile('_pid.txt'):
+    start_session()
+  use_session(argv[0],argv[1])
