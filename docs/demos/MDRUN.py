@@ -78,7 +78,7 @@ def use_session(inpath:str, outpath:str):
            'code':chunk,
            'prev':prev,
            'stdout':[selfref,'stdout.txt']}
-      clo=instantiateM(Manager(m), mkdrv, mkconfig(cfg),
+      clo=instantiateM(m, mkdrv, mkconfig(cfg),
                        match_only(), build_wrapper(_make))
       prev,ctx=realizeAll(clo)
       of.write('```\n')
