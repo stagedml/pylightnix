@@ -247,12 +247,14 @@ class Lens:
 
   @property
   def closure(self)->Closure:
-    """ Check that the current value of Lens is an `RRef` and return it """
+    """ Constructs a closure of the DRef which this lens points to.
+    FIXME: Filter the closure derivations from unrelated entries.
+    """
     r=lens_repr(self,'closure')
     v=traverse(self, r)
-    assert isdref(v), f"Lens {r} expected closure, but got '{v}'"
+    assert isdref(v), f"Lens {r} expected a dref, but got '{v}'"
     assert self.ctx.closure is not None
-    return Closure([v], self.ctx.closure.derivations, self.ctx.S)
+    return Closure([v], [v], self.ctx.closure.derivations, self.ctx.S)
 
 
 def mklens(x:Any, o:Optional[Path]=None,

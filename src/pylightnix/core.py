@@ -627,15 +627,10 @@ def instantiate_(m:Manager, stage:Any, *args, **kwargs)->Closure:
     result=stage(m,*args,**kwargs)
   finally:
     m.in_instantiate=False
-  targets:List[DRef]
-  if isinstance(result,list) and all([isdref(d) for d in result]):
-    targets=result
-  elif isdref(result):
-    targets=[result]
-  else:
-    assert False, f"Invalid stage result {result}"
+  targets,_=scanref_dict({'result':result})
+  assert len(targets)>0, f"No DRefs to instantiate in {result}"
   assert_have_realizers(m,targets)
-  return Closure(targets,list(m.builders.values()),S=m.S)
+  return Closure(result,targets,list(m.builders.values()),S=m.S)
 
 def instantiate(stage:Any, *args, S=None, **kwargs)->Closure:
   """ Instantiate function evaluates [Stage](#pylightnix.types.Stage) functions
@@ -702,7 +697,7 @@ def realizeMany(closure:Closure,
     f"`realize` is to be used with single-targeted derivations. "
     f"Current closure has {len(closure.targets)} targets:\n{closure.targets}\n"
     f"Consider using `realizeMany`." )
-  ctx=realizeAll(closure, force_rebuild, assert_realized, realize_args)
+  _,ctx=realizeAll(closure, force_rebuild, assert_realized, realize_args)
   rrefs=ctx[list(ctx.keys())[0]]
   return rrefs
 
@@ -710,9 +705,10 @@ def realizeMany(closure:Closure,
 def realizeAll(closure:Closure,
                force_rebuild:Union[List[DRef],bool]=[],
                assert_realized:List[DRef]=[],
-               realize_args:Dict[DRef,RealizeArg]={})->Context:
-  """ A generic version of [realize](#pylightnix.core.realize).  Allows the
-  realizer to return several alternative (in a user-defined sence) realizations.
+               realize_args:Dict[DRef,RealizeArg]={})->Tuple[Any,Context]:
+  """ A generic version of [realize](#pylightnix.core.realize). Takes the
+  instantiated [Closure](#pylightnix.types.Closure) and returns
+  its value together with the realization [Context](#pylightnix.types.Context).
   """
   force_interrupt:List[DRef]=[]
   if isinstance(force_rebuild,bool):
@@ -729,7 +725,7 @@ def realizeAll(closure:Closure,
       gen.send((None,False)) # Ask for default action
   except StopIteration as e:
     res=e.value
-  return res
+  return closure.value,res
 
 
 def realizeSeq(closure:Closure,
@@ -742,8 +738,8 @@ def realizeSeq(closure:Closure,
   algorithm. Consider calling [realizeMany](#pylightnix.core.realizeMany) or
   it's analogs instead.
 
-  FIXME: `assert_realized` may probably be implemented by calling `redefine`
-  with appropriate failing realizer on every Derivation. """
+  FIXME: try to implement `assert_realized` by calling `redefine` with
+  appropriate failing realizer on every Derivation. """
   S=closure.S
   assert_valid_closure(closure)
   force_interrupt_:Set[DRef]=set(force_interrupt)

@@ -284,19 +284,22 @@ def scanref_dict(d:dict)->Tuple[List[DRef],List[RRef]]:
   return scanref_list(list(d.values()))
 
 def dicthash(d:dict)->Hash:
-  """ Calculate hashsum of a Python dict. Top-level fields starting from '_' are ignored """
-  string="_".join(str(k)+"="+str(v) for k,v in sorted(d.items()) if len(k)>0 and k[0]!='_')
+  """ Calculate hashsum of a Python dict. Top-level fields starting from '_' are
+  ignored """
+  string="_".join(str(k)+"="+str(v) for k,v in sorted(d.items()) \
+                  if len(k)>0 and k[0]!='_')
   return Hash(sha256(string.encode('utf-8')).hexdigest())
 
 def assert_serializable(d:Any, argname:str='dict')->Any:
-  error_msg=(f"Content of this '{argname}' of type {type(d)} is not JSON-serializable!"
-             f"\n\n{d}\n\n"
-             f"Make sure that `json.dumps`/`json.loads` work on it and are able "
-             f"to preserve the value. Typically, we want to use only simple Python types"
+  error_msg=(f"Content of this '{argname}' of type {type(d)} is not "
+             f"JSON-serializable!\n\n{d}\n\n"
+             f"Make sure that `json.dumps`/`json.loads` work on it and are "
+             f"are to preserve the value. Typically, we want to use only "
+             f"simple Python types"
              f"like lists, dicts, strings, ints, etc. In particular,"
              f"overloaded floats like `np.float32` don't work. Also, we"
-             f"don't use Python tuples, because they default JSON implementation convert "
-             f"them to lists")
+             f"don't allow Python tuples, because the default JSON "
+             f"serialization converts them to lists.")
   s=json_dumps(d)
   assert s is not None, error_msg
   d2=json_loads(s)

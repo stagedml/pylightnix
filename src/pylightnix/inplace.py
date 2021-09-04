@@ -19,8 +19,9 @@ but add usual risks of using gloabl variables. """
 
 from pylightnix.types import (Any, DRef, Stage, Manager, Derivation, List,
                               RRef, Closure, SPath, TypeVar, Callable, Optional,
-                              Dict, RealizeArg, Context, Union)
+                              Dict, RealizeArg, Context, Union, Tuple)
 from pylightnix.core import (instantiate_, realize, realizeAll)
+from pylightnix.utils import (scanref_dict)
 
 
 #: The Global [Derivation manager](#pylightnix.types.Manager) used by
@@ -44,16 +45,18 @@ def instantiate_inplace(stage:Callable[[Manager,Any,Any],_A],
   return stage_result
 
 
-def realizeAll_inplace(drefs:List[DRef],
+def realizeAll_inplace(result:Any,
                        force_rebuild:List[DRef]=[],
                        assert_realized:List[DRef]=[],
-                       realize_args:Dict[DRef,RealizeArg]={})->Context:
+                       realize_args:Dict[DRef,RealizeArg]={}
+                       )->Tuple[Any,Context]:
   """ Realize the derivation pointed by `dref` by constructing it's
   [Closure](#pylightnix.types.Closure) based on the contents of the global
   dependency manager and [realizing](#pylightnix.core.realizeMany) this closure.
   """
   global PYLIGHTNIX_MANAGER
-  clo=Closure(drefs,list(PYLIGHTNIX_MANAGER.builders.values()),
+  drefs,_=scanref_dict({'foo':result})
+  clo=Closure(result,drefs,list(PYLIGHTNIX_MANAGER.builders.values()),
               S=PYLIGHTNIX_MANAGER.S)
   return realizeAll(clo,force_rebuild,assert_realized,realize_args)
 
@@ -62,9 +65,9 @@ def realize_inplace(dref:DRef,
                     force_rebuild:List[DRef]=[],
                     assert_realized:List[DRef]=[],
                     realize_args:Dict[DRef,RealizeArg]={})->RRef:
-  rrefs=realizeAll_inplace([dref], force_rebuild, assert_realized,
-                            realize_args)[dref]
-  assert len(rrefs)==1
-  return rrefs[0]
+  _,ctx=realizeAll_inplace([dref], force_rebuild, assert_realized,
+                           realize_args)
+  assert len(ctx[dref])==1
+  return ctx[dref][0]
 
 
