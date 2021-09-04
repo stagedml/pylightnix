@@ -20,7 +20,7 @@ but add usual risks of using gloabl variables. """
 from pylightnix.types import (Any, DRef, Stage, Manager, Derivation, List,
                               RRef, Closure, SPath, TypeVar, Callable, Optional,
                               Dict, RealizeArg, Context, Union, Tuple)
-from pylightnix.core import (instantiate_, realize, realizeAll)
+from pylightnix.core import (instantiateM, realize, realizeAll)
 from pylightnix.utils import (scanref_dict)
 
 
@@ -29,45 +29,39 @@ from pylightnix.utils import (scanref_dict)
 PYLIGHTNIX_MANAGER = Manager(None)
 
 
-_A=TypeVar("_A")
-def instantiate_inplace(stage:Callable[[Manager,Any,Any],_A],
-                        *args:Any,**kwargs:Any)->_A:
+def instantiate_inplace(stage:Callable[[Manager,Any,Any],Any],
+                        *args:Any,
+                        m:Optional[Manager]=None,
+                        **kwargs:Any)->Closure:
   """ Instantiate a `stage`, use `PYLIGHTNIX_MANAGER` for storing derivations.
   Return derivation reference of the top-level stage. """
   global PYLIGHTNIX_MANAGER
-  stage_result:Optional[_A]=None
-  def _stage(m:Manager):
-    nonlocal stage_result
-    stage_result=stage(m,*args,**kwargs) # type:ignore
-    return stage_result
-  instantiate_(PYLIGHTNIX_MANAGER, _stage)
-  assert stage_result is not None
-  return stage_result
+  m=m if m is not None else PYLIGHTNIX_MANAGER
+  return instantiateM(m, stage)
+
+# def realizeAll_inplace(result:Any,
+#                        force_rebuild:List[DRef]=[],
+#                        assert_realized:List[DRef]=[],
+#                        realize_args:Dict[DRef,RealizeArg]={}
+#                        )->Tuple[Any,Context]:
+#   """ Realize the derivation pointed by `dref` by constructing it's
+#   [Closure](#pylightnix.types.Closure) based on the contents of the global
+#   dependency manager and [realizing](#pylightnix.core.realizeMany) this closure.
+#   """
+#   global PYLIGHTNIX_MANAGER
+#   drefs,_=scanref_dict({'foo':result})
+#   clo=Closure(result,drefs,list(PYLIGHTNIX_MANAGER.builders.values()),
+#               S=PYLIGHTNIX_MANAGER.S)
+#   return realizeAll(clo,force_rebuild,assert_realized,realize_args)
 
 
-def realizeAll_inplace(result:Any,
-                       force_rebuild:List[DRef]=[],
-                       assert_realized:List[DRef]=[],
-                       realize_args:Dict[DRef,RealizeArg]={}
-                       )->Tuple[Any,Context]:
-  """ Realize the derivation pointed by `dref` by constructing it's
-  [Closure](#pylightnix.types.Closure) based on the contents of the global
-  dependency manager and [realizing](#pylightnix.core.realizeMany) this closure.
-  """
-  global PYLIGHTNIX_MANAGER
-  drefs,_=scanref_dict({'foo':result})
-  clo=Closure(result,drefs,list(PYLIGHTNIX_MANAGER.builders.values()),
-              S=PYLIGHTNIX_MANAGER.S)
-  return realizeAll(clo,force_rebuild,assert_realized,realize_args)
-
-
-def realize_inplace(dref:DRef,
-                    force_rebuild:List[DRef]=[],
-                    assert_realized:List[DRef]=[],
-                    realize_args:Dict[DRef,RealizeArg]={})->RRef:
-  _,ctx=realizeAll_inplace([dref], force_rebuild, assert_realized,
-                           realize_args)
-  assert len(ctx[dref])==1
-  return ctx[dref][0]
+# def realize_inplace(dref:DRef,
+#                     force_rebuild:List[DRef]=[],
+#                     assert_realized:List[DRef]=[],
+#                     realize_args:Dict[DRef,RealizeArg]={})->RRef:
+#   _,ctx=realizeAll_inplace([dref], force_rebuild, assert_realized,
+#                            realize_args)
+#   assert len(ctx[dref])==1
+#   return ctx[dref][0]
 
 

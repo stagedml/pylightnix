@@ -62,34 +62,33 @@ def storagename():
   """ Return the name of Pylightnix storage filder. """
   return f"store-v{PYLIGHTNIX_STORE_VERSION}"
 
-def fsroot()->Path:
+def fsroot(S:Optional[StorageSettings]=None)->Path:
   """ `fsroot` contains the path to the root of pylightnix shared data folder.
   Default is `~/_pylightnix` or `/var/run/_pylightnix` if no `$HOME` is
   available.  Setting `PYLIGHTNIX_ROOT` environment variable overwrites the
   defaults.  """
-  return Path(environ.get('PYLIGHTNIX_ROOT',
-    join(environ.get('HOME','/var/run'), '_pylightnix')))
+  if S is not None and S.root is not None:
+    return S.root
+  else:
+    return Path(environ.get('PYLIGHTNIX_ROOT',
+      join(environ.get('HOME','/var/run'), '_pylightnix')))
 
 def fstmpdir(S:Optional[StorageSettings]=None)->Path:
   """ Return the location of current Pylightnix temporary folder, defaulting to
   the path set by PYLIGHTNIX_TMP environment variable. """
-  if S is None or S.tmpdir is None:
-    return Path(environ.get('PYLIGHTNIX_TMP',
-                            join(fsroot(),'tmp')))
-  else:
+  if S is not None and S.tmpdir is not None:
     return S.tmpdir
-
-def fsstorage_(S:Optional[StorageSettings]=None)->Path:
-  """ See `fsstorage` """
-  if S is None or S.storage is None:
-    return Path(environ.get('PYLIGHTNIX_STORAGE', fsroot()))
   else:
-    return S.storage
+    return Path(environ.get('PYLIGHTNIX_TMP', join(fsroot(S),'tmp')))
 
 def fsstorage(S:Optional[StorageSettings]=None)->Path:
   """ Return the location of current Pylightnix storage folder, defaulting to
   the path set by PYLIGHTNIX_STORAGE environment variable. """
-  return Path(join(fsstorage_(S),storagename()))
+  if S is not None and S.storage is not None:
+    return S.storage
+  else:
+    return Path(environ.get('PYLIGHTNIX_STORAGE',
+                            join(fsroot(S),storagename())))
 
 def assert_valid_storage(S:Optional[StorageSettings]=None)->None:
   assert isdir(fsstorage(S)), \
@@ -103,8 +102,14 @@ def assert_valid_storage(S:Optional[StorageSettings]=None)->None:
      f"directories belong to different filesystems. This case is not "
      f"supported yet.")
 
-def mksettings(stordir:str, tmpdir:Optional[str]=None)->StorageSettings:
-  return StorageSettings(Path(stordir), Path(tmpdir) if tmpdir else None)
+def mkSS(root:str, stordir:Optional[str]=None, tmpdir:Optional[str]=None
+         )->StorageSettings:
+  return StorageSettings(Path(root),
+                         Path(stordir) if stordir else None,
+                         Path(tmpdir) if tmpdir else None)
+
+# def mksettings(stordir:str, tmpdir:Optional[str]=None)->StorageSettings:
+#   return StorageSettings(None,Path(stordir),Path(tmpdir) if tmpdir else None)
 
 def fsinit(S:Optional[StorageSettings]=None,
            check_not_exist:bool=False,
@@ -617,7 +622,7 @@ def mkdrv(m:Manager,
   m.builders[dref]=Derivation(dref, matcher, realizer)
   return dref
 
-def instantiate_(m:Manager, stage:Any, *args, **kwargs)->Closure:
+def instantiateM(m:Manager, stage:Any, *args, **kwargs)->Closure:
   """ See [instantiate](#pylightnix.types.instantiate) """
   assert not m.in_instantiate, (
     "Recursion detected. `instantiate` should not be called recursively "
@@ -640,7 +645,7 @@ def instantiate(stage:Any, *args, S=None, **kwargs)->Closure:
   The returned closure typically goes to [realize](#pylightnix.core.realize) or
   its analogs.
   """
-  return instantiate_(Manager(S), stage, *args, **kwargs)
+  return instantiateM(Manager(S), stage, *args, **kwargs)
 
 
 RealizeSeqGen = Generator[

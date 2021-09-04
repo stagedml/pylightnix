@@ -236,7 +236,7 @@ class Lens:
   def contents(self)->str:
     """ Check that the current value of Lens is a `Path` and return it """
     p=self.syspath
-    assert isfile(p)
+    assert isfile(p), f"Can'r read the contents of {p}"
     return open(p,'r').read()
 
   @property

@@ -34,7 +34,8 @@ class SPath(Path):
 #: Stoarge settings contains a path for the main stoarge and a path for
 #: temporary directories. These paths need to be on the same device in order to
 #: atomic rename work.
-StorageSettings=NamedTuple('StorageSettings',[('storage',Optional[Path]),
+StorageSettings=NamedTuple('StorageSettings',[('root',Optional[Path]),
+                                              ('storage',Optional[Path]),
                                               ('tmpdir',Optional[Path])])
 
 class Hash(str):
