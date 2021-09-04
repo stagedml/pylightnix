@@ -436,7 +436,6 @@ def mkdrv_(c:Config,S=None)->DRef:
   """ See [mkdrv](#pylightnix.core.mkdrv) """
 
   # FIXME: Assert or handle possible (but improbable) hash collision [*]
-  #
   assert_valid_storage(S)
   assert_valid_config(c)
   assert_rref_deps(c)
@@ -615,6 +614,7 @@ def mkdrv(m:Manager,
   rref:RRef=realize(instantiate(somestage))
   ```
   """
+  # FIXME: check that all config's dependencies are known to the Manager
   dref=mkdrv_(config,S=m.S)
   if dref in m.builders:
     warning(f"Overwriting the derivation of '{dref}'. This could be a "
@@ -622,22 +622,12 @@ def mkdrv(m:Manager,
   m.builders[dref]=Derivation(dref, matcher, realizer)
   return dref
 
-def instantiateM(m:Manager, stage:Any, *args, **kwargs)->Closure:
-  """ See [instantiate](#pylightnix.types.instantiate) """
-  assert not m.in_instantiate, (
-    "Recursion detected. `instantiate` should not be called recursively "
-    "by stage functions with the same `Manager` as argument")
-  m.in_instantiate=True
-  try:
-    result=stage(m,*args,**kwargs)
-  finally:
-    m.in_instantiate=False
-  targets,_=scanref_dict({'result':result})
-  assert len(targets)>0, f"No DRefs to instantiate in {result}"
-  assert_have_realizers(m,targets)
-  return Closure(result,targets,list(m.builders.values()),S=m.S)
-
-def instantiate(stage:Any, *args, S=None, **kwargs)->Closure:
+StageResult=TypeVar('StageResult')
+def instantiate(stage:Callable[[Manager,Any,Any],StageResult],
+                *args:Any,
+                S:Optional[StorageSettings]=None,
+                M:Optional[Manager]=None,
+                **kwargs:Any)->Tuple[StageResult,Closure]:
   """ Instantiate function evaluates [Stage](#pylightnix.types.Stage) functions
   by calling them and collecting the [Closure](#pylightnix.types.Closure) of
   nested [Derivations](#pylightnix.types.Derivation).
@@ -645,7 +635,21 @@ def instantiate(stage:Any, *args, S=None, **kwargs)->Closure:
   The returned closure typically goes to [realize](#pylightnix.core.realize) or
   its analogs.
   """
-  return instantiateM(Manager(S), stage, *args, **kwargs)
+  assert M is None or S is None, (
+    f"Can't instantiate when both manager and storage settings are custom.")
+  m=M if M else Manager(S)
+  assert not m.in_instantiate, (
+    "Recursion detected. `instantiate` should not be called recursively "
+    "by stage functions with the same `Manager` as argument")
+  m._in_instantiate=True
+  try:
+    result=stage(m,*args,**kwargs)
+  finally:
+    m.in_instantiate=False
+  targets,_=scanref_dict({'result':result})
+  assert len(targets)>0, f"No DRefs to instantiate in {result}"
+  assert_have_realizers(m,targets)
+  return (result,Closure(result,targets,list(m.builders.values()),S=m.S))
 
 
 RealizeSeqGen = Generator[
@@ -654,9 +658,10 @@ RealizeSeqGen = Generator[
   Context]
 
 
-def realize(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
-                             assert_realized:List[DRef]=[],
-                             realize_args:Dict[DRef,RealizeArg]={})->RRef:
+def realize(closure:Union[Closure,Tuple[Any,Closure]],
+            force_rebuild:Union[List[DRef],bool]=[],
+            assert_realized:List[DRef]=[],
+            realize_args:Dict[DRef,RealizeArg]={})->RRef:
   """ Realize gets the results of building the [Stage](#pylightnix.types.Stage).
   Returns either the [matching](#pylightnix.types.Matcher) realizations
   immediately, or launches the user-defined [realization
@@ -694,7 +699,7 @@ def realize(closure:Closure, force_rebuild:Union[List[DRef],bool]=[],
   return rrefs[0]
 
 
-def realizeMany(closure:Closure,
+def realizeMany(closure:Union[Closure,Tuple[Any,Closure]],
                 force_rebuild:Union[List[DRef],bool]=[],
                 assert_realized:List[DRef]=[],
                 realize_args:Dict[DRef,RealizeArg]={})->List[RRef]:
@@ -707,7 +712,7 @@ def realizeMany(closure:Closure,
   return rrefs
 
 
-def realizeAll(closure:Closure,
+def realizeAll(closure:Union[Closure,Tuple[Any,Closure]],
                force_rebuild:Union[List[DRef],bool]=[],
                assert_realized:List[DRef]=[],
                realize_args:Dict[DRef,RealizeArg]={})->Tuple[Any,Context]:
@@ -715,22 +720,29 @@ def realizeAll(closure:Closure,
   instantiated [Closure](#pylightnix.types.Closure) and returns
   its value together with the realization [Context](#pylightnix.types.Context).
   """
+  # FIXME: define a Closure as a datatype
+  if isinstance(closure,tuple) and len(closure)==2:
+    result_=closure[0]
+    closure_=closure[1]
+  else:
+    closure_=closure
+    result_=None
   force_interrupt:List[DRef]=[]
   if isinstance(force_rebuild,bool):
     if force_rebuild:
-      force_interrupt=closure.targets
+      force_interrupt=closure_.targets
   elif isinstance(force_rebuild,list):
     force_interrupt=force_rebuild
   else:
     assert False, "Ivalid type of `force_rebuild` argument"
   try:
-    gen=realizeSeq(closure, force_interrupt, assert_realized, realize_args)
+    gen=realizeSeq(closure_, force_interrupt, assert_realized, realize_args)
     next(gen)
     while True:
       gen.send((None,False)) # Ask for default action
   except StopIteration as e:
     res=e.value
-  return closure.value,res
+  return result_,res
 
 
 def realizeSeq(closure:Closure,

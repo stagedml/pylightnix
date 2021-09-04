@@ -26,18 +26,18 @@ from pylightnix.utils import (scanref_dict)
 
 #: The Global [Derivation manager](#pylightnix.types.Manager) used by
 #: `instantiate_inplace` and `realize_inplace` functions of this module.
-PYLIGHTNIX_MANAGER = Manager(None)
+# PYLIGHTNIX_MANAGER = Manager(None)
 
 
-def instantiate_inplace(stage:Callable[[Manager,Any,Any],Any],
-                        *args:Any,
-                        m:Optional[Manager]=None,
-                        **kwargs:Any)->Closure:
-  """ Instantiate a `stage`, use `PYLIGHTNIX_MANAGER` for storing derivations.
-  Return derivation reference of the top-level stage. """
-  global PYLIGHTNIX_MANAGER
-  m=m if m is not None else PYLIGHTNIX_MANAGER
-  return instantiateM(m, stage)
+# def instantiate_inplace(stage:Callable[[Manager,Any,Any],Any],
+#                         *args:Any,
+#                         m:Optional[Manager]=None,
+#                         **kwargs:Any)->Closure:
+#   """ Instantiate a `stage`, use `PYLIGHTNIX_MANAGER` for storing derivations.
+#   Return derivation reference of the top-level stage. """
+#   global PYLIGHTNIX_MANAGER
+#   m=m if m is not None else PYLIGHTNIX_MANAGER
+#   return instantiateM(m, stage)
 
 # def realizeAll_inplace(result:Any,
 #                        force_rebuild:List[DRef]=[],
