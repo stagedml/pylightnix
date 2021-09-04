@@ -57,7 +57,7 @@ def use_session(inpath:str, outpath:str):
   fdr=os.open('_out.pipe', os.O_RDONLY | os.O_SYNC)
   S=mkSS('_pylightnix')
   fsinit(S)
-  m=Manager(S)
+  M=Manager(S)
 
   def _make(b:Build):
     print(f'Evaluating chunk {mklens(b).name.val}')
@@ -78,9 +78,8 @@ def use_session(inpath:str, outpath:str):
            'code':chunk,
            'prev':prev,
            'stdout':[selfref,'stdout.txt']}
-      clo=instantiateM(m, mkdrv, mkconfig(cfg),
-                       match_only(), build_wrapper(_make))
-      prev,ctx=realizeAll(clo)
+      prev,ctx=realizeAll(instantiate(mkdrv, mkconfig(cfg),
+                           match_only(), build_wrapper(_make), M=M))
       of.write('```\n')
       of.write(mklens(prev,ctx=ctx,S=S).stdout.contents)
       of.write('\n```\n')
@@ -96,6 +95,7 @@ def start_session():
             'os.open(\'_inp.pipe\',os.O_RDWR);'
             'os.open(\'_out.pipe\',os.O_RDWR);"'
             '<_inp.pipe >_out.pipe 2>&1 & echo $! >_pid.txt'))
+    exit(0)
 
 if __name__=='__main__':
   argv=sys.argv[1:]
