@@ -6,11 +6,12 @@ from pylightnix import (Manager, Build, Path, fsinit, DRef, Context,
                         drefattrs, Output, Matcher, MatcherO, Realizer,
                         rrefdeps1, RealizerO, Output, output_realizer,
                         output_matcher, build_markstart, build_markstop,
-                        StorageSettings)
+                        StorageSettings, mkSS)
 
 from tests.imports import (rmtree, join, makedirs, listdir, Callable,
                            contextmanager, List, Dict,  Popen, PIPE,
-                           gettempdir, mkdtemp, remove, settings, HealthCheck)
+                           gettempdir, mkdtemp, remove, settings, HealthCheck,
+                           dirrm)
 
 
 settings.register_profile("pylightnix", deadline=None, print_blob=True,
@@ -20,42 +21,13 @@ settings.load_profile("pylightnix")
 class ShouldHaveFailed(Exception):
   pass
 
-# @contextmanager
-# def setup_storage(tn:str):
-#   # We reset STORE variables to prevent interaction with production store
-#   import pylightnix.core
-#   pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
-#   pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
-#   storepath=Path(join(gettempdir(),tn))
-#   try:
-#     dirchmod(storepath, 'rw')
-#     rmtree(storepath)
-#   except FileNotFoundError:
-#     pass
-#   fsinit(custom_store=storepath,
-#                    custom_tmp=join(gettempdir(),'pylightnix_tmp'))
-#   assert 0==len(listdir(storepath))
-#   try:
-#     yield storepath
-#   finally:
-#     # print('Setting PYLIGHTNIX_STORE to none')
-#     pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
-#     pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
-
 @contextmanager
 def setup_storage2(tn:str):
   assert len(tn)>0
   testroot=Path(join(gettempdir(), 'pylightnix', tn))
-  storepath=Path(join(testroot, storagename()))
-  tmppath=Path(join(testroot, 'tmp'))
-  try:
-    dirchmod(testroot, 'rw')
-    rmtree(testroot, ignore_errors=False)
-  except FileNotFoundError:
-    pass
-  S=StorageSettings(testroot,tmppath)
-  fsinit(S, check_not_exist=True)
-  assert 0==len(listdir(storepath))
+  dirrm(testroot)
+  S=mkSS(testroot)
+  fsinit(S, remove_existing=True, check_not_exist=True)
   yield S
 
 def setup_inplace_reset(S=None)->None:
