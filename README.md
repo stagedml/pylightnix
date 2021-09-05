@@ -38,7 +38,7 @@ Demos:
 
 (Outdated)
 
-Manual [[PDF]](https://raw.github.com/stagedml/pylightnix-docs/master/Pylightnix-Manual-latest.pdf) |
+Manual [[PDF]](https://raw.github.com/stagedml/pylightnix-docs/master/Pylightnix-Manual-latest.pdf)
 
 * [Ultimatum tutorial](https://github.com/grwlf/ultimatum-game/blob/master/docs/Pylightnix.md),
   managing experiments.
