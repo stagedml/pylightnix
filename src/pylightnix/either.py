@@ -158,12 +158,12 @@ def either_matcher(m:MatcherO)->Matcher:
     return erefs.left[0]
   return _matcher
 
-def mkdrvE(m:Manager,
-           config:Config,
+def mkdrvE(config:Config,
            matcher:MatcherO,
-           realizer:RealizerO
+           realizer:RealizerO,
+           m:Optional[Manager]=None
            )->DRef:
-  return mkdrv(m, config, either_matcher(matcher), either_realizer(realizer))
+  return mkdrv(config, either_matcher(matcher), either_realizer(realizer), m)
 
 def realizeE(closure:Closure,
              force_rebuild:Union[List[DRef],bool]=[],

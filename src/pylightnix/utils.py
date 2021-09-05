@@ -206,6 +206,7 @@ def dirchmod(o:Path, mode:str)->None:
 def dirrm(path:Path, ignore_not_found:bool=True)->None:
   """ Powerful folder remover. Firts rename it to the temporary name. Deal with
   possible write-protection. """
+  # FIXME: May fail with 'Directory not empty' if tmppath is not empty.
   try:
     tmppath=Path(path+'.tmp')
     rename(path,tmppath)

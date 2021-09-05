@@ -25,14 +25,14 @@ from pylightnix.arch import (spack,sunpack)
 def test_pack1()->None:
   with setup_storage2('test_pack1') as S:
     def _stage(m):
-      s1=mkstage(m, {'name':'n1',
-                     'promise':[selfref,'artifact']})
-      s2=mkstage(m, {'name':'n2',
-                     'maman':s1,
-                     'promise':[selfref,'artifact']})
-      s3=mkstage(m, {'name':'n3',
-                     'papa':s2,
-                     'promise':[selfref,'artifact']})
+      s1=mkstage({'name':'n1',
+                  'promise':[selfref,'artifact']}, m)
+      s2=mkstage({'name':'n2',
+                  'maman':s1,
+                  'promise':[selfref,'artifact']}, m)
+      s3=mkstage({'name':'n3',
+                  'papa':s2,
+                  'promise':[selfref,'artifact']}, m)
       return s3
 
     rref3=realize1(instantiate(_stage,S=S))

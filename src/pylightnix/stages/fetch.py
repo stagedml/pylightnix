@@ -166,7 +166,7 @@ def fetchurl(m:Manager,
       error(f"Keeping temporary directory {o}")
       raise
 
-  return mkdrv(m, _instantiate(), match_only(), build_wrapper(_realize))
+  return mkdrv(_instantiate(), match_only(), build_wrapper(_realize), m)
 
 
 
@@ -245,5 +245,5 @@ def fetchlocal(m:Manager, sha256:str,
       error(f"Keeping temporary directory {o}")
       raise
 
-  return mkdrv(m, _instantiate(), match_only(), build_wrapper(_realize))
+  return mkdrv(_instantiate(), match_only(), build_wrapper(_realize), m)
 

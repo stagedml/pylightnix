@@ -67,24 +67,20 @@ def setup_test_realize(nrrefs:int,
     return b.outpaths
   return _realize
 
-def mkstage(m:Optional[Manager],
-            config:dict,
+def mkstage(config:dict,
+            m:Optional[Manager]=None,
             nondet:Callable[[int],int]=lambda n:0,
             starttime:Optional[str]='AUTO',
             nrrefs:int=1,
             nmatch:int=1,
             mustfail:bool=False,
-            S:Optional[StorageSettings]=None
+            S:Optional[StorageSettings]=None,
             )->DRef:
-  m_=tlmanager(m)
-  assert m_ is not None
-  return mkdrv(m_, setup_test_config(config),
+  return mkdrv(setup_test_config(config),
                output_matcher(setup_test_match(nmatch)),
                output_realizer(setup_test_realize(
-                 nrrefs, starttime, nondet, mustfail)))
-
-def mkstage2(*args, **kwargs)->DRef:
-  return mkstage(None, *args, **kwargs)
+                 nrrefs, starttime, nondet, mustfail)),
+               m)
 
 def pipe_stdout(args:List[str], **kwargs)->str:
   return Popen(args, stdout=PIPE, **kwargs).stdout.read().decode() # type:ignore
@@ -94,13 +90,13 @@ def rrefdepth(rref:RRef,S=None)->int:
   return 1+(max(rec) if len(rec)>0 else 0)
 
 
-def mkstageP(m:Manager,
-            config:dict,
-            nondet:Callable[[int],int]=lambda n:0,
-            starttime:Optional[str]='AUTO',
-            nrrefs:int=1,
-            nmatch:int=1,
-            mustfail:bool=False)->DRef:
+def mkstageP(config:dict,
+             nondet:Callable[[int],int]=lambda n:0,
+             m:Optional[Manager]=None,
+             starttime:Optional[str]='AUTO',
+             nrrefs:int=1,
+             nmatch:int=1,
+             mustfail:bool=False)->DRef:
   """ Makes a stage which could deliberately break the promise - i.e. fail to
   provide a promised artifact """
   def _r(S, dref:DRef, c:Context, ra:RealizeArg)->Output[Path]:
@@ -109,7 +105,8 @@ def mkstageP(m:Manager,
       # for path in r.val:
       remove(join(r.val[-1],"artifact"))
     return r
-  return mkdrv(m, setup_test_config(config),
+  return mkdrv(setup_test_config(config),
                output_matcher(setup_test_match(nmatch)),
-               output_realizer(_r))
+               output_realizer(_r),
+               m)
 

@@ -31,7 +31,7 @@ def mkstageE(m:Manager,
   def _r(S, dref:DRef, c:Context, ra:RealizeArg)->Output[Path]:
     r=setup_test_realize(nrrefs, buildstart, nondet, mustfail)
     return r(S,dref,c,ra)
-  return mkdrvE(m, setup_test_config(config), setup_test_match(nmatch), _r)
+  return mkdrvE(setup_test_config(config), setup_test_match(nmatch), _r, m)
 
 @given(stages=rootstages(stagefn=mkstageE, failchances=[50]))
 def test_either_invariant(stages):

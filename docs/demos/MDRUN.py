@@ -61,7 +61,7 @@ def use_session(inpath:str, outpath:str):
     res=interact(fdr,fdw,''.join(mklens(b).code.val))
     writestr(mklens(b).stdout.syspath,res)
 
-  with current_manager(Manager(S)) as M:
+  with current_manager(Manager(S)):
     prev:Optional[DRef]=None
     of=sys.stdout if outpath=='-' else open(outpath,'w')
     nchunk=0
@@ -76,7 +76,7 @@ def use_session(inpath:str, outpath:str):
              'code':chunk,
              'prev':prev,
              'stdout':[selfref,'stdout.txt']}
-        prev=mkdrv(M, mkconfig(cfg), match_only(), build_wrapper(_realize))
+        prev=mkdrv(mkconfig(cfg), match_only(), build_wrapper(_realize))
         rref=realize1(instantiate(prev))
         of.write('```\n')
         of.write(mklens(rref).stdout.contents)

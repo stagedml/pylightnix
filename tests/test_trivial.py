@@ -56,9 +56,8 @@ def test_realized()->None:
         if assume_realized:
           raise ShouldHaveFailed('Should not call the real realizer')
         return build_outpath(b)
-      return mkdrv(m,
-                   mkconfig({'name':'1'}), match_only(),
-                   build_wrapper(_realize))
+      return mkdrv(mkconfig({'name':'1'}), match_only(),
+                   build_wrapper(_realize), m)
 
     dref,clo=instantiate(realized(_setting), assume_realized=True, S=S)
     try:

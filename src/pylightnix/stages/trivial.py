@@ -44,7 +44,7 @@ def mknode(m:Manager,
     for an,av in artifacts.items():
       with open(join(o,an),'wb') as f:
         f.write(av)
-  return mkdrv(m, mkconfig(config), match_only(), build_wrapper(_realize))
+  return mkdrv(mkconfig(config), match_only(), build_wrapper(_realize), m)
 
 # def mkfile(m:Manager,
 #            name:Name,
@@ -93,7 +93,7 @@ def redefine(stage:Any,
     new_realizer_=new_realizer if new_realizer is not None\
                                else m.builders[dref].realizer
     del m.builders[dref] # Pretend that it did not exist
-    return mkdrv(m, mkconfig(d), new_matcher_, new_realizer_)
+    return mkdrv(mkconfig(d), new_matcher_, new_realizer_, m)
   return _new_stage
 
 def realized(stage:Any)->Stage:

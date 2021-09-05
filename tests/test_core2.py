@@ -160,10 +160,10 @@ def test_match_exact(stages,subs):
 
 @composite
 def stagesL(draw):
-  return (lambda m,cfg,t,a:mkdrv(m, setup_test_config(cfg),
+  return (lambda m,cfg,t,a:mkdrv(setup_test_config(cfg),
                   match_latest(),
                   output_realizer(setup_test_realize(
-                    1, timestring(sec=float(t)), lambda i:a, False))))
+                    1, timestring(sec=float(t)), lambda i:a, False)), m))
 
 @given(h=hierarchies(stages=stagesL))
 def test_match_latest(h):

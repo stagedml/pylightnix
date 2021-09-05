@@ -607,10 +607,10 @@ def output_matcher(m:MatcherO)->Matcher:
     return r.val if r is not None else None
   return _m
 
-def mkdrv(m:Manager,
-          config:Config,
+def mkdrv(config:Config,
           matcher:Matcher,
-          realizer:Realizer)->DRef:
+          realizer:Realizer,
+          m:Optional[Manager]=None)->DRef:
   """ Construct a [Derivation](#pylightnix.types.Derivation) object out of
   [Config](#pylightnix.types.Config), [Matcher](#pylightnix.types.Matcher) and
   [Realizer](#pylightnix.types.Realizer). Register the derivation in the
@@ -632,6 +632,8 @@ def mkdrv(m:Manager,
   ```
   """
   # FIXME: check that all config's dependencies are known to the Manager
+  m=tlmanager(m)
+  assert m is not None, "Default manager is not set"
   dref=mkdrv_(config,S=m.S)
   if dref in m.builders:
     warning(f"Overwriting the derivation of '{dref}'. This could be a "
@@ -688,14 +690,15 @@ def instantiate(stage:Union[StageResult,Callable[[Manager,Any,Any],StageResult]]
   if m is None:
     m=Manager(S)
   else:
-    assert S is None, "S should be None if Manager exists"
+    if S is not None:
+      assert S==m.S, "S should match the Manager's if specified"
   assert not m.in_instantiate, (
     "Recursion detected. `instantiate` should not be called recursively "
     "by stage functions with the same `Manager` as argument")
   m._in_instantiate=True
   try:
     if callable(stage):
-      result=stage(m,*args,**kwargs)
+      result=stage(*args,m=m,**kwargs)
     else:
       result=stage
   finally:

@@ -17,7 +17,7 @@ from tests.imports import ( given, Any, Callable, join, Optional, islink,
 from tests.generators import (
     rrefs, drefs, configs, dicts )
 
-from tests.setup import ( ShouldHaveFailed, setup_storage2, mkstage, mkstage )
+from tests.setup import ( ShouldHaveFailed, setup_storage2, mkstage )
 
 
 
@@ -36,11 +36,11 @@ def test_build_deref()->None:
           with open(build_path(b, c.maman),'r') as s:
             d.write(s.read())
         return
-      return mkdrv(m, _instantiate(), match_only(), build_wrapper(_realize))
+      return mkdrv(_instantiate(), match_only(), build_wrapper(_realize), m)
 
     def _setting(m:Manager)->DRef:
-      n1 = mkstage(m, {'a':'1'}, lambda i:42)
-      n2 = mkstage(m, {'b':'2'})
+      n1 = mkstage({'a':'1'},m,lambda i:42)
+      n2 = mkstage({'b':'2'},m)
       n3 = _depuser(m, {'maman':mkrefpath(n1,['artifact']), 'papa':n2})
       return n3
 
@@ -62,7 +62,7 @@ def test_build_cattrs()->None:
         c2 = build_cattrs(b) # Should use the cache
         assert hasattr(c2,'c')
         return
-      return mkdrv(m, _instantiate(), match_only(), build_wrapper(_realize))
+      return mkdrv(_instantiate(), match_only(), build_wrapper(_realize), m)
 
     rref = realize1(instantiate(_setting,S=S))
     assert_valid_rref(rref)
@@ -74,8 +74,8 @@ def test_build_name()->None:
         n=build_name(b)
         assert n=='foobar'
         _=build_outpath(b)
-      return mkdrv(m, mkconfig({'name':'foobar'}), match_only(),
-                   build_wrapper(_realize))
+      return mkdrv(mkconfig({'name':'foobar'}), match_only(),
+                   build_wrapper(_realize), m)
     rref=realize1(instantiate(_setting,S=S))
     assert isrref(rref)
     assert 'foobar' in rref
@@ -85,7 +85,7 @@ def test_build_exception()->None:
     def _setting(m:Manager)->DRef:
       def _realize(b)->None:
         raise ValueError("An intended failure")
-      return mkdrv(m, mkconfig({}), match_only(), build_wrapper(_realize))
+      return mkdrv(mkconfig({}), match_only(), build_wrapper(_realize), m)
     res,clo=instantiate(_setting,S=S)
     try:
       realize1(clo)

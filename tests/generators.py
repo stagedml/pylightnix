@@ -131,9 +131,9 @@ def rootstages(draw,
   def _stage(m, root):
     drefs:dict={}
     for n,deps in list(dag):
-      drefs[n]=stagefn(m,
-                       config={'name':f'node_{n}',
+      drefs[n]=stagefn(config={'name':f'node_{n}',
                                'parents':[drefs[d] for d in deps]},
+                       m=m,
                        nondet=partial(_nondet,nn=n),
                        nrrefs=nrrefs[n],
                        nmatch=nmatches[n],
@@ -151,8 +151,9 @@ def stages(draw,
   nrrefs=draw(integers(min_value=min_nrrefs,max_value=max_nrrefs))
   nmatch=draw(integers(min_value=min_nmatch,max_value=max_nmatch))
   mustfail=draw(sampled_from(([True]*pfail)+([False]*(100-pfail))))
-  return (lambda m,config:mkstage(m,
+  return (lambda m,config:mkstage(
                  config=config,
+                 m=m,
                  nondet=lambda n:0,
                  starttime='AUTO',
                  nrrefs=nrrefs,

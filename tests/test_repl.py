@@ -25,8 +25,8 @@ def test_repl_basic():
     n1:DRef; n2:DRef
     def _setting(m:Manager)->List[DRef]:
       nonlocal n1,n2
-      n1 = mkstage(m, {'a':'1'})
-      n2 = mkstage(m, {'maman':n1})
+      n1 = mkstage({'a':'1'},m)
+      n2 = mkstage({'maman':n1},m)
       return [n1,n2]
 
     clo=instantiate(_setting,S=S)
@@ -47,8 +47,8 @@ def test_repl_race():
   with setup_storage2('test_repl_recursion'):
 
     def _setting(m:Manager)->DRef:
-      n1 = mkstage(m, {'a':'1'})
-      n2 = mkstage(m, {'maman':n1})
+      n1 = mkstage({'a':'1'},m)
+      n2 = mkstage({'maman':n1},m)
       return n2
 
     clo=instantiate(_setting)
@@ -69,8 +69,8 @@ def test_repl_override():
     n1:DRef; n2:DRef
     def _setting(m:Manager)->DRef:
       nonlocal n1,n2
-      n1 = mkstage(m, {'a':'1'}, lambda i: 33)
-      n2 = mkstage(m, {'maman':n1}, lambda i: 42)
+      n1 = mkstage({'a':'1'}, m, lambda i: 33)
+      n2 = mkstage({'maman':n1}, m, lambda i: 42)
       return n2
 
     clo=instantiate(_setting, S=S)
@@ -95,8 +95,8 @@ def test_repl_globalHelper():
     n1:DRef; n2:DRef
     def _setting(m:Manager)->DRef:
       nonlocal n1,n2
-      n1 = mkstage(m, {'a':'1'})
-      n2 = mkstage(m, {'maman':n1})
+      n1 = mkstage({'a':'1'},m)
+      n2 = mkstage({'maman':n1},m)
       return n2
 
     rh=repl_realize(instantiate(_setting, S=S), force_interrupt=True)
@@ -116,8 +116,8 @@ def test_repl_globalCancel():
     n1:DRef; n2:DRef
     def _setting(m:Manager)->DRef:
       nonlocal n1,n2
-      n1 = mkstage(m, {'a':'1'})
-      n2 = mkstage(m, {'maman':n1})
+      n1 = mkstage({'a':'1'},m)
+      n2 = mkstage({'maman':n1},m)
       return n2
 
     rh=repl_realize(instantiate(_setting,S=S), force_interrupt=True)

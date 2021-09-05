@@ -23,7 +23,7 @@ from tests.generators import (rrefs, drefs, configs, dicts, rootstages,
                               settings)
 
 from tests.setup import ( ShouldHaveFailed, setup_storage2,
-                         mkstage, mkstage2, pipe_stdout )
+                         mkstage, pipe_stdout )
 
 
 # @given(d=dicts())
@@ -98,7 +98,7 @@ def test_no_dref_deps_without_realizers()->None:
 def test_repeated_instantiate()->None:
   with setup_storage2('test_repeated_instantiate') as S:
     def _setting(m:Manager)->DRef:
-      return mkstage(m, {'a':'1'})
+      return mkstage({'a':'1'}, m)
     _,cl1=instantiate(_setting,S=S)
     _,cl2=instantiate(_setting,S=S)
     assert len(cl1.derivations)==1
@@ -110,7 +110,7 @@ def test_repeated_instantiate()->None:
 def test_repeated_realize()->None:
   with setup_storage2('test_repeated_realize') as S:
     def _setting(m:Manager)->DRef:
-      return mkstage(m, {'a':'1'})
+      return mkstage({'a':'1'},m)
     _,clo=instantiate(_setting,S=S)
     rref1=realize1(clo)
     rref2=realize1(clo)
@@ -124,7 +124,7 @@ def test_repeated_realize()->None:
 
 def test_realize_readonly()->None:
   with setup_storage2('test_realize_readonly') as S:
-    rref1 = realize1(instantiate(mkstage, {'a':'1'},S=S))
+    rref1 = realize1(instantiate(mkstage,{'a':'1'},S=S))
 
     try:
       with open(join(rref2path(rref1,S),'newfile'),'w') as f:
@@ -153,12 +153,12 @@ def test_minimal_closure()->None:
   with setup_storage2('test_minimal_closure') as S:
 
     def _somenode(m):
-      return mkstage(m,{'a':0})
+      return mkstage({'a':0},m)
 
     def _anothernode(m):
-      n1=mkstage(m,{'a':1})
+      n1=mkstage({'a':1},m)
       n2=_somenode(m)
-      n3=mkstage(m,{'maman':n1,'papa':n2})
+      n3=mkstage({'maman':n1,'papa':n2},m)
       return n3
 
     rref1=realize1(instantiate(_somenode,S=S))
@@ -180,7 +180,7 @@ def test_minimal_closure()->None:
 
 #     def _setup(m):
 #       nonlocal n1, n2, n3
-#       n1 = mkstage(m, {'a':'1'})
+#       n1 = mkstage( {'a':'1'},m)
 #       n2 = mkstage(m,{'maman':n1},_gen)
 #       n3 = mkstage(m,{'papa':n2})
 #       return n3
@@ -205,7 +205,7 @@ def test_no_foreign_dref_deps()->None:
     with setup_storage2('test_no_foreign_dref_deps_2') as S2:
       def _setup(m):
         _,clo=instantiate(mkstage, {'name':'foreign', 'foo':'bar'}, S=S2)
-        return mkstage(m,{'bogus':clo.targets[0]})
+        return mkstage({'bogus':clo.targets[0]},m)
       try:
         xxx=instantiate(_setup,S=S)
         raise ShouldHaveFailed(f"Should fail, but got {xxx}")
@@ -217,7 +217,7 @@ def test_no_rref_deps()->None:
   with setup_storage2('test_no_rref_deps') as S:
     def _setup(m):
       rref=realize1(instantiate(mkstage, {'foo':'bar'}))
-      n2=mkstage(m,{'bogus':rref})
+      n2=mkstage({'bogus':rref},m)
       return n2
     try:
       xxx=instantiate(_setup,S=S)
@@ -230,7 +230,7 @@ def test_no_recursive_instantiate_with_same_manager()->None:
   with setup_storage2('test_no_recursive_instantiate_with_same_manager') as S:
     def _setup(m):
       derivs = mkclosure(m,_setup)
-      n2 = mkstage(m,{'bogus':derivs.targets[0]})
+      n2 = mkstage({'bogus':derivs.targets[0]},m)
       return n2
     try:
       xxx=instantiate(_setup,S=S)
@@ -242,11 +242,11 @@ def test_no_recursive_instantiate_with_same_manager()->None:
 def test_recursive_realize_with_another_manager()->None:
   with setup_storage2('test_recursive_realize_with_another_manager') as S:
     def _setup_inner(m):
-      return mkstage(m,{'foo':'bar'})
+      return mkstage({'foo':'bar'},m)
     def _setup_outer(m):
       # nonlocal rref_inner
       rref_inner=realize1(instantiate(_setup_inner,S=S))
-      r2=mkstage(m,{'baz':mklens(rref_inner,S=S).foo.val})
+      r2=mkstage({'baz':mklens(rref_inner,S=S).foo.val},m)
       return [rref_inner,r2]
     _,clo=instantiate(_setup_outer,S=S)
     rref=realize1(clo)
@@ -271,10 +271,10 @@ def test_ignored_stage()->None:
     n2:DRef; n4:DRef
     def _setting(m:Manager)->DRef:
       nonlocal n2,n4
-      n1 = mkstage(m, {'a':'1'})
-      n2 = mkstage(m, {'b':'2'}) # this one should not be realized
-      n3 = mkstage(m, {'c':'3', 'maman':n1})
-      n4 = mkstage(m, {'c':'4', 'papa':n3}) # neither this one
+      n1 = mkstage({'a':'1'},m)
+      n2 = mkstage({'b':'2'},m) # this one should not be realized
+      n3 = mkstage({'c':'3','maman':n1},m)
+      n4 = mkstage({'c':'4','papa':n3},m) # neither this one
       return n1,n3
 
     (n1,n3),clo=instantiate(_setting,S=S)
@@ -289,12 +289,12 @@ def test_ignored_stage()->None:
 
 def test_overwrite_realizer()->None:
   with setup_storage2('test_overwrite_realizer') as S:
-    n1:DRef; n2:DRef; n3:DRef; n4:DRef
+    n1:DRef; n2:DRef; n3:DRef
     def _setting(m:Manager)->DRef:
-      nonlocal n1, n2, n3, n4
-      n1 = mkstage(m, {'a':'1'}, lambda i:33)
-      n2 = mkstage(m, {'maman':n1})
-      n3 = mkstage(m, {'a':'1'}, lambda i:42)
+      nonlocal n1, n2, n3
+      n1 = mkstage({'a':'1'},m,lambda i:33)
+      n2 = mkstage({'maman':n1},m)
+      n3 = mkstage({'a':'1'},m,lambda i:42)
       return n2
 
     rref_n2=realize1(instantiate(_setting, S=S))
@@ -309,11 +309,11 @@ def test_overwrite_realizer()->None:
 def test_gc()->None:
   with setup_storage2('test_gc') as S:
     def _node1(m:Manager)->DRef:
-      return mkstage(m, {'name':'1'})
+      return mkstage({'name':'1'},m)
     def _node2(m:Manager)->DRef:
-      return mkstage(m, {'name':'2', 'maman':_node1(m)})
+      return mkstage({'name':'2', 'maman':_node1(m)},m)
     def _node3(m:Manager)->DRef:
-      return mkstage(m, {'name':'3', 'maman':_node1(m)})
+      return mkstage({'name':'3', 'maman':_node1(m)},m)
 
     r1=realize1(instantiate(_node1,S=S))
     r2=realize1(instantiate(_node2,S=S))
@@ -384,10 +384,10 @@ def test_linkdref()->None:
 def test_current_manager():
   with setup_storage2('test_current_manager') as S:
     with current_manager(Manager(S)) as m:
-      n1=mkstage(m,{'a':'1'})
-      n2=mkstage2({'b':'2'})
-      n3=mkstage2({'c':'3', 'maman':n1})
-      n4=mkstage2({'c':'4', 'papa':n3})
+      n1=mkstage({'a':'1'})
+      n2=mkstage({'b':'2'})
+      n3=mkstage({'c':'3','maman':n1})
+      n4=mkstage({'c':'4','papa':n3})
       assert_valid_dref(n3)
       assert_valid_dref(n4)
 
@@ -410,7 +410,7 @@ def test_current_storage():
       realize1(instantiate(partial(mkstage,config={'b':'2'})))
       with current_storage(S2) as S:
         with current_manager(Manager(S)):
-          realize1(instantiate(mkstage2({'c':'3'})))
+          realize1(instantiate(mkstage({'c':'3'})))
         assert len(list(alldrefs()))==1
       assert len(list(alldrefs()))==2
     assert len(list(alldrefs(S1)))==2

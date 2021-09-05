@@ -146,10 +146,10 @@ def fetchurl2(m:Manager,
       error(f"Keeping temporary directory {o}")
       raise
 
-  return mkdrv(m,
-               mkconfig(_config()),
+  return mkdrv(mkconfig(_config()),
                match_only(),
-               build_wrapper(_make))
+               build_wrapper(_make),
+               m)
 
 
 def unpack(m:Manager,
@@ -189,5 +189,5 @@ def unpack(m:Manager,
     p=Popen([AUNPACK(), fullpath]+aunpack_args, cwd=mklens(b).syspath)
     p.wait()
     assert p.returncode == 0, f"Unpack failed, errcode '{p.returncode}'"
-  return mkdrv(m, mkconfig(_config()), match_only(), build_wrapper(_make))
+  return mkdrv(mkconfig(_config()), match_only(), build_wrapper(_make), m)
 

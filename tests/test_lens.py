@@ -34,9 +34,9 @@ from tests.setup import (ShouldHaveFailed, setup_storage2, mkstage)
 def test_lens():
   with setup_storage2('test_lens') as S:
     def _setting(m:Manager)->DRef:
-      n1=mkstage(m, {'name':'1', 'selfref':[selfref,'artifact']})
-      n2=mkstage(m, {'name':'2', 'selfref':[selfref,'artifact'],
-                        'dict':{'d1':1} })
+      n1=mkstage({'name':'1', 'selfref':[selfref,'artifact']},m)
+      n2=mkstage({'name':'2', 'selfref':[selfref,'artifact'],
+                        'dict':{'d1':1} },m)
 
       def _realize(b:Build):
         o=build_outpath(b)
@@ -51,12 +51,12 @@ def test_lens():
         with open(mklens(b).selfref.syspath,'w') as f:
           f.write('chickenpoop')
 
-      return mkdrv(m,
+      return mkdrv(
         mkconfig({'name':'3', 'maman':n1, 'papa':n2,
                   'selfref':[selfref,'artifact'],
                   }),
                  matcher=match_only(),
-                 realizer=build_wrapper(_realize))
+                 realizer=build_wrapper(_realize), m=m)
 
     _,clo=instantiate(_setting, S=S)
     assert isrefpath(mklens(clo.targets[0],S=S).maman.selfref.refpath)
@@ -110,9 +110,9 @@ def test_lens():
 def test_lens_closures():
   with setup_storage2('test_lens_closures') as S:
     def _stage(m:Manager)->DRef:
-      n1=mkstage(m, {'name':'1', 'x':33, 'selfref':[selfref,'artifact']})
-      n2=mkstage(m, {'name':'2', 'papa':n1, 'dict':{'d1':1} })
-      n3=mkstage(m, {'name':'3', 'maman':n2 })
+      n1=mkstage({'name':'1', 'x':33, 'selfref':[selfref,'artifact']},m)
+      n2=mkstage({'name':'2', 'papa':n1, 'dict':{'d1':1} },m)
+      n3=mkstage({'name':'3', 'maman':n2 },m)
       return n3
 
     _,clo=instantiate(_stage, S=S)
