@@ -38,19 +38,19 @@ def interact(fdr, fdw, text:str)->str:
 def scanmd(fpath:str)->Iterable[Tuple[Optional[str],
                                       Optional[List[str]]]]:
   acc:list=[]; inchunk=False
-  with open(fpath) as f:
-    for line in f.readlines():
-      if inchunk:
-        if search('^\s*```', line):
-          inchunk=False;
-          yield (None,acc)
-        else:
-          acc.append(line)
+  f=sys.stdin if fpath=='-' else open(fpath,'r')
+  for line in f.readlines():
+    if inchunk:
+      if search('^\s*```', line):
+        inchunk=False;
+        yield (None,acc)
       else:
-        if search('^\s*```',line):
-          inchunk=True; acc=[]
-        else:
-          yield (line,None)
+        acc.append(line)
+    else:
+      if search('^\s*```',line):
+        inchunk=True; acc=[]
+      else:
+        yield (line,None)
 
 def use_session(inpath:str, outpath:str):
   fdw=os.open('_inp.pipe', os.O_WRONLY | os.O_SYNC)
@@ -103,9 +103,12 @@ if __name__=='__main__':
     print(('Usage:\n\n'
            '    MDRUN [--restart] FILE.md.in FILE.md'
            '\n\n'
-           'Executes all the Python code sections of the input Markdown '
-           'document. Paste the result of each section below the original '
-           'section in the output document.'
+           '    Example: `cat test.md | python MDRUN.py - -`'
+           '\n\n'
+           'Execute Python code sections found in the input Markdown '
+           'FILE.md.in. Create the output document FILE.md by pasting '
+           'the result of each section below the original. '
+           '"-" is accepted as a placeholder for STDIN or STDOUT.'
            '\n\n'
            'All Python code is executed in a Python interpreter running in '
            'the background. Its pid is saved in "_pid.txt" file and the '
