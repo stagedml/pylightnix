@@ -411,7 +411,7 @@ class Build:
 
 
 class Registry:
-  """ The derivation manager is a mutable storage object where Pylightnix
+  """ The derivation registry is a mutable storage object where Pylightnix
   stores derivations before combining them into a
   [Closure](#pylightnix.types.Closure).
 

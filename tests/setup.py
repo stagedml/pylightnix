@@ -6,7 +6,7 @@ from pylightnix import (Registry, Build, Path, fsinit, DRef, Context,
                         drefattrs, Output, Matcher, MatcherO, Realizer,
                         rrefdeps1, RealizerO, Output, output_realizer,
                         output_matcher, build_markstart, build_markstop,
-                        StorageSettings, mkSS, dirrm, tlmanager)
+                        StorageSettings, mkSS, dirrm, tlregistry)
 
 from tests.imports import (rmtree, join, makedirs, listdir, Callable,
                            contextmanager, List, Dict,  Popen, PIPE,

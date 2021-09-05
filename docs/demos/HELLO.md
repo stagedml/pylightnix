@@ -147,9 +147,8 @@ rref:29eaa2c8e74cbc939dfdd8e43f3987eb-43323fae07b9e30f65ed0a1b6213b6f0-unpack-he
 
   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
- 18  708k   18  131k    0     0  84285      0  0:00:08  0:00:01  0:00:07 84232
- 60  708k   60  431k    0     0   168k      0  0:00:04  0:00:02  0:00:02  168k
-100  708k  100  708k    0     0   213k      0  0:00:03  0:00:03 --:--:--  213k
+ 80  708k   80  572k    0     0   546k      0  0:00:01  0:00:01 --:--:--  545k
+100  708k  100  708k    0     0   631k      0  0:00:01  0:00:01 --:--:--  631k
 hello-2.10.tar.gz: extracted to `hello-2.10'
 ```
 
@@ -266,7 +265,7 @@ print(rref)
 ```
 
 ``` stdout
-rref:8dc8630f13df2c07a376f1d9c7a7937e-e48878b9f7760fe0972eb6863775045f-hello-bin
+rref:136a30c899f36f832f45f6ed352d9ba9-e48878b9f7760fe0972eb6863775045f-hello-bin
 ```
 
 ### Accessing the results
@@ -280,15 +279,15 @@ for line in open(mklens(rref,m=M).out_log.syspath).readlines()[-10:]:
 
 ``` stdout
 fi
-/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/mkdir -p '/tmp/pylightnix_hello_demo/tmp/210905-20:03:45:171098+0300_2b29fe60_e6a2kc9c/usr/share/info'
-/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/install -c -m 644 ./doc/hello.info '/tmp/pylightnix_hello_demo/tmp/210905-20:03:45:171098+0300_2b29fe60_e6a2kc9c/usr/share/info'
-install-info --info-dir='/tmp/pylightnix_hello_demo/tmp/210905-20:03:45:171098+0300_2b29fe60_e6a2kc9c/usr/share/info' '/tmp/pylightnix_hello_demo/tmp/210905-20:03:45:171098+0300_2b29fe60_e6a2kc9c/usr/share/info/hello.info'
-/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/mkdir -p '/tmp/pylightnix_hello_demo/tmp/210905-20:03:45:171098+0300_2b29fe60_e6a2kc9c/usr/share/man/man1'
-/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/install -c -m 644 hello.1 '/tmp/pylightnix_hello_demo/tmp/210905-20:03:45:171098+0300_2b29fe60_e6a2kc9c/usr/share/man/man1'
-make[4]: Leaving directory '/run/user/1000/tmpnd5_a3pp/src'
-make[3]: Leaving directory '/run/user/1000/tmpnd5_a3pp/src'
-make[2]: Leaving directory '/run/user/1000/tmpnd5_a3pp/src'
-make[1]: выход из каталога «/run/user/1000/tmpnd5_a3pp/src»
+/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/mkdir -p '/tmp/pylightnix_hello_demo/tmp/210905-21:39:47:054952+0300_2b29fe60_q12v8sva/usr/share/info'
+/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/install -c -m 644 ./doc/hello.info '/tmp/pylightnix_hello_demo/tmp/210905-21:39:47:054952+0300_2b29fe60_q12v8sva/usr/share/info'
+install-info --info-dir='/tmp/pylightnix_hello_demo/tmp/210905-21:39:47:054952+0300_2b29fe60_q12v8sva/usr/share/info' '/tmp/pylightnix_hello_demo/tmp/210905-21:39:47:054952+0300_2b29fe60_q12v8sva/usr/share/info/hello.info'
+/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/mkdir -p '/tmp/pylightnix_hello_demo/tmp/210905-21:39:47:054952+0300_2b29fe60_q12v8sva/usr/share/man/man1'
+/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/install -c -m 644 hello.1 '/tmp/pylightnix_hello_demo/tmp/210905-21:39:47:054952+0300_2b29fe60_q12v8sva/usr/share/man/man1'
+make[4]: Leaving directory '/run/user/1000/tmpfs_1gkev/src'
+make[3]: Leaving directory '/run/user/1000/tmpfs_1gkev/src'
+make[2]: Leaving directory '/run/user/1000/tmpfs_1gkev/src'
+make[1]: выход из каталога «/run/user/1000/tmpfs_1gkev/src»
 ```
 
 Finally, we convert RRef to the system path and run the GNU Hello

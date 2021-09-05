@@ -91,7 +91,7 @@ def test_no_dref_deps_without_realizers()->None:
     try:
       _,clo=instantiate(mkstage,{'a':1},S=S)
       _=realize1(instantiate(mkstage,{'maman':clo.targets[0]},S=S))
-      raise ShouldHaveFailed("We shouldn't share DRefs across managers")
+      raise ShouldHaveFailed("We shouldn't share DRefs across registries")
     except AssertionError:
       pass
 
@@ -226,8 +226,8 @@ def test_no_rref_deps()->None:
       pass
 
 
-def test_no_recursive_instantiate_with_same_manager()->None:
-  with setup_storage2('test_no_recursive_instantiate_with_same_manager') as S:
+def test_no_recursive_instantiate_with_same_registry()->None:
+  with setup_storage2('test_no_recursive_instantiate_with_same_registry') as S:
     def _setup(m):
       derivs = mkclosure(m,_setup)
       n2 = mkstage({'bogus':derivs.targets[0]},m)
@@ -239,8 +239,8 @@ def test_no_recursive_instantiate_with_same_manager()->None:
       pass
 
 
-def test_recursive_realize_with_another_manager()->None:
-  with setup_storage2('test_recursive_realize_with_another_manager') as S:
+def test_recursive_realize_with_another_registry()->None:
+  with setup_storage2('test_recursive_realize_with_another_registry') as S:
     def _setup_inner(m):
       return mkstage({'foo':'bar'},m)
     def _setup_outer(m):

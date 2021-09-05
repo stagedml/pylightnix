@@ -62,12 +62,12 @@ warning=logger.warning
 #: to store its state.
 TL=threading_local()
 
-def tlmanager(M:Optional[Registry])->Optional[Registry]:
+def tlregistry(M:Optional[Registry])->Optional[Registry]:
   global TL
-  tlm=getattr(TL,'manager',None)
+  tlm=getattr(TL,'registry',None)
   return M if M else tlm
 def tlstorage(S:Optional[StorageSettings])->Optional[StorageSettings]:
-  tlm=tlmanager(None)
+  tlm=tlregistry(None)
   tls=getattr(TL,'storage',None)
   return S if S else (tls if tls else (tlm.S if tlm else None))
 
@@ -633,8 +633,8 @@ def mkdrv(config:Config,
   ```
   """
   # FIXME: check that all config's dependencies are known to the Registry
-  m=tlmanager(m)
-  assert m is not None, "Default manager is not set"
+  m=tlregistry(m)
+  assert m is not None, "Default registry is not set"
   dref=mkdrv_(config,S=m.S)
   if dref in m.builders:
     warning(f"Overwriting the derivation of '{dref}'. This could be a "
@@ -643,14 +643,17 @@ def mkdrv(config:Config,
   return dref
 
 @contextmanager
-def current_registry(M:Registry)->Iterable[Registry]:
+def current_registry(r:Registry)->Iterable[Registry]:
+  """ Sets the implicit global registry for the inner scoped code. Implies
+  [current_storage(r.S)](#pylightnix.core.current_storage)"""
   global TL
-  old=getattr(TL,'manager',None)
-  TL.manager=M
+  old=getattr(TL,'registry',None)
+  TL.registry=r
   try:
-    yield TL.manager
+    with current_storage(r.S):
+      yield TL.registry
   finally:
-    TL.manager=old
+    TL.registry=old
 
 @contextmanager
 def current_storage(S:StorageSettings)->Iterable[StorageSettings]:
@@ -687,7 +690,7 @@ def instantiate(stage:Union[StageResult,Callable[[Registry,Any,Any],StageResult]
 
   See also [realize](#pylightnix.core.realize).
   """
-  m=tlmanager(m)
+  m=tlregistry(m)
   if m is None:
     m=Registry(S)
   else:
@@ -696,7 +699,7 @@ def instantiate(stage:Union[StageResult,Callable[[Registry,Any,Any],StageResult]
     else:
       assert S==m.S, (
         f"S should match the Registry's if specified. 'S={S}' while "
-        f"manager has '{m.S}'")
+        f"registry has '{m.S}'")
   assert not m.in_instantiate, (
     "Recursion detected. `instantiate` should not be called recursively "
     "by stage functions with the same `Registry` as argument")
