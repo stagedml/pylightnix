@@ -34,22 +34,22 @@ TESTS = $(shell find tests -name '*\.py')
 		--search-path \
 			$(shell python3 -c "import sys; print(' '.join(sys.path))") >$@  # "
 
-.PHONY: docs-reference dr
-docs-reference: ./docs/Reference.md
-dr: docs-reference
+.PHONY: docs_reference dr
+docs_reference: ./docs/Reference.md
+dr: docs_reference
 
-.PHONY: docs-quickstart
-docs-quickstart: docs/QuickStart.pdf
+.PHONY: docs_quickstart
+docs_quickstart: docs/QuickStart.pdf
 docs/QuickStart.pdf: $(SRC) $(TEX) ./docs/compile.sh .stamp_check
 	/bin/sh ./docs/compile.sh docs/QuickStart.tex
 
-.PHONY: docs-manual
-docs-manual: docs/Manual.pdf
+.PHONY: docs_manual
+docs_manual: docs/Manual.pdf
 docs/Manual.pdf: $(SRC) $(TEX) ./docs/compile.sh .stamp_check
 	/bin/sh ./docs/compile.sh docs/Manual.tex
 
 .PHONY: docs
-docs: docs-manual docs-quickstart docs-reference
+docs: docs_manual docs_quickstart docs_reference
 
 
 .PHONY: publish-quickstart
