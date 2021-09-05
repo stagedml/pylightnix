@@ -7,8 +7,6 @@ import sys
 from select import select
 from os import environ, system
 
-Chunk=List[str]
-
 def mkre(prompt:str):
   return re.compile(f"(.*)(?={prompt})|{prompt}".encode('utf-8'),
                     re.A|re.MULTILINE|re.DOTALL)
