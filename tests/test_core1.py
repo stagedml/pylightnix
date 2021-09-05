@@ -8,10 +8,10 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir, dirhash,
                         alldrefs, build_wrapper, build_cattrs, build_name,
                         tryread, trywrite, realizeMany, scanref_dict, cfgdict,
                         mklens, isrref, Config, RConfig, partial, path2rref,
-                        concat, linkrrefs, instantiate_, dref2path, path2dref,
+                        concat, linkrrefs, mkclosure, dref2path, path2dref,
                         linkdref, rrefdeps, drefrrefs, allrrefs, match_only,
                         drefrrefs, drefrrefsC, rrefctx, context_deref,
-                        rrefattrs, rrefbstart, fsstorage )
+                        rrefattrs, rrefbstart, fsstorage, current_manager)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink, isfile,
                            islink, isdir, dirname, List, randint, sleep, rmtree,
@@ -57,7 +57,7 @@ from tests.setup import ( ShouldHaveFailed, setup_storage2,
 #       toplevel=mkstage(m, {'n2':n2,'n3':n3})
 #       return toplevel
 
-#     rref=realize1(instantiate(_setup,S=S))
+#     rref=realize1(mkclosure(_setup,S=S))
 #     assert_valid_rref(rref)
 #     assert n1 is not None
 #     assert n2 is not None
@@ -229,7 +229,7 @@ def test_no_rref_deps()->None:
 def test_no_recursive_instantiate_with_same_manager()->None:
   with setup_storage2('test_no_recursive_instantiate_with_same_manager') as S:
     def _setup(m):
-      derivs = instantiate_(m,_setup)
+      derivs = mkclosure(m,_setup)
       n2 = mkstage(m,{'bogus':derivs.targets[0]})
       return n2
     try:

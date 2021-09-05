@@ -650,9 +650,9 @@ def getmanager(M)->Manager:
 
 StageResult=TypeVar('StageResult')
 
-def instantiate_(result:Any,
-                 m:Manager,
-                 S:Optional[StorageSettings]=None)->Closure:
+def mkclosure(result:Any,
+              m:Manager,
+              S:Optional[StorageSettings]=None)->Closure:
   targets,_=scanref_dict({'result':result})
   assert len(targets)>0, f"No DRefs to instantiate in {result}"
   assert_have_realizers(m,targets)
@@ -663,13 +663,15 @@ def instantiate(stage:Union[StageResult,Callable[[Manager,Any,Any],StageResult]]
                 *args:Any,
                 S:Optional[StorageSettings]=None,
                 M:Optional[Manager]=None,
-                **kwargs:Any)->Closure:
-  """ Instantiate function evaluates [Stage](#pylightnix.types.Stage) functions
-  by calling them and collecting the [Closure](#pylightnix.types.Closure) of
-  nested [Derivations](#pylightnix.types.Derivation).
+                **kwargs:Any)->Tuple[StageResult,Closure]:
+  """ Instantiate scans a Python data object (list,dict or constant) which
+  contains [DRef](#pylightnix.types.DRef) or evaluates a
+  [Stage](#pylightnix.types.Stage) function by calling it.
 
-  The returned closure typically goes to [realize1](#pylightnix.core.realize1) or
-  its analogs.
+  Returns a ready-to be realized [Closure](#pylightnix.types.Closure) formed out
+  of nested [Derivations](#pylightnix.types.Derivation).
+
+  See also [realize](#pylightnix.core.realize).
   """
   m=getmanager_(M)
   if m is None:
@@ -687,7 +689,7 @@ def instantiate(stage:Union[StageResult,Callable[[Manager,Any,Any],StageResult]]
       result=stage
   finally:
     m.in_instantiate=False
-  return instantiate_(result,m,S)
+  return mkclosure(result,m,S)
 
 
 RealizeSeqGen = Generator[
@@ -696,7 +698,7 @@ RealizeSeqGen = Generator[
   Context]
 
 
-def realize1(closure:Closure,
+def realize1(closure:Union[Closure,Tuple[StageResult,Closure]],
             force_rebuild:Union[List[DRef],bool]=[],
             assert_realized:List[DRef]=[],
             realize_args:Dict[DRef,RealizeArg]={})->RRef:
@@ -736,7 +738,7 @@ def realize1(closure:Closure,
   return rrefs[0]
 
 
-def realizeMany(closure:Union[Closure,Tuple[Any,Closure]],
+def realizeMany(closure:Union[Closure,Tuple[StageResult,Closure]],
                 force_rebuild:Union[List[DRef],bool]=[],
                 assert_realized:List[DRef]=[],
                 realize_args:Dict[DRef,RealizeArg]={})->List[RRef]:
@@ -744,20 +746,23 @@ def realizeMany(closure:Union[Closure,Tuple[Any,Closure]],
     f"`realize1` is to be used with single-targeted derivations. "
     f"Current closure has {len(closure.targets)} targets:\n{closure.targets}\n"
     f"Consider using `realizeMany`." )
-  _,ctx=realizeCtx(closure, force_rebuild, assert_realized, realize_args)
+  _,_,ctx=realizeCtx(closure, force_rebuild, assert_realized, realize_args)
+  assert len(ctx.keys())==1, (
+    f"realizeMany expects a one-target closure")
   rrefs=ctx[list(ctx.keys())[0]]
   return rrefs
 
 
-def realizeCtx(closure:Union[Closure,Tuple[Any,Closure]],
+def realizeCtx(closure:Union[Closure,Tuple[StageResult,Closure]],
                force_rebuild:Union[List[DRef],bool]=[],
                assert_realized:List[DRef]=[],
-               realize_args:Dict[DRef,RealizeArg]={})->Tuple[Any,Context]:
+               realize_args:Dict[DRef,RealizeArg]={}
+               )->Tuple[StageResult,Closure,Context]:
   """ A generic version of [realize1](#pylightnix.core.realize1). Takes the
   instantiated [Closure](#pylightnix.types.Closure) and returns
   its value together with the realization [Context](#pylightnix.types.Context).
   """
-  # FIXME: define a Closure as a datatype
+  # FIXME: define a Closure as a datatype and simplify the below check
   if isinstance(closure,tuple) and len(closure)==2:
     result_=closure[0]
     closure_=closure[1]
@@ -778,8 +783,8 @@ def realizeCtx(closure:Union[Closure,Tuple[Any,Closure]],
     while True:
       gen.send((None,False)) # Ask for default action
   except StopIteration as e:
-    res=e.value
-  return result_,res
+    ctx=e.value
+  return result_,closure_,ctx
 
 
 def realizeSeq(closure:Closure,

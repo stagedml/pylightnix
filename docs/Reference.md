@@ -96,7 +96,7 @@
     * [output\_realizer](#pylightnix.core.output_realizer)
     * [output\_matcher](#pylightnix.core.output_matcher)
     * [mkdrv](#pylightnix.core.mkdrv)
-    * [instantiate\_](#pylightnix.core.instantiate_)
+    * [mkclosure](#pylightnix.core.instantiate_)
     * [instantiate](#pylightnix.core.instantiate)
     * [RealizeSeqGen](#pylightnix.core.RealizeSeqGen)
     * [realize1](#pylightnix.core.realize1)
