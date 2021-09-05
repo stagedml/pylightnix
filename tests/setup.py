@@ -1,4 +1,4 @@
-from pylightnix import (Manager, Build, Path, fsinit, DRef, Context,
+from pylightnix import (Registry, Build, Path, fsinit, DRef, Context,
                         Optional, mkbuildargs, build_outpath, allrrefs, RRef,
                         mkconfig, Name, mkdrv, rref2path, dirchmod, Config,
                         RealizeArg, drefrrefsC, tryreadstr_def, StorageSettings,
@@ -6,7 +6,7 @@ from pylightnix import (Manager, Build, Path, fsinit, DRef, Context,
                         drefattrs, Output, Matcher, MatcherO, Realizer,
                         rrefdeps1, RealizerO, Output, output_realizer,
                         output_matcher, build_markstart, build_markstop,
-                        StorageSettings)
+                        StorageSettings, mkSS, dirrm, tlregistry)
 
 from tests.imports import (rmtree, join, makedirs, listdir, Callable,
                            contextmanager, List, Dict,  Popen, PIPE,
@@ -20,48 +20,14 @@ settings.load_profile("pylightnix")
 class ShouldHaveFailed(Exception):
   pass
 
-# @contextmanager
-# def setup_storage(tn:str):
-#   # We reset STORE variables to prevent interaction with production store
-#   import pylightnix.core
-#   pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
-#   pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
-#   storepath=Path(join(gettempdir(),tn))
-#   try:
-#     dirchmod(storepath, 'rw')
-#     rmtree(storepath)
-#   except FileNotFoundError:
-#     pass
-#   fsinit(custom_store=storepath,
-#                    custom_tmp=join(gettempdir(),'pylightnix_tmp'))
-#   assert 0==len(listdir(storepath))
-#   try:
-#     yield storepath
-#   finally:
-#     # print('Setting PYLIGHTNIX_STORE to none')
-#     pylightnix.core.PYLIGHTNIX_STORE=None # type:ignore
-#     pylightnix.core.PYLIGHTNIX_TMP=None # type:ignore
-
 @contextmanager
 def setup_storage2(tn:str):
   assert len(tn)>0
   testroot=Path(join(gettempdir(), 'pylightnix', tn))
-  storepath=Path(join(testroot, storagename()))
-  tmppath=Path(join(testroot, 'tmp'))
-  try:
-    dirchmod(testroot, 'rw')
-    rmtree(testroot, ignore_errors=False)
-  except FileNotFoundError:
-    pass
-  S=StorageSettings(testroot,tmppath)
-  fsinit(S, check_not_exist=True)
-  assert 0==len(listdir(storepath))
+  dirrm(testroot)
+  S=mkSS(testroot)
+  fsinit(S, remove_existing=True, check_not_exist=True)
   yield S
-
-def setup_inplace_reset(S=None)->None:
-  import pylightnix.inplace
-  pylightnix.inplace.PYLIGHTNIX_MANAGER=Manager(S=S)
-
 
 def setup_test_config(c:dict)->Config:
   c2=deepcopy(c)
@@ -71,11 +37,12 @@ def setup_test_config(c:dict)->Config:
 def setup_test_match(nmatch:int)->MatcherO:
   def _match(S, o:Output[RRef])->Optional[Output[RRef]]:
     rrefs=o.val
-    values=list(sorted([(maybereadstr(join(rref2path(rref, S),'artifact'),'0',int),rref)
+    values=list(sorted([(maybereadstr(join(rref2path(rref, S),
+                                           'artifact'),'0',int),rref)
                         for rref in rrefs], key=lambda x:x[0]))
-    # print(nmatch, values)
     # Return `top-n` matched groups
-    return Output([tup[1] for tup in values[-nmatch:]]) if len(values)>0 else None
+    return Output([tup[1] for tup in values[-nmatch:]]) \
+      if len(values)>0 else None
   return _match
 
 DELIBERATE_TEST_FAILURE='Deliberate test failure'
@@ -100,18 +67,20 @@ def setup_test_realize(nrrefs:int,
     return b.outpaths
   return _realize
 
-def mkstage(m:Manager,
-            config:dict,
+def mkstage(config:dict,
+            r:Optional[Registry]=None,
             nondet:Callable[[int],int]=lambda n:0,
             starttime:Optional[str]='AUTO',
             nrrefs:int=1,
             nmatch:int=1,
-            mustfail:bool=False)->DRef:
-  return mkdrv(m, setup_test_config(config),
-                  output_matcher(setup_test_match(nmatch)),
-                  output_realizer(setup_test_realize(
-                    nrrefs, starttime, nondet, mustfail)))
-
+            mustfail:bool=False,
+            S:Optional[StorageSettings]=None,
+            )->DRef:
+  return mkdrv(setup_test_config(config),
+               output_matcher(setup_test_match(nmatch)),
+               output_realizer(setup_test_realize(
+                 nrrefs, starttime, nondet, mustfail)),
+               r)
 
 def pipe_stdout(args:List[str], **kwargs)->str:
   return Popen(args, stdout=PIPE, **kwargs).stdout.read().decode() # type:ignore
@@ -121,13 +90,13 @@ def rrefdepth(rref:RRef,S=None)->int:
   return 1+(max(rec) if len(rec)>0 else 0)
 
 
-def mkstageP(m:Manager,
-            config:dict,
-            nondet:Callable[[int],int]=lambda n:0,
-            starttime:Optional[str]='AUTO',
-            nrrefs:int=1,
-            nmatch:int=1,
-            mustfail:bool=False)->DRef:
+def mkstageP(config:dict,
+             nondet:Callable[[int],int]=lambda n:0,
+             r:Optional[Registry]=None,
+             starttime:Optional[str]='AUTO',
+             nrrefs:int=1,
+             nmatch:int=1,
+             mustfail:bool=False)->DRef:
   """ Makes a stage which could deliberately break the promise - i.e. fail to
   provide a promised artifact """
   def _r(S, dref:DRef, c:Context, ra:RealizeArg)->Output[Path]:
@@ -136,7 +105,8 @@ def mkstageP(m:Manager,
       # for path in r.val:
       remove(join(r.val[-1],"artifact"))
     return r
-  return mkdrv(m, setup_test_config(config),
+  return mkdrv(setup_test_config(config),
                output_matcher(setup_test_match(nmatch)),
-               output_realizer(_r))
+               output_realizer(_r),
+               r)
 

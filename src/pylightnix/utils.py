@@ -206,6 +206,7 @@ def dirchmod(o:Path, mode:str)->None:
 def dirrm(path:Path, ignore_not_found:bool=True)->None:
   """ Powerful folder remover. Firts rename it to the temporary name. Deal with
   possible write-protection. """
+  # FIXME: May fail with 'Directory not empty' if tmppath is not empty.
   try:
     tmppath=Path(path+'.tmp')
     rename(path,tmppath)
@@ -241,10 +242,24 @@ def isselfpath(p:Any)->bool:
          p[0]==PYLIGHTNIX_SELF_TAG
 
 def isclosure(x:Any)->bool:
-  return isinstance(x,tuple) and len(x)==3 and isdref(x[0]) \
-         and isinstance(x[1],list)
+  return isinstance(x,tuple) and len(x)==4 and \
+      isinstance(x[2],list) and all([isdref(r) for r in x[1]]) \
+         and isinstance(x[2],list)
 
 Mutator=Callable[[Any,Any],Any]
+
+def traverse_tuple(t:tuple,mut:Mutator)->None:
+  """ Traverse an arbitrary Python tuple. Forbids changing items. """
+  assert isinstance(t,tuple)
+  for i in range(len(t)):
+    x=mut(i,t[i])
+    assert x==t[i], "Can't change tuple item"
+    if isinstance(t[i],list):
+      scanref_list(t[i])
+    elif isinstance(t[i],dict):
+      traverse_dict(t[i],mut)
+    elif isinstance(t[i],tuple):
+      traverse_tuple(t[i],mut)
 
 def traverse_list(l:list,mut:Mutator)->None:
   """ Traverse an arbitrary Python list. """
@@ -255,6 +270,8 @@ def traverse_list(l:list,mut:Mutator)->None:
       traverse_list(l[i],mut)
     elif isinstance(l[i],dict):
       traverse_dict(l[i],mut)
+    elif isinstance(l[i],tuple):
+      traverse_tuple(l[i],mut)
 
 def traverse_dict(d:dict, mut:Mutator)->None:
   """ Traverse an arbitrary Python dict. """
@@ -265,6 +282,8 @@ def traverse_dict(d:dict, mut:Mutator)->None:
       traverse_list(d[k],mut)
     elif isinstance(d[k],dict):
       traverse_dict(d[k],mut)
+    elif isinstance(d[k],tuple):
+      traverse_tuple(d[k],mut)
 
 def scanref_list(l:list)->Tuple[List[DRef],List[RRef]]:
   drefs=[];rrefs=[]
@@ -283,19 +302,22 @@ def scanref_dict(d:dict)->Tuple[List[DRef],List[RRef]]:
   return scanref_list(list(d.values()))
 
 def dicthash(d:dict)->Hash:
-  """ Calculate hashsum of a Python dict. Top-level fields starting from '_' are ignored """
-  string="_".join(str(k)+"="+str(v) for k,v in sorted(d.items()) if len(k)>0 and k[0]!='_')
+  """ Calculate hashsum of a Python dict. Top-level fields starting from '_' are
+  ignored """
+  string="_".join(str(k)+"="+str(v) for k,v in sorted(d.items()) \
+                  if len(k)>0 and k[0]!='_')
   return Hash(sha256(string.encode('utf-8')).hexdigest())
 
 def assert_serializable(d:Any, argname:str='dict')->Any:
-  error_msg=(f"Content of this '{argname}' of type {type(d)} is not JSON-serializable!"
-             f"\n\n{d}\n\n"
-             f"Make sure that `json.dumps`/`json.loads` work on it and are able "
-             f"to preserve the value. Typically, we want to use only simple Python types"
+  error_msg=(f"Content of this '{argname}' of type {type(d)} is not "
+             f"JSON-serializable!\n\n{d}\n\n"
+             f"Make sure that `json.dumps`/`json.loads` work on it and are "
+             f"are to preserve the value. Typically, we want to use only "
+             f"simple Python types"
              f"like lists, dicts, strings, ints, etc. In particular,"
              f"overloaded floats like `np.float32` don't work. Also, we"
-             f"don't use Python tuples, because they default JSON implementation convert "
-             f"them to lists")
+             f"don't allow Python tuples, because the default JSON "
+             f"serialization converts them to lists.")
   s=json_dumps(d)
   assert s is not None, error_msg
   d2=json_loads(s)

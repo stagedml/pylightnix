@@ -1,7 +1,7 @@
 from pylightnix import (StorageSettings, Matcher, Build, Context, Path, RefPath,
-                        Config, Manager, RRef, DRef, Path, build_path,
+                        Config, Registry, RRef, DRef, Path, build_path,
                         build_outpath, build_cattrs, mkdrv, rref2path, mkconfig,
-                        tryread, fetchurl, instantiate, realize, match_only,
+                        tryread, fetchurl, instantiate, realize1, match_only,
                         build_wrapper, selfref, mklens, instantiate_inplace,
                         realize_inplace, rmref, fsinit, pack, unpack, allrrefs,
                         gc, redefine, match_some, match_latest, dirrm,
@@ -32,16 +32,16 @@ def f(z, *params):
 
 # 1.
 
-def stage_params(m:Manager)->DRef:
+def stage_params(r:Registry)->DRef:
   def _config():
     name = 'params'
     out = [selfref, "params.npy"]
     return locals()
   def _make(b:Build):
     save(mklens(b).out.syspath, (2, 3, 7, 8, 9, 10, 44, -1, 2, 26, 1, -2, 0.5))
-  return mkdrv(m, mkconfig(_config()), match_only(), build_wrapper(_make))
+  return mkdrv(r, mkconfig(_config()), match_only(), build_wrapper(_make))
 
-def stage_anneal(m:Manager, ref_params:DRef)->DRef:
+def stage_anneal(r:Registry, ref_params:DRef)->DRef:
   def _config():
     name = 'anneal2'
     nonlocal ref_params
@@ -62,10 +62,10 @@ def stage_anneal(m:Manager, ref_params:DRef)->DRef:
     save(mklens(b).trace_xs.syspath, array(xs))
     save(mklens(b).trace_fs.syspath, array(fs))
     save(mklens(b).out.syspath, res['x'])
-  return mkdrv(m, mkconfig(_config()), match_only(), build_wrapper(_make))
+  return mkdrv(r, mkconfig(_config()), match_only(), build_wrapper(_make))
 
 
-def stage_plot(m:Manager, ref_anneal:DRef)->DRef:
+def stage_plot(r:Registry, ref_anneal:DRef)->DRef:
   def _config():
     name = 'plot'
     nonlocal ref_anneal
@@ -80,7 +80,7 @@ def stage_plot(m:Manager, ref_anneal:DRef)->DRef:
     plt.plot(range(len(fs)),fs)
     plt.grid(True)
     plt.savefig(mklens(b).out.syspath)
-  return mkdrv(m, mkconfig(_config()), match_latest(), build_wrapper(_make))
+  return mkdrv(r, mkconfig(_config()), match_latest(), build_wrapper(_make))
 
 def run1():
   ds=instantiate_inplace(stage_params)
@@ -90,15 +90,15 @@ def run1():
 
 # 2.
 
-def stage_all(m:Manager):
-  ds=stage_params(m)
-  cl=stage_anneal(m,ds)
-  vis=stage_plot(m,cl)
+def stage_all(r:Registry):
+  ds=stage_params(r)
+  cl=stage_anneal(r,ds)
+  vis=stage_plot(r,cl)
   return vis
 
 
 def run2(S=None):
-  return realize(instantiate(stage_all,S=S))
+  return realize1(instantiate(stage_all,S=S))
 
 # 3. Different storages
 
@@ -108,9 +108,9 @@ Sb=mksettings('_storageB')
 def run3():
   fsinit(Sa,remove_existing=True)
   fsinit(Sb,remove_existing=True)
-  rrefA=realize(instantiate(stage_all, S=Sa))
+  rrefA=realize1(instantiate(stage_all, S=Sa))
   kittyshow(mklens(rrefA,S=Sa).out.syspath)
-  rrefB=realize(instantiate(stage_all, S=Sb))
+  rrefB=realize1(instantiate(stage_all, S=Sb))
   kittyshow(mklens(rrefB,S=Sb).out.syspath)
   print(rrefA)
   print(rrefB)
@@ -131,15 +131,15 @@ def match_min(S, rrefs:List[RRef])->List[RRef]:
     print(f"Picking Bob ({best[0]}) out of {avail}")
   return [best[1]]
 
-def stage_all2(m:Manager):
-  ds=stage_params(m)
-  cl=redefine(stage_anneal, new_matcher=match_min)(m,ds)
-  vis=stage_plot(m,cl)
+def stage_all2(r:Registry):
+  ds=stage_params(r)
+  cl=redefine(stage_anneal, new_matcher=match_min)(r,ds)
+  vis=stage_plot(r,cl)
   return vis
 
 def run4():
   run3()
-  return realize(instantiate(stage_all2,S=Sb))
+  return realize1(instantiate(stage_all2,S=Sb))
 
 
 #############################################################

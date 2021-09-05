@@ -19,7 +19,7 @@ from pylightnix.imports import ( deepcopy, OrderedDict )
 
 from typing import (List, Any, Tuple, Union, Optional, Iterable, IO, Callable,
                     Dict, NamedTuple, Set, Generator, TypeVar, NewType,
-                    SupportsAbs, Generic)
+                    SupportsAbs, Generic, Iterator)
 
 class Path(str):
   """ `Path` is an alias for string. It is used in pylightnix to
@@ -34,7 +34,8 @@ class SPath(Path):
 #: Stoarge settings contains a path for the main stoarge and a path for
 #: temporary directories. These paths need to be on the same device in order to
 #: atomic rename work.
-StorageSettings=NamedTuple('StorageSettings',[('storage',Optional[Path]),
+StorageSettings=NamedTuple('StorageSettings',[('root',Optional[Path]),
+                                              ('storage',Optional[Path]),
                                               ('tmpdir',Optional[Path])])
 
 class Hash(str):
@@ -67,7 +68,7 @@ class DRef(str):
   Derivation reference may be converted into a [realization
   reference](#pylightnix.types.RRef) by either dereferencing (that is by
   querying for existing realizations) or by
-  [realizing](#pylightnix.core.realize) it from scratch.
+  [realizing](#pylightnix.core.realize1) it from scratch.
 
   - For derefencing dependencies at the build time, see
     [build_deref](#pylightnix.core.build_deref).
@@ -84,10 +85,10 @@ class RRef(str):
   - `<HashPart0>` is calculated over realization's
     [Context](#pylightnix.types.Context) and build artifacts.
   - `<HashPart1>-<Name>` forms valid [DRef](#pylightnix.types.DRef) which
-    this realizaion was [realized](#pylightnix.core.realize) from.
+    this realizaion was [realized](#pylightnix.core.realize1) from.
 
   Realization reference is obtained from the process called
-  [realization](#pylightnix.core.realize).
+  [realization](#pylightnix.core.realize1).
 
   Valid realization references may be dereferenced down to system paths of
   *build artifacts* by calling [rref2path](#pylightnix.core.rref2path) or by
@@ -197,7 +198,7 @@ MatcherO = Callable[[Optional[StorageSettings],Output[RRef]],
 
 
 #: Realizers are user-defined Python functions. Realizers typically
-#: implement [application-specific algorithms](#pylightnix.core.realize) which
+#: implement [application-specific algorithms](#pylightnix.core.realize1) which
 #: take some configuration parameters and produce some artifacts.
 #:
 #: Realizer accepts the following arguments:
@@ -226,14 +227,14 @@ MatcherO = Callable[[Optional[StorageSettings],Output[RRef]],
 #: Example:
 #:
 #: ```python
-#: def mystage(m:Manager)->DRef:
+#: def mystage(r:Registry)->DRef:
 #:   def _realize(dref:DRef, context:Context)->List[Path]:
 #:     b=mkbuild(dref, context, buildtime=buildtime)
 #:     with open(join(build_outpath(b),'artifact'),'w') as f:
 #:       f.write('chickenpoop\n')
 #:     return [build_outpath(b)]
 #:   ...
-#:   return mkdrv(m, ...,  _realize)
+#:   return mkdrv(r, ...,  _realize)
 #: ```
 Realizer = Callable[[Optional[StorageSettings],DRef,Context,RealizeArg],List[Path]]
 RealizerO = Callable[[Optional[StorageSettings],DRef,Context,RealizeArg],Output[Path]]
@@ -244,7 +245,7 @@ RealizerO = Callable[[Optional[StorageSettings],DRef,Context,RealizeArg],Output[
 #: Fields include:
 #: * [Configuration](#pylightnix.types.Config) objects serialized on disk.
 #: * [Matcher](#pylightnix.types.Matcher) Python function
-#: * [Realizer](#pylightnix.core.realize) Python function
+#: * [Realizer](#pylightnix.core.realize1) Python function
 #:
 #: The actual configuration is stored in the Pylightnix filesystem storage.
 #: Derivation holds the [DRef](#pylightnix.types.DRef) access key.
@@ -261,13 +262,14 @@ Derivation = NamedTuple('Derivation', [('dref',DRef),
 #: [Derivation](#pylightnix.types.Derivation).
 #:
 #: The plan is represented by a sequence of
-#: [Derivations](#pylightnix.types.Derivation) one need to realize in order to
-#: realize a given target derivation.
+#: [Derivations](#pylightnix.types.Derivation) one need to realize1 in order to
+#: realize1 a given target derivation.
 #:
 #: Closures are typically obtained as a result of the
 #: [instantiate](#pylightnix.core.instantiate) and is typically consumed by the
-#: call to [realize](#pylightnix.core.realize) or it's analogs.
-Closure = NamedTuple('Closure', [('dref',DRef),
+#: call to [realize1](#pylightnix.core.realize1) or it's analogs.
+Closure = NamedTuple('Closure', [('result',Any),
+                                 ('targets',List[DRef]),
                                  ('derivations',List[Derivation]),
                                  ('S',Optional[StorageSettings])])
 
@@ -306,7 +308,7 @@ class Config:
 
   Example:
   ```python
-  def mystage(m:Manager)->Dref:
+  def mystage(r:Registry)->Dref:
     def _config()->dict:
       name = 'mystage'
       nepoches = 4
@@ -352,7 +354,7 @@ BuildArgs = NamedTuple('BuildArgs', [('S',Optional[StorageSettings]),
 
 class Build:
   """Build objects track the process of stage's
-  [realization](#pylightnix.core.realize). Build allows users to define
+  [realization](#pylightnix.core.realize1). Build allows users to define
   [Realizers](#pylightnix.types.Realizer) with only a simple one-argument
   signature. The [build_wrapper](#pylightnix.core.build_wrapper) function
   converts simplified Build-realizers into the regular ones.
@@ -386,13 +388,13 @@ class Build:
   class TensorFlowModel(Build):
     model:tf.keras.Model
 
-  def train(m:TensorFlowModel)->None:
-    o = build_outpath(m)
-    m.model = create_model(...)
+  def train(r:TensorFlowModel)->None:
+    o = build_outpath(r)
+    r.model = create_model(...)
     ...
 
-  def mymodel(m:Manager)->DRef:
-    return mkdrv(m, ..., build_wrapper_(TensorFlowModel, train))
+  def mymodel(r:Registry)->DRef:
+    return mkdrv(r, ..., build_wrapper_(TensorFlowModel, train))
   ```
   """
 
@@ -408,30 +410,30 @@ class Build:
     self.cattrs_cache:Optional[ConfigAttrs]=None
 
 
-class Manager:
-  """ The derivation manager is a mutable storage object where Pylightnix
+class Registry:
+  """ The derivation registry is a mutable storage object where Pylightnix
   stores derivations before combining them into a
   [Closure](#pylightnix.types.Closure).
 
-  Managers doesn't requre any special operations besides creating and passing
-  around. By convention, Manager objects are first arguments of user-defined
+  Registry doesn't requre any special operations besides creating and passing
+  around. By convention, Registry objects are first arguments of user-defined
   stage functions and the `mkdrv` API function of Pylightnix.
-
-  The [inplace module](#pylightnix.inplace) defines it's own [global derivation
-  manager](#pylightnix.inplace.PYLIGHTNIX_MANAGER) """
-  def __init__(self, S:Optional[StorageSettings]):
+  """
+  def __init__(self, S:Optional[StorageSettings]=None):
     self.builders:Dict[DRef,Derivation]=OrderedDict()
-    self.in_instantiate:bool=False
     self.S:Optional[StorageSettings]=S
+    self.in_instantiate:bool=False
 
 
 #: DRefLike is a type variable holding DRefs or any of its derivatives
 DRefLike = TypeVar('DRefLike',bound=DRef)
 
+StageResult=Union[DRef,List[DRef],Dict[Any,DRef],Tuple[DRef,...]]
+
 #: Functions with the `Stage` signature are the top-level building blocks of
 #: Pylightnix. Stage functions call [mkdrv](#pylightnix.core.mkdrv) and each
 #: other to produce linked [Derivations](#pylightnix.types.Derivation) and
-#: register them in the [Manager](#pylightnix.types.Manager).
+#: register them in the [Registry](#pylightnix.types.Registry).
 #:
 #: Some built-in stages are:
 #: - [mknode](#pylightnix.stages.trivial.mknode)
@@ -443,12 +445,12 @@ DRefLike = TypeVar('DRefLike',bound=DRef)
 #: definition would look like:
 #:
 #: ```Python
-#: Stage = Callable[[Manager,VarArg(Any),KwArg(Any)],DRef]
+#: Stage = Callable[[Registry,VarArg(Any),KwArg(Any)],DRef]
 #: ```
 #:
 #: Stage's return value is a [derivation reference](#pylightnix.types.DRef)
 #: which could be either used in other stages, or
 #: [instantiated](#pylightnix.core.instantiate) into the stage realization plan.
-Stage = Callable[[Manager],DRefLike]
+Stage=Callable[...,StageResult]
 
 

@@ -6,7 +6,7 @@
 with python.pkgs;
 buildPythonPackage {
   pname = "pylightnix";
-  version = "0.2.0";
+  version = "9999";
   src = builtins.filterSource (
     path: type: !( baseNameOf path == "build" && type == "directory" ) &&
                 !( baseNameOf path == "result" )

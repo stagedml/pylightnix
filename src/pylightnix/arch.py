@@ -18,13 +18,13 @@ from pylightnix.imports import (Popen, dirname, basename, remove, join,
                                 relpath, rename, splitext, mkdtemp, isfile,
                                 isdir, shutil_copy, realpath, normpath)
 from pylightnix.types import (RRef, List, Dict, Path, Iterable, Optional,
-                              SPath, Manager, DRef, Config, RConfig, Build,
+                              SPath, Registry, DRef, Config, RConfig, Build,
                               Set, StorageSettings)
 
 from pylightnix.core import (drefdeps, rrefdeps, rref2path, dref2path,
                              fsstorage, fstmpdir, storagename, alldrefs,
                              rootdrefs, rootrrefs, rref2dref, cfgdeps,
-                             drefcfg_, mkdrv, realize, realizeMany, instantiate,
+                             drefcfg_, mkdrv, realize1, realizeMany, instantiate,
                              rrefdata, cfgname, match_exact, drefrrefsC,
                              resolve, rrefctx)
 
@@ -35,15 +35,15 @@ APACK=try_executable('apack',
                      'PYLIGHTNIX_APACK',
                      '`apack` executable not found. Please install `atool` '
                      'system pacakge or set PYLIGHTNIX_APACK env var.',
-                     '`arch.pack` procedure will fail.')
+                     '`arch.spack` procedure will fail.')
 AUNPACK=try_executable('aunpack',
                      'PYLIGHTNIX_AUNPACK',
                      '`aunpack` executable not found. Please install `atool` '
                      'system pacakge or set PYLIGHTNIX_AUNPACK env var.',
-                     '`arch.unpack` procedure will fail.')
+                     '`arch.sunpack` procedure will fail.')
 
 
-def pack(roots:List[RRef], out:Path, S:Optional[StorageSettings]=None)->None:
+def spack(roots:List[RRef], out:Path, S:Optional[StorageSettings]=None)->None:
   rout=realpath(out)
   tmp=splitext(rout)[0]+'_tmp'+splitext(rout)[1]
   try:
@@ -74,9 +74,9 @@ def pack(roots:List[RRef], out:Path, S:Optional[StorageSettings]=None)->None:
       except FileNotFoundError:
         pass
 
-def unpack(archive:Path, S=None)->None:
+def sunpack(archive:Path, S=None)->None:
   rin=realpath(archive)
-  tmppath=Path(mkdtemp(suffix=f"_{basename(rin)}", dir=fstmpdir(S)))
+  tmppath=Path(mkdtemp(suffix=f"_{basename(rin)}", dir=realpath(fstmpdir(S))))
   try:
     p=Popen([AUNPACK(), '-q', '-X', tmppath, rin], cwd=fstmpdir(S))
     p.wait()
@@ -85,8 +85,8 @@ def unpack(archive:Path, S=None)->None:
     archdir=tmppath
     assert isdir(archdir), \
       f"Archive '{rin}' does't contain directory '{storagename()}' " \
-      f"(Its expected location is '{archdir}')"
-    archstore=StorageSettings(Path(archdir),None)
+      f"(The expected location is '{archdir}')"
+    archstore=StorageSettings(Path(archdir),None,None)
     copyclosure(rrefs_S=rootrrefs(S=archstore),S=archstore,D=S)
   finally:
     # dirrm(tmppath)
@@ -110,17 +110,17 @@ def copyclosure(rrefs_S:Iterable[RRef],
     visited_drefs:Set[DRef]=set()
     dref_S:DRef=rref2dref(rref_S)
 
-    def _stage(m:Manager, dref:DRef)->DRef:
+    def _stage(dref:DRef,r:Registry)->DRef:
       nonlocal visited_drefs
       cfg=drefcfg_(dref,S=S)
       # print(f"Instantiating {cfg}")
       if dref not in visited_drefs:
         for dep_dref in cfgdeps(resolve(cfg,dref)):
           if dep_dref!=dref:
-            _stage(m, dep_dref)
+            _stage(dep_dref, r)
 
       def _make(b:Build)->None:
-        """ 'Realize' the derivation in `D` by copying its contents from `S` """
+        """ 'realize1' the derivation in `D` by copying its contents from `S` """
         rrefs_S=deref_(rref_S, b.dref, S=S)
         # print(f'Building {b.dref} hoping to get {rrefs_S}')
         # print(grps_S)
@@ -131,8 +131,9 @@ def copyclosure(rrefs_S:Iterable[RRef],
 
       rrefs_S1=deref_(rref_S, dref, S=S)
       # note(f"Expecting for {dref}(ctx {rref_S}): {list(rrefs_S1)}")
-      dref2=mkdrv(m, cfg, match_exact(rrefs_S1),
-                  build_wrapper(_make,nouts=None,starttime=None,stoptime=None))
+      dref2=mkdrv(cfg, match_exact(rrefs_S1),
+                  build_wrapper(_make,nouts=None,starttime=None,stoptime=None),
+                  r=r)
       visited_drefs.add(dref2)
       assert dref==dref2, f"{dref} != {dref2}"
       return dref2

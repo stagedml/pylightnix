@@ -1,5 +1,6 @@
-from pylightnix import ( DRef, RRef, lsref, catref, instantiate, realize,
-    unrref, fetchurl, fetchlocal, isrref, rref2path, isfile, mklens, fstmpdir )
+from pylightnix import (DRef, RRef, lsref, catref, instantiate, realize1,
+                        unrref, fetchurl, fetchlocal, isrref, rref2path, isfile,
+                        mklens, fstmpdir, Tuple, Closure)
 
 from tests.imports import ( TemporaryDirectory, join, stat, chmod, S_IEXEC,
     system, Popen, PIPE, get_executable )
@@ -28,11 +29,11 @@ def test_fetchurl():
       try:
         pylightnix.stages.fetch.WGET=lambda: mockwget
 
-        clo=instantiate(fetchurl,
+        x:Tuple[DRef,Closure]=instantiate(fetchurl,
               url='mockwget://result.tar.gz',
               filename='validname.tar.gz',
               sha256=wanted_sha256, S=S)
-        rref=realize(clo)
+        rref=realize1(x)
       finally:
         pylightnix.stages.fetch.WGET=oldwget
 
@@ -48,7 +49,7 @@ def test_fetchlocal():
     wanted_sha256=pipe_stdout([SHA256SUM, "mockdata.tar.gz"],
                               cwd=tmp).split()[0]
 
-    rref=realize(instantiate(fetchlocal,
+    rref=realize1(instantiate(fetchlocal,
           path=mockdata+'.tar.gz',
           filename='validname.tar.gz',
           sha256=wanted_sha256, S=S))
@@ -65,7 +66,7 @@ def test_fetchlocal2():
     wanted_sha256=pipe_stdout([SHA256SUM, "mockdata"],
                               cwd=fstmpdir(S)).split()[0]
 
-    rref=realize(instantiate(fetchlocal, path=mockdata, sha256=wanted_sha256,
+    rref=realize1(instantiate(fetchlocal, path=mockdata, sha256=wanted_sha256,
                              mode='as-is',S=S))
     assert isrref(rref)
     assert isfile(join(rref2path(rref,S),'mockdata'))

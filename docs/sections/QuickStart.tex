@@ -40,23 +40,24 @@ the result of the annealing simulation and (c) a visual plot of the result.
 \subsubsection{Parameter stage}
 
 Pylightnix \pref{Stage}{pylightnix.types.Stage} is a Python function that
-registers a user-defined action in the Manager and returns a
+registers a user-defined action in the \pref{Registry}{pylightnix.types.Registry}
+(passing None means asking Pylightnix to use the default one) and returns a
 \pref{DRef}{pylightnix.types.DRef} reference stating that the action is
 accepted.
 
 \begin{pythontexcode}
-def stage_params(m:Manager)->DRef:
+def stage_params(r:Optional[Registry]=None)->DRef:
   def _config():
     name = 'params'
     out = [selfref, "params.npy"]
     return locals()
   def _make(b:Build):
     np.save(mklens(b).out.syspath, (2, 3, 7, 8, 9, 10, 44, -1, 2, 26, 1, -2, 0.5))
-  return mkdrv(m, mkconfig(_config()), match_only(), build_wrapper(_make))
+  return mkdrv(mkconfig(_config()), match_only(), build_wrapper(_make), r)
 \end{pythontexcode}
 
 Here, a user-defind action \texttt{\_make} goes to Pylightnix by calling the
-\pref{mkdrv}{pylightnix.core.mkdrv} with the Manager and the following three
+\pref{mkdrv}{pylightnix.core.mkdrv} with the Registry and the following three
 arguments: (a) the set of \pref{prerequisites}{pylightnix.types.Config} for the
 action; (b) the \pref{Matcher}{pylightnix.types.Matcher} callback function; (c)
 the action itself that takes a \pref{Build}{pylightnix.types.Build} context as
@@ -92,7 +93,7 @@ A few notes on the above code:
 \subsubsection{Annealing stage}
 
 \begin{pythontexcode}
-def stage_anneal(m:Manager, ref_params:DRef)->DRef:
+def stage_anneal(ref_params:DRef, r:Optional[Registry]=None)->DRef:
   def _config():
     name = 'anneal'
     nonlocal ref_params
@@ -113,13 +114,13 @@ def stage_anneal(m:Manager, ref_params:DRef)->DRef:
     np.save(mklens(b).trace_xs.syspath, np.array(xs))
     np.save(mklens(b).trace_fs.syspath, np.array(fs))
     np.save(mklens(b).out.syspath, res['x'])
-  return mkdrv(m, mkconfig(_config()), match_only(), build_wrapper(_make))
+  return mkdrv(mkconfig(_config()), match_only(), build_wrapper(_make), r)
 \end{pythontexcode}
 
 \subsubsection{Plotting stage}
 
 \begin{pythontexcode}
-def stage_plot(m:Manager, ref_anneal:DRef)->DRef:
+def stage_plot(ref_anneal:DRef, r:Optional[Registry]=None)->DRef:
   def _config():
     name = 'plot'
     nonlocal ref_anneal
@@ -134,47 +135,47 @@ def stage_plot(m:Manager, ref_anneal:DRef)->DRef:
     plt.plot(range(len(fs)),fs)
     plt.grid(True)
     plt.savefig(mklens(b).out.syspath)
-  return mkdrv(m, mkconfig(_config()), match_latest(), build_wrapper(_make))
+  return mkdrv(mkconfig(_config()), match_latest(), build_wrapper(_make), r)
 \end{pythontexcode}
 
 \subsubsection{Running the experiment}
 
 To run the experiment we register all the stages in the internal manager by
-calling \texttt{instantiate\_inplace} and ask Pylightnix to provide us with the
+calling \texttt{instantiate} and ask Pylightnix to provide us with the
 \pref{realization reference}{pylightnix.types.RRef} by calling
-\texttt{realize\_inplace}.
+\texttt{realize1}.
 
 \begin{pythontexcode}
-ds=instantiate_inplace(stage_params)
-cl=instantiate_inplace(stage_anneal,ds)
-vis=instantiate_inplace(stage_plot,cl)
-rref=realize_inplace(vis)
-print(rref)
+with current_registry(Registry()):
+  ds=stage_params()
+  cl=stage_anneal(ds)
+  vis=stage_plot(cl)
+  rref=realize1(instantiate(vis))
+  print(rref)
 \end{pythontexcode}
 
 \mystdout
 
 \subsection{Nested stages}
 
-In the previous sections we implicitly used a global
-\pref{Manager}{pylightnix.types.Manager} to register stages. To eliminate
-side-effects associated with the usage of a global object, we now define an
-umbrella stage covering the whole experiment.
+In the previous sections we used a global
+\pref{Registry}{pylightnix.types.Registry} object to register stages. Another way
+of combining stages together is to wrap them with an umbrella stage covering the
+whole experiment.
 
 \begin{pythontexcode}
-def stage_all(m:Manager):
-  ds=stage_params(m)
-  cl=stage_anneal(m,ds)
-  vis=stage_plot(m,cl)
+def stage_all(r:Registry):
+  ds=stage_params(r)
+  cl=stage_anneal(ds,r)
+  vis=stage_plot(cl,r)
   return vis
 \end{pythontexcode}
 
-Now we can use reentrable \texttt{instantiate} and \texttt{realize}
-functions which rely on a temporary local Manager, disposing it before
-returning the result.
+We may pass the top-level stage directly to \texttt{instantiate}
+which would call it with a local disposable Registry.
 
 \begin{pythontexcode}
-rref_all=realize(instantiate(stage_all))
+rref_all=realize1(instantiate(stage_all))
 assert rref_all==rref
 print(rref_all)
 \end{pythontexcode}
@@ -188,12 +189,12 @@ Alice and Bob runs the same experiment using their machines. We model
 this situation by running Pylightnix with different storage settings.
 
 \begin{pythontexcode}
-Sa=mksettings('_storageA')
-Sb=mksettings('_storageB')
+Sa=mkSS('_storageA')
+Sb=mkSS('_storageB')
 fsinit(Sa,remove_existing=True)
 fsinit(Sb,remove_existing=True)
-rrefA=realize(instantiate(stage_all, S=Sa))
-rrefB=realize(instantiate(stage_all, S=Sb))
+rrefA=realize1(instantiate(stage_all, S=Sa))
+rrefB=realize1(instantiate(stage_all, S=Sb))
 print(rrefA)
 print(rrefB)
 \end{pythontexcode}
@@ -210,9 +211,9 @@ print("Bob's storage before the sync:")
 for rref in allrrefs(S=Sb):
   print(rref)
 arch=Path('archive.zip')
-pack([rrefA], arch, S=Sa)
-# Alice transfers archive to Bob using her favorite pigeon post service.
-unpack(arch, S=Sb)
+spack([rrefA], arch, S=Sa)
+# .. Alice transfers the archive to Bob using her favorite pigeon post service.
+sunpack(arch, S=Sb)
 print("Bob's storage after the sync:")
 for rref in allrrefs(S=Sb):
   print(rref)
@@ -234,13 +235,13 @@ def match_min(S, rrefs:List[RRef])->List[RRef]:
     print(f"Picking Bob ({best[0]}) out of {avail}")
   return [best[1]]
 
-def stage_all2(m:Manager):
-  ds=stage_params(m)
-  cl=redefine(stage_anneal, new_matcher=match_min)(m,ds)
-  vis=stage_plot(m,cl)
+def stage_all2(r:Registry):
+  ds=stage_params(r)
+  cl=redefine(stage_anneal, new_matcher=match_min)(ds,r=r)
+  vis=stage_plot(cl,r)
   return vis
 
-rref_best=realize(instantiate(stage_all2,S=Sb))
+rref_best=realize1(instantiate(stage_all2,S=Sb))
 print(rref_best)
 \end{pythontexcode}
 

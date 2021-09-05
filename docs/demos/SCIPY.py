@@ -1,7 +1,7 @@
 from pylightnix import (StorageSettings, Matcher, Build, Context, Path, RefPath,
-                        Config, Manager, RRef, DRef, Path, build_path,
+                        Config, Registry, RRef, DRef, Path, build_path,
                         build_outpath, build_cattrs, mkdrv, rref2path, mkconfig,
-                        tryread, fetchurl, instantiate, realize, match_only,
+                        tryread, fetchurl, instantiate, realize1, match_only,
                         build_wrapper, selfref, mklens, instantiate_inplace,
                         realize_inplace, rmref, fsinit, pack, unpack, allrrefs,
                         gc, redefine, match_some, match_latest, dirrm,
@@ -22,7 +22,7 @@ from contextlib import contextmanager
 
 # 1.
 
-def stage_dataset(m:Manager)->DRef:
+def stage_dataset(r:Registry)->DRef:
   def _config():
     name = 'dataset'
     centers = [1,3,4.5]
@@ -33,10 +33,10 @@ def stage_dataset(m:Manager)->DRef:
     data = vstack([rand(*mklens(b).rnd_shape.val)+center
                    for center in mklens(b).centers.val])
     save(mklens(b).out.syspath, data)
-  return mkdrv(m, mkconfig(_config()), match_only(), build_wrapper(_make))
+  return mkdrv(r, mkconfig(_config()), match_only(), build_wrapper(_make))
 
 
-def stage_cluster(m:Manager, ref_dataset:DRef)->DRef:
+def stage_cluster(r:Registry, ref_dataset:DRef)->DRef:
   def _config():
     name = 'cluster'
     nonlocal ref_dataset
@@ -48,10 +48,10 @@ def stage_cluster(m:Manager, ref_dataset:DRef)->DRef:
     clusters,distortion=kmeans(data, len(mklens(b).ref_dataset.centers.val))
     save(mklens(b).out.syspath,clusters)
     writestr(mklens(b).distortion.syspath, str(distortion))
-  return mkdrv(m, mkconfig(_config()), match_only(), build_wrapper(_make))
+  return mkdrv(r, mkconfig(_config()), match_only(), build_wrapper(_make))
 
 
-def stage_plot(m:Manager, ref_cluster:DRef)->DRef:
+def stage_plot(r:Registry, ref_cluster:DRef)->DRef:
   def _config():
     name = 'plot'
     nonlocal ref_cluster
@@ -63,7 +63,7 @@ def stage_plot(m:Manager, ref_cluster:DRef)->DRef:
     plt.plot(data[:,0],data[:,1],'go',
              clusters[:,0],clusters[:,1],'bs')
     plt.savefig(mklens(b).out.syspath)
-  return mkdrv(m, mkconfig(_config()), match_only(), build_wrapper(_make))
+  return mkdrv(r, mkconfig(_config()), match_only(), build_wrapper(_make))
 
 
 def run1():
@@ -74,14 +74,14 @@ def run1():
 
 # 2. Functional API
 
-def stage_all(m:Manager):
-  ds=stage_dataset(m)
-  cl=stage_cluster(m,ds)
-  vis=stage_plot(m,cl)
+def stage_all(r:Registry):
+  ds=stage_dataset(r)
+  cl=stage_cluster(r,ds)
+  vis=stage_plot(r,cl)
   return vis
 
 def run2(S=None):
-  return realize(instantiate(stage_all,S=S))
+  return realize1(instantiate(stage_all,S=S))
 
 # 3. Different storages
 
@@ -91,8 +91,8 @@ fsinit(Sa,remove_existing=True)
 fsinit(Sb,remove_existing=True)
 
 def run_copystorage():
-  rrefA=realize(instantiate(stage_all, S=Sa))
-  rrefB=realize(instantiate(stage_all, S=Sb))
+  rrefA=realize1(instantiate(stage_all, S=Sa))
+  rrefB=realize1(instantiate(stage_all, S=Sb))
   print(rrefA)
   print(rrefB)
   print('Before', list(allrrefs(S=Sb)))
@@ -111,15 +111,15 @@ def match_min_distortion(S:Optional[StorageSettings],
   return [best]
 
 
-def stage_all2(m:Manager):
-  ds=redefine(stage_dataset, new_matcher=match_latest())(m)
-  cl=redefine(stage_cluster, new_matcher=match_min_distortion)(m,ds)
-  vis=redefine(stage_plot, new_matcher=match_latest())(m,cl)
+def stage_all2(r:Registry):
+  ds=redefine(stage_dataset, new_matcher=match_latest())(r)
+  cl=redefine(stage_cluster, new_matcher=match_min_distortion)(r,ds)
+  vis=redefine(stage_plot, new_matcher=match_latest())(r,cl)
   return vis
 
 def run_matchers():
   # Call after run_copystorage
-  return realize(instantiate(stage_all2,S=Sb))
+  return realize1(instantiate(stage_all2,S=Sb))
 
 
 #############################################################

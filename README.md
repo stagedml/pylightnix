@@ -27,13 +27,19 @@ Documentation
 -------------
 
 QuickStart [[PDF]](https://raw.github.com/stagedml/pylightnix-docs/master/Pylightnix-QuickStart-latest.pdf) |
-Manual [[PDF]](https://raw.github.com/stagedml/pylightnix-docs/master/Pylightnix-Manual-latest.pdf) |
 API Referece [[MD]](./docs/Reference.md)
 
 Demos:
 
-* [Compiling GNU Hello](./docs/demos/HELLO.md), turns Pylightnix into a toy
-  package manager to build the GNU Hello sources.
+* [GNU Hello](./docs/demos/HELLO.md), turns Pylightnix into a toy
+  package manager to build the GNU Hello from sources.
+* [MDRUN](./docs/demos/MDRUN.py), evaluate code sections in a Markdown document,
+  and cache the results betwee runs.
+
+(Outdated)
+
+Manual [[PDF]](https://raw.github.com/stagedml/pylightnix-docs/master/Pylightnix-Manual-latest.pdf) |
+
 * [Ultimatum tutorial](https://github.com/grwlf/ultimatum-game/blob/master/docs/Pylightnix.md),
   managing experiments.
 * [MNIST demo](./docs/demos/MNIST.md) shows some machine learning specific.

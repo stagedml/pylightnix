@@ -18,7 +18,7 @@ through the dependent configurations """
 from pylightnix.imports import (join,isfile)
 from pylightnix.types import (Any, Dict, List, Build, DRef, RRef, Optional,
                               RefPath, Tuple, Union, Path, Context, NamedTuple,
-                              Context, Closure, SPath, StorageSettings)
+                              Context, Closure, SPath, StorageSettings, Registry)
 from pylightnix.utils import (isrefpath, isdref, isrref, tryreadjson )
 from pylightnix.core import (rref2dref, rref2path, cfgdict,
                              dref2path, rrefctx, context_deref,
@@ -50,7 +50,9 @@ def val2dict(v:Any, ctx:LensContext)->Optional[dict]:
   elif isinstance(v,dict):
     return v
   elif isinstance(v,Closure):
-    return val2dict(v.dref, ctx)
+    assert len(v.targets)==1, \
+      "Lens currently support only single-targeted closures"
+    return val2dict(v.targets[0], ctx)
   else:
     return None
 
@@ -70,7 +72,8 @@ def val2rref(v:Any, ctx:LensContext)->RRef:
     else:
       assert False, f"Lens couldn't resolve '{dref}' without a context"
   elif isinstance(v,Closure):
-    return val2rref(v.dref, ctx)
+    assert len(v.targets)==1
+    return val2rref(v.targets[0], ctx)
   else:
     assert isrref(v), f"Lens expected RRef, but got '{v}'"
     return RRef(v)
@@ -110,7 +113,8 @@ def val2path(v:Any, ctx:LensContext)->Path:
     else:
       assert False, f"Lens couldn't resolve '{refpath}' without a context"
   elif isinstance(v, Closure):
-    return val2path(v.dref, ctx)
+    assert len(v.targets)==1
+    return val2path(v.targets[0], ctx)
   elif isinstance(v, Build):
     assert ctx.build_path is not None, f"Lens can't access build path of '{v}'"
     return ctx.build_path
@@ -232,7 +236,7 @@ class Lens:
   def contents(self)->str:
     """ Check that the current value of Lens is a `Path` and return it """
     p=self.syspath
-    assert isfile(p)
+    assert isfile(p), f"Can'r read the contents of {p}"
     return open(p,'r').read()
 
   @property
@@ -243,12 +247,14 @@ class Lens:
 
   @property
   def closure(self)->Closure:
-    """ Check that the current value of Lens is an `RRef` and return it """
+    """ Constructs a closure of the DRef which this lens points to.
+    FIXME: Filter the closure derivations from unrelated entries.
+    """
     r=lens_repr(self,'closure')
     v=traverse(self, r)
-    assert isdref(v), f"Lens {r} expected closure, but got '{v}'"
+    assert isdref(v), f"Lens {r} expected a dref, but got '{v}'"
     assert self.ctx.closure is not None
-    return Closure(v, self.ctx.closure.derivations, self.ctx.S)
+    return Closure([v], [v], self.ctx.closure.derivations, self.ctx.S)
 
 
 def mklens(x:Any, o:Optional[Path]=None,
@@ -257,7 +263,8 @@ def mklens(x:Any, o:Optional[Path]=None,
                   ctx:Optional[Context]=None,
                   closure:Optional[Closure]=None,
                   build_output_idx:int=0,
-                  S:Optional[StorageSettings]=None)->Lens:
+                  S:Optional[StorageSettings]=None,
+                  r:Optional[Registry]=None)->Lens:
   """ mklens creates [Lens](#pylightnix.lens.Lens) objects from various
   Pylightnix objects.
 
@@ -301,7 +308,7 @@ def mklens(x:Any, o:Optional[Path]=None,
   mklens(dref).output.refpath  # Return output as a RefPath (a list)
   mklens(dref).output.syspath  # Error! not a realization
 
-  rref:RRef=realize(instantiate(stage))
+  rref:RRef=realize1(instantiate(stage))
 
   mklens(rref).output.syspath  # Return output as a system path
   ```
@@ -311,6 +318,8 @@ def mklens(x:Any, o:Optional[Path]=None,
     S=b.S
   if S is None and isinstance(x,Build):
     S=x.S
+  if S is None and r is not None:
+    S=r.S
   if ctx is None and b is not None:
     ctx=build_context(b)
   if ctx is None and isinstance(x,Build):

@@ -29,28 +29,27 @@ TESTS = $(shell find tests -name '*\.py')
 	pydoc-markdown \
 		--modules \
 			pylightnix.types pylightnix.core pylightnix.build \
-			pylightnix.inplace pylightnix.repl pylightnix.stages \
-			pylightnix.bashlike pylightnix.lens pylightnix.either \
-			pylightnix.arch \
+			pylightnix.repl pylightnix.stages pylightnix.bashlike pylightnix.lens \
+			pylightnix.either pylightnix.arch \
 		--search-path \
 			$(shell python3 -c "import sys; print(' '.join(sys.path))") >$@  # "
 
-.PHONY: docs-reference dr
-docs-reference: ./docs/Reference.md
-dr: docs-reference
+.PHONY: docs_reference dr
+docs_reference: ./docs/Reference.md
+dr: docs_reference
 
-.PHONY: docs-quickstart
-docs-quickstart: docs/QuickStart.pdf
+.PHONY: docs_quickstart
+docs_quickstart: docs/QuickStart.pdf
 docs/QuickStart.pdf: $(SRC) $(TEX) ./docs/compile.sh .stamp_check
 	/bin/sh ./docs/compile.sh docs/QuickStart.tex
 
-.PHONY: docs-manual
-docs-manual: docs/Manual.pdf
+.PHONY: docs_manual
+docs_manual: docs/Manual.pdf
 docs/Manual.pdf: $(SRC) $(TEX) ./docs/compile.sh .stamp_check
 	/bin/sh ./docs/compile.sh docs/Manual.tex
 
 .PHONY: docs
-docs: docs-manual docs-quickstart docs-reference
+docs: docs_manual docs_quickstart docs_reference
 
 
 .PHONY: publish-quickstart
@@ -116,8 +115,14 @@ docs/demos/REPL.py: docs/demos/REPL.pmd $(SRC) .stamp_check_$(HOSTNAME)
 .PHONY: demo_repl
 demo_repl: docs/demos/REPL.md docs/demos/REPL.py
 
+.PHONY: demo_mdrun
+demo_mdrun: docs/demos/MDRUN_test.md
+
+docs/demos/MDRUN_test.md: docs/demos/MDRUN_test.md.in docs/demos/MDRUN.py $(SRC) .stamp_check
+	python docs/demos/MDRUN.py -r $< $@
+
 .PHONY: demos
-demos: demo_mnist demo_hello demo_repl
+demos: demo_hello demo_mdrun
 
 $(WHEEL): $(SRC) $(TESTS)
 	rm -rf build dist || true
@@ -149,7 +154,7 @@ check: .stamp_check
 # 		echo 'Did you install pylightnix systemwide by running `sudo -H make install` ?' ; exit 1 ; )
 
 .PHONY: all
-all: coverage docs wheel
+all: coverage docs demos wheel
 
 
 

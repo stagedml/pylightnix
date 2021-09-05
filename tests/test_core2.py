@@ -1,5 +1,5 @@
 from pylightnix import (instantiate, DRef, RRef, Path, SPath, drefdeps,
-                        Manager, Context, RealizeArg, Output, realize,
+                        Registry, Context, RealizeArg, Output, realize1,
                         rref2dref, Build, match_some, mkdrv, rref2path,
                         alldrefs, build_wrapper, tryread, trywrite,
                         realizeMany, build_outpaths, mklens, Config,
@@ -30,8 +30,8 @@ def test_union_of_root_derivations(stages):
   with setup_storage2('test_union_of_root_derivations') as S:
     deps=set()
     for stage in stages:
-      clo=instantiate(stage,S=S)
-      deps |= drefdeps([clo.dref],S) | set([clo.dref])
+      _,clo=instantiate(stage,S=S)
+      deps |= drefdeps([clo.targets[0]],S) | set([clo.targets[0]])
     assert deps==set(alldrefs(S))
 
 
@@ -150,27 +150,27 @@ def test_match_exact(stages,subs):
 #         assert len(grs3)==len(grs2)
 
 
-# def mkstageL(draw, m:Manager, name:str, artifact:int, buildstart:str)->DRef:
+# def mkstageL(draw, r:Registry, name:str, artifact:int, buildstart:str)->DRef:
 #   def _r(S, dref:DRef, c:Context, ra:RealizeArg)->Output[Path]:
 #     r=setup_test_realize(1, buildstart, lambda i:artifact, mustfail=False)
 #     return r(S,dref,c,ra)
-#   return mkdrv(m, setup_test_config({'name':name}),
+#   return mkdrv(r, setup_test_config({'name':name}),
 #                   output_matcher(setup_test_match(1)),
 #                   output_realizer(_r))
 
 @composite
 def stagesL(draw):
-  return (lambda m,cfg,t,a:mkdrv(m, setup_test_config(cfg),
+  return (lambda r,cfg,t,a:mkdrv(setup_test_config(cfg),
                   match_latest(),
                   output_realizer(setup_test_realize(
-                    1, timestring(sec=float(t)), lambda i:a, False))))
+                    1, timestring(sec=float(t)), lambda i:a, False)), r))
 
 @given(h=hierarchies(stages=stagesL))
 def test_match_latest(h):
   with setup_storage2('test_match_latest') as S:
     for t in range(3):
       note(f"t={t}")
-      clo=instantiate(h, t=t, a=t, S=S)
+      _,clo=instantiate(h, t=t, a=t, S=S)
       rrefs=realizeMany(clo, force_rebuild=[d.dref for d in clo.derivations])
       for rref in rrefdeps(rrefs,S=S)|set(rrefs):
         bstart=rrefbstart(rref,S=S)
@@ -180,31 +180,31 @@ def test_match_latest(h):
 
 # FIXME: repair this test
 # def test_match_latest()->None:
-#   def _mknode(m, cfg, matcher, nouts:int, data=0, buildtime=True):
+#   def _mknode(r, cfg, matcher, nouts:int, data=0, buildtime=True):
 #     def _realize(b:Build)->None:
 #       build_setoutpaths(b,nouts)
 #       for i,out in enumerate(build_outpaths(b)):
 #         assert trywrite(Path(join(out,'artifact')),str(data)+'_'+str(i))
-#     return mkdrv(m, Config(cfg), matcher,
+#     return mkdrv(r, Config(cfg), matcher,
 #                     build_wrapper(_realize, buildtime=buildtime))
 #
 #   with setup_storage2('test_match_latest') as S:
 #     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=1, S=S)
-#     rref1=realize(clo)
+#     rref1=realize1(clo)
 #     assert len(list(drefrrefs(clo.dref,S)))==1
 #     sleep(0.01)
 #     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=2, S=S)
-#     rref2=realize(clo, force_rebuild=[clo.dref])
+#     rref2=realize1(clo, force_rebuild=[clo.dref])
 #     assert len(list(drefrrefs(clo.dref,S)))==2
 #     assert tryread(Path(join(rref2path(rref2,S),'artifact')))==str('2_0')
 #
 #   with setup_storage2('test_match_latest') as S:
 #     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=1, S=S)
-#     rref1=realize(clo)
+#     rref1=realize1(clo)
 #     assert len(list(drefrrefs(clo.dref,S)))==1
 #     sleep(0.01)
 #     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=2, buildtime=False, S=S)
-#     rref2=realize(clo, force_rebuild=[clo.dref])
+#     rref2=realize1(clo, force_rebuild=[clo.dref])
 #     assert len(list(drefrrefs(clo.dref,S)))==2
 #     assert tryread(Path(join(rref2path(rref2,S),'artifact')))==str('1_0')
 #
@@ -258,7 +258,7 @@ def test_root_drefs(stages):
     assert len(rootdrefs(S))==0
     results=set()
     for stage in stages:
-      results |= set([instantiate(stage,S=S).dref])
+      results |= set([instantiate(stage,S=S)[1].targets[0]])
     roots=rootdrefs(S)
     for dref in results:
       assert dref in roots

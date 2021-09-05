@@ -14,15 +14,15 @@
 
 """ Simple functions imitating unix shell tools.  """
 
-from pylightnix import (instantiate, DRef, RRef, Path, Build, Manager, mklens,
-                        mkdrv, selfref, match_some, build_wrapper, instantiate,
-                        realize, isrref, isdref, build_cattrs, build_outpath,
+from pylightnix import (DRef, RRef, Path, Build, Registry, mklens, mkdrv,
+                        selfref, match_some, build_wrapper, instantiate,
+                        realize1, isrref, isdref, build_cattrs, build_outpath,
                         build_path, mkconfig, assert_valid_rref, isrefpath,
                         isclosure, match_only)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink,
                            isfile, List, randint, sleep, rmtree, system,
-                           S_IWRITE, S_IREAD, S_IEXEC, isdir)
+                           S_IWRITE, S_IREAD, S_IEXEC, isdir, note)
 
 from tests.generators import (rrefs, drefs, configs, dicts)
 
@@ -33,10 +33,10 @@ from tests.setup import (ShouldHaveFailed, setup_storage2, mkstage)
 
 def test_lens():
   with setup_storage2('test_lens') as S:
-    def _setting(m:Manager)->DRef:
-      n1=mkstage(m, {'name':'1', 'selfref':[selfref,'artifact']})
-      n2=mkstage(m, {'name':'2', 'selfref':[selfref,'artifact'],
-                        'dict':{'d1':1} })
+    def _setting(r:Registry)->DRef:
+      n1=mkstage({'name':'1', 'selfref':[selfref,'artifact']},r)
+      n2=mkstage({'name':'2', 'selfref':[selfref,'artifact'],
+                        'dict':{'d1':1} },r)
 
       def _realize(b:Build):
         o=build_outpath(b)
@@ -51,28 +51,28 @@ def test_lens():
         with open(mklens(b).selfref.syspath,'w') as f:
           f.write('chickenpoop')
 
-      return mkdrv(m,
+      return mkdrv(
         mkconfig({'name':'3', 'maman':n1, 'papa':n2,
                   'selfref':[selfref,'artifact'],
                   }),
                  matcher=match_only(),
-                 realizer=build_wrapper(_realize))
+                 realizer=build_wrapper(_realize), r=r)
 
-    clo=instantiate(_setting, S=S)
-    assert isrefpath(mklens(clo.dref,S=S).maman.selfref.refpath)
-    assert isdir(mklens(clo.dref,S=S).syspath)
-    rref=realize(clo)
+    _,clo=instantiate(_setting, S=S)
+    assert isrefpath(mklens(clo.targets[0],S=S).maman.selfref.refpath)
+    assert isdir(mklens(clo.targets[0],S=S).syspath)
+    rref=realize1(clo)
     assert_valid_rref(rref)
     assert isrefpath(mklens(rref,S=S).maman.selfref.refpath)
     assert isfile(mklens(rref,S=S).maman.selfref.syspath)
     assert mklens(rref,S=S).rref == rref
     assert isrefpath(mklens(rref,S=S).papa.selfref.refpath)
     assert mklens(rref,S=S).papa.dict.d1.val == 1
-    assert mklens(rref,S=S).dref == clo.dref
+    assert mklens(rref,S=S).dref == clo.targets[0]
     assert isdir(mklens(rref,S=S).syspath)
 
     try:
-      print(mklens(clo.dref,S=S).maman.selfref.syspath)
+      print(mklens(clo.targets[0],S=S).maman.selfref.syspath)
       raise ShouldHaveFailed()
     except AssertionError:
       pass
@@ -109,16 +109,17 @@ def test_lens():
 
 def test_lens_closures():
   with setup_storage2('test_lens_closures') as S:
-    def _setting(m:Manager)->DRef:
-      n1=mkstage(m, {'name':'1', 'x':33, 'selfref':[selfref,'artifact']})
-      n2=mkstage(m, {'name':'2', 'papa':n1, 'dict':{'d1':1} })
-      n3=mkstage(m, {'name':'3', 'maman':n2 })
+    def _stage(r:Registry)->DRef:
+      n1=mkstage({'name':'1', 'x':33, 'selfref':[selfref,'artifact']},r)
+      n2=mkstage({'name':'2', 'papa':n1, 'dict':{'d1':1} },r)
+      n3=mkstage({'name':'3', 'maman':n2 },r)
       return n3
 
-    clo=instantiate(_setting, S=S)
+    _,clo=instantiate(_stage, S=S)
     assert isclosure(clo)
+    print(f"{clo.targets}")
 
-    rref=realize(mklens(clo,S=S).maman.papa.closure)
+    rref=realize1(mklens(clo,S=S).maman.papa.closure)
     assert mklens(rref,S=S).x.val==33
     assert open(mklens(rref,S=S).selfref.syspath).read()=='0'
 

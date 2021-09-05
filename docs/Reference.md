@@ -28,8 +28,9 @@
     * [ConfigAttrs](#pylightnix.types.ConfigAttrs)
     * [BuildArgs](#pylightnix.types.BuildArgs)
     * [Build](#pylightnix.types.Build)
-    * [Manager](#pylightnix.types.Manager)
+    * [Registry](#pylightnix.types.Registry)
     * [DRefLike](#pylightnix.types.DRefLike)
+    * [StageResult](#pylightnix.types.StageResult)
     * [Stage](#pylightnix.types.Stage)
   * [pylightnix.core](#pylightnix.core)
     * [PYLIGHTNIX\_STORE\_VERSION](#pylightnix.core.PYLIGHTNIX_STORE_VERSION)
@@ -38,13 +39,15 @@
     * [logger](#pylightnix.core.logger)
     * [info](#pylightnix.core.info)
     * [warning](#pylightnix.core.warning)
+    * [TL](#pylightnix.core.TL)
+    * [tlregistry](#pylightnix.core.tlregistry)
+    * [tlstorage](#pylightnix.core.tlstorage)
     * [storagename](#pylightnix.core.storagename)
     * [fsroot](#pylightnix.core.fsroot)
     * [fstmpdir](#pylightnix.core.fstmpdir)
-    * [fsstorage\_](#pylightnix.core.fsstorage_)
     * [fsstorage](#pylightnix.core.fsstorage)
     * [assert\_valid\_storage](#pylightnix.core.assert_valid_storage)
-    * [mksettings](#pylightnix.core.mksettings)
+    * [mkSS](#pylightnix.core.mkSS)
     * [fsinit](#pylightnix.core.fsinit)
     * [reserved](#pylightnix.core.reserved)
     * [trimhash](#pylightnix.core.trimhash)
@@ -96,11 +99,15 @@
     * [output\_realizer](#pylightnix.core.output_realizer)
     * [output\_matcher](#pylightnix.core.output_matcher)
     * [mkdrv](#pylightnix.core.mkdrv)
-    * [instantiate\_](#pylightnix.core.instantiate_)
+    * [current\_registry](#pylightnix.core.current_registry)
+    * [current\_storage](#pylightnix.core.current_storage)
+    * [mkclosure](#pylightnix.core.mkclosure)
+    * [\_A](#pylightnix.core._A)
     * [instantiate](#pylightnix.core.instantiate)
     * [RealizeSeqGen](#pylightnix.core.RealizeSeqGen)
-    * [realize](#pylightnix.core.realize)
+    * [realize1](#pylightnix.core.realize1)
     * [realizeMany](#pylightnix.core.realizeMany)
+    * [realize](#pylightnix.core.realize)
     * [realizeSeq](#pylightnix.core.realizeSeq)
     * [evaluate](#pylightnix.core.evaluate)
     * [Key](#pylightnix.core.Key)
@@ -156,31 +163,27 @@
     * [repl\_buildargs](#pylightnix.build.repl_buildargs)
     * [repl\_build](#pylightnix.build.repl_build)
     * [repl\_cancelBuild](#pylightnix.build.repl_cancelBuild)
-  * [pylightnix.inplace](#pylightnix.inplace)
-    * [PYLIGHTNIX\_MANAGER](#pylightnix.inplace.PYLIGHTNIX_MANAGER)
-    * [instantiate\_inplace](#pylightnix.inplace.instantiate_inplace)
-    * [realize\_inplace](#pylightnix.inplace.realize_inplace)
   * [pylightnix.repl](#pylightnix.repl)
     * [ReplHelper](#pylightnix.repl.ReplHelper)
     * [ERR\_INVALID\_RH](#pylightnix.repl.ERR_INVALID_RH)
     * [ERR\_INACTIVE\_RH](#pylightnix.repl.ERR_INACTIVE_RH)
+    * [repl\_continueAll](#pylightnix.repl.repl_continueAll)
     * [repl\_continueMany](#pylightnix.repl.repl_continueMany)
     * [repl\_continue](#pylightnix.repl.repl_continue)
     * [repl\_realize](#pylightnix.repl.repl_realize)
+    * [repl\_result](#pylightnix.repl.repl_result)
     * [repl\_rrefs](#pylightnix.repl.repl_rrefs)
     * [repl\_rref](#pylightnix.repl.repl_rref)
     * [repl\_cancel](#pylightnix.repl.repl_cancel)
   * [pylightnix.stages](#pylightnix.stages)
-  * [pylightnix.stages.trivial](#pylightnix.stages.trivial)
-    * [mknode](#pylightnix.stages.trivial.mknode)
-    * [redefine](#pylightnix.stages.trivial.redefine)
-    * [realized](#pylightnix.stages.trivial.realized)
   * [pylightnix.stages.fetch2](#pylightnix.stages.fetch2)
     * [logger](#pylightnix.stages.fetch2.logger)
     * [info](#pylightnix.stages.fetch2.info)
     * [error](#pylightnix.stages.fetch2.error)
     * [CURL](#pylightnix.stages.fetch2.CURL)
+    * [AUNPACK](#pylightnix.stages.fetch2.AUNPACK)
     * [fetchurl2](#pylightnix.stages.fetch2.fetchurl2)
+    * [unpack](#pylightnix.stages.fetch2.unpack)
   * [pylightnix.stages.fetch](#pylightnix.stages.fetch)
     * [logger](#pylightnix.stages.fetch.logger)
     * [info](#pylightnix.stages.fetch.info)
@@ -190,6 +193,10 @@
     * [\_unpack\_inplace](#pylightnix.stages.fetch._unpack_inplace)
     * [fetchurl](#pylightnix.stages.fetch.fetchurl)
     * [fetchlocal](#pylightnix.stages.fetch.fetchlocal)
+  * [pylightnix.stages.trivial](#pylightnix.stages.trivial)
+    * [mknode](#pylightnix.stages.trivial.mknode)
+    * [redefine](#pylightnix.stages.trivial.redefine)
+    * [realized](#pylightnix.stages.trivial.realized)
   * [pylightnix.bashlike](#pylightnix.bashlike)
     * [lsdref\_](#pylightnix.bashlike.lsdref_)
     * [lsrref\_](#pylightnix.bashlike.lsrref_)
@@ -232,11 +239,12 @@
     * [either\_matcher](#pylightnix.either.either_matcher)
     * [mkdrvE](#pylightnix.either.mkdrvE)
     * [realizeE](#pylightnix.either.realizeE)
+    * [realizeManyE](#pylightnix.either.realizeManyE)
   * [pylightnix.arch](#pylightnix.arch)
     * [APACK](#pylightnix.arch.APACK)
     * [AUNPACK](#pylightnix.arch.AUNPACK)
-    * [pack](#pylightnix.arch.pack)
-    * [unpack](#pylightnix.arch.unpack)
+    * [spack](#pylightnix.arch.spack)
+    * [sunpack](#pylightnix.arch.sunpack)
     * [deref\_](#pylightnix.arch.deref_)
     * [copyclosure](#pylightnix.arch.copyclosure)
 
@@ -261,8 +269,8 @@ tell the typechecker that a given string contains a path to storage.
 ## `StorageSettings`
 
 ```python
-StorageSettings = NamedTuple('StorageSettings',[('storage',Optional[Path]),
-                                           ...
+StorageSettings = NamedTuple('StorageSettings',[('root',Optional[Path]),
+                                              ...
 ```
 
 Stoarge settings contains a path for the main stoarge and a path for
@@ -303,7 +311,7 @@ Derivation references are results of
 Derivation reference may be converted into a [realization
 reference](#pylightnix.types.RRef) by either dereferencing (that is by
 querying for existing realizations) or by
-[realizing](#pylightnix.core.realize) it from scratch.
+[realizing](#pylightnix.core.realize1) it from scratch.
 
 - For derefencing dependencies at the build time, see
   [build_deref](#pylightnix.core.build_deref).
@@ -320,10 +328,10 @@ where:
 - `<HashPart0>` is calculated over realization's
   [Context](#pylightnix.types.Context) and build artifacts.
 - `<HashPart1>-<Name>` forms valid [DRef](#pylightnix.types.DRef) which
-  this realizaion was [realized](#pylightnix.core.realize) from.
+  this realizaion was [realized](#pylightnix.core.realize1) from.
 
 Realization reference is obtained from the process called
-[realization](#pylightnix.core.realize).
+[realization](#pylightnix.core.realize1).
 
 Valid realization references may be dereferenced down to system paths of
 *build artifacts* by calling [rref2path](#pylightnix.core.rref2path) or by
@@ -493,7 +501,7 @@ Realizer = Callable[[Optional[StorageSettings],DRef,Context,RealizeArg],List[Pat
 ```
 
 Realizers are user-defined Python functions. Realizers typically
-implement [application-specific algorithms](#pylightnix.core.realize) which
+implement [application-specific algorithms](#pylightnix.core.realize1) which
 take some configuration parameters and produce some artifacts.
 
 Realizer accepts the following arguments:
@@ -522,14 +530,14 @@ provided by the [Build](#pylightnix.types.Build) helper class.
 Example:
 
 ```python
-def mystage(m:Manager)->DRef:
+def mystage(r:Registry)->DRef:
 def _realize(dref:DRef, context:Context)->List[Path]:
 b=mkbuild(dref, context, buildtime=buildtime)
 with open(join(build_outpath(b),'artifact'),'w') as f:
 f.write('chickenpoop\n')
 return [build_outpath(b)]
 ...
-return mkdrv(m, ...,  _realize)
+return mkdrv(r, ...,  _realize)
 ```
 
 <a name="pylightnix.types.RealizerO"></a>
@@ -554,7 +562,7 @@ produce artifacts of individual [Stage](#pylightnix.types.stage).
 Fields include:
 * [Configuration](#pylightnix.types.Config) objects serialized on disk.
 * [Matcher](#pylightnix.types.Matcher) Python function
-* [Realizer](#pylightnix.core.realize) Python function
+* [Realizer](#pylightnix.core.realize1) Python function
 
 The actual configuration is stored in the Pylightnix filesystem storage.
 Derivation holds the [DRef](#pylightnix.types.DRef) access key.
@@ -566,20 +574,21 @@ calls.
 ## `Closure`
 
 ```python
-Closure = NamedTuple('Closure', [('dref',DRef),
-                                 ('derivations',List[Derivatio ...
+Closure = NamedTuple('Closure', [('result',Any),
+                                 ('targets',List[DRef]),
+     ...
 ```
 
 Closure describes the realization plan of some
 [Derivation](#pylightnix.types.Derivation).
 
 The plan is represented by a sequence of
-[Derivations](#pylightnix.types.Derivation) one need to realize in order to
-realize a given target derivation.
+[Derivations](#pylightnix.types.Derivation) one need to realize1 in order to
+realize1 a given target derivation.
 
 Closures are typically obtained as a result of the
 [instantiate](#pylightnix.core.instantiate) and is typically consumed by the
-call to [realize](#pylightnix.core.realize) or it's analogs.
+call to [realize1](#pylightnix.core.realize1) or it's analogs.
 
 <a name="pylightnix.types.Config"></a>
 ## `Config` Objects
@@ -622,7 +631,7 @@ Configs are normally created from Python dicts by the
 
 Example:
 ```python
-def mystage(m:Manager)->Dref:
+def mystage(r:Registry)->Dref:
   def _config()->dict:
     name = 'mystage'
     nepoches = 4
@@ -692,7 +701,7 @@ def __init__(self, ba: BuildArgs) -> None
 ```
 
 Build objects track the process of stage's
-[realization](#pylightnix.core.realize). Build allows users to define
+[realization](#pylightnix.core.realize1). Build allows users to define
 [Realizers](#pylightnix.types.Realizer) with only a simple one-argument
 signature. The [build_wrapper](#pylightnix.core.build_wrapper) function
 converts simplified Build-realizers into the regular ones.
@@ -726,13 +735,13 @@ Example:
 class TensorFlowModel(Build):
   model:tf.keras.Model
 
-def train(m:TensorFlowModel)->None:
-  o = build_outpath(m)
-  m.model = create_model(...)
+def train(r:TensorFlowModel)->None:
+  o = build_outpath(r)
+  r.model = create_model(...)
   ...
 
-def mymodel(m:Manager)->DRef:
-  return mkdrv(m, ..., build_wrapper_(TensorFlowModel, train))
+def mymodel(r:Registry)->DRef:
+  return mkdrv(r, ..., build_wrapper_(TensorFlowModel, train))
 ```
 
 <a name="pylightnix.types.Build.__init__"></a>
@@ -743,29 +752,26 @@ def __init__(self, ba: BuildArgs) -> None
 ```
 
 
-<a name="pylightnix.types.Manager"></a>
-## `Manager` Objects
+<a name="pylightnix.types.Registry"></a>
+## `Registry` Objects
 
 ```python
-def __init__(self, S: Optional[StorageSettings])
+def __init__(self, S: Optional[StorageSettings] = None)
 ```
 
-The derivation manager is a mutable storage object where Pylightnix
+The derivation registry is a mutable storage object where Pylightnix
 stores derivations before combining them into a
 [Closure](#pylightnix.types.Closure).
 
-Managers doesn't requre any special operations besides creating and passing
-around. By convention, Manager objects are first arguments of user-defined
+Registry doesn't requre any special operations besides creating and passing
+around. By convention, Registry objects are first arguments of user-defined
 stage functions and the `mkdrv` API function of Pylightnix.
 
-The [inplace module](#pylightnix.inplace) defines it's own [global derivation
-manager](#pylightnix.inplace.PYLIGHTNIX_MANAGER)
-
-<a name="pylightnix.types.Manager.__init__"></a>
-### `Manager.__init__()`
+<a name="pylightnix.types.Registry.__init__"></a>
+### `Registry.__init__()`
 
 ```python
-def __init__(self, S: Optional[StorageSettings])
+def __init__(self, S: Optional[StorageSettings] = None)
 ```
 
 
@@ -777,17 +783,25 @@ DRefLike = TypeVar('DRefLike',bound=DRef)
 ```
 
 
+<a name="pylightnix.types.StageResult"></a>
+## `StageResult`
+
+```python
+StageResult = Union[DRef,List[DRef],Dict[Any,DRef],Tuple[DRef,...]]
+```
+
+
 <a name="pylightnix.types.Stage"></a>
 ## `Stage`
 
 ```python
-Stage = Callable[[Manager],DRefLike]
+Stage = Callable[...,StageResult]
 ```
 
 Functions with the `Stage` signature are the top-level building blocks of
 Pylightnix. Stage functions call [mkdrv](#pylightnix.core.mkdrv) and each
 other to produce linked [Derivations](#pylightnix.types.Derivation) and
-register them in the [Manager](#pylightnix.types.Manager).
+register them in the [Registry](#pylightnix.types.Registry).
 
 Some built-in stages are:
 - [mknode](#pylightnix.stages.trivial.mknode)
@@ -799,7 +813,7 @@ couldn't be handled by the simple MyPy. In a somewhat extended MyPy the Stage
 definition would look like:
 
 ```Python
-Stage = Callable[[Manager,VarArg(Any),KwArg(Any)],DRef]
+Stage = Callable[[Registry,VarArg(Any),KwArg(Any)],DRef]
 ```
 
 Stage's return value is a [derivation reference](#pylightnix.types.DRef)
@@ -864,6 +878,32 @@ warning = logger.warning
 ```
 
 
+<a name="pylightnix.core.TL"></a>
+## `TL`
+
+```python
+TL = threading_local()
+```
+
+Thread-local storage for [current_registry](#pylightnix.core.current_registry)
+to store its state.
+
+<a name="pylightnix.core.tlregistry"></a>
+## `tlregistry()`
+
+```python
+def tlregistry(M: Optional[Registry]) -> Optional[Registry]
+```
+
+
+<a name="pylightnix.core.tlstorage"></a>
+## `tlstorage()`
+
+```python
+def tlstorage(S: Optional[StorageSettings]) -> Optional[StorageSettings]
+```
+
+
 <a name="pylightnix.core.storagename"></a>
 ## `storagename()`
 
@@ -877,7 +917,7 @@ Return the name of Pylightnix storage filder.
 ## `fsroot()`
 
 ```python
-def fsroot() -> Path
+def fsroot(S: Optional[StorageSettings] = None) -> Path
 ```
 
 `fsroot` contains the path to the root of pylightnix shared data folder.
@@ -894,15 +934,6 @@ def fstmpdir(S: Optional[StorageSettings] = None) -> Path
 
 Return the location of current Pylightnix temporary folder, defaulting to
 the path set by PYLIGHTNIX_TMP environment variable.
-
-<a name="pylightnix.core.fsstorage_"></a>
-## `fsstorage_()`
-
-```python
-def fsstorage_(S: Optional[StorageSettings] = None) -> Path
-```
-
-See `fsstorage`
 
 <a name="pylightnix.core.fsstorage"></a>
 ## `fsstorage()`
@@ -922,11 +953,11 @@ def assert_valid_storage(S: Optional[StorageSettings] = None) -> None
 ```
 
 
-<a name="pylightnix.core.mksettings"></a>
-## `mksettings()`
+<a name="pylightnix.core.mkSS"></a>
+## `mkSS()`
 
 ```python
-def mksettings(stordir: str, tmpdir: Optional[str] = None) -> StorageSettings
+def mkSS(root: str, stordir: Optional[str] = None, tmpdir: Optional[str] = None) -> StorageSettings
 ```
 
 
@@ -1043,8 +1074,8 @@ def mkconfig(d: dict) -> Config
 
 Create a [Config](#pylightnix.types.Config) object out of config
 dictionary. Asserts if the dictionary is not JSON-compatible. As a handy hack,
-filter out `m:Manager` variable which likely is an utility
-[Manager](#pylightnix.types.Manager) object.
+filter out `r:Registry` variable which likely is an utility
+[Registry](#pylightnix.types.Registry) object.
 
 <a name="pylightnix.core.cfgdict"></a>
 ## `cfgdict()`
@@ -1405,7 +1436,7 @@ def output_realizer(f: RealizerO) -> Realizer
 ## `output_matcher()`
 
 ```python
-def output_matcher(m: MatcherO) -> Matcher
+def output_matcher(r: MatcherO) -> Matcher
 ```
 
 
@@ -1413,51 +1444,80 @@ def output_matcher(m: MatcherO) -> Matcher
 ## `mkdrv()`
 
 ```python
-def mkdrv(m: Manager, config: Config, matcher: Matcher, realizer: Realizer) -> DRef
+def mkdrv(config: Config, matcher: Matcher, realizer: Realizer, r: Optional[Registry] = None) -> DRef
 ```
 
 Construct a [Derivation](#pylightnix.types.Derivation) object out of
 [Config](#pylightnix.types.Config), [Matcher](#pylightnix.types.Matcher) and
 [Realizer](#pylightnix.types.Realizer). Register the derivation in the
-dependency-resolution [Manager](#pylightnix.types.Manager). Return [Derivation
-reference](#pylightnix.types.DRef) of the newly-obtained derivation.
+dependency-resolution [Registry](#pylightnix.types.Registry). Return [Derivation
+references](#pylightnix.types.DRef) of the newly-obtained derivation.
 
 Arguments:
-- `m:Manager`: A Manager to update with a new derivation
+- `r:Registry`: A Registry to update with a new derivation
 
 Example:
 ```python
-def somestage(m:Manager)->DRef:
+def somestage(r:Registry)->DRef:
   def _realizer(b:Build):
     with open(join(build_outpath(b),'artifact'),'w') as f:
       f.write(...)
-  return mkdrv(m,mkconfig({'name':'mystage'}), match_only(), build_wrapper(_realizer))
+  return mkdrv(r,mkconfig({'name':'mystage'}), match_only(), build_wrapper(_realizer))
 
-rref:RRef=realize(instantiate(somestage))
+rref:RRef=realize1(instantiate(somestage))
 ```
 
-<a name="pylightnix.core.instantiate_"></a>
-## `instantiate_()`
+<a name="pylightnix.core.current_registry"></a>
+## `current_registry()`
 
 ```python
-def instantiate_(m: Manager, stage: Any, args, *,, ,, kwargs) -> Closure
+@contextmanager
+def current_registry(r: Registry) -> Iterator[Registry]
 ```
 
-See [instantiate](#pylightnix.types.instantiate)
+Sets the implicit global registry for the inner scoped code. Implies
+[current_storage(r.S)](#pylightnix.core.current_storage)
+
+<a name="pylightnix.core.current_storage"></a>
+## `current_storage()`
+
+```python
+@contextmanager
+def current_storage(S: Optional[StorageSettings]) -> Iterator[Optional[StorageSettings]]
+```
+
+
+<a name="pylightnix.core.mkclosure"></a>
+## `mkclosure()`
+
+```python
+def mkclosure(result: Any, r: Registry) -> Closure
+```
+
+
+<a name="pylightnix.core._A"></a>
+## `_A`
+
+```python
+_A = TypeVar('_A')
+```
+
 
 <a name="pylightnix.core.instantiate"></a>
 ## `instantiate()`
 
 ```python
-def instantiate(stage: Any, args, *,, ,, =, ,, kwargs) -> Closure
+def instantiate(stage: Union[_A,Callable[...,Any]], args: Any, *,, ,, =, ,, =, ,, kwargs: Any) -> Tuple[_A,Closure]
 ```
 
-Instantiate function evaluates [Stage](#pylightnix.types.Stage) functions
-by calling them and collecting the [Closure](#pylightnix.types.Closure) of
-nested [Derivations](#pylightnix.types.Derivation).
+Instantiate scans a Python data object (list,dict or constant) which
+contains [DRef](#pylightnix.types.DRef) or evaluates a
+[Stage](#pylightnix.types.Stage) function by calling it.
 
-The returned closure typically goes to [realize](#pylightnix.core.realize) or
-its analogs.
+Returns a ready-to be realized [Closure](#pylightnix.types.Closure) formed out
+of nested [Derivations](#pylightnix.types.Derivation).
+
+See also [realize](#pylightnix.core.realize).
 
 <a name="pylightnix.core.RealizeSeqGen"></a>
 ## `RealizeSeqGen`
@@ -1469,45 +1529,55 @@ RealizeSeqGen = Generator[
 ```
 
 
-<a name="pylightnix.core.realize"></a>
-## `realize()`
+<a name="pylightnix.core.realize1"></a>
+## `realize1()`
 
 ```python
-def realize(closure: Closure, force_rebuild: Union[List[DRef],bool] = [], assert_realized: List[DRef] = []) -> RRef
+def realize1(closure: Union[Closure,Tuple[StageResult,Closure]], force_rebuild: Union[List[DRef],bool] = [], assert_realized: List[DRef] = [], realize_args: Dict[DRef,RealizeArg] = {}) -> RRef
 ```
 
-Realize gets the results of building the [Stage](#pylightnix.types.Stage).
+realize1 gets the results of building the [Stage](#pylightnix.types.Stage).
 Returns either the [matching](#pylightnix.types.Matcher) realizations
 immediately, or launches the user-defined [realization
 procedure](#pylightnix.types.Realizer).
 
 Example:
 ```python
-def mystage(m:Manager)->DRef:
+def mystage(r:Registry)->DRef:
   ...
-  return mkdrv(m, ...)
+  return mkdrv(r, ...)
 
-rrefs=realize(instantiate(mystage))
+rrefs=realize1(instantiate(mystage))
 print(mklen(rref).syspath)
 ```
 
-Pylightnix contains the following specialized alternatives to `realize`:
+Pylightnix contains the following specialized alternatives to `realize1`:
 
 * [realizeMany](#pylightnix.core.realizeMany) - A version for multiple-output
 stages.
 * [repl_realize](#pylightnix.repl.repl_realize) - A REPL-friendly version.
-* [realize_inplace](#pylightnix.inplace.realize_inplace) - A simplified
-  version which uses a hardcoded global [Manager](#pylightnix.types.Manager).
+  version which uses a hardcoded global [Registry](#pylightnix.types.Registry).
 
 <a name="pylightnix.core.realizeMany"></a>
 ## `realizeMany()`
 
 ```python
-def realizeMany(closure: Closure, force_rebuild: Union[List[DRef],bool] = [], assert_realized: List[DRef] = [], realize_args: Dict[DRef,RealizeArg] = {}) -> List[RRef]
+def realizeMany(closure: Union[Closure,Tuple[StageResult,Closure]], force_rebuild: Union[List[DRef],bool] = [], assert_realized: List[DRef] = [], realize_args: Dict[DRef,RealizeArg] = {}) -> List[RRef]
 ```
 
-A generic version of [realize](#pylightnix.core.realize).  Allows the
-realizer to return several alternative (in a user-defined sence) realizations.
+
+<a name="pylightnix.core.realize"></a>
+## `realize()`
+
+```python
+def realize(closure: Union[Closure,Tuple[StageResult,Closure]], force_rebuild: Union[List[DRef],bool] = [], assert_realized: List[DRef] = [], realize_args: Dict[DRef,RealizeArg] = {}) -> Tuple[StageResult,Closure,Context]
+```
+
+Takes the instantiated [Closure](#pylightnix.types.Closure) and returns
+its value together with the realization [Context](#pylightnix.types.Context).
+Calls the derivation realizers if their matchers require so.
+
+See also [repl_realize](#pylightnix.repl.repl_realize)
 
 <a name="pylightnix.core.realizeSeq"></a>
 ## `realizeSeq()`
@@ -1516,13 +1586,13 @@ realizer to return several alternative (in a user-defined sence) realizations.
 def realizeSeq(closure: Closure, force_interrupt: List[DRef] = [], assert_realized: List[DRef] = [], realize_args: Dict[DRef,RealizeArg] = {}) -> RealizeSeqGen
 ```
 
+`realizeSeq` encodes low-level details of the realization algorithm.
 Sequentially realize the closure by issuing steps via Python's generator
-interface. `realizeSeq` encodes low-level details of the realization
-algorithm. Consider calling [realizeMany](#pylightnix.core.realizeMany) or
-it's analogs instead.
+interface. Consider calling [realize](#pylightnix.core.realize) or it's
+analogs instead.
 
-FIXME: `assert_realized` may probably be implemented by calling `redefine`
-with appropriate failing realizer on every Derivation.
+FIXME: try to implement `assert_realized` by calling `redefine` with
+appropriate failing realizer on every Derivation.
 
 <a name="pylightnix.core.evaluate"></a>
 ## `evaluate()`
@@ -1716,7 +1786,7 @@ def assert_rref_deps(c: Config) -> None
 ## `assert_have_realizers()`
 
 ```python
-def assert_have_realizers(m: Manager, drefs: List[DRef]) -> None
+def assert_have_realizers(r: Registry, drefs: List[DRef]) -> None
 ```
 
 
@@ -1951,7 +2021,7 @@ Return the name of a derivation being built.
 def build_deref_(b: Build, dref: DRef) -> List[RRef]
 ```
 
-For any [realization](#pylightnix.core.realize) process described with
+For any [realization](#pylightnix.core.realize1) process described with
 it's [Build](#pylightnix.types.Build) handler, `build_deref` queries a
 realization of dependency `dref`.
 
@@ -2041,49 +2111,10 @@ def repl_cancelBuild(b: Build, rh: Optional[ReplHelper] = None) -> None
 ```
 
 
-<a name="pylightnix.inplace"></a>
-# `pylightnix.inplace`
-
-This module defines inplace variants of `instantiate` and `realize`
-functions. Inplace functions store closures in their own global dependency
-resolution [Manager](#pylightnix.types.Manager) and thus offer a simpler API,
-but add usual risks of using gloabl variables.
-
-<a name="pylightnix.inplace.PYLIGHTNIX_MANAGER"></a>
-## `PYLIGHTNIX_MANAGER`
-
-```python
-PYLIGHTNIX_MANAGER = Manager(None)
-```
-
-The Global [Derivation manager](#pylightnix.types.Manager) used by
-`instantiate_inplace` and `realize_inplace` functions of this module.
-
-<a name="pylightnix.inplace.instantiate_inplace"></a>
-## `instantiate_inplace()`
-
-```python
-def instantiate_inplace(stage: Any, args, *,, ,, kwargs) -> DRef
-```
-
-Instantiate a `stage`, use `PYLIGHTNIX_MANAGER` for storing derivations.
-Return derivation reference of the top-level stage.
-
-<a name="pylightnix.inplace.realize_inplace"></a>
-## `realize_inplace()`
-
-```python
-def realize_inplace(dref: DRef, force_rebuild: List[DRef] = []) -> RRef
-```
-
-Realize the derivation pointed by `dref` by constructing it's
-[Closure](#pylightnix.types.Closure) based on the contents of the global
-dependency manager and [realizing](#pylightnix.core.realizeMany) this closure.
-
 <a name="pylightnix.repl"></a>
 # `pylightnix.repl`
 
-Repl module defines variants of `instantiate` and `realize` functions, which
+Repl module defines variants of `instantiate` and `realize1` functions, which
 are suitable for REPL shells. Repl-friendly wrappers (see `repl_realize`) could
 pause the computation, save the Pylightnix state into a variable and return to
 the REPL's main loop. At this point user could alter the state of the whole
@@ -2122,6 +2153,14 @@ ERR_INACTIVE_RH = "REPL session is not paused or was already unpaused"
 ```
 
 
+<a name="pylightnix.repl.repl_continueAll"></a>
+## `repl_continueAll()`
+
+```python
+def repl_continueAll(out_paths: Optional[List[Path]] = None, out_rrefs: Optional[List[RRef]] = None, rh: Optional[ReplHelper] = None) -> Optional[Context]
+```
+
+
 <a name="pylightnix.repl.repl_continueMany"></a>
 ## `repl_continueMany()`
 
@@ -2142,7 +2181,7 @@ def repl_continue(out_paths: Optional[List[Path]] = None, out_rrefs: Optional[Li
 ## `repl_realize()`
 
 ```python
-def repl_realize(closure: Closure, force_interrupt: Union[List[DRef],bool] = True, realize_args: Dict[DRef,RealizeArg] = {}) -> ReplHelper
+def repl_realize(closure: Union[Closure,Tuple[Any,Closure]], force_interrupt: Union[List[DRef],bool] = True, realize_args: Dict[DRef,RealizeArg] = {}) -> ReplHelper
 ```
 
 TODO
@@ -2162,6 +2201,14 @@ rref=repl_rref(rh)
 # ^^^ Since we didn't program any other pasues, we should get the usual RRef
 # holding the result of our hacks.
 ```
+
+<a name="pylightnix.repl.repl_result"></a>
+## `repl_result()`
+
+```python
+def repl_result(rh: ReplHelper) -> Optional[Context]
+```
+
 
 <a name="pylightnix.repl.repl_rrefs"></a>
 ## `repl_rrefs()`
@@ -2190,69 +2237,6 @@ def repl_cancel(rh: Optional[ReplHelper] = None) -> None
 <a name="pylightnix.stages"></a>
 # `pylightnix.stages`
 
-
-<a name="pylightnix.stages.trivial"></a>
-# `pylightnix.stages.trivial`
-
-Trivial builtin stages
-
-<a name="pylightnix.stages.trivial.mknode"></a>
-## `mknode()`
-
-```python
-def mknode(m: Manager, cfgdict: dict, artifacts: Dict[Name,bytes] = {}, name: str = 'mknode') -> DRef
-```
-
-
-<a name="pylightnix.stages.trivial.redefine"></a>
-## `redefine()`
-
-```python
-def redefine(stage: Any, new_config: Callable[[dict],None] = lambda x:None, new_matcher: Optional[Matcher] = None, new_realizer: Optional[Realizer] = None) -> Any
-```
-
-Define a new Derivation based on the existing one, by updating it's
-config, optionally re-writing it's matcher, or it's realizer.
-
-Arguments:
-- `stage:Any` a `Stage` function, accepting arbitrary keyword arguments
-- `new_config:Callable[[dict],None]` A function to update the `dref`'s config.
-  Default varsion makes no changes.
-- `new_matcher:Optional[Matcher]=None` Optional new matcher (defaults to the
-  existing matcher)
-- `new_realizer:Optional[Realizer]=None` Optional new realizer (defaults to
-  the existing realizer)
-
-Return:
-A callable `Stage`, accepting pass-through arguments
-
-Example:
-```python
-def _new_config(old_config):
-  old_config['learning_rate'] = 1e-5
-  return mkconfig(old_config)
-realize(instantiate(redefine(myMLmodel, _new_config)))
-```
-
-FIXME: Updating configs is dangerous: it changes its dref and thus breaks
-dependencies. Only top-level stages should use `new_confid` currently.
-
-<a name="pylightnix.stages.trivial.realized"></a>
-## `realized()`
-
-```python
-def realized(stage: Any) -> Stage
-```
-
-Asserts that the stage doesn't requre running its realizer.
-[Re-defines](#pylightnix.stages.trivial.redefine) stage realizer with a dummy
-realizer triggering an assertion.
-
-Example:
-```python
-rref:RRef=realize(instantiate(realized(my_long_running_stage, arg="bla")))
-# ^^^ Fail if `my_long_running_stage` is not yet realized.
-```
 
 <a name="pylightnix.stages.fetch2"></a>
 # `pylightnix.stages.fetch2`
@@ -2293,28 +2277,32 @@ CURL = try_executable('curl',
 ```
 
 
+<a name="pylightnix.stages.fetch2.AUNPACK"></a>
+## `AUNPACK`
+
+```python
+AUNPACK = try_executable('aunpack',
+                       'PYLIGHTNIX_AUNPACK',
+                       '`aunp ...
+```
+
+
 <a name="pylightnix.stages.fetch2.fetchurl2"></a>
 ## `fetchurl2()`
 
 ```python
-def fetchurl2(m: Manager, url: str, sha256: Optional[str] = None, sha1: Optional[str] = None, name: Optional[str] = None, filename: Optional[str] = None, force_download: bool = False, kwargs) -> DRef
+def fetchurl2(url: str, sha256: Optional[str] = None, sha1: Optional[str] = None, name: Optional[str] = None, filename: Optional[str] = None, force_download: bool = False, r: Optional[Registry] = None, kwargs) -> DRef
 ```
 
 Download file given it's URL addess.
 
-Downloading is done by calling `wget` application. Optional unpacking is
-performed with the `aunpack` script from `atool` package. `sha256` defines the
-expected SHA-256 hashsum of the stored data. `mode` allows to tweak the
-stage's behavior: adding word 'unpack' instructs fetchurl to unpack the
-package, adding 'remove' instructs it to remove the archive after unpacking.
-
-If 'unpack' is not expected, then the promise named 'out_path' is created.
+Downloading is done by calling `curl` application. The path to the executable
+may be altered by setting the `PYLIGHTNIX_CURL` environment variable.
 
 Agruments:
-- `m:Manager` the dependency resolution [Manager](#pylightnix.types.Manager).
+- `r:Registry` the dependency resolution [Registry](#pylightnix.types.Registry).
 - `url:str` URL to download from. Should point to a single file.
 - `sha256:str` SHA-256 hash sum of the file.
-- `model:str='unpack,remove'` Additional options. Format: `[unpack[,remove]]`.
 - `name:Optional[str]`: Name of the Derivation. The stage will attempt to
   deduce the name if not specified.
 - `filename:Optional[str]=None` Name of the filename on disk after downloading.
@@ -2325,17 +2313,25 @@ Agruments:
 
 Example:
 ```python
-def hello_src(m:Manager)->DRef:
+def hello_src(r:Registry)->DRef:
   hello_version = '2.10'
   return fetchurl2(
-    m,
+    r,
     name='hello-src',
     url=f'http://ftp.gnu.org/gnu/hello/hello-{hello_version}.tar.gz',
     sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b')
 
-rref:RRef=realize(instantiate(hello_src))
+rref:RRef=realize1(instantiate(hello_src))
 print(rref2path(rref))
 ```
+
+<a name="pylightnix.stages.fetch2.unpack"></a>
+## `unpack()`
+
+```python
+def unpack(path: Optional[str] = None, refpath: Optional[RefPath] = None, name: Optional[str] = None, sha256: Optional[str] = None, sha1: Optional[str] = None, aunpack_args: List[str] = [], r: Optional[Registry] = None, kwargs) -> DRef
+```
+
 
 <a name="pylightnix.stages.fetch"></a>
 # `pylightnix.stages.fetch`
@@ -2398,7 +2394,7 @@ def _unpack_inplace(o: str, fullpath: str, remove_file: bool)
 ## `fetchurl()`
 
 ```python
-def fetchurl(m: Manager, url: str, sha256: Optional[str] = None, sha1: Optional[str] = None, mode: str = 'unpack,remove', name: Optional[str] = None, filename: Optional[str] = None, force_download: bool = False, check_promises: bool = True, kwargs) -> DRef
+def fetchurl(url: str, sha256: Optional[str] = None, sha1: Optional[str] = None, mode: str = 'unpack,remove', name: Optional[str] = None, filename: Optional[str] = None, force_download: bool = False, check_promises: bool = True, r: Optional[Registry] = None, kwargs) -> DRef
 ```
 
 Download and unpack an URL addess.
@@ -2412,7 +2408,7 @@ package, adding 'remove' instructs it to remove the archive after unpacking.
 If 'unpack' is not expected, then the promise named 'out_path' is created.
 
 Agruments:
-- `m:Manager` the dependency resolution [Manager](#pylightnix.types.Manager).
+- `r:Registry` the dependency resolution [Registry](#pylightnix.types.Registry).
 - `url:str` URL to download from. Should point to a single file.
 - `sha256:str` SHA-256 hash sum of the file.
 - `model:str='unpack,remove'` Additional options. Format: `[unpack[,remove]]`.
@@ -2426,15 +2422,15 @@ Agruments:
 
 Example:
 ```python
-def hello_src(m:Manager)->DRef:
+def hello_src(r:Registry)->DRef:
   hello_version = '2.10'
   return fetchurl(
-    m,
+    r,
     name='hello-src',
     url=f'http://ftp.gnu.org/gnu/hello/hello-{hello_version}.tar.gz',
     sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b')
 
-rref:RRef=realize(instantiate(hello_src))
+rref:RRef=realize1(instantiate(hello_src))
 print(rref2path(rref))
 ```
 
@@ -2442,7 +2438,7 @@ print(rref2path(rref))
 ## `fetchlocal()`
 
 ```python
-def fetchlocal(m: Manager, sha256: str, path: Optional[str] = None, envname: Optional[str] = None, mode: str = 'unpack,remove', name: Optional[str] = None, filename: Optional[str] = None, check_promises: bool = True, kwargs) -> DRef
+def fetchlocal(sha256: str, path: Optional[str] = None, envname: Optional[str] = None, mode: str = 'unpack,remove', name: Optional[str] = None, filename: Optional[str] = None, check_promises: bool = True, r: Optional[Registry] = None, kwargs) -> DRef
 ```
 
 Copy local file into Pylightnix storage. This function is typically
@@ -2454,6 +2450,69 @@ See `fetchurl` for arguments description.
 If 'unpack' is not expected, then the promise named 'out_path' is created.
 
 FIXME: Switch regular `fetchurl` to `curl` and call it with `file://` URLs.
+
+<a name="pylightnix.stages.trivial"></a>
+# `pylightnix.stages.trivial`
+
+Trivial builtin stages
+
+<a name="pylightnix.stages.trivial.mknode"></a>
+## `mknode()`
+
+```python
+def mknode(r: Registry, cfgdict: dict, artifacts: Dict[Name,bytes] = {}, name: str = 'mknode') -> DRef
+```
+
+
+<a name="pylightnix.stages.trivial.redefine"></a>
+## `redefine()`
+
+```python
+def redefine(stage: Any, new_config: Callable[[dict],None] = lambda x:None, new_matcher: Optional[Matcher] = None, new_realizer: Optional[Realizer] = None) -> Any
+```
+
+Define a new Derivation based on the existing one, by updating it's
+config, optionally re-writing it's matcher, or it's realizer.
+
+Arguments:
+- `stage:Any` a `Stage` function, accepting arbitrary keyword arguments
+- `new_config:Callable[[dict],None]` A function to update the `dref`'s config.
+  Default varsion makes no changes.
+- `new_matcher:Optional[Matcher]=None` Optional new matcher (defaults to the
+  existing matcher)
+- `new_realizer:Optional[Realizer]=None` Optional new realizer (defaults to
+  the existing realizer)
+
+Return:
+A callable `Stage`, accepting pass-through arguments
+
+Example:
+```python
+def _new_config(old_config):
+  old_config['learning_rate'] = 1e-5
+  return mkconfig(old_config)
+realize1(instantiate(redefine(myMLmodel, _new_config)))
+```
+
+FIXME: Updating configs is dangerous: it changes its dref and thus breaks
+dependencies. Only top-level stages should use `new_confid` currently.
+
+<a name="pylightnix.stages.trivial.realized"></a>
+## `realized()`
+
+```python
+def realized(stage: Any) -> Stage
+```
+
+Asserts that the stage doesn't requre running its realizer.
+[Re-defines](#pylightnix.stages.trivial.redefine) stage realizer with a dummy
+realizer triggering an assertion.
+
+Example:
+```python
+rref:RRef=realize1(instantiate(realized(my_long_running_stage, arg="bla")))
+# ^^^ Fail if `my_long_running_stage` is not yet realized.
+```
 
 <a name="pylightnix.bashlike"></a>
 # `pylightnix.bashlike`
@@ -2506,7 +2565,7 @@ def catrref_(r: RRef, fn: List[str], S=None) -> Iterable[str]
 ## `catref()`
 
 ```python
-def catref(r: RRef, fn: List[str], S=None) -> List[str]
+def catref(r: Union[RRef,RefPath,Path], fn: List[str] = [], S=None) -> List[str]
 ```
 
 Return the contents of r's artifact line by line. `fn` is a list of
@@ -2811,6 +2870,16 @@ def syspath(self) -> Path
 
 Check that the current value of Lens is a `Path` and return it
 
+<a name="pylightnix.lens.Lens.contents"></a>
+### `Lens.contents()`
+
+```python
+@property
+def contents(self) -> str
+```
+
+Check that the current value of Lens is a `Path` and return it
+
 <a name="pylightnix.lens.Lens.rref"></a>
 ### `Lens.rref()`
 
@@ -2829,13 +2898,14 @@ Check that the current value of Lens is an `RRef` and return it
 def closure(self) -> Closure
 ```
 
-Check that the current value of Lens is an `RRef` and return it
+Constructs a closure of the DRef which this lens points to.
+FIXME: Filter the closure derivations from unrelated entries.
 
 <a name="pylightnix.lens.mklens"></a>
 ## `mklens()`
 
 ```python
-def mklens(x: Any, o: Optional[Path] = None, b: Optional[Build] = None, rref: Optional[RRef] = None, ctx: Optional[Context] = None, closure: Optional[Closure] = None, build_output_idx: int = 0, S: Optional[StorageSettings] = None) -> Lens
+def mklens(x: Any, o: Optional[Path] = None, b: Optional[Build] = None, rref: Optional[RRef] = None, ctx: Optional[Context] = None, closure: Optional[Closure] = None, build_output_idx: int = 0, S: Optional[StorageSettings] = None, r: Optional[Registry] = None) -> Lens
 ```
 
 mklens creates [Lens](#pylightnix.lens.Lens) objects from various
@@ -2881,7 +2951,7 @@ mklens(dref).output.val      # Return raw output value
 mklens(dref).output.refpath  # Return output as a RefPath (a list)
 mklens(dref).output.syspath  # Error! not a realization
 
-rref:RRef=realize(instantiate(stage))
+rref:RRef=realize1(instantiate(stage))
 
 mklens(rref).output.syspath  # Return output as a system path
 ```
@@ -3038,7 +3108,7 @@ Convert an Either-matcher into the regular Matcher
 ## `mkdrvE()`
 
 ```python
-def mkdrvE(m: Manager, config: Config, matcher: MatcherO, realizer: RealizerO) -> DRef
+def mkdrvE(config: Config, matcher: MatcherO, realizer: RealizerO, m: Optional[Registry] = None) -> DRef
 ```
 
 
@@ -3047,6 +3117,14 @@ def mkdrvE(m: Manager, config: Config, matcher: MatcherO, realizer: RealizerO) -
 
 ```python
 def realizeE(closure: Closure, force_rebuild: Union[List[DRef],bool] = [], assert_realized: List[DRef] = [], realize_args: Dict[DRef,RealizeArg] = {}) -> Either[RRef]
+```
+
+
+<a name="pylightnix.either.realizeManyE"></a>
+## `realizeManyE()`
+
+```python
+def realizeManyE(closure: Union[Closure,Tuple[Any,Closure]], force_rebuild: Union[List[DRef],bool] = [], assert_realized: List[DRef] = [], realize_args: Dict[DRef,RealizeArg] = {}) -> Either[RRef]
 ```
 
 
@@ -3075,19 +3153,19 @@ AUNPACK = try_executable('aunpack',
 ```
 
 
-<a name="pylightnix.arch.pack"></a>
-## `pack()`
+<a name="pylightnix.arch.spack"></a>
+## `spack()`
 
 ```python
-def pack(roots: List[RRef], out: Path, S: Optional[StorageSettings] = None) -> None
+def spack(roots: List[RRef], out: Path, S: Optional[StorageSettings] = None) -> None
 ```
 
 
-<a name="pylightnix.arch.unpack"></a>
-## `unpack()`
+<a name="pylightnix.arch.sunpack"></a>
+## `sunpack()`
 
 ```python
-def unpack(archive: Path, S=None) -> None
+def sunpack(archive: Path, S=None) -> None
 ```
 
 

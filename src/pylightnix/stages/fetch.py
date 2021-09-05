@@ -16,10 +16,10 @@
 
 from pylightnix.imports import (sha256 as sha256sum, sha1 as sha1sum, urlparse,
     Popen, remove, basename, join, rename, isfile, copyfile, environ, getLogger )
-from pylightnix.types import ( DRef, Manager, Build, Context, Name,
+from pylightnix.types import ( DRef, Registry, Build, Context, Name,
     Path, Optional, List, Config )
 from pylightnix.core import ( mkconfig, mkdrv, match_only, cfgcattrs,
-                             selfref, fstmpdir )
+                             selfref, fstmpdir, tlregistry )
 from pylightnix.build import ( build_outpath, build_paths, build_deref_,
                               build_wrapper, build_wrapper,
                               build_config )
@@ -52,8 +52,7 @@ def _unpack_inplace(o:str, fullpath:str, remove_file:bool):
     remove(fullpath)
 
 
-def fetchurl(m:Manager,
-             url:str,
+def fetchurl(url:str,
              sha256:Optional[str]=None,
              sha1:Optional[str]=None,
              mode:str='unpack,remove',
@@ -61,6 +60,7 @@ def fetchurl(m:Manager,
              filename:Optional[str]=None,
              force_download:bool=False,
              check_promises:bool=True,
+             r:Optional[Registry]=None,
              **kwargs)->DRef:
   """ Download and unpack an URL addess.
 
@@ -73,7 +73,7 @@ def fetchurl(m:Manager,
   If 'unpack' is not expected, then the promise named 'out_path' is created.
 
   Agruments:
-  - `m:Manager` the dependency resolution [Manager](#pylightnix.types.Manager).
+  - `r:Registry` the dependency resolution [Registry](#pylightnix.types.Registry).
   - `url:str` URL to download from. Should point to a single file.
   - `sha256:str` SHA-256 hash sum of the file.
   - `model:str='unpack,remove'` Additional options. Format: `[unpack[,remove]]`.
@@ -87,20 +87,22 @@ def fetchurl(m:Manager,
 
   Example:
   ```python
-  def hello_src(m:Manager)->DRef:
+  def hello_src(r:Registry)->DRef:
     hello_version = '2.10'
     return fetchurl(
-      m,
+      r,
       name='hello-src',
       url=f'http://ftp.gnu.org/gnu/hello/hello-{hello_version}.tar.gz',
       sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b')
 
-  rref:RRef=realize(instantiate(hello_src))
+  rref:RRef=realize1(instantiate(hello_src))
   print(rref2path(rref))
   ```
   """
 
-  tmpfetchdir=join(fstmpdir(m.S),'fetchurl')
+  r=tlregistry(r)
+  assert r is not None, f"The registry is required"
+  tmpfetchdir=join(fstmpdir(r.S),'fetchurl')
 
   fname=filename or basename(urlparse(url).path)
   assert len(fname)>0, ("Downloadable filename shouldn't be empty. "
@@ -166,17 +168,18 @@ def fetchurl(m:Manager,
       error(f"Keeping temporary directory {o}")
       raise
 
-  return mkdrv(m, _instantiate(), match_only(), build_wrapper(_realize))
+  return mkdrv(_instantiate(), match_only(), build_wrapper(_realize), r)
 
 
 
-def fetchlocal(m:Manager, sha256:str,
+def fetchlocal(sha256:str,
                path:Optional[str]=None,
                envname:Optional[str]=None,
                mode:str='unpack,remove',
                name:Optional[str]=None,
                filename:Optional[str]=None,
                check_promises:bool=True,
+               r:Optional[Registry]=None,
                **kwargs)->DRef:
   """ Copy local file into Pylightnix storage. This function is typically
   intended to register application-specific files which are distributed with a
@@ -245,5 +248,5 @@ def fetchlocal(m:Manager, sha256:str,
       error(f"Keeping temporary directory {o}")
       raise
 
-  return mkdrv(m, _instantiate(), match_only(), build_wrapper(_realize))
+  return mkdrv(_instantiate(), match_only(), build_wrapper(_realize), r)
 

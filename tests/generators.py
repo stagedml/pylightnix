@@ -1,5 +1,5 @@
-from pylightnix import (Manager, RConfig, datahash, PYLIGHTNIX_NAMEPAT, mkdref,
-                        mkrref, trimhash, encode, instantiate_, dagroots, List,
+from pylightnix import (Registry, RConfig, datahash, PYLIGHTNIX_NAMEPAT, mkdref,
+                        mkrref, trimhash, encode, dagroots, List,
                         DRef, Callable)
 
 from tests.imports import (given, assume, example, note, settings, text,
@@ -128,12 +128,12 @@ def rootstages(draw,
   def _nondet(ngroup,nn):
     return nondets[nn][ngroup]
 
-  def _stage(m, root):
+  def _stage(r, root):
     drefs:dict={}
     for n,deps in list(dag):
-      drefs[n]=stagefn(m,
-                       config={'name':f'node_{n}',
+      drefs[n]=stagefn(config={'name':f'node_{n}',
                                'parents':[drefs[d] for d in deps]},
+                       r=r,
                        nondet=partial(_nondet,nn=n),
                        nrrefs=nrrefs[n],
                        nmatch=nmatches[n],
@@ -151,8 +151,9 @@ def stages(draw,
   nrrefs=draw(integers(min_value=min_nrrefs,max_value=max_nrrefs))
   nmatch=draw(integers(min_value=min_nmatch,max_value=max_nmatch))
   mustfail=draw(sampled_from(([True]*pfail)+([False]*(100-pfail))))
-  return (lambda m,config:mkstage(m,
+  return (lambda r,config:mkstage(
                  config=config,
+                 r=r,
                  nondet=lambda n:0,
                  starttime='AUTO',
                  nrrefs=nrrefs,
@@ -170,10 +171,10 @@ def hierarchies(draw, min_size=1, max_size=10, stages=stages):
   ss=[]
   for n,_ in list(dag):
     ss.append(draw(stages()))
-  def _hierarchy(m, **kwargs):
+  def _hierarchy(r, **kwargs):
     drefs:dict={}
     for s,(n,ps) in zip(ss,dag):
-      drefs[n]=s(m,{"name":f"teststage_{n}",
+      drefs[n]=s(r,{"name":f"teststage_{n}",
                     "parents":[drefs[p] for p in ps]}, **kwargs)
     return drefs[nroot]
   return _hierarchy

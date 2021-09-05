@@ -1,4 +1,4 @@
-from pylightnix import ( DRef, RRef, lsref, catref, instantiate, realize,
+from pylightnix import ( DRef, RRef, lsref, catref, instantiate, realize1,
                         unrref, fetchurl, fetchurl2, isrref, rref2path, isfile,
                         mklens, selfref, basename, fstmpdir )
 
@@ -31,7 +31,7 @@ def test_fetchurl2():
       try:
         pylightnix.stages.fetch2.CURL=lambda: mockcurl
 
-        rref=realize(instantiate(fetchurl2,
+        rref=realize1(instantiate(fetchurl2,
               url='mockcurl://result.tar.gz',
               filename='validname.tar.gz',
               sha256=wanted_sha256,
@@ -52,7 +52,7 @@ def test_fetchurl2_file():
       f.write('dogfood')
 
     wanted_sha256=pipe_stdout([SHA256SUM, "mockdata.foo"], cwd=tmp).split()[0]
-    rref=realize(instantiate(fetchurl2,
+    rref=realize1(instantiate(fetchurl2,
                              url=f"file://{mockdata}",
                              sha256=wanted_sha256,
                              S=S))

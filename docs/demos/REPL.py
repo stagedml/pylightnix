@@ -10,19 +10,19 @@ from tensorflow.keras.utils import ( to_categorical )
 from tensorflow.keras.backend import image_data_format
 from tensorflow.keras.callbacks import ModelCheckpoint
 
-from pylightnix import ( Matcher, Build, Path, RefPath, Config, Manager, RRef,
+from pylightnix import ( Matcher, Build, Path, RefPath, Config, Registry, RRef,
     DRef, Context, build_path, build_outpath, build_cattrs, mkdrv, rref2path,
     mkconfig, mkbuild, match_best, build_wrapper_, tryread, fetchurl,
-    initialize, realize, instantiate )
+    initialize, realize1, instantiate )
 
 from typing import Any
 
 initialize()
 
 
-def fetchmnist(m:Manager)->DRef:
+def fetchmnist(r:Registry)->DRef:
   return \
-    fetchurl(m, name='mnist',
+    fetchurl(r, name='mnist',
                 mode='as-is',
                 url='https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz',
                 sha256='731c5ac602752760c8e48fbffcf8c3b850d9dc2a2aedcf2cc48468fc17b673d1')
@@ -100,12 +100,12 @@ def mnist_realize(b:Model):
   mnist_train(b)
   mnist_eval(b)
 
-def convnn_mnist(m:Manager)->DRef:
-  mnist = fetchmnist(m)
-  return mkdrv(m, mnist_config(mnist), match_best('accuracy.txt'),
+def convnn_mnist(r:Registry)->DRef:
+  mnist = fetchmnist(r)
+  return mkdrv(r, mnist_config(mnist), match_best('accuracy.txt'),
     build_wrapper_(mnist_realize, Model))
 
-realize(instantiate(convnn_mnist), force_rebuild=True)   # Spoiler: will fail
+realize1(instantiate(convnn_mnist), force_rebuild=True)   # Spoiler: will fail
 
 def mnist_eval_correct(b:Model):
   o = build_outpath(b)

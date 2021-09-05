@@ -3,13 +3,13 @@ from pylightnix.imports import (join, mkdtemp, format_exc, isfile)
 from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional, Config,
                               Realizer, RealizerO, DRef, Context, RealizeArg,
                               RRef, Path, SPath, TypeVar, Generic, Callable,
-                              Matcher, MatcherO, Manager, Output, Closure,
+                              Matcher, MatcherO, Registry, Output, Closure,
                               NamedTuple, StorageSettings)
 
 from pylightnix.core import (assert_valid_config, drefcfg_, cfgcattrs,
                              cfghash, cfgname, context_deref,
                              assert_valid_refpath, rref2path, drefdeps1, mkdrv,
-                             realizeMany, output_validate, fstmpdir)
+                             realize, output_validate, fstmpdir, realize1)
 
 from pylightnix.utils import (readstr, writestr, readstr, tryread)
 
@@ -158,17 +158,26 @@ def either_matcher(m:MatcherO)->Matcher:
     return erefs.left[0]
   return _matcher
 
-def mkdrvE(m:Manager,
-           config:Config,
+def mkdrvE(config:Config,
            matcher:MatcherO,
-           realizer:RealizerO
+           realizer:RealizerO,
+           m:Optional[Registry]=None
            )->DRef:
-  return mkdrv(m, config, either_matcher(matcher), either_realizer(realizer))
+  return mkdrv(config, either_matcher(matcher), either_realizer(realizer), m)
 
 def realizeE(closure:Closure,
              force_rebuild:Union[List[DRef],bool]=[],
              assert_realized:List[DRef]=[],
              realize_args:Dict[DRef,RealizeArg]={})->Either[RRef]:
-  rrefs=realizeMany(closure,force_rebuild,assert_realized,realize_args)
-  return either_loadR(rrefs,closure.S)
+  rref=realize1(closure,force_rebuild,assert_realized,realize_args)
+  return either_loadR([rref],closure.S)
+
+def realizeManyE(closure:Union[Closure,Tuple[Any,Closure]],
+             force_rebuild:Union[List[DRef],bool]=[],
+             assert_realized:List[DRef]=[],
+             realize_args:Dict[DRef,RealizeArg]={})->Either[RRef]:
+  _,clo,ctx=realize(closure,force_rebuild,assert_realized,realize_args)
+  assert len(ctx.keys())==1
+  return either_loadR(list(ctx.values())[0],clo.S)
+
 

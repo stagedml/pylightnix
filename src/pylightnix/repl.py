@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-""" Repl module defines variants of `instantiate` and `realize` functions, which
+""" Repl module defines variants of `instantiate` and `realize1` functions, which
 are suitable for REPL shells. Repl-friendly wrappers (see `repl_realize`) could
 pause the computation, save the Pylightnix state into a variable and return to
 the REPL's main loop. At this point user could alter the state of the whole
@@ -36,7 +36,7 @@ class ReplHelper:
     self.dref:Optional[DRef]=None
     self.context:Optional[Context]=None
     self.drv:Optional[Derivation]=None
-    self.rrefs:Optional[List[RRef]]=None
+    self.result:Optional[Context]=None
     self.rarg:Optional[RealizeArg]=None
 
 ERR_INVALID_RH="Neither global, nor user-defined ReplHelper is valid"
@@ -44,9 +44,9 @@ ERR_INACTIVE_RH="REPL session is not paused or was already unpaused"
 
 PYLIGHTNIX_REPL_HELPER:Optional[ReplHelper]=None
 
-def repl_continueMany(out_paths:Optional[List[Path]]=None,
+def repl_continueAll(out_paths:Optional[List[Path]]=None,
                       out_rrefs:Optional[List[RRef]]=None,
-                      rh:Optional[ReplHelper]=None)->Optional[List[RRef]]:
+                      rh:Optional[ReplHelper]=None)->Optional[Context]:
   global PYLIGHTNIX_REPL_HELPER
   if rh is None:
     rh=PYLIGHTNIX_REPL_HELPER
@@ -70,8 +70,17 @@ def repl_continueMany(out_paths:Optional[List[Path]]=None,
     rh.S,rh.dref,rh.context,rh.drv,rh.rarg=rh.gen.send((rrefs,False))
   except StopIteration as e:
     rh.gen=None
-    rh.rrefs=e.value
-  return repl_rrefs(rh)
+    rh.result=e.value
+  return repl_result(rh)
+
+def repl_continueMany(out_paths:Optional[List[Path]]=None,
+                  out_rrefs:Optional[List[RRef]]=None,
+                  rh:Optional[ReplHelper]=None)->Optional[List[RRef]]:
+  ctx=repl_continueAll(out_paths,out_rrefs,rh)
+  if ctx is None:
+    return None
+  assert len(ctx)==1, f"Expected a single-targeted closure"
+  return ctx[list(ctx.keys())[0]]
 
 def repl_continue(out_paths:Optional[List[Path]]=None,
                   out_rrefs:Optional[List[RRef]]=None,
@@ -79,11 +88,11 @@ def repl_continue(out_paths:Optional[List[Path]]=None,
   rrefs=repl_continueMany(out_paths,out_rrefs,rh)
   if rrefs is None:
     return None
-  assert len(rrefs)==1, f"Expects exactly 1 output, not {len(rrefs)}"
+  assert len(rrefs)==1, f"Expected a single-result derivation"
   return rrefs[0]
 
 
-def repl_realize(closure:Closure,
+def repl_realize(closure:Union[Closure,Tuple[Any,Closure]],
                  force_interrupt:Union[List[DRef],bool]=True,
                  realize_args:Dict[DRef,RealizeArg]={})->ReplHelper:
   """
@@ -105,29 +114,40 @@ def repl_realize(closure:Closure,
   # holding the result of our hacks.
   ```
   """
+  # FIXME: define a Closure as a datatype and simplify the below check
+  closure_:Closure
+  if isinstance(closure,tuple) and len(closure)==2:
+    closure_=closure[1] # type:ignore
+  else:
+    closure_=closure # type:ignore
   global PYLIGHTNIX_REPL_HELPER
   force_interrupt_:List[DRef]=[]
   if isinstance(force_interrupt,bool):
     if force_interrupt:
-      force_interrupt_=[closure.dref]
+      force_interrupt_=closure_.targets
   elif isinstance(force_interrupt,list):
-    force_interrupt_=list(force_interrupt)
+    force_interrupt_=force_interrupt
   else:
     assert False, "Invalid argument"
-  rh=ReplHelper(realizeSeq(closure,force_interrupt_,realize_args=realize_args))
+  rh=ReplHelper(realizeSeq(closure_,force_interrupt_,realize_args=realize_args))
   PYLIGHTNIX_REPL_HELPER=rh
   assert rh.gen is not None, ERR_INACTIVE_RH
   try:
     rh.S,rh.dref,rh.context,rh.drv,rh.rarg=next(rh.gen)
   except StopIteration as e:
     rh.gen=None
-    rh.rrefs=e.value
+    rh.result=e.value
   return rh
 
+def repl_result(rh:ReplHelper)->Optional[Context]:
+  return rh.result
 
 def repl_rrefs(rh:ReplHelper)->Optional[List[RRef]]:
-  return rh.rrefs
-
+  ctx=repl_result(rh)
+  if ctx is None:
+    return None
+  assert len(ctx)==1
+  return ctx[list(ctx.keys())[0]]
 
 def repl_rref(rh:ReplHelper)->Optional[RRef]:
   rrefs=repl_rrefs(rh)
