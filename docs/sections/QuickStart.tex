@@ -212,8 +212,7 @@ for rref in allrrefs(S=Sb):
   print(rref)
 arch=Path('archive.zip')
 spack([rrefA], arch, S=Sa)
-
-# Alice transfers archive to Bob using her favorite pigeon post service.
+# .. Alice transfers the archive to Bob using her favorite pigeon post service.
 sunpack(arch, S=Sb)
 print("Bob's storage after the sync:")
 for rref in allrrefs(S=Sb):
