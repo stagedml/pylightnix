@@ -117,7 +117,7 @@ if __name__=='__main__':
            'storage folder "_pylightnix".'))
     sys.exit(1)
   if any([a in ['--restart','-r'] for a in argv]):
-    start_session(); argv=argv[1:]
+    start_session()
   if not os.path.isfile('_pid.txt'):
     start_session()
-  use_session(argv[0],argv[1])
+  use_session(*[a for a in argv if a=='-' or a[0]!='-'])
