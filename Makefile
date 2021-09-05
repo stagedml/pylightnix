@@ -29,9 +29,8 @@ TESTS = $(shell find tests -name '*\.py')
 	pydoc-markdown \
 		--modules \
 			pylightnix.types pylightnix.core pylightnix.build \
-			pylightnix.inplace pylightnix.repl pylightnix.stages \
-			pylightnix.bashlike pylightnix.lens pylightnix.either \
-			pylightnix.arch \
+			pylightnix.repl pylightnix.stages pylightnix.bashlike pylightnix.lens \
+			pylightnix.either pylightnix.arch \
 		--search-path \
 			$(shell python3 -c "import sys; print(' '.join(sys.path))") >$@  # "
 
