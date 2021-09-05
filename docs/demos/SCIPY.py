@@ -22,7 +22,7 @@ from contextlib import contextmanager
 
 # 1.
 
-def stage_dataset(m:Registry)->DRef:
+def stage_dataset(r:Registry)->DRef:
   def _config():
     name = 'dataset'
     centers = [1,3,4.5]
@@ -33,10 +33,10 @@ def stage_dataset(m:Registry)->DRef:
     data = vstack([rand(*mklens(b).rnd_shape.val)+center
                    for center in mklens(b).centers.val])
     save(mklens(b).out.syspath, data)
-  return mkdrv(m, mkconfig(_config()), match_only(), build_wrapper(_make))
+  return mkdrv(r, mkconfig(_config()), match_only(), build_wrapper(_make))
 
 
-def stage_cluster(m:Registry, ref_dataset:DRef)->DRef:
+def stage_cluster(r:Registry, ref_dataset:DRef)->DRef:
   def _config():
     name = 'cluster'
     nonlocal ref_dataset
@@ -48,10 +48,10 @@ def stage_cluster(m:Registry, ref_dataset:DRef)->DRef:
     clusters,distortion=kmeans(data, len(mklens(b).ref_dataset.centers.val))
     save(mklens(b).out.syspath,clusters)
     writestr(mklens(b).distortion.syspath, str(distortion))
-  return mkdrv(m, mkconfig(_config()), match_only(), build_wrapper(_make))
+  return mkdrv(r, mkconfig(_config()), match_only(), build_wrapper(_make))
 
 
-def stage_plot(m:Registry, ref_cluster:DRef)->DRef:
+def stage_plot(r:Registry, ref_cluster:DRef)->DRef:
   def _config():
     name = 'plot'
     nonlocal ref_cluster
@@ -63,7 +63,7 @@ def stage_plot(m:Registry, ref_cluster:DRef)->DRef:
     plt.plot(data[:,0],data[:,1],'go',
              clusters[:,0],clusters[:,1],'bs')
     plt.savefig(mklens(b).out.syspath)
-  return mkdrv(m, mkconfig(_config()), match_only(), build_wrapper(_make))
+  return mkdrv(r, mkconfig(_config()), match_only(), build_wrapper(_make))
 
 
 def run1():
@@ -74,10 +74,10 @@ def run1():
 
 # 2. Functional API
 
-def stage_all(m:Registry):
-  ds=stage_dataset(m)
-  cl=stage_cluster(m,ds)
-  vis=stage_plot(m,cl)
+def stage_all(r:Registry):
+  ds=stage_dataset(r)
+  cl=stage_cluster(r,ds)
+  vis=stage_plot(r,cl)
   return vis
 
 def run2(S=None):
@@ -111,10 +111,10 @@ def match_min_distortion(S:Optional[StorageSettings],
   return [best]
 
 
-def stage_all2(m:Registry):
-  ds=redefine(stage_dataset, new_matcher=match_latest())(m)
-  cl=redefine(stage_cluster, new_matcher=match_min_distortion)(m,ds)
-  vis=redefine(stage_plot, new_matcher=match_latest())(m,cl)
+def stage_all2(r:Registry):
+  ds=redefine(stage_dataset, new_matcher=match_latest())(r)
+  cl=redefine(stage_cluster, new_matcher=match_min_distortion)(r,ds)
+  vis=redefine(stage_plot, new_matcher=match_latest())(r,cl)
   return vis
 
 def run_matchers():

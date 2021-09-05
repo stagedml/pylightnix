@@ -29,7 +29,7 @@ from pylightnix.types import (RefPath, Registry, Context, Build, Name, DRef,
 from pylightnix.utils import (forcelink, isrefpath, traverse_dict)
 
 
-def mknode(m:Registry,
+def mknode(r:Registry,
            cfgdict:dict,
            artifacts:Dict[Name,bytes]={},
            name:str='mknode')->DRef:
@@ -44,14 +44,14 @@ def mknode(m:Registry,
     for an,av in artifacts.items():
       with open(join(o,an),'wb') as f:
         f.write(av)
-  return mkdrv(mkconfig(config), match_only(), build_wrapper(_realize), m)
+  return mkdrv(mkconfig(config), match_only(), build_wrapper(_realize), r)
 
-# def mkfile(m:Registry,
+# def mkfile(r:Registry,
 #            name:Name,
 #            contents:bytes,
 #            filename:Optional[Name]=None)->DRef:
 #   filename_:Name=filename if filename is not None else name
-#   return mknode(m, config_dict={'output':[promise,filename_]},
+#   return mknode(r, config_dict={'output':[promise,filename_]},
 #                    artifacts={filename_:contents})
 
 def redefine(stage:Any,
@@ -84,16 +84,16 @@ def redefine(stage:Any,
   FIXME: Updating configs is dangerous: it changes its dref and thus breaks
   dependencies. Only top-level stages should use `new_confid` currently.
   """
-  def _new_stage(*args,m=None,**kwargs)->DRef:
-    dref=stage(*args,m=m,**kwargs) # type:ignore
-    d=cfgdict(drefcfg_(dref,S=m.S))
+  def _new_stage(*args,r=None,**kwargs)->DRef:
+    dref=stage(*args,r=r,**kwargs) # type:ignore
+    d=cfgdict(drefcfg_(dref,S=r.S))
     new_config(d)
     new_matcher_=new_matcher if new_matcher is not None\
-                             else m.builders[dref].matcher
+                             else r.builders[dref].matcher
     new_realizer_=new_realizer if new_realizer is not None\
-                               else m.builders[dref].realizer
-    del m.builders[dref] # Pretend that it did not exist
-    return mkdrv(mkconfig(d), new_matcher_, new_realizer_, m)
+                               else r.builders[dref].realizer
+    del r.builders[dref] # Pretend that it did not exist
+    return mkdrv(mkconfig(d), new_matcher_, new_realizer_, r)
   return _new_stage
 
 def realized(stage:Any)->Stage:

@@ -22,7 +22,7 @@ from pylightnix.types import ( DRef, Registry, Build, Context, Name,
     Path, Optional, List, Config, RefPath )
 from pylightnix.core import ( mkconfig, mkdrv, match_only,
                              PYLIGHTNIX_NAMEPAT, cfgcattrs, selfref,
-                             fstmpdir )
+                             fstmpdir, tlregistry )
 from pylightnix.build import ( build_outpath,
     build_paths, build_deref_, build_config, build_wrapper, build_wrapper )
 from pylightnix.utils import ( try_executable, makedirs, filehash )
@@ -50,7 +50,7 @@ def fetchurl2(url:str,
               name:Optional[str]=None,
               filename:Optional[str]=None,
               force_download:bool=False,
-              m:Optional[Registry]=None,
+              r:Optional[Registry]=None,
               **kwargs)->DRef:
   """ Download file given it's URL addess.
 
@@ -58,7 +58,7 @@ def fetchurl2(url:str,
   may be altered by setting the `PYLIGHTNIX_CURL` environment variable.
 
   Agruments:
-  - `m:Registry` the dependency resolution [Registry](#pylightnix.types.Registry).
+  - `r:Registry` the dependency resolution [Registry](#pylightnix.types.Registry).
   - `url:str` URL to download from. Should point to a single file.
   - `sha256:str` SHA-256 hash sum of the file.
   - `name:Optional[str]`: Name of the Derivation. The stage will attempt to
@@ -71,10 +71,10 @@ def fetchurl2(url:str,
 
   Example:
   ```python
-  def hello_src(m:Registry)->DRef:
+  def hello_src(r:Registry)->DRef:
     hello_version = '2.10'
     return fetchurl2(
-      m,
+      r,
       name='hello-src',
       url=f'http://ftp.gnu.org/gnu/hello/hello-{hello_version}.tar.gz',
       sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b')
@@ -83,8 +83,9 @@ def fetchurl2(url:str,
   print(rref2path(rref))
   ```
   """
-
-  tmpfetchdir=join(fstmpdir(m.S),'fetchurl2')
+  r=tlregistry(r)
+  assert r is not None, f"The registry is required"
+  tmpfetchdir=join(fstmpdir(r.S),'fetchurl2')
   assert isabs(tmpfetchdir), (f"Expected an absolute PYLIGHTNIX_TMP path, "
                               f"got {tmpfetchdir}")
 
@@ -149,7 +150,7 @@ def fetchurl2(url:str,
   return mkdrv(mkconfig(_config()),
                match_only(),
                build_wrapper(_make),
-               m)
+               r)
 
 
 def unpack(path:Optional[str]=None,
@@ -158,7 +159,7 @@ def unpack(path:Optional[str]=None,
            sha256:Optional[str]=None,
            sha1:Optional[str]=None,
            aunpack_args:List[str]=[],
-           m:Optional[Registry]=None,
+           r:Optional[Registry]=None,
            **kwargs)->DRef:
 
   if path:
@@ -189,5 +190,5 @@ def unpack(path:Optional[str]=None,
     p=Popen([AUNPACK(), fullpath]+aunpack_args, cwd=mklens(b).syspath)
     p.wait()
     assert p.returncode == 0, f"Unpack failed, errcode '{p.returncode}'"
-  return mkdrv(mkconfig(_config()), match_only(), build_wrapper(_make), m)
+  return mkdrv(mkconfig(_config()), match_only(), build_wrapper(_make), r)
 

@@ -19,7 +19,7 @@ from pylightnix.imports import ( deepcopy, OrderedDict )
 
 from typing import (List, Any, Tuple, Union, Optional, Iterable, IO, Callable,
                     Dict, NamedTuple, Set, Generator, TypeVar, NewType,
-                    SupportsAbs, Generic)
+                    SupportsAbs, Generic, Iterator)
 
 class Path(str):
   """ `Path` is an alias for string. It is used in pylightnix to
@@ -227,14 +227,14 @@ MatcherO = Callable[[Optional[StorageSettings],Output[RRef]],
 #: Example:
 #:
 #: ```python
-#: def mystage(m:Registry)->DRef:
+#: def mystage(r:Registry)->DRef:
 #:   def _realize(dref:DRef, context:Context)->List[Path]:
 #:     b=mkbuild(dref, context, buildtime=buildtime)
 #:     with open(join(build_outpath(b),'artifact'),'w') as f:
 #:       f.write('chickenpoop\n')
 #:     return [build_outpath(b)]
 #:   ...
-#:   return mkdrv(m, ...,  _realize)
+#:   return mkdrv(r, ...,  _realize)
 #: ```
 Realizer = Callable[[Optional[StorageSettings],DRef,Context,RealizeArg],List[Path]]
 RealizerO = Callable[[Optional[StorageSettings],DRef,Context,RealizeArg],Output[Path]]
@@ -308,7 +308,7 @@ class Config:
 
   Example:
   ```python
-  def mystage(m:Registry)->Dref:
+  def mystage(r:Registry)->Dref:
     def _config()->dict:
       name = 'mystage'
       nepoches = 4
@@ -388,13 +388,13 @@ class Build:
   class TensorFlowModel(Build):
     model:tf.keras.Model
 
-  def train(m:TensorFlowModel)->None:
-    o = build_outpath(m)
-    m.model = create_model(...)
+  def train(r:TensorFlowModel)->None:
+    o = build_outpath(r)
+    r.model = create_model(...)
     ...
 
-  def mymodel(m:Registry)->DRef:
-    return mkdrv(m, ..., build_wrapper_(TensorFlowModel, train))
+  def mymodel(r:Registry)->DRef:
+    return mkdrv(r, ..., build_wrapper_(TensorFlowModel, train))
   ```
   """
 
@@ -428,6 +428,8 @@ class Registry:
 #: DRefLike is a type variable holding DRefs or any of its derivatives
 DRefLike = TypeVar('DRefLike',bound=DRef)
 
+StageResult=Union[DRef,List[DRef],Dict[Any,DRef],Tuple[DRef,...]]
+
 #: Functions with the `Stage` signature are the top-level building blocks of
 #: Pylightnix. Stage functions call [mkdrv](#pylightnix.core.mkdrv) and each
 #: other to produce linked [Derivations](#pylightnix.types.Derivation) and
@@ -449,6 +451,6 @@ DRefLike = TypeVar('DRefLike',bound=DRef)
 #: Stage's return value is a [derivation reference](#pylightnix.types.DRef)
 #: which could be either used in other stages, or
 #: [instantiated](#pylightnix.core.instantiate) into the stage realization plan.
-Stage=Callable[[Registry],Union[DRefLike,List[DRefLike]]]
+Stage=Callable[...,StageResult]
 
 

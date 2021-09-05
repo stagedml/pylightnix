@@ -32,16 +32,16 @@ def f(z, *params):
 
 # 1.
 
-def stage_params(m:Registry)->DRef:
+def stage_params(r:Registry)->DRef:
   def _config():
     name = 'params'
     out = [selfref, "params.npy"]
     return locals()
   def _make(b:Build):
     save(mklens(b).out.syspath, (2, 3, 7, 8, 9, 10, 44, -1, 2, 26, 1, -2, 0.5))
-  return mkdrv(m, mkconfig(_config()), match_only(), build_wrapper(_make))
+  return mkdrv(r, mkconfig(_config()), match_only(), build_wrapper(_make))
 
-def stage_anneal(m:Registry, ref_params:DRef)->DRef:
+def stage_anneal(r:Registry, ref_params:DRef)->DRef:
   def _config():
     name = 'anneal2'
     nonlocal ref_params
@@ -62,10 +62,10 @@ def stage_anneal(m:Registry, ref_params:DRef)->DRef:
     save(mklens(b).trace_xs.syspath, array(xs))
     save(mklens(b).trace_fs.syspath, array(fs))
     save(mklens(b).out.syspath, res['x'])
-  return mkdrv(m, mkconfig(_config()), match_only(), build_wrapper(_make))
+  return mkdrv(r, mkconfig(_config()), match_only(), build_wrapper(_make))
 
 
-def stage_plot(m:Registry, ref_anneal:DRef)->DRef:
+def stage_plot(r:Registry, ref_anneal:DRef)->DRef:
   def _config():
     name = 'plot'
     nonlocal ref_anneal
@@ -80,7 +80,7 @@ def stage_plot(m:Registry, ref_anneal:DRef)->DRef:
     plt.plot(range(len(fs)),fs)
     plt.grid(True)
     plt.savefig(mklens(b).out.syspath)
-  return mkdrv(m, mkconfig(_config()), match_latest(), build_wrapper(_make))
+  return mkdrv(r, mkconfig(_config()), match_latest(), build_wrapper(_make))
 
 def run1():
   ds=instantiate_inplace(stage_params)
@@ -90,10 +90,10 @@ def run1():
 
 # 2.
 
-def stage_all(m:Registry):
-  ds=stage_params(m)
-  cl=stage_anneal(m,ds)
-  vis=stage_plot(m,cl)
+def stage_all(r:Registry):
+  ds=stage_params(r)
+  cl=stage_anneal(r,ds)
+  vis=stage_plot(r,cl)
   return vis
 
 
@@ -131,10 +131,10 @@ def match_min(S, rrefs:List[RRef])->List[RRef]:
     print(f"Picking Bob ({best[0]}) out of {avail}")
   return [best[1]]
 
-def stage_all2(m:Registry):
-  ds=stage_params(m)
-  cl=redefine(stage_anneal, new_matcher=match_min)(m,ds)
-  vis=stage_plot(m,cl)
+def stage_all2(r:Registry):
+  ds=stage_params(r)
+  cl=redefine(stage_anneal, new_matcher=match_min)(r,ds)
+  vis=stage_plot(r,cl)
   return vis
 
 def run4():

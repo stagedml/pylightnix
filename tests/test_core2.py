@@ -150,20 +150,20 @@ def test_match_exact(stages,subs):
 #         assert len(grs3)==len(grs2)
 
 
-# def mkstageL(draw, m:Registry, name:str, artifact:int, buildstart:str)->DRef:
+# def mkstageL(draw, r:Registry, name:str, artifact:int, buildstart:str)->DRef:
 #   def _r(S, dref:DRef, c:Context, ra:RealizeArg)->Output[Path]:
 #     r=setup_test_realize(1, buildstart, lambda i:artifact, mustfail=False)
 #     return r(S,dref,c,ra)
-#   return mkdrv(m, setup_test_config({'name':name}),
+#   return mkdrv(r, setup_test_config({'name':name}),
 #                   output_matcher(setup_test_match(1)),
 #                   output_realizer(_r))
 
 @composite
 def stagesL(draw):
-  return (lambda m,cfg,t,a:mkdrv(setup_test_config(cfg),
+  return (lambda r,cfg,t,a:mkdrv(setup_test_config(cfg),
                   match_latest(),
                   output_realizer(setup_test_realize(
-                    1, timestring(sec=float(t)), lambda i:a, False)), m))
+                    1, timestring(sec=float(t)), lambda i:a, False)), r))
 
 @given(h=hierarchies(stages=stagesL))
 def test_match_latest(h):
@@ -180,12 +180,12 @@ def test_match_latest(h):
 
 # FIXME: repair this test
 # def test_match_latest()->None:
-#   def _mknode(m, cfg, matcher, nouts:int, data=0, buildtime=True):
+#   def _mknode(r, cfg, matcher, nouts:int, data=0, buildtime=True):
 #     def _realize(b:Build)->None:
 #       build_setoutpaths(b,nouts)
 #       for i,out in enumerate(build_outpaths(b)):
 #         assert trywrite(Path(join(out,'artifact')),str(data)+'_'+str(i))
-#     return mkdrv(m, Config(cfg), matcher,
+#     return mkdrv(r, Config(cfg), matcher,
 #                     build_wrapper(_realize, buildtime=buildtime))
 #
 #   with setup_storage2('test_match_latest') as S:

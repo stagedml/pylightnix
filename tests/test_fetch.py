@@ -1,5 +1,6 @@
-from pylightnix import ( DRef, RRef, lsref, catref, instantiate, realize1,
-    unrref, fetchurl, fetchlocal, isrref, rref2path, isfile, mklens, fstmpdir )
+from pylightnix import (DRef, RRef, lsref, catref, instantiate, realize1,
+                        unrref, fetchurl, fetchlocal, isrref, rref2path, isfile,
+                        mklens, fstmpdir, Tuple, Closure)
 
 from tests.imports import ( TemporaryDirectory, join, stat, chmod, S_IEXEC,
     system, Popen, PIPE, get_executable )
@@ -28,11 +29,11 @@ def test_fetchurl():
       try:
         pylightnix.stages.fetch.WGET=lambda: mockwget
 
-        clo=instantiate(fetchurl,
+        x:Tuple[DRef,Closure]=instantiate(fetchurl,
               url='mockwget://result.tar.gz',
               filename='validname.tar.gz',
               sha256=wanted_sha256, S=S)
-        rref=realize1(clo)
+        rref=realize1(x)
       finally:
         pylightnix.stages.fetch.WGET=oldwget
 

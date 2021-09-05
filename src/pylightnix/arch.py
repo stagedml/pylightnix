@@ -110,14 +110,14 @@ def copyclosure(rrefs_S:Iterable[RRef],
     visited_drefs:Set[DRef]=set()
     dref_S:DRef=rref2dref(rref_S)
 
-    def _stage(dref:DRef,m:Registry)->DRef:
+    def _stage(dref:DRef,r:Registry)->DRef:
       nonlocal visited_drefs
       cfg=drefcfg_(dref,S=S)
       # print(f"Instantiating {cfg}")
       if dref not in visited_drefs:
         for dep_dref in cfgdeps(resolve(cfg,dref)):
           if dep_dref!=dref:
-            _stage(dep_dref, m)
+            _stage(dep_dref, r)
 
       def _make(b:Build)->None:
         """ 'realize1' the derivation in `D` by copying its contents from `S` """
@@ -133,7 +133,7 @@ def copyclosure(rrefs_S:Iterable[RRef],
       # note(f"Expecting for {dref}(ctx {rref_S}): {list(rrefs_S1)}")
       dref2=mkdrv(cfg, match_exact(rrefs_S1),
                   build_wrapper(_make,nouts=None,starttime=None,stoptime=None),
-                  m=m)
+                  r=r)
       visited_drefs.add(dref2)
       assert dref==dref2, f"{dref} != {dref2}"
       return dref2

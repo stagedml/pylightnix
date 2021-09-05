@@ -21,8 +21,8 @@ from tests.setup import ( setup_storage2, ShouldHaveFailed )
 def test_mknode(d)->None:
   with setup_storage2('test_mknode') as S:
 
-    def _setting(m:Registry)->DRef:
-      return mknode(m, d)
+    def _setting(r:Registry)->DRef:
+      return mknode(r, d)
 
     _,cl1=instantiate(_setting,S=S)
     _,cl2=instantiate(_setting,S=S)
@@ -36,8 +36,8 @@ def test_mknode(d)->None:
 def test_mknode_with_artifacts(d,a)->None:
   with setup_storage2('test_mknode_with_artifacts') as S:
 
-    def _setting(m:Registry)->DRef:
-      return mknode(m, cfgdict=d, artifacts=a)
+    def _setting(r:Registry)->DRef:
+      return mknode(r, cfgdict=d, artifacts=a)
 
     _,cl=instantiate(_setting,S=S)
     assert len(cl.derivations)==1
@@ -51,14 +51,15 @@ def test_mknode_with_artifacts(d,a)->None:
 def test_realized()->None:
   with setup_storage2('test_realized') as S:
 
-    def _setting(m:Registry, assume_realized:bool)->DRef:
+    def _setting(r:Registry, assume_realized:bool)->DRef:
       def _realize(b:Build):
         if assume_realized:
           raise ShouldHaveFailed('Should not call the real realizer')
         return build_outpath(b)
       return mkdrv(mkconfig({'name':'1'}), match_only(),
-                   build_wrapper(_realize), m)
+                   build_wrapper(_realize), r)
 
+    dref:DRef
     dref,clo=instantiate(realized(_setting), assume_realized=True, S=S)
     try:
       rref=realize1(clo)
@@ -73,8 +74,8 @@ def test_realized()->None:
 def test_redefine()->None:
   with setup_storage2('test_redefine') as S:
 
-    def _setting(m:Registry)->DRef:
-      return mknode(m, {'name':'foo','bar':'baz','output':[selfref,'f']},
+    def _setting(r:Registry)->DRef:
+      return mknode(r, {'name':'foo','bar':'baz','output':[selfref,'f']},
                        {Name('f'):bytes(('umgh').encode('utf-8'))})
     def _nc(c):
       mklens(c,S=S).bar.val=42

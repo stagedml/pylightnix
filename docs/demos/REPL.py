@@ -20,9 +20,9 @@ from typing import Any
 initialize()
 
 
-def fetchmnist(m:Registry)->DRef:
+def fetchmnist(r:Registry)->DRef:
   return \
-    fetchurl(m, name='mnist',
+    fetchurl(r, name='mnist',
                 mode='as-is',
                 url='https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz',
                 sha256='731c5ac602752760c8e48fbffcf8c3b850d9dc2a2aedcf2cc48468fc17b673d1')
@@ -100,9 +100,9 @@ def mnist_realize(b:Model):
   mnist_train(b)
   mnist_eval(b)
 
-def convnn_mnist(m:Registry)->DRef:
-  mnist = fetchmnist(m)
-  return mkdrv(m, mnist_config(mnist), match_best('accuracy.txt'),
+def convnn_mnist(r:Registry)->DRef:
+  mnist = fetchmnist(r)
+  return mkdrv(r, mnist_config(mnist), match_best('accuracy.txt'),
     build_wrapper_(mnist_realize, Model))
 
 realize1(instantiate(convnn_mnist), force_rebuild=True)   # Spoiler: will fail

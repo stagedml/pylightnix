@@ -87,7 +87,7 @@ def stage_hello(m:Registry)->DRef:
 
   def _config()->Config:
     name:str = 'hello-bin'
-    src:RefPath = fetchurl(m, name='hello-src',
+    src:RefPath = fetchurl(r, name='hello-src',
                               url=url,
                               sha256=sha256)
     out_bin = [selfref, 'usr', 'bin', 'hello']
@@ -107,7 +107,7 @@ def stage_hello(m:Registry)->DRef:
       finally:
         chdir(cwd)
 
-  return mkdrv(m, mkconfig(_config()),
+  return mkdrv(r, mkconfig(_config()),
                   match_latest(),
                   build_wrapper(_make))
 \end{pyblock}

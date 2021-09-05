@@ -70,7 +70,7 @@ from pylightnix import Registry, StorageSettings, mkSS, fsinit
 
 S:StorageSettings=mkSS('/tmp/pylightnix_hello_demo')
 fsinit(S,remove_existing=True)
-M=Registry(S)
+R=Registry(S)
 
 hello_version = '2.10'
 ```
@@ -94,7 +94,7 @@ from pylightnix import (Registry, DRef, RRef, fetchurl2, unpack, mklens, selfref
 ```
 
 Our first goal is to make derivations ready for realization by
-registering them in the Registry `M`. We call `fetchurl2` with the
+registering them in the Registry `R`. We call `fetchurl2` with the
 appropriate parameters and get an unique
 [DRef](../Reference.md#pylightnix.types.DRef) reference back. Every
 `DRef` value proofs to us that the Registry is aware of our new
@@ -105,7 +105,7 @@ tarball:DRef = fetchurl2(
     name='hello-src',
     url=f'http://ftp.gnu.org/gnu/hello/hello-{hello_version}.tar.gz',
     sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b',
-    out=[selfref, f'hello-{hello_version}.tar.gz'], m=M)
+    out=[selfref, f'hello-{hello_version}.tar.gz'], r=R)
 ```
 
 In order to link derivations into a chain we should put the derivation
@@ -115,9 +115,9 @@ child derivaiton.
 ``` python
 hello_src:DRef = unpack(
     name='unpack-hello',
-    refpath=mklens(tarball,m=M).out.refpath,
+    refpath=mklens(tarball,r=R).out.refpath,
     aunpack_args=['-q'],
-    src=[selfref, f'hello-{hello_version}'],m=M)
+    src=[selfref, f'hello-{hello_version}'],r=R)
 ```
 
 The `selfref` path is our promise to Pylightnix that the said path would
@@ -133,7 +133,7 @@ show. As a result, we obtain a reference of another kind
 
 ``` python
 from pylightnix import instantiate, realize1
-hello_rref:RRef = realize1(instantiate(hello_src, m=M))
+hello_rref:RRef = realize1(instantiate(hello_src, r=R))
 print(hello_rref)
 ```
 
@@ -146,9 +146,8 @@ rref:29eaa2c8e74cbc939dfdd8e43f3987eb-43323fae07b9e30f65ed0a1b6213b6f0-unpack-he
                                  Dload  Upload   Total   Spent    Left  Speed
 
   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
-  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
- 80  708k   80  572k    0     0   546k      0  0:00:01  0:00:01 --:--:--  545k
-100  708k  100  708k    0     0   631k      0  0:00:01  0:00:01 --:--:--  631k
+ 36  708k   36  256k    0     0   345k      0  0:00:02 --:--:--  0:00:02  344k
+100  708k  100  708k    0     0   713k      0 --:--:-- --:--:-- --:--:--  713k
 hello-2.10.tar.gz: extracted to `hello-2.10'
 ```
 
@@ -209,7 +208,7 @@ from pylightnix import Config, mkconfig, mklens, selfref
 
 def hello_config()->Config:
   name = 'hello-bin'
-  src = mklens(hello_src,m=M).src.refpath
+  src = mklens(hello_src,r=R).src.refpath
   out_hello = [selfref, 'usr', 'bin', 'hello']
   out_log = [selfref, 'build.log']
   return mkconfig(locals())
@@ -247,7 +246,7 @@ generic [mkdrv](../Reference.md#pylightnix.core.mkdrv) stage:
 ``` python
 from pylightnix import mkdrv, build_wrapper, match_only
 
-hello:DRef = mkdrv(hello_config(),match_only(),build_wrapper(hello_realize),M)
+hello:DRef = mkdrv(hello_config(),match_only(),build_wrapper(hello_realize),R)
 
 print(hello)
 ```
@@ -260,12 +259,12 @@ As before, we get a `DRef` promise pass it through `instantiate` and
 `realize1` pipeline:
 
 ``` python
-rref:RRef=realize1(instantiate(hello,m=M))
+rref:RRef=realize1(instantiate(hello,r=R))
 print(rref)
 ```
 
 ``` stdout
-rref:136a30c899f36f832f45f6ed352d9ba9-e48878b9f7760fe0972eb6863775045f-hello-bin
+rref:cf8f06350751845e96084481fda799f9-e48878b9f7760fe0972eb6863775045f-hello-bin
 ```
 
 ### Accessing the results
@@ -273,28 +272,28 @@ rref:136a30c899f36f832f45f6ed352d9ba9-e48878b9f7760fe0972eb6863775045f-hello-bin
 Lets print the last few lines of the build log:
 
 ``` python
-for line in open(mklens(rref,m=M).out_log.syspath).readlines()[-10:]:
+for line in open(mklens(rref,r=R).out_log.syspath).readlines()[-10:]:
   print(line.strip())
 ```
 
 ``` stdout
 fi
-/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/mkdir -p '/tmp/pylightnix_hello_demo/tmp/210905-21:39:47:054952+0300_2b29fe60_q12v8sva/usr/share/info'
-/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/install -c -m 644 ./doc/hello.info '/tmp/pylightnix_hello_demo/tmp/210905-21:39:47:054952+0300_2b29fe60_q12v8sva/usr/share/info'
-install-info --info-dir='/tmp/pylightnix_hello_demo/tmp/210905-21:39:47:054952+0300_2b29fe60_q12v8sva/usr/share/info' '/tmp/pylightnix_hello_demo/tmp/210905-21:39:47:054952+0300_2b29fe60_q12v8sva/usr/share/info/hello.info'
-/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/mkdir -p '/tmp/pylightnix_hello_demo/tmp/210905-21:39:47:054952+0300_2b29fe60_q12v8sva/usr/share/man/man1'
-/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/install -c -m 644 hello.1 '/tmp/pylightnix_hello_demo/tmp/210905-21:39:47:054952+0300_2b29fe60_q12v8sva/usr/share/man/man1'
-make[4]: Leaving directory '/run/user/1000/tmpfs_1gkev/src'
-make[3]: Leaving directory '/run/user/1000/tmpfs_1gkev/src'
-make[2]: Leaving directory '/run/user/1000/tmpfs_1gkev/src'
-make[1]: выход из каталога «/run/user/1000/tmpfs_1gkev/src»
+/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/mkdir -p '/tmp/pylightnix_hello_demo/tmp/210905-21:52:46:231425+0300_2b29fe60_8d34pvns/usr/share/info'
+/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/install -c -m 644 ./doc/hello.info '/tmp/pylightnix_hello_demo/tmp/210905-21:52:46:231425+0300_2b29fe60_8d34pvns/usr/share/info'
+install-info --info-dir='/tmp/pylightnix_hello_demo/tmp/210905-21:52:46:231425+0300_2b29fe60_8d34pvns/usr/share/info' '/tmp/pylightnix_hello_demo/tmp/210905-21:52:46:231425+0300_2b29fe60_8d34pvns/usr/share/info/hello.info'
+/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/mkdir -p '/tmp/pylightnix_hello_demo/tmp/210905-21:52:46:231425+0300_2b29fe60_8d34pvns/usr/share/man/man1'
+/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/install -c -m 644 hello.1 '/tmp/pylightnix_hello_demo/tmp/210905-21:52:46:231425+0300_2b29fe60_8d34pvns/usr/share/man/man1'
+make[4]: Leaving directory '/run/user/1000/tmpmd7rm_43/src'
+make[3]: Leaving directory '/run/user/1000/tmpmd7rm_43/src'
+make[2]: Leaving directory '/run/user/1000/tmpmd7rm_43/src'
+make[1]: выход из каталога «/run/user/1000/tmpmd7rm_43/src»
 ```
 
 Finally, we convert RRef to the system path and run the GNU Hello
 binary.
 
 ``` python
-print(Popen([mklens(rref,m=M).out_hello.syspath],
+print(Popen([mklens(rref,r=R).out_hello.syspath],
             stdout=PIPE, shell=True).stdout.read()) # type:ignore
 ```
 

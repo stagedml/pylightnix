@@ -68,7 +68,7 @@ def setup_test_realize(nrrefs:int,
   return _realize
 
 def mkstage(config:dict,
-            m:Optional[Registry]=None,
+            r:Optional[Registry]=None,
             nondet:Callable[[int],int]=lambda n:0,
             starttime:Optional[str]='AUTO',
             nrrefs:int=1,
@@ -80,7 +80,7 @@ def mkstage(config:dict,
                output_matcher(setup_test_match(nmatch)),
                output_realizer(setup_test_realize(
                  nrrefs, starttime, nondet, mustfail)),
-               m)
+               r)
 
 def pipe_stdout(args:List[str], **kwargs)->str:
   return Popen(args, stdout=PIPE, **kwargs).stdout.read().decode() # type:ignore
@@ -92,7 +92,7 @@ def rrefdepth(rref:RRef,S=None)->int:
 
 def mkstageP(config:dict,
              nondet:Callable[[int],int]=lambda n:0,
-             m:Optional[Registry]=None,
+             r:Optional[Registry]=None,
              starttime:Optional[str]='AUTO',
              nrrefs:int=1,
              nmatch:int=1,
@@ -108,5 +108,5 @@ def mkstageP(config:dict,
   return mkdrv(setup_test_config(config),
                output_matcher(setup_test_match(nmatch)),
                output_realizer(_r),
-               m)
+               r)
 

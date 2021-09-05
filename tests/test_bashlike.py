@@ -1,9 +1,10 @@
-from pylightnix import (DRef, RRef, lsref, catref, instantiate, realize1, unrref,
-                        rmref, dref2path, rref2path, shellref, shell, rref2dref,
-                        du, repl_realize, repl_cancelBuild, repl_build,
-                        build_outpath, find, partial, diff, timestring,
+from pylightnix import (DRef, RRef, lsref, catref, instantiate, realize1,
+                        unrref, rmref, dref2path, rref2path, shellref, shell,
+                        rref2dref, du, repl_realize, repl_cancelBuild,
+                        repl_build, build_outpath, find, diff, timestring,
                         parsetime, linkdref, linkrref, linkrrefs, readlink,
-                        undref, islink, rrefbstart, fstmpdir)
+                        undref, islink, rrefbstart, fstmpdir, Stage, Optional,
+                        Registry)
 
 from tests.setup import (ShouldHaveFailed, mkstage, mkstage,
                          setup_storage2 )
@@ -12,9 +13,14 @@ from tests.imports import (isdir, environ, chmod, stat, TemporaryDirectory,
                            join, S_IEXEC, sleep)
 
 
+def wrapstage(config,**kwargs):
+  def _stage(r:Optional[Registry])->DRef:
+    return mkstage(config,r=r,**kwargs)
+  return _stage
+
 def test_bashlike():
   with setup_storage2('test_bashlike') as S:
-    _,clo=instantiate(mkstage, {'a':1}, nondet=lambda i:42, S=S)
+    _,clo=instantiate(wrapstage({'a':1},nondet=lambda i:42), S=S)
     rref1=realize1(clo, force_rebuild=clo.targets)
     rref2=realize1(clo, force_rebuild=clo.targets)
     assert 'artifact' in lsref(rref1,S=S)
@@ -40,7 +46,8 @@ def test_bashlike():
 
 def test_rmdref():
   with setup_storage2('test_rmdref') as S:
-    _,clo=instantiate(mkstage, {'a':1}, nondet=lambda i:42, S=S)
+    stage=wrapstage(config={'a':1}, nondet=lambda i:42)
+    _,clo=instantiate(stage, S=S)
     drefpath=dref2path(clo.targets[0],S=S)
     rref1=realize1(clo, force_rebuild=[clo.targets[0]])
     rrefpath=rref2path(rref1, S=S)
@@ -65,12 +72,12 @@ def test_shellref():
         f.write(f"pwd\n")
       chmod(mockshell, stat(mockshell).st_mode | S_IEXEC)
       environ['SHELL']=mockshell
-      rref=realize1(instantiate(mkstage, {'a':1}, S=S))
+      rref=realize1(instantiate(mkstage,{'a':1}, S=S))
       shellref(rref,S=S)
       shellref(rref2dref(rref),S=S)
       shellref(S=S)
       shell(rref2path(rref,S=S),S=S)
-      repl_realize(instantiate(mkstage, {'n':1},S=S), force_interrupt=True)
+      repl_realize(instantiate(mkstage,{'n':1},S=S), force_interrupt=True)
       b=repl_build()
       o=build_outpath(b)
       shell(b)
@@ -86,7 +93,8 @@ def test_du():
   with setup_storage2('test_du') as S:
     usage=du(S=S)
     assert usage=={}
-    _,clo=instantiate(mkstage, {'name':'1'}, nondet=lambda i:42, S=S)
+    s=wrapstage({'name':'1'}, nondet=lambda i:42)
+    _,clo=instantiate(s, S=S)
     usage=du(S=S)
     assert clo.targets[0] in usage
     assert usage[clo.targets[0]][0]>0
@@ -98,8 +106,8 @@ def test_du():
 
 def test_find():
   with setup_storage2('test_find') as S:
-    s1=partial(mkstage, config={'name':'1'}, nondet=lambda i:42)
-    s2=partial(mkstage, config={'name':'2'}, nondet=lambda i:33)
+    s1=wrapstage(config={'name':'1'}, nondet=lambda i:42)
+    s2=wrapstage(config={'name':'2'}, nondet=lambda i:33)
     rref1=realize1(instantiate(s1,S=S))
     sleep(0.1)
     now=parsetime(timestring())
@@ -118,16 +126,16 @@ def test_find():
 
 def test_diff():
   with setup_storage2('test_find') as S:
-    s1=partial(mkstage, config={'name':'1'}, nondet=lambda i:42)
-    s2=partial(mkstage, config={'name':'2'}, nondet=lambda i:33)
-    dref1=instantiate(s1,S=S)[0]
-    rref2=realize1(instantiate(s2,S=S))
+    s1=wrapstage(config={'name':'1'},nondet=lambda i:42)
+    s2=wrapstage(config={'name':'2'},nondet=lambda i:33)
+    dref1:DRef=instantiate(s1,S=S)[0]
+    rref2:RRef=realize1(instantiate(s2,S=S))
     diff(dref1,rref2,S=S)
     diff(dref1,s2,S=S)
 
 def test_linkrrefs()->None:
   with setup_storage2('test_linkrrefs') as S:
-    s1=partial(mkstage, config={'name':'NaMe'})
+    s1=wrapstage(config={'name':'NaMe'})
     rref1=realize1(instantiate(s1,S=S))
     l=linkrrefs([rref1], destdir=fstmpdir(S), format='result-%(N)s', S=S)
     assert len(l)==1

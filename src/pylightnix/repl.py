@@ -115,10 +115,11 @@ def repl_realize(closure:Union[Closure,Tuple[Any,Closure]],
   ```
   """
   # FIXME: define a Closure as a datatype and simplify the below check
+  closure_:Closure
   if isinstance(closure,tuple) and len(closure)==2:
-    closure_=closure[1]
+    closure_=closure[1] # type:ignore
   else:
-    closure_=closure
+    closure_=closure # type:ignore
   global PYLIGHTNIX_REPL_HELPER
   force_interrupt_:List[DRef]=[]
   if isinstance(force_interrupt,bool):

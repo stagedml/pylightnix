@@ -39,7 +39,7 @@
     * [info](#pylightnix.core.info)
     * [warning](#pylightnix.core.warning)
     * [TL](#pylightnix.core.TL)
-    * [tlmanager](#pylightnix.core.tlmanager)
+    * [tlregistry](#pylightnix.core.tlregistry)
     * [tlstorage](#pylightnix.core.tlstorage)
     * [storagename](#pylightnix.core.storagename)
     * [fsroot](#pylightnix.core.fsroot)
@@ -529,14 +529,14 @@ provided by the [Build](#pylightnix.types.Build) helper class.
 Example:
 
 ```python
-def mystage(m:Registry)->DRef:
+def mystage(r:Registry)->DRef:
 def _realize(dref:DRef, context:Context)->List[Path]:
 b=mkbuild(dref, context, buildtime=buildtime)
 with open(join(build_outpath(b),'artifact'),'w') as f:
 f.write('chickenpoop\n')
 return [build_outpath(b)]
 ...
-return mkdrv(m, ...,  _realize)
+return mkdrv(r, ...,  _realize)
 ```
 
 <a name="pylightnix.types.RealizerO"></a>
@@ -630,7 +630,7 @@ Configs are normally created from Python dicts by the
 
 Example:
 ```python
-def mystage(m:Registry)->Dref:
+def mystage(r:Registry)->Dref:
   def _config()->dict:
     name = 'mystage'
     nepoches = 4
@@ -734,13 +734,13 @@ Example:
 class TensorFlowModel(Build):
   model:tf.keras.Model
 
-def train(m:TensorFlowModel)->None:
-  o = build_outpath(m)
-  m.model = create_model(...)
+def train(r:TensorFlowModel)->None:
+  o = build_outpath(r)
+  r.model = create_model(...)
   ...
 
-def mymodel(m:Registry)->DRef:
-  return mkdrv(m, ..., build_wrapper_(TensorFlowModel, train))
+def mymodel(r:Registry)->DRef:
+  return mkdrv(r, ..., build_wrapper_(TensorFlowModel, train))
 ```
 
 <a name="pylightnix.types.Build.__init__"></a>
@@ -758,7 +758,7 @@ def __init__(self, ba: BuildArgs) -> None
 def __init__(self, S: Optional[StorageSettings] = None)
 ```
 
-The derivation manager is a mutable storage object where Pylightnix
+The derivation registry is a mutable storage object where Pylightnix
 stores derivations before combining them into a
 [Closure](#pylightnix.types.Closure).
 
@@ -879,11 +879,11 @@ TL = threading_local()
 Thread-local storage for [current_registry](#pylightnix.core.current_registry)
 to store its state.
 
-<a name="pylightnix.core.tlmanager"></a>
-## `tlmanager()`
+<a name="pylightnix.core.tlregistry"></a>
+## `tlregistry()`
 
 ```python
-def tlmanager(M: Optional[Registry]) -> Optional[Registry]
+def tlregistry(M: Optional[Registry]) -> Optional[Registry]
 ```
 
 
@@ -1065,7 +1065,7 @@ def mkconfig(d: dict) -> Config
 
 Create a [Config](#pylightnix.types.Config) object out of config
 dictionary. Asserts if the dictionary is not JSON-compatible. As a handy hack,
-filter out `m:Registry` variable which likely is an utility
+filter out `r:Registry` variable which likely is an utility
 [Registry](#pylightnix.types.Registry) object.
 
 <a name="pylightnix.core.cfgdict"></a>
@@ -1427,7 +1427,7 @@ def output_realizer(f: RealizerO) -> Realizer
 ## `output_matcher()`
 
 ```python
-def output_matcher(m: MatcherO) -> Matcher
+def output_matcher(r: MatcherO) -> Matcher
 ```
 
 
@@ -1435,7 +1435,7 @@ def output_matcher(m: MatcherO) -> Matcher
 ## `mkdrv()`
 
 ```python
-def mkdrv(config: Config, matcher: Matcher, realizer: Realizer, m: Optional[Registry] = None) -> DRef
+def mkdrv(config: Config, matcher: Matcher, realizer: Realizer, r: Optional[Registry] = None) -> DRef
 ```
 
 Construct a [Derivation](#pylightnix.types.Derivation) object out of
@@ -1445,15 +1445,15 @@ dependency-resolution [Registry](#pylightnix.types.Registry). Return [Derivation
 references](#pylightnix.types.DRef) of the newly-obtained derivation.
 
 Arguments:
-- `m:Registry`: A Registry to update with a new derivation
+- `r:Registry`: A Registry to update with a new derivation
 
 Example:
 ```python
-def somestage(m:Registry)->DRef:
+def somestage(r:Registry)->DRef:
   def _realizer(b:Build):
     with open(join(build_outpath(b),'artifact'),'w') as f:
       f.write(...)
-  return mkdrv(m,mkconfig({'name':'mystage'}), match_only(), build_wrapper(_realizer))
+  return mkdrv(r,mkconfig({'name':'mystage'}), match_only(), build_wrapper(_realizer))
 
 rref:RRef=realize1(instantiate(somestage))
 ```
@@ -1463,9 +1463,11 @@ rref:RRef=realize1(instantiate(somestage))
 
 ```python
 @contextmanager
-def current_registry(M: Registry) -> Iterable[Registry]
+def current_registry(r: Registry) -> Iterable[Registry]
 ```
 
+Sets the implicit global registry for the inner scoped code. Implies
+[current_storage(r.S)](#pylightnix.core.current_storage)
 
 <a name="pylightnix.core.current_storage"></a>
 ## `current_storage()`
@@ -1488,7 +1490,7 @@ StageResult = TypeVar('StageResult')
 ## `mkclosure()`
 
 ```python
-def mkclosure(result: Any, m: Registry, S: Optional[StorageSettings] = None) -> Closure
+def mkclosure(result: Any, r: Registry, S: Optional[StorageSettings] = None) -> Closure
 ```
 
 
@@ -1532,9 +1534,9 @@ procedure](#pylightnix.types.Realizer).
 
 Example:
 ```python
-def mystage(m:Registry)->DRef:
+def mystage(r:Registry)->DRef:
   ...
-  return mkdrv(m, ...)
+  return mkdrv(r, ...)
 
 rrefs=realize1(instantiate(mystage))
 print(mklen(rref).syspath)
@@ -1775,7 +1777,7 @@ def assert_rref_deps(c: Config) -> None
 ## `assert_have_realizers()`
 
 ```python
-def assert_have_realizers(m: Registry, drefs: List[DRef]) -> None
+def assert_have_realizers(r: Registry, drefs: List[DRef]) -> None
 ```
 
 
@@ -2280,7 +2282,7 @@ AUNPACK = try_executable('aunpack',
 ## `fetchurl2()`
 
 ```python
-def fetchurl2(url: str, sha256: Optional[str] = None, sha1: Optional[str] = None, name: Optional[str] = None, filename: Optional[str] = None, force_download: bool = False, m: Optional[Registry] = None, kwargs) -> DRef
+def fetchurl2(url: str, sha256: Optional[str] = None, sha1: Optional[str] = None, name: Optional[str] = None, filename: Optional[str] = None, force_download: bool = False, r: Optional[Registry] = None, kwargs) -> DRef
 ```
 
 Download file given it's URL addess.
@@ -2289,7 +2291,7 @@ Downloading is done by calling `curl` application. The path to the executable
 may be altered by setting the `PYLIGHTNIX_CURL` environment variable.
 
 Agruments:
-- `m:Registry` the dependency resolution [Registry](#pylightnix.types.Registry).
+- `r:Registry` the dependency resolution [Registry](#pylightnix.types.Registry).
 - `url:str` URL to download from. Should point to a single file.
 - `sha256:str` SHA-256 hash sum of the file.
 - `name:Optional[str]`: Name of the Derivation. The stage will attempt to
@@ -2302,10 +2304,10 @@ Agruments:
 
 Example:
 ```python
-def hello_src(m:Registry)->DRef:
+def hello_src(r:Registry)->DRef:
   hello_version = '2.10'
   return fetchurl2(
-    m,
+    r,
     name='hello-src',
     url=f'http://ftp.gnu.org/gnu/hello/hello-{hello_version}.tar.gz',
     sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b')
@@ -2318,7 +2320,7 @@ print(rref2path(rref))
 ## `unpack()`
 
 ```python
-def unpack(path: Optional[str] = None, refpath: Optional[RefPath] = None, name: Optional[str] = None, sha256: Optional[str] = None, sha1: Optional[str] = None, aunpack_args: List[str] = [], m: Optional[Registry] = None, kwargs) -> DRef
+def unpack(path: Optional[str] = None, refpath: Optional[RefPath] = None, name: Optional[str] = None, sha256: Optional[str] = None, sha1: Optional[str] = None, aunpack_args: List[str] = [], r: Optional[Registry] = None, kwargs) -> DRef
 ```
 
 
@@ -2383,7 +2385,7 @@ def _unpack_inplace(o: str, fullpath: str, remove_file: bool)
 ## `fetchurl()`
 
 ```python
-def fetchurl(url: str, sha256: Optional[str] = None, sha1: Optional[str] = None, mode: str = 'unpack,remove', name: Optional[str] = None, filename: Optional[str] = None, force_download: bool = False, check_promises: bool = True, m: Optional[Registry] = None, kwargs) -> DRef
+def fetchurl(url: str, sha256: Optional[str] = None, sha1: Optional[str] = None, mode: str = 'unpack,remove', name: Optional[str] = None, filename: Optional[str] = None, force_download: bool = False, check_promises: bool = True, r: Optional[Registry] = None, kwargs) -> DRef
 ```
 
 Download and unpack an URL addess.
@@ -2397,7 +2399,7 @@ package, adding 'remove' instructs it to remove the archive after unpacking.
 If 'unpack' is not expected, then the promise named 'out_path' is created.
 
 Agruments:
-- `m:Registry` the dependency resolution [Registry](#pylightnix.types.Registry).
+- `r:Registry` the dependency resolution [Registry](#pylightnix.types.Registry).
 - `url:str` URL to download from. Should point to a single file.
 - `sha256:str` SHA-256 hash sum of the file.
 - `model:str='unpack,remove'` Additional options. Format: `[unpack[,remove]]`.
@@ -2411,10 +2413,10 @@ Agruments:
 
 Example:
 ```python
-def hello_src(m:Registry)->DRef:
+def hello_src(r:Registry)->DRef:
   hello_version = '2.10'
   return fetchurl(
-    m,
+    r,
     name='hello-src',
     url=f'http://ftp.gnu.org/gnu/hello/hello-{hello_version}.tar.gz',
     sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b')
@@ -2427,7 +2429,7 @@ print(rref2path(rref))
 ## `fetchlocal()`
 
 ```python
-def fetchlocal(sha256: str, path: Optional[str] = None, envname: Optional[str] = None, mode: str = 'unpack,remove', name: Optional[str] = None, filename: Optional[str] = None, check_promises: bool = True, m: Optional[Registry] = None, kwargs) -> DRef
+def fetchlocal(sha256: str, path: Optional[str] = None, envname: Optional[str] = None, mode: str = 'unpack,remove', name: Optional[str] = None, filename: Optional[str] = None, check_promises: bool = True, r: Optional[Registry] = None, kwargs) -> DRef
 ```
 
 Copy local file into Pylightnix storage. This function is typically
@@ -2449,7 +2451,7 @@ Trivial builtin stages
 ## `mknode()`
 
 ```python
-def mknode(m: Registry, cfgdict: dict, artifacts: Dict[Name,bytes] = {}, name: str = 'mknode') -> DRef
+def mknode(r: Registry, cfgdict: dict, artifacts: Dict[Name,bytes] = {}, name: str = 'mknode') -> DRef
 ```
 
 
@@ -2894,7 +2896,7 @@ FIXME: Filter the closure derivations from unrelated entries.
 ## `mklens()`
 
 ```python
-def mklens(x: Any, o: Optional[Path] = None, b: Optional[Build] = None, rref: Optional[RRef] = None, ctx: Optional[Context] = None, closure: Optional[Closure] = None, build_output_idx: int = 0, S: Optional[StorageSettings] = None, m: Optional[Registry] = None) -> Lens
+def mklens(x: Any, o: Optional[Path] = None, b: Optional[Build] = None, rref: Optional[RRef] = None, ctx: Optional[Context] = None, closure: Optional[Closure] = None, build_output_idx: int = 0, S: Optional[StorageSettings] = None, r: Optional[Registry] = None) -> Lens
 ```
 
 mklens creates [Lens](#pylightnix.lens.Lens) objects from various

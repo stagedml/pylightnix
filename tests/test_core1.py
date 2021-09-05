@@ -12,7 +12,7 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir, dirhash,
                         linkdref, rrefdeps, drefrrefs, allrrefs, match_only,
                         drefrrefs, drefrrefsC, rrefctx, context_deref,
                         rrefattrs, rrefbstart, fsstorage, current_registry,
-                        realize, current_storage)
+                        realize, current_storage, Tuple)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink, isfile,
                            islink, isdir, dirname, List, randint, sleep, rmtree,
@@ -29,18 +29,18 @@ from tests.setup import ( ShouldHaveFailed, setup_storage2,
 # @given(d=dicts())
 # def test_realize_base(d)->None:
 #   with setup_storage2('test_realize_base') as S:
-#     m=Registry(storage(S))
-#     mkstage(m, d)
-#     dref=list(m.builders.values())[-1].targets[0]
+#     r=Registry(storage(S))
+#     mkstage(r, d)
+#     dref=list(r.builders.values())[-1].targets[0]
 #     assert_valid_dref(dref)
 #     assert len(list(drefrrefsC(dref, mkcontext(), S))) == 0
-#     rrefgs=list(m.builders.values())[-1].matcher(S, dref, mkcontext())
+#     rrefgs=list(r.builders.values())[-1].matcher(S, dref, mkcontext())
 #     assert rrefgs is None
 #     rrefg=mkrgroup(dref, mkcontext(),
-#         list(m.builders.values())[-1].realizer(S, dref, mkcontext(),{})[0], S)
+#         list(r.builders.values())[-1].realizer(S, dref, mkcontext(),{})[0], S)
 #     assert len(list(store_rrefs(dref, mkcontext(), S))) == 1
 #     assert_valid_rref(rrefg[Tag('out')])
-#     rrefgs2=list(m.builders.values())[-1].matcher(S, dref, mkcontext())
+#     rrefgs2=list(r.builders.values())[-1].matcher(S, dref, mkcontext())
 #     assert rrefgs2 is not None
 #     rrefg2=rrefgs2[0]
 #     assert rrefg==rrefg2
@@ -50,12 +50,12 @@ from tests.setup import ( ShouldHaveFailed, setup_storage2,
 #   with setup_storage2('test_realize_dependencies') as S:
 #     n1=None; n2=None; n3=None; toplevel=None
 
-#     def _setup(m):
+#     def _setup(r):
 #       nonlocal n1,n2,n3,toplevel
-#       n1=mkstage(m, {'a':1})
-#       n2=mkstage(m, {'parent1':n1})
-#       n3=mkstage(m, {'parent2':n1})
-#       toplevel=mkstage(m, {'n2':n2,'n3':n3})
+#       n1=mkstage(r, {'a':1})
+#       n2=mkstage(r, {'parent1':n1})
+#       n3=mkstage(r, {'parent2':n1})
+#       toplevel=mkstage(r, {'n2':n2,'n3':n3})
 #       return toplevel
 
 #     rref=realize1(mkclosure(_setup,S=S))
@@ -97,8 +97,8 @@ def test_no_dref_deps_without_realizers()->None:
 
 def test_repeated_instantiate()->None:
   with setup_storage2('test_repeated_instantiate') as S:
-    def _setting(m:Registry)->DRef:
-      return mkstage({'a':'1'}, m)
+    def _setting(r:Registry)->DRef:
+      return mkstage({'a':'1'}, r)
     _,cl1=instantiate(_setting,S=S)
     _,cl2=instantiate(_setting,S=S)
     assert len(cl1.derivations)==1
@@ -109,8 +109,8 @@ def test_repeated_instantiate()->None:
 
 def test_repeated_realize()->None:
   with setup_storage2('test_repeated_realize') as S:
-    def _setting(m:Registry)->DRef:
-      return mkstage({'a':'1'},m)
+    def _setting(r:Registry)->DRef:
+      return mkstage({'a':'1'},r)
     _,clo=instantiate(_setting,S=S)
     rref1=realize1(clo)
     rref2=realize1(clo)
@@ -152,13 +152,13 @@ def test_realize_readonly()->None:
 def test_minimal_closure()->None:
   with setup_storage2('test_minimal_closure') as S:
 
-    def _somenode(m):
-      return mkstage({'a':0},m)
+    def _somenode(r):
+      return mkstage({'a':0},r)
 
-    def _anothernode(m):
-      n1=mkstage({'a':1},m)
-      n2=_somenode(m)
-      n3=mkstage({'maman':n1,'papa':n2},m)
+    def _anothernode(r):
+      n1=mkstage({'a':1},r)
+      n2=_somenode(r)
+      n3=mkstage({'maman':n1,'papa':n2},r)
       return n3
 
     rref1=realize1(instantiate(_somenode,S=S))
@@ -178,11 +178,11 @@ def test_minimal_closure()->None:
 #       nonlocal DATA
 #       return DATA
 
-#     def _setup(m):
+#     def _setup(r):
 #       nonlocal n1, n2, n3
-#       n1 = mkstage( {'a':'1'},m)
-#       n2 = mkstage(m,{'maman':n1},_gen)
-#       n3 = mkstage(m,{'papa':n2})
+#       n1 = mkstage( {'a':'1'},r)
+#       n2 = mkstage(r,{'maman':n1},_gen)
+#       n3 = mkstage(r,{'papa':n2})
 #       return n3
 
 #     DATA = 1
@@ -203,11 +203,11 @@ def test_minimal_closure()->None:
 def test_no_foreign_dref_deps()->None:
   with setup_storage2('test_no_foreign_dref_deps') as S:
     with setup_storage2('test_no_foreign_dref_deps_2') as S2:
-      def _setup(m):
+      def _setup(r):
         _,clo=instantiate(mkstage, {'name':'foreign', 'foo':'bar'}, S=S2)
-        return mkstage({'bogus':clo.targets[0]},m)
+        return mkstage({'bogus':clo.targets[0]},r)
       try:
-        xxx=instantiate(_setup,S=S)
+        xxx:tuple=instantiate(_setup,S=S)
         raise ShouldHaveFailed(f"Should fail, but got {xxx}")
       except FileNotFoundError:
         pass
@@ -215,12 +215,12 @@ def test_no_foreign_dref_deps()->None:
 
 def test_no_rref_deps()->None:
   with setup_storage2('test_no_rref_deps') as S:
-    def _setup(m):
+    def _setup(r):
       rref=realize1(instantiate(mkstage, {'foo':'bar'}))
-      n2=mkstage({'bogus':rref},m)
+      n2=mkstage({'bogus':rref},r)
       return n2
     try:
-      xxx=instantiate(_setup,S=S)
+      xxx:tuple=instantiate(_setup,S=S)
       raise ShouldHaveFailed(f"Should fail, but got {xxx}")
     except AssertionError:
       pass
@@ -228,12 +228,12 @@ def test_no_rref_deps()->None:
 
 def test_no_recursive_instantiate_with_same_registry()->None:
   with setup_storage2('test_no_recursive_instantiate_with_same_registry') as S:
-    def _setup(m):
-      derivs = mkclosure(m,_setup)
-      n2 = mkstage({'bogus':derivs.targets[0]},m)
+    def _setup(r):
+      derivs:tuple = instantiate(_setup,r=r)
+      n2 = mkstage({'bogus':derivs[1].targets[0]},r)
       return n2
     try:
-      xxx=instantiate(_setup,S=S)
+      xxx:tuple=instantiate(_setup,S=S)
       raise ShouldHaveFailed(f"Should fail, but got {xxx}")
     except AssertionError:
       pass
@@ -241,12 +241,12 @@ def test_no_recursive_instantiate_with_same_registry()->None:
 
 def test_recursive_realize_with_another_registry()->None:
   with setup_storage2('test_recursive_realize_with_another_registry') as S:
-    def _setup_inner(m):
-      return mkstage({'foo':'bar'},m)
-    def _setup_outer(m):
+    def _setup_inner(r):
+      return mkstage({'foo':'bar'},r)
+    def _setup_outer(r):
       # nonlocal rref_inner
       rref_inner=realize1(instantiate(_setup_inner,S=S))
-      r2=mkstage({'baz':mklens(rref_inner,S=S).foo.val},m)
+      r2=mkstage({'baz':mklens(rref_inner,S=S).foo.val},r)
       return [rref_inner,r2]
     _,clo=instantiate(_setup_outer,S=S)
     rref=realize1(clo)
@@ -268,13 +268,13 @@ def test_config_ro():
 
 def test_ignored_stage()->None:
   with setup_storage2('test_ignored_stage') as S:
-    n2:DRef; n4:DRef
-    def _setting(m:Registry)->DRef:
+    n1:DRef; n2:DRef; n3:DRef; n4:DRef
+    def _setting(r:Registry)->Tuple[DRef,...]:
       nonlocal n2,n4
-      n1 = mkstage({'a':'1'},m)
-      n2 = mkstage({'b':'2'},m) # this one should not be realized
-      n3 = mkstage({'c':'3','maman':n1},m)
-      n4 = mkstage({'c':'4','papa':n3},m) # neither this one
+      n1 = mkstage({'a':'1'},r)
+      n2 = mkstage({'b':'2'},r) # this one should not be realized
+      n3 = mkstage({'c':'3','maman':n1},r)
+      n4 = mkstage({'c':'4','papa':n3},r) # neither this one
       return n1,n3
 
     (n1,n3),clo=instantiate(_setting,S=S)
@@ -290,11 +290,11 @@ def test_ignored_stage()->None:
 def test_overwrite_realizer()->None:
   with setup_storage2('test_overwrite_realizer') as S:
     n1:DRef; n2:DRef; n3:DRef
-    def _setting(m:Registry)->DRef:
+    def _setting(r:Registry)->DRef:
       nonlocal n1, n2, n3
-      n1 = mkstage({'a':'1'},m,lambda i:33)
-      n2 = mkstage({'maman':n1},m)
-      n3 = mkstage({'a':'1'},m,lambda i:42)
+      n1 = mkstage({'a':'1'},r,lambda i:33)
+      n2 = mkstage({'maman':n1},r)
+      n3 = mkstage({'a':'1'},r,lambda i:42)
       return n2
 
     rref_n2=realize1(instantiate(_setting, S=S))
@@ -308,12 +308,12 @@ def test_overwrite_realizer()->None:
 
 def test_gc()->None:
   with setup_storage2('test_gc') as S:
-    def _node1(m:Registry)->DRef:
-      return mkstage({'name':'1'},m)
-    def _node2(m:Registry)->DRef:
-      return mkstage({'name':'2', 'maman':_node1(m)},m)
-    def _node3(m:Registry)->DRef:
-      return mkstage({'name':'3', 'maman':_node1(m)},m)
+    def _node1(r:Registry)->DRef:
+      return mkstage({'name':'1'},r)
+    def _node2(r:Registry)->DRef:
+      return mkstage({'name':'2', 'maman':_node1(r)},r)
+    def _node3(r:Registry)->DRef:
+      return mkstage({'name':'3', 'maman':_node1(r)},r)
 
     r1=realize1(instantiate(_node1,S=S))
     r2=realize1(instantiate(_node2,S=S))
@@ -325,8 +325,8 @@ def test_gc()->None:
 
 # def test_promise()->None:
 #   with setup_storage2('test_promise') as S:
-#     def _setting(m:Registry, fullfill:bool)->DRef:
-#       n1=mkstage(m, {'name':'1', 'promise':[promise,'artifact']})
+#     def _setting(r:Registry, fullfill:bool)->DRef:
+#       n1=mkstage(r, {'name':'1', 'promise':[promise,'artifact']})
 #       def _realize(b:Build):
 #         o=build_outpath(b)
 #         c=build_cattrs(b)
@@ -338,7 +338,7 @@ def test_gc()->None:
 #           with open(build_path(b,c.promise),'w') as f:
 #             f.write('chickenpoop')
 
-#       return mkdrv(m, mkconfig({'name':'2', 'maman':n1,
+#       return mkdrv(r, mkconfig({'name':'2', 'maman':n1,
 #                                 'promise':[promise,'uber-artifact'],
 #                                 'maman_promise':[n1,'artifact']}),
 #                       matcher=match_only(),
@@ -374,7 +374,7 @@ def test_path2rref(rref):
 def test_linkdref()->None:
   with setup_storage2('test_linkdref') as S:
     s1=partial(mkstage, config={'name':'NaMe'})
-    dref1=instantiate(s1,S=S)[0]
+    dref1:DRef=instantiate(s1,S=S)[0]
     l=linkdref(dref1, destdir=fsstorage(S), format='result-%(N)s', S=S)
     assert str(l)==join(fsstorage(S),'result-NaMe')
     assert islink(join(fsstorage(S),'result-NaMe'))
@@ -383,7 +383,7 @@ def test_linkdref()->None:
 
 def test_current_registry():
   with setup_storage2('test_current_registry') as S:
-    with current_registry(Registry(S)) as m:
+    with current_registry(Registry(S)) as r:
       n1=mkstage({'a':'1'})
       n2=mkstage({'b':'2'})
       n3=mkstage({'c':'3','maman':n1})

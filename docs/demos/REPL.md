@@ -78,9 +78,9 @@ We will use them to show how to track problems.
 
 ```python
 
-def fetchmnist(m:Registry)->DRef:
+def fetchmnist(r:Registry)->DRef:
   return \
-    fetchurl(m, name='mnist',
+    fetchurl(r, name='mnist',
                 mode='as-is',
                 url='https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz',
                 sha256='731c5ac602752760c8e48fbffcf8c3b850d9dc2a2aedcf2cc48468fc17b673d1')
@@ -158,9 +158,9 @@ def mnist_realize(b:Model):
   mnist_train(b)
   mnist_eval(b)
 
-def convnn_mnist(m:Registry)->DRef:
-  mnist = fetchmnist(m)
-  return mkdrv(m, mnist_config(mnist), match_best('accuracy.txt'),
+def convnn_mnist(r:Registry)->DRef:
+  mnist = fetchmnist(r)
+  return mkdrv(r, mnist_config(mnist), match_best('accuracy.txt'),
     build_wrapper_(mnist_realize, Model))
 ```
 
@@ -244,7 +244,7 @@ context, rarg)
      78   mnist_train(b)
 ---> 79   mnist_eval(b)
      80
-     81 def convnn_mnist(m:Registry)->DRef:
+     81 def convnn_mnist(r:Registry)->DRef:
 <ipython-input-1-f38c6dead39e> in mnist_eval(b)
      69 def mnist_eval(b:Model):
      70   o = build_outpath(b)

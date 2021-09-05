@@ -46,14 +46,14 @@ registers a user-defined action in the \pref{Registry}{pylightnix.types.Registry
 accepted.
 
 \begin{pythontexcode}
-def stage_params(m:Optional[Registry]=None)->DRef:
+def stage_params(r:Optional[Registry]=None)->DRef:
   def _config():
     name = 'params'
     out = [selfref, "params.npy"]
     return locals()
   def _make(b:Build):
     np.save(mklens(b).out.syspath, (2, 3, 7, 8, 9, 10, 44, -1, 2, 26, 1, -2, 0.5))
-  return mkdrv(mkconfig(_config()), match_only(), build_wrapper(_make), m)
+  return mkdrv(mkconfig(_config()), match_only(), build_wrapper(_make), r)
 \end{pythontexcode}
 
 Here, a user-defind action \texttt{\_make} goes to Pylightnix by calling the
@@ -93,7 +93,7 @@ A few notes on the above code:
 \subsubsection{Annealing stage}
 
 \begin{pythontexcode}
-def stage_anneal(ref_params:DRef, m:Optional[Registry]=None)->DRef:
+def stage_anneal(ref_params:DRef, r:Optional[Registry]=None)->DRef:
   def _config():
     name = 'anneal'
     nonlocal ref_params
@@ -114,13 +114,13 @@ def stage_anneal(ref_params:DRef, m:Optional[Registry]=None)->DRef:
     np.save(mklens(b).trace_xs.syspath, np.array(xs))
     np.save(mklens(b).trace_fs.syspath, np.array(fs))
     np.save(mklens(b).out.syspath, res['x'])
-  return mkdrv(mkconfig(_config()), match_only(), build_wrapper(_make), m)
+  return mkdrv(mkconfig(_config()), match_only(), build_wrapper(_make), r)
 \end{pythontexcode}
 
 \subsubsection{Plotting stage}
 
 \begin{pythontexcode}
-def stage_plot(ref_anneal:DRef, m:Optional[Registry]=None)->DRef:
+def stage_plot(ref_anneal:DRef, r:Optional[Registry]=None)->DRef:
   def _config():
     name = 'plot'
     nonlocal ref_anneal
@@ -135,7 +135,7 @@ def stage_plot(ref_anneal:DRef, m:Optional[Registry]=None)->DRef:
     plt.plot(range(len(fs)),fs)
     plt.grid(True)
     plt.savefig(mklens(b).out.syspath)
-  return mkdrv(mkconfig(_config()), match_latest(), build_wrapper(_make), m)
+  return mkdrv(mkconfig(_config()), match_latest(), build_wrapper(_make), r)
 \end{pythontexcode}
 
 \subsubsection{Running the experiment}
@@ -164,10 +164,10 @@ of combining stages together is to wrap them with an umbrella stage covering the
 whole experiment.
 
 \begin{pythontexcode}
-def stage_all(m:Registry):
-  ds=stage_params(m)
-  cl=stage_anneal(ds,m)
-  vis=stage_plot(cl,m)
+def stage_all(r:Registry):
+  ds=stage_params(r)
+  cl=stage_anneal(ds,r)
+  vis=stage_plot(cl,r)
   return vis
 \end{pythontexcode}
 
@@ -235,10 +235,10 @@ def match_min(S, rrefs:List[RRef])->List[RRef]:
     print(f"Picking Bob ({best[0]}) out of {avail}")
   return [best[1]]
 
-def stage_all2(m:Registry):
-  ds=stage_params(m)
-  cl=redefine(stage_anneal, new_matcher=match_min)(ds,m=m)
-  vis=stage_plot(cl,m)
+def stage_all2(r:Registry):
+  ds=stage_params(r)
+  cl=redefine(stage_anneal, new_matcher=match_min)(ds,r=r)
+  vis=stage_plot(cl,r)
   return vis
 
 rref_best=realize1(instantiate(stage_all2,S=Sb))

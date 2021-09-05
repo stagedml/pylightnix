@@ -25,7 +25,7 @@ from pylightnix import (Registry, DRef, RRef, fetchurl)
 hello_version = '2.10'
 
 def stage_fetch(m:Registry)->DRef: # DRef \label{DREF}
-  return fetchurl(m,
+  return fetchurl(r,
     name='hello-src',
     url=f'http://ftp.gnu.org/gnu/hello/hello-{hello_version}.tar.gz',
     sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b')
@@ -116,7 +116,7 @@ from pylightnix import (Config, Path, Build, mkconfig, mkdrv,
 def stage_build(m:Registry)->DRef:                           # ST \label{ST}
   def _config()->Config:                                    # CFG \label{CFG}
     name:str = 'hello-bin'
-    fetchref:DRef = stage_fetch(m)                          # DEP \label{DEP}
+    fetchref:DRef = stage_fetch(r)                          # DEP \label{DEP}
     src:RefPath = [fetchref, f'hello-{hello_version}']      # RP1 \label{RP1}
     bin:RefPath = [selfref, 'usr', 'bin', 'hello']          # RP2 \label{RP2}
     built_with = pylightnix_version                         # VER \label{VER}
@@ -134,7 +134,7 @@ def stage_build(m:Registry)->DRef:                           # ST \label{ST}
         system(f'make install DESTDIR={mklens(b).syspath}')
       finally:
         chdir(cwd)
-  return mkdrv(m, config=_config(),
+  return mkdrv(r, config=_config(),
                   matcher=match_only(),
                   realizer=build_wrapper(_realize))          # DRV \label{DRV}
 

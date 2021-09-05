@@ -21,7 +21,7 @@ from tests.setup import (ShouldHaveFailed, mkstage, setup_test_config,
 
 from pylightnix.either import (Either, mkdrvE)
 
-def mkstageE(m:Registry,
+def mkstageE(r:Registry,
             config:dict,
             nondet:Callable[[int],int]=lambda n:0,
             buildstart:Optional[str]='AUTO',
@@ -31,7 +31,7 @@ def mkstageE(m:Registry,
   def _r(S, dref:DRef, c:Context, ra:RealizeArg)->Output[Path]:
     r=setup_test_realize(nrrefs, buildstart, nondet, mustfail)
     return r(S,dref,c,ra)
-  return mkdrvE(setup_test_config(config), setup_test_match(nmatch), _r, m)
+  return mkdrvE(setup_test_config(config), setup_test_match(nmatch), _r, r)
 
 @given(stages=rootstages(stagefn=mkstageE, failchances=[50]))
 def test_either_invariant(stages):
@@ -54,20 +54,20 @@ def test_either_invariant(stages):
                   either_isLeft(either_loadR(list(rrefdeps1([rref],S=S)),S)))
 
 
-# def mkeither(m, source, should_fail=False):
+# def mkeither(r, source, should_fail=False):
 #   def _mutate(i):
 #     if should_fail:
 #       raise ValueError('Expected test error')
 #     else:
 #       return 33
-#   return mkstage(m, source, realize_wrapper=either_wrapper, nondet=_mutate)
+#   return mkstage(r, source, realize_wrapper=either_wrapper, nondet=_mutate)
 
 # def test_either()->None:
 #   with setup_storage('test_either'):
-#     def _setting(m:Registry)->DRef:
-#       n1 = mkeither(m, {'name':'n1', 'foo':'bar'})
-#       n2 = mkeither(m, {'name':'n2', 'bar':'baz'}, should_fail=True)
-#       n3 = mkeither(m, {'name':'n3', 'maman':n1, 'papa':n2})
+#     def _setting(r:Registry)->DRef:
+#       n1 = mkeither(r, {'name':'n1', 'foo':'bar'})
+#       n2 = mkeither(r, {'name':'n2', 'bar':'baz'}, should_fail=True)
+#       n3 = mkeither(r, {'name':'n3', 'maman':n1, 'papa':n2})
 #       return n3
 
 #     rref = realize1(instantiate(_setting))
@@ -80,12 +80,12 @@ def test_either_invariant(stages):
 
 # def test_either_success()->None:
 #   with setup_storage('test_either_success'):
-#     def _setting(m:Registry)->DRef:
-#       n1 = mkeither(m, {'name':'n1', 'foo':'bar'})
+#     def _setting(r:Registry)->DRef:
+#       n1 = mkeither(r, {'name':'n1', 'foo':'bar'})
 #       def _make(b:Build):
 #         build_setoutpaths(b, 1)
 #         assert mklens(b).name.val=='n2'
-#       return mkdrv(m, mkconfig({'name':'n2', 'maman':n1}),
+#       return mkdrv(r, mkconfig({'name':'n2', 'maman':n1}),
 #                    match_only(), either_wrapper(build_wrapper(_make)))
 
 #     rref = realize1(instantiate(_setting))
@@ -97,13 +97,13 @@ def test_either_invariant(stages):
 
 # def test_either_builderror()->None:
 #   with setup_storage2('test_either_builderror') as T,S:
-#     def _setting(m:Registry)->DRef:
+#     def _setting(r:Registry)->DRef:
 #       def _make(b:Build):
 #         # Make both paths differ from each other
 #         for p in build_setoutpaths(b, 2):
 #           writestr(join(p,'artifact.txt'), p)
 #         raise ValueError('Ooops (an intended test failure)')
-#       return mkdrvE(m, mkconfig({'name':'pigfood'}),
+#       return mkdrvE(r, mkconfig({'name':'pigfood'}),
 #                    match_some(2), either_wrapper(build_wrapper(_make)))
 
 #     rrefs = realizeMany(instantiate(_setting))
