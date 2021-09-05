@@ -16,8 +16,7 @@ from tests.imports import (
 from tests.generators import (
     configs, dicts, artifacts )
 
-from tests.setup import ( setup_storage2, setup_inplace_reset, mkstage, mkstage,
-                         ShouldHaveFailed )
+from tests.setup import ( setup_storage2, mkstage, mkstage, ShouldHaveFailed )
 
 
 def test_repl_basic():

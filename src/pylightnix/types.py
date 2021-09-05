@@ -418,9 +418,7 @@ class Manager:
   Managers doesn't requre any special operations besides creating and passing
   around. By convention, Manager objects are first arguments of user-defined
   stage functions and the `mkdrv` API function of Pylightnix.
-
-  The [inplace module](#pylightnix.inplace) defines it's own [global derivation
-  manager](#pylightnix.inplace.PYLIGHTNIX_MANAGER) """
+  """
   def __init__(self, S:Optional[StorageSettings]):
     self.builders:Dict[DRef,Derivation]=OrderedDict()
     self.in_instantiate:bool=False

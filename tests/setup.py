@@ -29,11 +29,6 @@ def setup_storage2(tn:str):
   fsinit(S, remove_existing=True, check_not_exist=True)
   yield S
 
-def setup_inplace_reset(S=None)->None:
-  import pylightnix.inplace
-  pylightnix.inplace.PYLIGHTNIX_MANAGER=Manager(S=S)
-
-
 def setup_test_config(c:dict)->Config:
   c2=deepcopy(c)
   c2['artifact']=[selfref,'artifact']

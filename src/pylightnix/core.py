@@ -720,7 +720,6 @@ def realize1(closure:Closure,
   * [realizeMany](#pylightnix.core.realizeMany) - A version for multiple-output
   stages.
   * [repl_realize](#pylightnix.repl.repl_realize) - A REPL-friendly version.
-  * [realize_inplace](#pylightnix.inplace.realize_inplace) - A simplified
     version which uses a hardcoded global [Manager](#pylightnix.types.Manager).
   """
 
