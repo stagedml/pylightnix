@@ -307,7 +307,7 @@ def mklens(x:Any, o:Optional[Path]=None,
   mklens(dref).output.refpath  # Return output as a RefPath (a list)
   mklens(dref).output.syspath  # Error! not a realization
 
-  rref:RRef=realize(instantiate(stage))
+  rref:RRef=realize1(instantiate(stage))
 
   mklens(rref).output.syspath  # Return output as a system path
   ```

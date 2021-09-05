@@ -56,7 +56,7 @@ def stage_fetch(m:Manager)->DRef: # DRef \label{DREF}
 \pagebreak
 \subsection{Accessing the Data}
 
-The primary method of accessing stage data is to call \texttt{realize} function,
+The primary method of accessing stage data is to call \texttt{realize1} function,
 passing the \texttt{instantiated} stage as its argument. Pylightnix either runs
 the algorithm associated with a stage or re-uses existing realization. In both
 cases, a \textbf{realization reference} handle is returned. We then use a
@@ -64,10 +64,10 @@ cases, a \textbf{realization reference} handle is returned. We then use a
 Pylihgtnix storage.
 
 \begin{pythontexcode}
-from pylightnix import instantiate, realize, mklens
+from pylightnix import instantiate, realize1, mklens
 from os.path import join, isdir
 
-fetch_rref:RRef = realize(instantiate(stage_fetch))  # RRef \label{RREF}
+fetch_rref:RRef = realize1(instantiate(stage_fetch))  # RRef \label{RREF}
 print(fetch_rref)
 
 print(mklens(fetch_rref).val)      # Interpret as Python value
@@ -88,7 +88,7 @@ Output:
 
 \begin{itemize}
 
-  \item At line \ref{RREF} we \texttt{instantiate} and \texttt{realize} our
+  \item At line \ref{RREF} we \texttt{instantiate} and \texttt{realize1} our
     custom stage to get its realization reference.
 
   \item Realization reference is a string identifier which could be converted to
@@ -138,7 +138,7 @@ def stage_build(m:Manager)->DRef:                           # ST \label{ST}
                   matcher=match_only(),
                   realizer=build_wrapper(_realize))          # DRV \label{DRV}
 
-build_rref:RRef = realize(instantiate(stage_build))
+build_rref:RRef = realize1(instantiate(stage_build))
 print(build_rref)
 \end{pythontexcode}
 

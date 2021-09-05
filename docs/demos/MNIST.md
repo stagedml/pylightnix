@@ -93,7 +93,7 @@ By the above instructions we initialized is a `mnist_dataset` variable of type
 * Pylighnix knows how to **Realize** the stage, i.e. what Python function to
   call on it and which directory to collect the output files from.
 * We could pass this link to subsequent stages to form dependencies or to
-  `realize` to request the realization.
+  `realize1` to request the realization.
 
 Since the MNIST dataset by itself has no practical meaning for us, we move on to
 defining the second stage.
@@ -249,7 +249,7 @@ def mnist_build(b:Build)->None:
 
 Finally, we have to register our stage by calling `mkdrv` function. As before,
 `instantiate` provides us with a derivation reference. This reference is a proof
-that safety checks has been completed and a ticket to the `realize` action.
+that safety checks has been completed and a ticket to the `realize1` action.
 
 
 ```python
@@ -294,9 +294,9 @@ rref:20ee736e35338c37a5f31da758e13a8c-62bf4c470bd346d4b4431438958999eb-unnamed
 After some time, we get the `mnist1` value which is a **Realization reference**. One
 good property of `RRefs` is the possibility to convert them into system paths.
 
-##### Forced realize
+##### Forced realize1
 
-By default, subsequent calls to `realize` will return the RRef of already
+By default, subsequent calls to `realize1` will return the RRef of already
 existing realization. But Pylightnix do supports multiple realizations, so we
 could ask it to produce new realizations regardless of what Matcher thinks:
 

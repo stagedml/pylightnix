@@ -1,5 +1,5 @@
 from pylightnix import (Manager, DRef, RRef, Path, List, mklogdir, dirhash,
-                        rref2path, Manager, mkcontext, instantiate, realize,
+                        rref2path, Manager, mkcontext, instantiate, realize1,
                         assert_valid_rref, alldrefs, assert_valid_dref,
                         repl_realize, repl_cancel, repl_continue, repl_rref,
                         repl_build, ReplHelper, build_outpath, tryread,
@@ -58,7 +58,7 @@ def test_repl_race():
     assert rh.result is None
 
     clo2=instantiate(_setting)
-    rref2=realize(clo2) # Realize dref while repl_realizing the same dref
+    rref2=realize1(clo2) # Realize dref while repl_realizing the same dref
 
     repl_cancel(rh)
     assert_valid_rref(rref2)
@@ -125,7 +125,7 @@ def test_repl_globalCancel():
     assert repl_rref(rh) is None
     repl_cancel()
     assert rh.gen is None
-    rref=realize(instantiate(_setting, S=S))
+    rref=realize1(instantiate(_setting, S=S))
     assert isrref(rref)
 
 

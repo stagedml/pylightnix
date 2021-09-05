@@ -79,7 +79,7 @@ def use_session(inpath:str, outpath:str):
              'prev':prev,
              'stdout':[selfref,'stdout.txt']}
         prev=mkdrv(M, mkconfig(cfg), match_only(), build_wrapper(_make))
-        rref=realize(instantiate(prev))
+        rref=realize1(instantiate(prev))
         of.write('```\n')
         of.write(mklens(rref,S=S).stdout.contents)
         of.write('\n```\n')

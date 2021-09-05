@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-""" This module defines inplace variants of `instantiate` and `realize`
+""" This module defines inplace variants of `instantiate` and `realize1`
 functions. Inplace functions store closures in their own global dependency
 resolution [Manager](#pylightnix.types.Manager) and thus offer a simpler API,
 but add usual risks of using gloabl variables. """
@@ -20,7 +20,7 @@ but add usual risks of using gloabl variables. """
 # from pylightnix.types import (Any, DRef, Stage, Manager, Derivation, List,
 #                               RRef, Closure, SPath, TypeVar, Callable, Optional,
 #                               Dict, RealizeArg, Context, Union, Tuple)
-# from pylightnix.core import (instantiateM, realize, realizeCtx)
+# from pylightnix.core import (instantiateM, realize1, realizeCtx)
 # from pylightnix.utils import (scanref_dict)
 
 
@@ -44,7 +44,7 @@ but add usual risks of using gloabl variables. """
 #                        assert_realized:List[DRef]=[],
 #                        realize_args:Dict[DRef,RealizeArg]={}
 #                        )->Tuple[Any,Context]:
-#   """ Realize the derivation pointed by `dref` by constructing it's
+#   """ realize1 the derivation pointed by `dref` by constructing it's
 #   [Closure](#pylightnix.types.Closure) based on the contents of the global
 #   dependency manager and [realizing](#pylightnix.core.realizeMany) this closure.
 #   """

@@ -9,7 +9,7 @@ Pylightnix.
 
 Consider the chain of subsequent stages `Stage1 -> Stage2 -> Stage3 -> Stage 4`.
 Pylightnix effectively caches the results of Stages 1 and 2 so if Stage 3
-require debugging, we could realize `Stage2` and then manually call the
+require debugging, we could realize1 `Stage2` and then manually call the
 constructor of Stage3 several times to find out the problem. But if our Stage3
 is a long-running job, and the problem appears near to it's end, we may face
 several difficulties:
@@ -17,9 +17,9 @@ several difficulties:
   from it's possible internal modularity.
 - We can't use powerful tools such as IPython shell to inspect the Python
   interpreter state during the run because all the computation is done inside
-  the `realize`.
+  the `realize1`.
 
-To aid the situation, Pylightnix offers `repl_` version of `realize` function.
+To aid the situation, Pylightnix offers `repl_` version of `realize1` function.
 `repl_realize` is expected to be called from REPL shells like IPython or Jupyter
 notebook. This new function could be programmed to return while keeping the
 computation state in a special Python object waiting to be resumed or canceled.
@@ -58,7 +58,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 from pylightnix import ( Matcher, Build, Path, RefPath, Config, Manager, RRef,
     DRef, Context, build_path, build_outpath, build_cattrs, mkdrv, rref2path,
     mkconfig, mkbuild, match_best, build_wrapper_, tryread, fetchurl,
-    initialize, realize, instantiate )
+    initialize, realize1, instantiate )
 
 from typing import Any
 
@@ -175,7 +175,7 @@ the MNIST classifier. Let's try to obtain it's realization:
 
 
 ```python
-realize(instantiate(convnn_mnist), force_rebuild=True)   # Spoiler: will fail
+realize1(instantiate(convnn_mnist), force_rebuild=True)   # Spoiler: will fail
 ```
 
 ```
@@ -195,16 +195,16 @@ raised an exception. Remaining build directories are: [{'out':
 --------------------------------------------------------------AttributeError
 Traceback (most recent call last)<ipython-input-1-9b8c69999b87> in
 <module>
-----> 1 realize(instantiate(convnn_mnist), force_rebuild=True)   #
+----> 1 realize1(instantiate(convnn_mnist), force_rebuild=True)   #
 Spoiler: will fail
-~/3rdparty/pylightnix/src/pylightnix/core.py in realize(closure,
+~/3rdparty/pylightnix/src/pylightnix/core.py in realize1(closure,
 force_rebuild, assert_realized)
     662   """ A simplified version of
 [realizeMany](#pylightnix.core.realizeMany).
     663   Expects only one output path. """
 --> 664   rrefs=realizeMany(closure, force_rebuild, assert_realized)
     665   assert len(rrefs)==1, (
-    666       f"`realize` is to be used with single-output
+    666       f"`realize1` is to be used with single-output
 derivations. Derivation "
 ~/3rdparty/pylightnix/src/pylightnix/core.py in realizeMany(closure,
 force_rebuild, assert_realized, realize_args)
@@ -280,7 +280,7 @@ def mnist_eval_correct(b:Model):
 
 
 
-Now, we need to re-realize the derivation, but if this is not the last problem,
+Now, we need to re-realize1 the derivation, but if this is not the last problem,
 than we will have to run realizations 3 or more times. In order to check
 everything carefully we want to be in a position to manually run `mnist_train`
 and `mnist_eval`. In Pylightnix it is possible with it's `repl` helpers.
@@ -294,7 +294,7 @@ The most straightforward wat to debug stage is to:
 3. Run components of the stage one-by-one.
 4. Call `repl_continue` or analog to resume the computation.
 
-In contrast to normal `realize`, `repl_realize` pauses before the last
+In contrast to normal `realize1`, `repl_realize` pauses before the last
 realization. Other interrupts may be programmed by passing a list of derivations
 to pause via it's `force_interrupt=[...]` argument.
 

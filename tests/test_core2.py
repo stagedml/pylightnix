@@ -1,5 +1,5 @@
 from pylightnix import (instantiate, DRef, RRef, Path, SPath, drefdeps,
-                        Manager, Context, RealizeArg, Output, realize,
+                        Manager, Context, RealizeArg, Output, realize1,
                         rref2dref, Build, match_some, mkdrv, rref2path,
                         alldrefs, build_wrapper, tryread, trywrite,
                         realizeMany, build_outpaths, mklens, Config,
@@ -190,21 +190,21 @@ def test_match_latest(h):
 #
 #   with setup_storage2('test_match_latest') as S:
 #     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=1, S=S)
-#     rref1=realize(clo)
+#     rref1=realize1(clo)
 #     assert len(list(drefrrefs(clo.dref,S)))==1
 #     sleep(0.01)
 #     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=2, S=S)
-#     rref2=realize(clo, force_rebuild=[clo.dref])
+#     rref2=realize1(clo, force_rebuild=[clo.dref])
 #     assert len(list(drefrrefs(clo.dref,S)))==2
 #     assert tryread(Path(join(rref2path(rref2,S),'artifact')))==str('2_0')
 #
 #   with setup_storage2('test_match_latest') as S:
 #     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=1, S=S)
-#     rref1=realize(clo)
+#     rref1=realize1(clo)
 #     assert len(list(drefrrefs(clo.dref,S)))==1
 #     sleep(0.01)
 #     clo=instantiate(_mknode, {'a':0}, match_latest(1), nouts=1, data=2, buildtime=False, S=S)
-#     rref2=realize(clo, force_rebuild=[clo.dref])
+#     rref2=realize1(clo, force_rebuild=[clo.dref])
 #     assert len(list(drefrrefs(clo.dref,S)))==2
 #     assert tryread(Path(join(rref2path(rref2,S),'artifact')))==str('1_0')
 #

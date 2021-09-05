@@ -95,7 +95,7 @@ def fetchurl(m:Manager,
       url=f'http://ftp.gnu.org/gnu/hello/hello-{hello_version}.tar.gz',
       sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b')
 
-  rref:RRef=realize(instantiate(hello_src))
+  rref:RRef=realize1(instantiate(hello_src))
   print(rref2path(rref))
   ```
   """

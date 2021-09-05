@@ -21,7 +21,7 @@ from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional, Iterable,
                               Generator, BuildArgs, Config, RealizeArg,
                               InstantiateArg)
 
-from pylightnix.core import (instantiate, realize, path2rref, path2dref,
+from pylightnix.core import (instantiate, realize1, path2rref, path2dref,
                              store_gc, rref2path)
 
 from pylightnix.bashlike import (rmref)

@@ -24,7 +24,7 @@ from pylightnix.types import (RRef, List, Dict, Path, Iterable, Optional,
 from pylightnix.core import (drefdeps, rrefdeps, rref2path, dref2path,
                              fsstorage, fstmpdir, storagename, alldrefs,
                              rootdrefs, rootrrefs, rref2dref, cfgdeps,
-                             drefcfg_, mkdrv, realize, realizeMany, instantiate,
+                             drefcfg_, mkdrv, realize1, realizeMany, instantiate,
                              rrefdata, cfgname, match_exact, drefrrefsC,
                              resolve, rrefctx)
 
@@ -120,7 +120,7 @@ def copyclosure(rrefs_S:Iterable[RRef],
             _stage(m, dep_dref)
 
       def _make(b:Build)->None:
-        """ 'Realize' the derivation in `D` by copying its contents from `S` """
+        """ 'realize1' the derivation in `D` by copying its contents from `S` """
         rrefs_S=deref_(rref_S, b.dref, S=S)
         # print(f'Building {b.dref} hoping to get {rrefs_S}')
         # print(grps_S)

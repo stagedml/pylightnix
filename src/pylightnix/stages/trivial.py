@@ -78,7 +78,7 @@ def redefine(stage:Any,
   def _new_config(old_config):
     old_config['learning_rate'] = 1e-5
     return mkconfig(old_config)
-  realize(instantiate(redefine(myMLmodel, _new_config)))
+  realize1(instantiate(redefine(myMLmodel, _new_config)))
   ```
 
   FIXME: Updating configs is dangerous: it changes its dref and thus breaks
@@ -103,7 +103,7 @@ def realized(stage:Any)->Stage:
 
   Example:
   ```python
-  rref:RRef=realize(instantiate(realized(my_long_running_stage, arg="bla")))
+  rref:RRef=realize1(instantiate(realized(my_long_running_stage, arg="bla")))
   # ^^^ Fail if `my_long_running_stage` is not yet realized.
   ```
   """

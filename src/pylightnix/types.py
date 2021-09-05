@@ -68,7 +68,7 @@ class DRef(str):
   Derivation reference may be converted into a [realization
   reference](#pylightnix.types.RRef) by either dereferencing (that is by
   querying for existing realizations) or by
-  [realizing](#pylightnix.core.realize) it from scratch.
+  [realizing](#pylightnix.core.realize1) it from scratch.
 
   - For derefencing dependencies at the build time, see
     [build_deref](#pylightnix.core.build_deref).
@@ -85,10 +85,10 @@ class RRef(str):
   - `<HashPart0>` is calculated over realization's
     [Context](#pylightnix.types.Context) and build artifacts.
   - `<HashPart1>-<Name>` forms valid [DRef](#pylightnix.types.DRef) which
-    this realizaion was [realized](#pylightnix.core.realize) from.
+    this realizaion was [realized](#pylightnix.core.realize1) from.
 
   Realization reference is obtained from the process called
-  [realization](#pylightnix.core.realize).
+  [realization](#pylightnix.core.realize1).
 
   Valid realization references may be dereferenced down to system paths of
   *build artifacts* by calling [rref2path](#pylightnix.core.rref2path) or by
@@ -198,7 +198,7 @@ MatcherO = Callable[[Optional[StorageSettings],Output[RRef]],
 
 
 #: Realizers are user-defined Python functions. Realizers typically
-#: implement [application-specific algorithms](#pylightnix.core.realize) which
+#: implement [application-specific algorithms](#pylightnix.core.realize1) which
 #: take some configuration parameters and produce some artifacts.
 #:
 #: Realizer accepts the following arguments:
@@ -245,7 +245,7 @@ RealizerO = Callable[[Optional[StorageSettings],DRef,Context,RealizeArg],Output[
 #: Fields include:
 #: * [Configuration](#pylightnix.types.Config) objects serialized on disk.
 #: * [Matcher](#pylightnix.types.Matcher) Python function
-#: * [Realizer](#pylightnix.core.realize) Python function
+#: * [Realizer](#pylightnix.core.realize1) Python function
 #:
 #: The actual configuration is stored in the Pylightnix filesystem storage.
 #: Derivation holds the [DRef](#pylightnix.types.DRef) access key.
@@ -262,12 +262,12 @@ Derivation = NamedTuple('Derivation', [('dref',DRef),
 #: [Derivation](#pylightnix.types.Derivation).
 #:
 #: The plan is represented by a sequence of
-#: [Derivations](#pylightnix.types.Derivation) one need to realize in order to
-#: realize a given target derivation.
+#: [Derivations](#pylightnix.types.Derivation) one need to realize1 in order to
+#: realize1 a given target derivation.
 #:
 #: Closures are typically obtained as a result of the
 #: [instantiate](#pylightnix.core.instantiate) and is typically consumed by the
-#: call to [realize](#pylightnix.core.realize) or it's analogs.
+#: call to [realize1](#pylightnix.core.realize1) or it's analogs.
 Closure = NamedTuple('Closure', [('result',Any),
                                  ('targets',List[DRef]),
                                  ('derivations',List[Derivation]),
@@ -354,7 +354,7 @@ BuildArgs = NamedTuple('BuildArgs', [('S',Optional[StorageSettings]),
 
 class Build:
   """Build objects track the process of stage's
-  [realization](#pylightnix.core.realize). Build allows users to define
+  [realization](#pylightnix.core.realize1). Build allows users to define
   [Realizers](#pylightnix.types.Realizer) with only a simple one-argument
   signature. The [build_wrapper](#pylightnix.core.build_wrapper) function
   converts simplified Build-realizers into the regular ones.

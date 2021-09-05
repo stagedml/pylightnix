@@ -2,7 +2,7 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir, dirhash,
                         assert_valid_dref, assert_valid_rref, drefdeps1,
                         drefdeps, store_gc, assert_valid_config, Manager,
                         mkcontext, allrrefs, mkdref, mkrref, unrref, undref,
-                        realize, rref2dref, drefcfg, mkconfig, Build, Context,
+                        realize1, rref2dref, drefcfg, mkconfig, Build, Context,
                         build_outpath, mkdrv, rref2path, cfgcattrs, drefattrs,
                         build_deref, build_path, mkrefpath, build_config,
                         alldrefs, build_wrapper, build_cattrs, build_name,
@@ -57,7 +57,7 @@ from tests.setup import ( ShouldHaveFailed, setup_storage2,
 #       toplevel=mkstage(m, {'n2':n2,'n3':n3})
 #       return toplevel
 
-#     rref=realize(instantiate(_setup,S=S))
+#     rref=realize1(instantiate(_setup,S=S))
 #     assert_valid_rref(rref)
 #     assert n1 is not None
 #     assert n2 is not None
@@ -80,7 +80,7 @@ from tests.setup import ( ShouldHaveFailed, setup_storage2,
 
 # def test_detect_rref_deps()->None:
 #   with setup_storage('test_detect_rref_deps'):
-#     rref=realize(instantiate(mkstage,{'a':1}))
+#     rref=realize1(instantiate(mkstage,{'a':1}))
 #     clo=instantiate(mkstage,{'a':1,'maman':rref})
 #     _,rrefs=scanref_dict(cfgdict(drefcfg(clo.targets[0])))
 #     assert len(rrefs)>0
@@ -89,7 +89,7 @@ def test_no_dref_deps_without_realizers()->None:
   with setup_storage2('test_no_dref_deps_without_realizers') as S:
     try:
       clo=instantiate(mkstage,{'a':1},S=S)
-      _=realize(instantiate(mkstage,{'maman':clo.targets[0]},S=S))
+      _=realize1(instantiate(mkstage,{'maman':clo.targets[0]},S=S))
       raise ShouldHaveFailed("We shouldn't share DRefs across managers")
     except AssertionError:
       pass
@@ -112,19 +112,19 @@ def test_repeated_realize()->None:
     def _setting(m:Manager)->DRef:
       return mkstage(m, {'a':'1'})
     clo=instantiate(_setting,S=S)
-    rref1=realize(clo)
-    rref2=realize(clo)
-    rref3=realize(clo, force_rebuild=[clo.targets[0]])
+    rref1=realize1(clo)
+    rref2=realize1(clo)
+    rref3=realize1(clo, force_rebuild=[clo.targets[0]])
     assert rref1==rref2 and rref2==rref3
     try:
-      rref3=realize(clo, force_rebuild='Foobar') # type:ignore
+      rref3=realize1(clo, force_rebuild='Foobar') # type:ignore
       raise ShouldHaveFailed
     except AssertionError:
       pass
 
 def test_realize_readonly()->None:
   with setup_storage2('test_realize_readonly') as S:
-    rref1 = realize(instantiate(mkstage, {'a':'1'},S=S))
+    rref1 = realize1(instantiate(mkstage, {'a':'1'},S=S))
 
     try:
       with open(join(rref2path(rref1,S),'newfile'),'w') as f:
@@ -143,7 +143,7 @@ def test_realize_readonly()->None:
       with open(join(build_outpath(b),'exe'),'w') as f:
         f.write('#!/bin/sh\necho "Fooo"')
       chmod(join(build_outpath(b),'exe'), S_IWRITE|S_IREAD|S_IEXEC)
-    rref2=realize(instantiate(mkdrv, Config({}),
+    rref2=realize1(instantiate(mkdrv, Config({}),
                               match_only(), build_wrapper(_realize),S=S))
     assert pipe_stdout([join(rref2path(rref2,S),'exe')])=='Fooo\n', \
       "Did we lost exec permission?"
@@ -161,8 +161,8 @@ def test_minimal_closure()->None:
       n3=mkstage(m,{'maman':n1,'papa':n2})
       return n3
 
-    rref1=realize(instantiate(_somenode,S=S))
-    rref=realize(instantiate(_anothernode,S=S))
+    rref1=realize1(instantiate(_somenode,S=S))
+    rref=realize1(instantiate(_anothernode,S=S))
     rref2=context_deref(rrefctx(rref,S),rrefattrs(rref,S=S).papa)[0]
     assert rref1==rref2, '''
       Nodes with no dependencies should have empty context, regardless of their
@@ -186,9 +186,9 @@ def test_minimal_closure()->None:
 #       return n3
 
 #     DATA = 1
-#     rref1 = realize(instantiate(_setup,S=S))
+#     rref1 = realize1(instantiate(_setup,S=S))
 #     DATA = 2
-#     rref2 = realize(instantiate(_setup,S=S), force_rebuild=[n2])
+#     rref2 = realize1(instantiate(_setup,S=S), force_rebuild=[n2])
 
 #     assert len(list(drefrrefs(n1,S))) == 1
 #     assert len(list(drefrrefs(n2,S))) == 2
@@ -216,7 +216,7 @@ def test_no_foreign_dref_deps()->None:
 def test_no_rref_deps()->None:
   with setup_storage2('test_no_rref_deps') as S:
     def _setup(m):
-      rref=realize(instantiate(mkstage, {'foo':'bar'}))
+      rref=realize1(instantiate(mkstage, {'foo':'bar'}))
       n2 = mkstage(m,{'bogus':rref})
       return n2
     try:
@@ -245,11 +245,11 @@ def test_recursive_realize_with_another_manager()->None:
       return mkstage(m,{'foo':'bar'})
     def _setup_outer(m):
       # nonlocal rref_inner
-      rref_inner=realize(instantiate(_setup_inner,S=S))
+      rref_inner=realize1(instantiate(_setup_inner,S=S))
       r2=mkstage(m,{'baz':mklens(rref_inner,S=S).foo.val})
       return [rref_inner,r2]
     clo=instantiate(_setup_outer,S=S)
-    rref=realize(clo)
+    rref=realize1(clo)
     [rref_inner,r2]=clo.result
     assert rref_inner is not None
     assert len(drefdeps([rref2dref(rref)],S=S))==0
@@ -278,7 +278,7 @@ def test_ignored_stage()->None:
       return n3
 
     cl=instantiate(_setting,S=S)
-    rref = realize(cl)
+    rref = realize1(cl)
     rrefs:List[RRef] = []
     all_drefs = list(alldrefs(S))
     assert len(all_drefs)==4
@@ -298,7 +298,7 @@ def test_overwrite_realizer()->None:
       n3 = mkstage(m, {'a':'1'}, lambda i:42)
       return n2
 
-    rref_n2=realize(instantiate(_setting, S=S))
+    rref_n2=realize1(instantiate(_setting, S=S))
     all_drefs = list(alldrefs(S))
     assert len(all_drefs)==2
 
@@ -316,9 +316,9 @@ def test_gc()->None:
     def _node3(m:Manager)->DRef:
       return mkstage(m, {'name':'3', 'maman':_node1(m)})
 
-    r1=realize(instantiate(_node1,S=S))
-    r2=realize(instantiate(_node2,S=S))
-    r3=realize(instantiate(_node3,S=S))
+    r1=realize1(instantiate(_node1,S=S))
+    r2=realize1(instantiate(_node2,S=S))
+    r3=realize1(instantiate(_node3,S=S))
 
     rm_drefs,rm_rrefs=store_gc([],[r2],S)
     assert rm_drefs=={rref2dref(r) for r in [r3]}
@@ -346,11 +346,11 @@ def test_gc()->None:
 #                       realizer=build_wrapper(_realize))
 
 #     try:
-#       rref=realize(instantiate(_setting,False,S=S))
+#       rref=realize1(instantiate(_setting,False,S=S))
 #       raise ShouldHaveFailed('Promise trigger')
 #     except AssertionError:
 #       pass
-#     rref=realize(instantiate(_setting,True,S=S))
+#     rref=realize1(instantiate(_setting,True,S=S))
 #     assert_valid_rref(rref)
 
 

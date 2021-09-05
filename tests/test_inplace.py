@@ -1,6 +1,6 @@
 from pylightnix import ( Manager, DRef, RRef, Path, mklogdir, dirhash,
                         drefdeps1, rref2path, Manager, mkcontext, instantiate,
-                        realize, assert_valid_rref, drefrrefs, alldrefs,
+                        realize1, assert_valid_rref, drefrrefs, alldrefs,
                         assert_valid_dref, current_manager )
 
 from tests.imports import (
@@ -27,7 +27,7 @@ def test_inplace():
       assert_valid_dref(n3)
       assert_valid_dref(n4)
 
-      rref_n3 = realize(instantiate(n3))
+      rref_n3 = realize1(instantiate(n3))
       assert_valid_rref(rref_n3)
 
       all_drefs = list(alldrefs(S=S))

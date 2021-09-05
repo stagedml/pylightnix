@@ -13,7 +13,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 from pylightnix import ( Matcher, Build, Path, RefPath, Config, Manager, RRef,
     DRef, Context, build_path, build_outpath, build_cattrs, mkdrv, rref2path,
     mkconfig, mkbuild, match_best, build_wrapper_, tryread, fetchurl,
-    initialize, realize, instantiate )
+    initialize, realize1, instantiate )
 
 from typing import Any
 
@@ -105,7 +105,7 @@ def convnn_mnist(m:Manager)->DRef:
   return mkdrv(m, mnist_config(mnist), match_best('accuracy.txt'),
     build_wrapper_(mnist_realize, Model))
 
-realize(instantiate(convnn_mnist), force_rebuild=True)   # Spoiler: will fail
+realize1(instantiate(convnn_mnist), force_rebuild=True)   # Spoiler: will fail
 
 def mnist_eval_correct(b:Model):
   o = build_outpath(b)

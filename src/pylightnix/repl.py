@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-""" Repl module defines variants of `instantiate` and `realize` functions, which
+""" Repl module defines variants of `instantiate` and `realize1` functions, which
 are suitable for REPL shells. Repl-friendly wrappers (see `repl_realize`) could
 pause the computation, save the Pylightnix state into a variable and return to
 the REPL's main loop. At this point user could alter the state of the whole

@@ -142,7 +142,7 @@ def stage_plot(m:Manager, ref_anneal:DRef)->DRef:
 To run the experiment we register all the stages in the internal manager by
 calling \texttt{instantiate\_inplace} and ask Pylightnix to provide us with the
 \pref{realization reference}{pylightnix.types.RRef} by calling
-\texttt{realize\_inplace}.
+\texttt{realize1\_inplace}.
 
 \begin{pythontexcode}
 ds=instantiate_inplace(stage_params)
@@ -169,12 +169,12 @@ def stage_all(m:Manager):
   return vis
 \end{pythontexcode}
 
-Now we can use reentrable \texttt{instantiate} and \texttt{realize}
+Now we can use reentrable \texttt{instantiate} and \texttt{realize1}
 functions which rely on a temporary local Manager, disposing it before
 returning the result.
 
 \begin{pythontexcode}
-rref_all=realize(instantiate(stage_all))
+rref_all=realize1(instantiate(stage_all))
 assert rref_all==rref
 print(rref_all)
 \end{pythontexcode}
@@ -192,8 +192,8 @@ Sa=mksettings('_storageA')
 Sb=mksettings('_storageB')
 fsinit(Sa,remove_existing=True)
 fsinit(Sb,remove_existing=True)
-rrefA=realize(instantiate(stage_all, S=Sa))
-rrefB=realize(instantiate(stage_all, S=Sb))
+rrefA=realize1(instantiate(stage_all, S=Sa))
+rrefB=realize1(instantiate(stage_all, S=Sb))
 print(rrefA)
 print(rrefB)
 \end{pythontexcode}
@@ -240,7 +240,7 @@ def stage_all2(m:Manager):
   vis=stage_plot(m,cl)
   return vis
 
-rref_best=realize(instantiate(stage_all2,S=Sb))
+rref_best=realize1(instantiate(stage_all2,S=Sb))
 print(rref_best)
 \end{pythontexcode}
 

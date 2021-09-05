@@ -611,7 +611,7 @@ def mkdrv(m:Manager,
         f.write(...)
     return mkdrv(m,mkconfig({'name':'mystage'}), match_only(), build_wrapper(_realizer))
 
-  rref:RRef=realize(instantiate(somestage))
+  rref:RRef=realize1(instantiate(somestage))
   ```
   """
   # FIXME: check that all config's dependencies are known to the Manager
@@ -668,7 +668,7 @@ def instantiate(stage:Union[StageResult,Callable[[Manager,Any,Any],StageResult]]
   by calling them and collecting the [Closure](#pylightnix.types.Closure) of
   nested [Derivations](#pylightnix.types.Derivation).
 
-  The returned closure typically goes to [realize](#pylightnix.core.realize) or
+  The returned closure typically goes to [realize1](#pylightnix.core.realize1) or
   its analogs.
   """
   m=getmanager_(M)
@@ -696,11 +696,11 @@ RealizeSeqGen = Generator[
   Context]
 
 
-def realize(closure:Closure,
+def realize1(closure:Closure,
             force_rebuild:Union[List[DRef],bool]=[],
             assert_realized:List[DRef]=[],
             realize_args:Dict[DRef,RealizeArg]={})->RRef:
-  """ Realize gets the results of building the [Stage](#pylightnix.types.Stage).
+  """ realize1 gets the results of building the [Stage](#pylightnix.types.Stage).
   Returns either the [matching](#pylightnix.types.Matcher) realizations
   immediately, or launches the user-defined [realization
   procedure](#pylightnix.types.Realizer).
@@ -711,11 +711,11 @@ def realize(closure:Closure,
     ...
     return mkdrv(m, ...)
 
-  rrefs=realize(instantiate(mystage))
+  rrefs=realize1(instantiate(mystage))
   print(mklen(rref).syspath)
   ```
 
-  Pylightnix contains the following specialized alternatives to `realize`:
+  Pylightnix contains the following specialized alternatives to `realize1`:
 
   * [realizeMany](#pylightnix.core.realizeMany) - A version for multiple-output
   stages.
@@ -731,7 +731,7 @@ def realize(closure:Closure,
   rrefs=realizeMany(closure, force_rebuild,
                     assert_realized, realize_args)
   assert len(rrefs)==1, (
-    f"`realize` is to be used with single-output derivations. "
+    f"`realize1` is to be used with single-output derivations. "
     f"{closure.targets} have {len(rrefs)} outputs:\n{rrefs}\n"
     f"Consider using `realizeMany`." )
   return rrefs[0]
@@ -742,7 +742,7 @@ def realizeMany(closure:Union[Closure,Tuple[Any,Closure]],
                 assert_realized:List[DRef]=[],
                 realize_args:Dict[DRef,RealizeArg]={})->List[RRef]:
   assert len(closure.targets)==1, (
-    f"`realize` is to be used with single-targeted derivations. "
+    f"`realize1` is to be used with single-targeted derivations. "
     f"Current closure has {len(closure.targets)} targets:\n{closure.targets}\n"
     f"Consider using `realizeMany`." )
   _,ctx=realizeCtx(closure, force_rebuild, assert_realized, realize_args)
@@ -754,7 +754,7 @@ def realizeCtx(closure:Union[Closure,Tuple[Any,Closure]],
                force_rebuild:Union[List[DRef],bool]=[],
                assert_realized:List[DRef]=[],
                realize_args:Dict[DRef,RealizeArg]={})->Tuple[Any,Context]:
-  """ A generic version of [realize](#pylightnix.core.realize). Takes the
+  """ A generic version of [realize1](#pylightnix.core.realize1). Takes the
   instantiated [Closure](#pylightnix.types.Closure) and returns
   its value together with the realization [Context](#pylightnix.types.Context).
   """
@@ -788,7 +788,7 @@ def realizeSeq(closure:Closure,
                assert_realized:List[DRef]=[],
                realize_args:Dict[DRef,RealizeArg]={}
                )->RealizeSeqGen:
-  """ Sequentially realize the closure by issuing steps via Python's generator
+  """ Sequentially realize1 the closure by issuing steps via Python's generator
   interface. `realizeSeq` encodes low-level details of the realization
   algorithm. Consider calling [realizeMany](#pylightnix.core.realizeMany) or
   it's analogs instead.
@@ -844,7 +844,7 @@ def realizeSeq(closure:Closure,
 
 
 def evaluate(stage, *args, **kwargs)->RRef:
-  return realize(instantiate(stage,*args,**kwargs))
+  return realize1(instantiate(stage,*args,**kwargs))
 
 Key = Callable[[Optional[StorageSettings], RRef],Optional[Union[int,float,str]]]
 

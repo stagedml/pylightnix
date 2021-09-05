@@ -1,7 +1,7 @@
 from pylightnix import (instantiate, DRef, RRef, Path, mklogdir, dirhash,
                         assert_valid_dref, assert_valid_rref, store_gc,
                         assert_valid_hash, assert_valid_config, Manager,
-                        mkcontext, mkdref, mkrref, unrref, undref, realize,
+                        mkcontext, mkdref, mkrref, unrref, undref, realize1,
                         rref2dref, drefcfg, mkconfig, Build, Context,
                         build_outpath, mkdrv, rref2path, cfgcattrs,
                         build_deref, build_path, mkrefpath, build_wrapper,
@@ -44,7 +44,7 @@ def test_build_deref()->None:
       n3 = _depuser(m, {'maman':mkrefpath(n1,['artifact']), 'papa':n2})
       return n3
 
-    rref = realize(instantiate(_setting,S=S))
+    rref = realize1(instantiate(_setting,S=S))
     assert_valid_rref(rref)
 
 def test_build_cattrs()->None:
@@ -64,7 +64,7 @@ def test_build_cattrs()->None:
         return
       return mkdrv(m, _instantiate(), match_only(), build_wrapper(_realize))
 
-    rref = realize(instantiate(_setting,S=S))
+    rref = realize1(instantiate(_setting,S=S))
     assert_valid_rref(rref)
 
 def test_build_name()->None:
@@ -76,7 +76,7 @@ def test_build_name()->None:
         _=build_outpath(b)
       return mkdrv(m, mkconfig({'name':'foobar'}), match_only(),
                    build_wrapper(_realize))
-    rref=realize(instantiate(_setting,S=S))
+    rref=realize1(instantiate(_setting,S=S))
     assert isrref(rref)
     assert 'foobar' in rref
 
@@ -88,7 +88,7 @@ def test_build_exception()->None:
       return mkdrv(m, mkconfig({}), match_only(), build_wrapper(_realize))
     clo=instantiate(_setting,S=S)
     try:
-      realize(clo)
+      realize1(clo)
       raise ShouldHaveFailed()
     except BuildError as e:
       assert isinstance(e.exception, ValueError)

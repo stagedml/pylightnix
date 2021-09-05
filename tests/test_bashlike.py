@@ -1,4 +1,4 @@
-from pylightnix import (DRef, RRef, lsref, catref, instantiate, realize, unrref,
+from pylightnix import (DRef, RRef, lsref, catref, instantiate, realize1, unrref,
                         rmref, dref2path, rref2path, shellref, shell, rref2dref,
                         du, repl_realize, repl_cancelBuild, repl_build,
                         build_outpath, find, partial, diff, timestring,
@@ -15,8 +15,8 @@ from tests.imports import (isdir, environ, chmod, stat, TemporaryDirectory,
 def test_bashlike():
   with setup_storage2('test_bashlike') as S:
     clo=instantiate(mkstage, {'a':1}, lambda i:42, S=S)
-    rref1=realize(clo, force_rebuild=clo.targets)
-    rref2=realize(clo, force_rebuild=clo.targets)
+    rref1=realize1(clo, force_rebuild=clo.targets)
+    rref2=realize1(clo, force_rebuild=clo.targets)
     assert 'artifact' in lsref(rref1,S=S)
     assert 'context.json' in lsref(rref1,S=S)
     assert '__buildstart__.txt' in lsref(rref1,S=S)
@@ -42,7 +42,7 @@ def test_rmdref():
   with setup_storage2('test_rmdref') as S:
     clo=instantiate(mkstage, {'a':1}, lambda i:42, S=S)
     drefpath=dref2path(clo.targets[0],S=S)
-    rref1=realize(clo, force_rebuild=[clo.targets[0]])
+    rref1=realize1(clo, force_rebuild=[clo.targets[0]])
     rrefpath=rref2path(rref1, S=S)
     assert isdir(rrefpath)
     rmref(rref1,S=S)
@@ -65,7 +65,7 @@ def test_shellref():
         f.write(f"pwd\n")
       chmod(mockshell, stat(mockshell).st_mode | S_IEXEC)
       environ['SHELL']=mockshell
-      rref=realize(instantiate(mkstage, {'a':1}, S=S))
+      rref=realize1(instantiate(mkstage, {'a':1}, S=S))
       shellref(rref,S=S)
       shellref(rref2dref(rref),S=S)
       shellref(S=S)
@@ -91,7 +91,7 @@ def test_du():
     assert clo.targets[0] in usage
     assert usage[clo.targets[0]][0]>0
     assert usage[clo.targets[0]][1]=={}
-    rref=realize(clo)
+    rref=realize1(clo)
     usage=du(S=S)
     assert rref in usage[clo.targets[0]][1]
     assert usage[clo.targets[0]][1][rref]>0
@@ -100,10 +100,10 @@ def test_find():
   with setup_storage2('test_find') as S:
     s1=partial(mkstage, config={'name':'1'}, nondet=lambda i:42)
     s2=partial(mkstage, config={'name':'2'}, nondet=lambda i:33)
-    rref1=realize(instantiate(s1,S=S))
+    rref1=realize1(instantiate(s1,S=S))
     sleep(0.1)
     now=parsetime(timestring())
-    rref2=realize(instantiate(s2,S=S))
+    rref2=realize1(instantiate(s2,S=S))
     rrefs=find(S=S)
     assert set(rrefs)==set([rref1,rref2])
     rrefs=find(name='1',S=S)
@@ -121,14 +121,14 @@ def test_diff():
     s1=partial(mkstage, config={'name':'1'}, nondet=lambda i:42)
     s2=partial(mkstage, config={'name':'2'}, nondet=lambda i:33)
     dref1=instantiate(s1,S=S).targets[0]
-    rref2=realize(instantiate(s2,S=S))
+    rref2=realize1(instantiate(s2,S=S))
     diff(dref1,rref2,S=S)
     diff(dref1,s2,S=S)
 
 def test_linkrrefs()->None:
   with setup_storage2('test_linkrrefs') as S:
     s1=partial(mkstage, config={'name':'NaMe'})
-    rref1=realize(instantiate(s1,S=S))
+    rref1=realize1(instantiate(s1,S=S))
     l=linkrrefs([rref1], destdir=fstmpdir(S), format='result-%(N)s', S=S)
     assert len(l)==1
     assert str(l[0])==join(fstmpdir(S),'result-NaMe')

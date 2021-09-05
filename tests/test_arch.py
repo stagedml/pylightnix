@@ -2,7 +2,7 @@ from pylightnix import (instantiate, DRef, RRef, Path, mklogdir, dirhash,
                         assert_valid_dref, assert_valid_rref, drefdeps1,
                         drefdeps, assert_valid_hash, assert_valid_config,
                         Manager, mkcontext, mkdref, mkrref, unrref, undref,
-                        realize, rref2dref, mkconfig, Build, Context,
+                        realize1, rref2dref, mkconfig, Build, Context,
                         build_outpath, mkdrv, rref2path, alldrefs,
                         selfref, allrrefs, realizeMany, fstmpdir)
 
@@ -35,7 +35,7 @@ def test_pack1()->None:
                      'promise':[selfref,'artifact']})
       return s3
 
-    rref3=realize(instantiate(_stage,S=S))
+    rref3=realize1(instantiate(_stage,S=S))
     print('===================')
     print(list(allrrefs(S)))
     print('===================')

@@ -99,7 +99,7 @@
     * [instantiate\_](#pylightnix.core.instantiate_)
     * [instantiate](#pylightnix.core.instantiate)
     * [RealizeSeqGen](#pylightnix.core.RealizeSeqGen)
-    * [realize](#pylightnix.core.realize)
+    * [realize1](#pylightnix.core.realize1)
     * [realizeMany](#pylightnix.core.realizeMany)
     * [realizeSeq](#pylightnix.core.realizeSeq)
     * [evaluate](#pylightnix.core.evaluate)
@@ -159,7 +159,7 @@
   * [pylightnix.inplace](#pylightnix.inplace)
     * [PYLIGHTNIX\_MANAGER](#pylightnix.inplace.PYLIGHTNIX_MANAGER)
     * [instantiate\_inplace](#pylightnix.inplace.instantiate_inplace)
-    * [realize\_inplace](#pylightnix.inplace.realize_inplace)
+    * [realize1\_inplace](#pylightnix.inplace.realize_inplace)
   * [pylightnix.repl](#pylightnix.repl)
     * [ReplHelper](#pylightnix.repl.ReplHelper)
     * [ERR\_INVALID\_RH](#pylightnix.repl.ERR_INVALID_RH)
@@ -303,7 +303,7 @@ Derivation references are results of
 Derivation reference may be converted into a [realization
 reference](#pylightnix.types.RRef) by either dereferencing (that is by
 querying for existing realizations) or by
-[realizing](#pylightnix.core.realize) it from scratch.
+[realizing](#pylightnix.core.realize1) it from scratch.
 
 - For derefencing dependencies at the build time, see
   [build_deref](#pylightnix.core.build_deref).
@@ -320,10 +320,10 @@ where:
 - `<HashPart0>` is calculated over realization's
   [Context](#pylightnix.types.Context) and build artifacts.
 - `<HashPart1>-<Name>` forms valid [DRef](#pylightnix.types.DRef) which
-  this realizaion was [realized](#pylightnix.core.realize) from.
+  this realizaion was [realized](#pylightnix.core.realize1) from.
 
 Realization reference is obtained from the process called
-[realization](#pylightnix.core.realize).
+[realization](#pylightnix.core.realize1).
 
 Valid realization references may be dereferenced down to system paths of
 *build artifacts* by calling [rref2path](#pylightnix.core.rref2path) or by
@@ -493,7 +493,7 @@ Realizer = Callable[[Optional[StorageSettings],DRef,Context,RealizeArg],List[Pat
 ```
 
 Realizers are user-defined Python functions. Realizers typically
-implement [application-specific algorithms](#pylightnix.core.realize) which
+implement [application-specific algorithms](#pylightnix.core.realize1) which
 take some configuration parameters and produce some artifacts.
 
 Realizer accepts the following arguments:
@@ -554,7 +554,7 @@ produce artifacts of individual [Stage](#pylightnix.types.stage).
 Fields include:
 * [Configuration](#pylightnix.types.Config) objects serialized on disk.
 * [Matcher](#pylightnix.types.Matcher) Python function
-* [Realizer](#pylightnix.core.realize) Python function
+* [Realizer](#pylightnix.core.realize1) Python function
 
 The actual configuration is stored in the Pylightnix filesystem storage.
 Derivation holds the [DRef](#pylightnix.types.DRef) access key.
@@ -574,12 +574,12 @@ Closure describes the realization plan of some
 [Derivation](#pylightnix.types.Derivation).
 
 The plan is represented by a sequence of
-[Derivations](#pylightnix.types.Derivation) one need to realize in order to
-realize a given target derivation.
+[Derivations](#pylightnix.types.Derivation) one need to realize1 in order to
+realize1 a given target derivation.
 
 Closures are typically obtained as a result of the
 [instantiate](#pylightnix.core.instantiate) and is typically consumed by the
-call to [realize](#pylightnix.core.realize) or it's analogs.
+call to [realize1](#pylightnix.core.realize1) or it's analogs.
 
 <a name="pylightnix.types.Config"></a>
 ## `Config` Objects
@@ -692,7 +692,7 @@ def __init__(self, ba: BuildArgs) -> None
 ```
 
 Build objects track the process of stage's
-[realization](#pylightnix.core.realize). Build allows users to define
+[realization](#pylightnix.core.realize1). Build allows users to define
 [Realizers](#pylightnix.types.Realizer) with only a simple one-argument
 signature. The [build_wrapper](#pylightnix.core.build_wrapper) function
 converts simplified Build-realizers into the regular ones.
@@ -1433,7 +1433,7 @@ def somestage(m:Manager)->DRef:
       f.write(...)
   return mkdrv(m,mkconfig({'name':'mystage'}), match_only(), build_wrapper(_realizer))
 
-rref:RRef=realize(instantiate(somestage))
+rref:RRef=realize1(instantiate(somestage))
 ```
 
 <a name="pylightnix.core.instantiate_"></a>
@@ -1456,7 +1456,7 @@ Instantiate function evaluates [Stage](#pylightnix.types.Stage) functions
 by calling them and collecting the [Closure](#pylightnix.types.Closure) of
 nested [Derivations](#pylightnix.types.Derivation).
 
-The returned closure typically goes to [realize](#pylightnix.core.realize) or
+The returned closure typically goes to [realize1](#pylightnix.core.realize1) or
 its analogs.
 
 <a name="pylightnix.core.RealizeSeqGen"></a>
@@ -1469,14 +1469,14 @@ RealizeSeqGen = Generator[
 ```
 
 
-<a name="pylightnix.core.realize"></a>
-## `realize()`
+<a name="pylightnix.core.realize1"></a>
+## `realize1()`
 
 ```python
-def realize(closure: Closure, force_rebuild: Union[List[DRef],bool] = [], assert_realized: List[DRef] = []) -> RRef
+def realize1(closure: Closure, force_rebuild: Union[List[DRef],bool] = [], assert_realized: List[DRef] = []) -> RRef
 ```
 
-Realize gets the results of building the [Stage](#pylightnix.types.Stage).
+realize1 gets the results of building the [Stage](#pylightnix.types.Stage).
 Returns either the [matching](#pylightnix.types.Matcher) realizations
 immediately, or launches the user-defined [realization
 procedure](#pylightnix.types.Realizer).
@@ -1487,11 +1487,11 @@ def mystage(m:Manager)->DRef:
   ...
   return mkdrv(m, ...)
 
-rrefs=realize(instantiate(mystage))
+rrefs=realize1(instantiate(mystage))
 print(mklen(rref).syspath)
 ```
 
-Pylightnix contains the following specialized alternatives to `realize`:
+Pylightnix contains the following specialized alternatives to `realize1`:
 
 * [realizeMany](#pylightnix.core.realizeMany) - A version for multiple-output
 stages.
@@ -1506,7 +1506,7 @@ stages.
 def realizeMany(closure: Closure, force_rebuild: Union[List[DRef],bool] = [], assert_realized: List[DRef] = [], realize_args: Dict[DRef,RealizeArg] = {}) -> List[RRef]
 ```
 
-A generic version of [realize](#pylightnix.core.realize).  Allows the
+A generic version of [realize1](#pylightnix.core.realize1).  Allows the
 realizer to return several alternative (in a user-defined sence) realizations.
 
 <a name="pylightnix.core.realizeSeq"></a>
@@ -1516,7 +1516,7 @@ realizer to return several alternative (in a user-defined sence) realizations.
 def realizeSeq(closure: Closure, force_interrupt: List[DRef] = [], assert_realized: List[DRef] = [], realize_args: Dict[DRef,RealizeArg] = {}) -> RealizeSeqGen
 ```
 
-Sequentially realize the closure by issuing steps via Python's generator
+Sequentially realize1 the closure by issuing steps via Python's generator
 interface. `realizeSeq` encodes low-level details of the realization
 algorithm. Consider calling [realizeMany](#pylightnix.core.realizeMany) or
 it's analogs instead.
@@ -1951,7 +1951,7 @@ Return the name of a derivation being built.
 def build_deref_(b: Build, dref: DRef) -> List[RRef]
 ```
 
-For any [realization](#pylightnix.core.realize) process described with
+For any [realization](#pylightnix.core.realize1) process described with
 it's [Build](#pylightnix.types.Build) handler, `build_deref` queries a
 realization of dependency `dref`.
 
@@ -2044,7 +2044,7 @@ def repl_cancelBuild(b: Build, rh: Optional[ReplHelper] = None) -> None
 <a name="pylightnix.inplace"></a>
 # `pylightnix.inplace`
 
-This module defines inplace variants of `instantiate` and `realize`
+This module defines inplace variants of `instantiate` and `realize1`
 functions. Inplace functions store closures in their own global dependency
 resolution [Manager](#pylightnix.types.Manager) and thus offer a simpler API,
 but add usual risks of using gloabl variables.
@@ -2076,14 +2076,14 @@ Return derivation reference of the top-level stage.
 def realize_inplace(dref: DRef, force_rebuild: List[DRef] = []) -> RRef
 ```
 
-Realize the derivation pointed by `dref` by constructing it's
+realize1 the derivation pointed by `dref` by constructing it's
 [Closure](#pylightnix.types.Closure) based on the contents of the global
 dependency manager and [realizing](#pylightnix.core.realizeMany) this closure.
 
 <a name="pylightnix.repl"></a>
 # `pylightnix.repl`
 
-Repl module defines variants of `instantiate` and `realize` functions, which
+Repl module defines variants of `instantiate` and `realize1` functions, which
 are suitable for REPL shells. Repl-friendly wrappers (see `repl_realize`) could
 pause the computation, save the Pylightnix state into a variable and return to
 the REPL's main loop. At this point user could alter the state of the whole
@@ -2231,7 +2231,7 @@ Example:
 def _new_config(old_config):
   old_config['learning_rate'] = 1e-5
   return mkconfig(old_config)
-realize(instantiate(redefine(myMLmodel, _new_config)))
+realize1(instantiate(redefine(myMLmodel, _new_config)))
 ```
 
 FIXME: Updating configs is dangerous: it changes its dref and thus breaks
@@ -2250,7 +2250,7 @@ realizer triggering an assertion.
 
 Example:
 ```python
-rref:RRef=realize(instantiate(realized(my_long_running_stage, arg="bla")))
+rref:RRef=realize1(instantiate(realized(my_long_running_stage, arg="bla")))
 # ^^^ Fail if `my_long_running_stage` is not yet realized.
 ```
 
@@ -2333,7 +2333,7 @@ def hello_src(m:Manager)->DRef:
     url=f'http://ftp.gnu.org/gnu/hello/hello-{hello_version}.tar.gz',
     sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b')
 
-rref:RRef=realize(instantiate(hello_src))
+rref:RRef=realize1(instantiate(hello_src))
 print(rref2path(rref))
 ```
 
@@ -2434,7 +2434,7 @@ def hello_src(m:Manager)->DRef:
     url=f'http://ftp.gnu.org/gnu/hello/hello-{hello_version}.tar.gz',
     sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b')
 
-rref:RRef=realize(instantiate(hello_src))
+rref:RRef=realize1(instantiate(hello_src))
 print(rref2path(rref))
 ```
 
@@ -2881,7 +2881,7 @@ mklens(dref).output.val      # Return raw output value
 mklens(dref).output.refpath  # Return output as a RefPath (a list)
 mklens(dref).output.syspath  # Error! not a realization
 
-rref:RRef=realize(instantiate(stage))
+rref:RRef=realize1(instantiate(stage))
 
 mklens(rref).output.syspath  # Return output as a system path
 ```

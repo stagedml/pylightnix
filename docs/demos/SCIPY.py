@@ -1,7 +1,7 @@
 from pylightnix import (StorageSettings, Matcher, Build, Context, Path, RefPath,
                         Config, Manager, RRef, DRef, Path, build_path,
                         build_outpath, build_cattrs, mkdrv, rref2path, mkconfig,
-                        tryread, fetchurl, instantiate, realize, match_only,
+                        tryread, fetchurl, instantiate, realize1, match_only,
                         build_wrapper, selfref, mklens, instantiate_inplace,
                         realize_inplace, rmref, fsinit, pack, unpack, allrrefs,
                         gc, redefine, match_some, match_latest, dirrm,
@@ -81,7 +81,7 @@ def stage_all(m:Manager):
   return vis
 
 def run2(S=None):
-  return realize(instantiate(stage_all,S=S))
+  return realize1(instantiate(stage_all,S=S))
 
 # 3. Different storages
 
@@ -91,8 +91,8 @@ fsinit(Sa,remove_existing=True)
 fsinit(Sb,remove_existing=True)
 
 def run_copystorage():
-  rrefA=realize(instantiate(stage_all, S=Sa))
-  rrefB=realize(instantiate(stage_all, S=Sb))
+  rrefA=realize1(instantiate(stage_all, S=Sa))
+  rrefB=realize1(instantiate(stage_all, S=Sb))
   print(rrefA)
   print(rrefB)
   print('Before', list(allrrefs(S=Sb)))
@@ -119,7 +119,7 @@ def stage_all2(m:Manager):
 
 def run_matchers():
   # Call after run_copystorage
-  return realize(instantiate(stage_all2,S=Sb))
+  return realize1(instantiate(stage_all2,S=Sb))
 
 
 #############################################################

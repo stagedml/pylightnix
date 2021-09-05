@@ -1,6 +1,6 @@
 from pylightnix import (Manager, DRef, RRef, Path, mklogdir, dirhash, mknode,
                         drefdeps1, rref2path, Manager, mkcontext, instantiate,
-                        realize, Name, realized, build_wrapper, Build,
+                        realize1, Name, realized, build_wrapper, Build,
                         mkconfig, match_some, mkdrv, build_outpath, redefine,
                         tryread, mklens, selfref, match_only )
 
@@ -42,7 +42,7 @@ def test_mknode_with_artifacts(d,a)->None:
     cl = instantiate(_setting,S=S)
     assert len(cl.derivations)==1
 
-    rref = realize(instantiate(_setting,S=S))
+    rref = realize1(instantiate(_setting,S=S))
     for nm,val in a.items():
       assert isfile(join(rref2path(rref,S=S),nm)), \
           f"RRef {rref} doesn't contain artifact {nm}"
@@ -55,12 +55,12 @@ def test_mknode_with_artifacts(d,a)->None:
 #     def _setting(m:Manager, nm)->DRef:
 #       return mkfile(m, Name('foo'), bytes((nm or 'bar').encode('utf-8')), nm)
 
-#     rref1=realize(instantiate(_setting, None))
+#     rref1=realize1(instantiate(_setting, None))
 #     with open(join(rref2path(rref1),'foo'),'r') as f:
 #       bar=f.read()
 #     assert bar=='bar'
 
-#     rref2=realize(instantiate(_setting, 'baz'))
+#     rref2=realize1(instantiate(_setting, 'baz'))
 #     with open(join(rref2path(rref2),'baz'),'r') as f:
 #       baz=f.read()
 #     assert baz=='baz'
@@ -81,13 +81,13 @@ def test_realized()->None:
 
     dref=instantiate(realized(_setting), assume_realized=True, S=S)
     try:
-      rref=realize(dref)
+      rref=realize1(dref)
       raise ShouldHaveFailed('Should not be realized')
     except AssertionError:
       pass
 
-    rref=realize(instantiate(_setting, assume_realized=False,S=S))
-    rref2=realize(instantiate(realized(_setting), assume_realized=True,S=S))
+    rref=realize1(instantiate(_setting, assume_realized=False,S=S))
+    rref2=realize1(instantiate(realized(_setting), assume_realized=True,S=S))
     assert rref==rref2
 
 def test_redefine()->None:
@@ -100,7 +100,7 @@ def test_redefine()->None:
       mklens(c,S=S).bar.val=42
     _setting2=redefine(_setting, new_config=_nc)
 
-    rref=realize(instantiate(_setting2,S=S))
+    rref=realize1(instantiate(_setting2,S=S))
     assert mklens(rref,S=S).bar.val==42
     assert tryread(mklens(rref,S=S).output.syspath)=='umgh'
 

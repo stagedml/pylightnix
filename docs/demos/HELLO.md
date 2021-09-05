@@ -247,7 +247,7 @@ dref:e48878b9f7760fe0972eb6863775045f-hello-bin
 ```
 
 As before, we get a `DRef`, which means that basic checks were passed,
-and then call a `realize` on it:
+and then call a `realize1` on it:
 
 ``` python
 rref:RRef=realize_inplace(hello)

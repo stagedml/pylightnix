@@ -1,7 +1,7 @@
 from pylightnix import (StorageSettings, Matcher, Build, Context, Path, RefPath,
                         Config, Manager, RRef, DRef, Path, build_path,
                         build_outpath, build_cattrs, mkdrv, rref2path, mkconfig,
-                        tryread, fetchurl, instantiate, realize, match_only,
+                        tryread, fetchurl, instantiate, realize1, match_only,
                         build_wrapper, selfref, mklens, instantiate_inplace,
                         realize_inplace, rmref, fsinit, pack, unpack, allrrefs,
                         gc, redefine, match_some, match_latest, dirrm,
@@ -98,7 +98,7 @@ def stage_all(m:Manager):
 
 
 def run2(S=None):
-  return realize(instantiate(stage_all,S=S))
+  return realize1(instantiate(stage_all,S=S))
 
 # 3. Different storages
 
@@ -108,9 +108,9 @@ Sb=mksettings('_storageB')
 def run3():
   fsinit(Sa,remove_existing=True)
   fsinit(Sb,remove_existing=True)
-  rrefA=realize(instantiate(stage_all, S=Sa))
+  rrefA=realize1(instantiate(stage_all, S=Sa))
   kittyshow(mklens(rrefA,S=Sa).out.syspath)
-  rrefB=realize(instantiate(stage_all, S=Sb))
+  rrefB=realize1(instantiate(stage_all, S=Sb))
   kittyshow(mklens(rrefB,S=Sb).out.syspath)
   print(rrefA)
   print(rrefB)
@@ -139,7 +139,7 @@ def stage_all2(m:Manager):
 
 def run4():
   run3()
-  return realize(instantiate(stage_all2,S=Sb))
+  return realize1(instantiate(stage_all2,S=Sb))
 
 
 #############################################################

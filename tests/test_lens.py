@@ -16,7 +16,7 @@
 
 from pylightnix import (DRef, RRef, Path, Build, Manager, mklens, mkdrv,
                         selfref, match_some, build_wrapper, instantiate,
-                        realize, isrref, isdref, build_cattrs, build_outpath,
+                        realize1, isrref, isdref, build_cattrs, build_outpath,
                         build_path, mkconfig, assert_valid_rref, isrefpath,
                         isclosure, match_only)
 
@@ -61,7 +61,7 @@ def test_lens():
     clo=instantiate(_setting, S=S)
     assert isrefpath(mklens(clo.targets[0],S=S).maman.selfref.refpath)
     assert isdir(mklens(clo.targets[0],S=S).syspath)
-    rref=realize(clo)
+    rref=realize1(clo)
     assert_valid_rref(rref)
     assert isrefpath(mklens(rref,S=S).maman.selfref.refpath)
     assert isfile(mklens(rref,S=S).maman.selfref.syspath)
@@ -119,7 +119,7 @@ def test_lens_closures():
     assert isclosure(clo)
     print(f"{clo.targets}")
 
-    rref=realize(mklens(clo,S=S).maman.papa.closure)
+    rref=realize1(mklens(clo,S=S).maman.papa.closure)
     assert mklens(rref,S=S).x.val==33
     assert open(mklens(rref,S=S).selfref.syspath).read()=='0'
 

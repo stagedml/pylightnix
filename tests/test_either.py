@@ -1,5 +1,5 @@
 from pylightnix import (SPath, Context, RealizeArg, Path, instantiate, DRef,
-                        RRef, assert_valid_rref, Manager, Build, realize,
+                        RRef, assert_valid_rref, Manager, Build, realize1,
                         mklens, either_realizer, readstr, mkconfig, mkdrv,
                         build_wrapper, either_status,
                         either_isRight, either_isLeft, realizeMany, rref2path,
@@ -70,7 +70,7 @@ def test_either_invariant(stages):
 #       n3 = mkeither(m, {'name':'n3', 'maman':n1, 'papa':n2})
 #       return n3
 
-#     rref = realize(instantiate(_setting))
+#     rref = realize1(instantiate(_setting))
 #     assert_valid_rref(rref)
 #     assert mklens(rref).name.val=='n3'
 #     assert readstr(join(mklens(rref).syspath, 'status_either.txt'))=='LEFT'
@@ -88,7 +88,7 @@ def test_either_invariant(stages):
 #       return mkdrv(m, mkconfig({'name':'n2', 'maman':n1}),
 #                    match_only(), either_wrapper(build_wrapper(_make)))
 
-#     rref = realize(instantiate(_setting))
+#     rref = realize1(instantiate(_setting))
 #     assert_valid_rref(rref)
 #     assert mklens(rref).maman.name.val=='n1'
 #     assert mklens(rref).name.val=='n2'

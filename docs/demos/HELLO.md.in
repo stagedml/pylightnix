@@ -205,7 +205,7 @@ print(hello)
 ```
 
 As before, we get a `DRef`, which means that basic checks were passed, and
-then call a `realize` on it:
+then call a `realize1` on it:
 
 ```{.python .cb.nb}
 rref:RRef=realize_inplace(hello)

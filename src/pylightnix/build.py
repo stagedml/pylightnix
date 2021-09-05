@@ -75,7 +75,7 @@ class BuildError(PylightnixException):
     self.exception=exception
     self.outpaths:List[Path]=outpaths.val if outpaths else []
   def __str__(self):
-    return f"Failed to realize '{self.dref}': {self.exception}"
+    return f"Failed to realize1 '{self.dref}': {self.exception}"
 
 def mkbuildargs(S:Optional[StorageSettings], dref:DRef, context:Context,
                 starttime:Optional[str], stoptime:Optional[str],
@@ -223,7 +223,7 @@ def build_name(b:Build)->Name:
   return Name(cfgname(build_config(b)))
 
 def build_deref_(b:Build, dref:DRef)->List[RRef]:
-  """ For any [realization](#pylightnix.core.realize) process described with
+  """ For any [realization](#pylightnix.core.realize1) process described with
   it's [Build](#pylightnix.types.Build) handler, `build_deref` queries a
   realization of dependency `dref`.
 
