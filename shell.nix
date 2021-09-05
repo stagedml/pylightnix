@@ -24,6 +24,7 @@ let
     scipy
     matplotlib
     pyqt5
+    twine
   ]);
 
   bespon = pkgs.python37Packages.buildPythonPackage rec {
