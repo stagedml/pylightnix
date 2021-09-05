@@ -746,18 +746,18 @@ def realizeMany(closure:Union[Closure,Tuple[StageResult,Closure]],
     f"`realize1` is to be used with single-targeted derivations. "
     f"Current closure has {len(closure.targets)} targets:\n{closure.targets}\n"
     f"Consider using `realizeMany`." )
-  _,_,ctx=realizeCtx(closure, force_rebuild, assert_realized, realize_args)
+  _,_,ctx=realize(closure, force_rebuild, assert_realized, realize_args)
   assert len(ctx.keys())==1, (
     f"realizeMany expects a one-target closure")
   rrefs=ctx[list(ctx.keys())[0]]
   return rrefs
 
 
-def realizeCtx(closure:Union[Closure,Tuple[StageResult,Closure]],
-               force_rebuild:Union[List[DRef],bool]=[],
-               assert_realized:List[DRef]=[],
-               realize_args:Dict[DRef,RealizeArg]={}
-               )->Tuple[StageResult,Closure,Context]:
+def realize(closure:Union[Closure,Tuple[StageResult,Closure]],
+            force_rebuild:Union[List[DRef],bool]=[],
+            assert_realized:List[DRef]=[],
+            realize_args:Dict[DRef,RealizeArg]={}
+            )->Tuple[StageResult,Closure,Context]:
   """ A generic version of [realize1](#pylightnix.core.realize1). Takes the
   instantiated [Closure](#pylightnix.types.Closure) and returns
   its value together with the realization [Context](#pylightnix.types.Context).
