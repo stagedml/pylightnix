@@ -31,9 +31,9 @@ API Referece [[MD]](./docs/Reference.md)
 
 Demos:
 
-* [GNU Hello](./docs/demos/HELLO.md), turns Pylightnix into a toy
+* [GNU Hello](./docs/demos/HELLO.md), turn Pylightnix into a toy
   package manager to build the GNU Hello from sources.
-* [MDRUN](./docs/demos/MDRUN.py), evaluates code sections of a Markdown document,
+* [MDRUN](./docs/demos/MDRUN.py), evaluate code sections of a Markdown document,
   cache the results between runs.
 
 (Outdated)
