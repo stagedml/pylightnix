@@ -115,8 +115,14 @@ docs/demos/REPL.py: docs/demos/REPL.pmd $(SRC) .stamp_check_$(HOSTNAME)
 .PHONY: demo_repl
 demo_repl: docs/demos/REPL.md docs/demos/REPL.py
 
+.PHONY: demo_mdrun
+demo_mdrun: docs/demos/MDRUN_test.md
+
+docs/demos/MDRUN_test.md: docs/demos/MDRUN_test.md.in docs/demos/MDRUN.py $(SRC) .stamp_check
+	python docs/demos/MDRUN.py -r $< $@
+
 .PHONY: demos
-demos: demo_mnist demo_hello demo_repl
+demos: demo_hello demo_mdrun
 
 $(WHEEL): $(SRC) $(TESTS)
 	rm -rf build dist || true
@@ -148,7 +154,7 @@ check: .stamp_check
 # 		echo 'Did you install pylightnix systemwide by running `sudo -H make install` ?' ; exit 1 ; )
 
 .PHONY: all
-all: coverage docs wheel
+all: coverage docs demos wheel
 
 
 

@@ -30,6 +30,7 @@
     * [Build](#pylightnix.types.Build)
     * [Registry](#pylightnix.types.Registry)
     * [DRefLike](#pylightnix.types.DRefLike)
+    * [StageResult](#pylightnix.types.StageResult)
     * [Stage](#pylightnix.types.Stage)
   * [pylightnix.core](#pylightnix.core)
     * [PYLIGHTNIX\_STORE\_VERSION](#pylightnix.core.PYLIGHTNIX_STORE_VERSION)
@@ -100,8 +101,8 @@
     * [mkdrv](#pylightnix.core.mkdrv)
     * [current\_registry](#pylightnix.core.current_registry)
     * [current\_storage](#pylightnix.core.current_storage)
-    * [StageResult](#pylightnix.core.StageResult)
     * [mkclosure](#pylightnix.core.mkclosure)
+    * [\_A](#pylightnix.core._A)
     * [instantiate](#pylightnix.core.instantiate)
     * [RealizeSeqGen](#pylightnix.core.RealizeSeqGen)
     * [realize1](#pylightnix.core.realize1)
@@ -782,11 +783,19 @@ DRefLike = TypeVar('DRefLike',bound=DRef)
 ```
 
 
+<a name="pylightnix.types.StageResult"></a>
+## `StageResult`
+
+```python
+StageResult = Union[DRef,List[DRef],Dict[Any,DRef],Tuple[DRef,...]]
+```
+
+
 <a name="pylightnix.types.Stage"></a>
 ## `Stage`
 
 ```python
-Stage = Callable[[Registry],Union[DRefLike,List[DRefLike]]]
+Stage = Callable[...,StageResult]
 ```
 
 Functions with the `Stage` signature are the top-level building blocks of
@@ -1463,7 +1472,7 @@ rref:RRef=realize1(instantiate(somestage))
 
 ```python
 @contextmanager
-def current_registry(r: Registry) -> Iterable[Registry]
+def current_registry(r: Registry) -> Iterator[Registry]
 ```
 
 Sets the implicit global registry for the inner scoped code. Implies
@@ -1474,15 +1483,7 @@ Sets the implicit global registry for the inner scoped code. Implies
 
 ```python
 @contextmanager
-def current_storage(S: StorageSettings) -> Iterable[StorageSettings]
-```
-
-
-<a name="pylightnix.core.StageResult"></a>
-## `StageResult`
-
-```python
-StageResult = TypeVar('StageResult')
+def current_storage(S: Optional[StorageSettings]) -> Iterator[Optional[StorageSettings]]
 ```
 
 
@@ -1490,7 +1491,15 @@ StageResult = TypeVar('StageResult')
 ## `mkclosure()`
 
 ```python
-def mkclosure(result: Any, r: Registry, S: Optional[StorageSettings] = None) -> Closure
+def mkclosure(result: Any, r: Registry) -> Closure
+```
+
+
+<a name="pylightnix.core._A"></a>
+## `_A`
+
+```python
+_A = TypeVar('_A')
 ```
 
 
@@ -1498,7 +1507,7 @@ def mkclosure(result: Any, r: Registry, S: Optional[StorageSettings] = None) -> 
 ## `instantiate()`
 
 ```python
-def instantiate(stage: Union[StageResult,Callable[[Registry,Any,Any],StageResult]], args: Any, *,, ,, =, ,, =, ,, kwargs: Any) -> Tuple[StageResult,Closure]
+def instantiate(stage: Union[_A,Callable[...,Any]], args: Any, *,, ,, =, ,, =, ,, kwargs: Any) -> Tuple[_A,Closure]
 ```
 
 Instantiate scans a Python data object (list,dict or constant) which
