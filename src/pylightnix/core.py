@@ -689,7 +689,7 @@ def instantiate(stage:Union[StageResult,Callable[[Manager,Any,Any],StageResult]]
       result=stage
   finally:
     m.in_instantiate=False
-  return mkclosure(result,m,S)
+  return result,mkclosure(result,m,S)
 
 
 RealizeSeqGen = Generator[
@@ -742,10 +742,6 @@ def realizeMany(closure:Union[Closure,Tuple[StageResult,Closure]],
                 force_rebuild:Union[List[DRef],bool]=[],
                 assert_realized:List[DRef]=[],
                 realize_args:Dict[DRef,RealizeArg]={})->List[RRef]:
-  assert len(closure.targets)==1, (
-    f"`realize1` is to be used with single-targeted derivations. "
-    f"Current closure has {len(closure.targets)} targets:\n{closure.targets}\n"
-    f"Consider using `realizeMany`." )
   _,_,ctx=realize(closure, force_rebuild, assert_realized, realize_args)
   assert len(ctx.keys())==1, (
     f"realizeMany expects a one-target closure")
@@ -758,9 +754,11 @@ def realize(closure:Union[Closure,Tuple[StageResult,Closure]],
             assert_realized:List[DRef]=[],
             realize_args:Dict[DRef,RealizeArg]={}
             )->Tuple[StageResult,Closure,Context]:
-  """ A generic version of [realize1](#pylightnix.core.realize1). Takes the
-  instantiated [Closure](#pylightnix.types.Closure) and returns
+  """ Takes the instantiated [Closure](#pylightnix.types.Closure) and returns
   its value together with the realization [Context](#pylightnix.types.Context).
+  Calls the derivation realizers if their matchers require so.
+
+  See also [repl_realize](#pylightnix.repl.repl_realize)
   """
   # FIXME: define a Closure as a datatype and simplify the below check
   if isinstance(closure,tuple) and len(closure)==2:
@@ -768,7 +766,7 @@ def realize(closure:Union[Closure,Tuple[StageResult,Closure]],
     closure_=closure[1]
   else:
     closure_=closure
-    result_=None
+    result_=closure_.result
   force_interrupt:List[DRef]=[]
   if isinstance(force_rebuild,bool):
     if force_rebuild:
@@ -792,10 +790,10 @@ def realizeSeq(closure:Closure,
                assert_realized:List[DRef]=[],
                realize_args:Dict[DRef,RealizeArg]={}
                )->RealizeSeqGen:
-  """ Sequentially realize1 the closure by issuing steps via Python's generator
-  interface. `realizeSeq` encodes low-level details of the realization
-  algorithm. Consider calling [realizeMany](#pylightnix.core.realizeMany) or
-  it's analogs instead.
+  """ `realizeSeq` encodes low-level details of the realization algorithm.
+  Sequentially realize the closure by issuing steps via Python's generator
+  interface. Consider calling [realize](#pylightnix.core.realize) or it's
+  analogs instead.
 
   FIXME: try to implement `assert_realized` by calling `redefine` with
   appropriate failing realizer on every Derivation. """

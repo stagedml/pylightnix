@@ -161,8 +161,9 @@ def find(name:Optional[Union[Stage,str]]=None,
       name_=name
     else:
       stage=name
-      drefs=instantiate(stage,S=S).targets
-      assert len(drefs)==1
+      drefs=instantiate(stage,S=S)[1].targets
+      assert len(drefs)==1, \
+        f"Only a one-target stages is supported as a name argument"
       name_=cfgname(drefcfg_(drefs[0], S=S))
   for dref in alldrefs(S=S):
     for rref in drefrrefs(dref,S=S):
@@ -201,7 +202,7 @@ def diff(stageA:Union[RRef,DRef,Stage],
     elif isdref(s):
       return drefcfgpath(DRef(s),S=S)
     else:
-      drefs=instantiate(s,S=S).targets
+      drefs=instantiate(s,S=S)[1].targets
       assert len(drefs)==1
       return drefcfgpath(drefs[0],S=S)
 

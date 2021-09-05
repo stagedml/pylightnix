@@ -30,7 +30,7 @@ def test_union_of_root_derivations(stages):
   with setup_storage2('test_union_of_root_derivations') as S:
     deps=set()
     for stage in stages:
-      clo=instantiate(stage,S=S)
+      _,clo=instantiate(stage,S=S)
       deps |= drefdeps([clo.targets[0]],S) | set([clo.targets[0]])
     assert deps==set(alldrefs(S))
 
@@ -170,7 +170,7 @@ def test_match_latest(h):
   with setup_storage2('test_match_latest') as S:
     for t in range(3):
       note(f"t={t}")
-      clo=instantiate(h, t=t, a=t, S=S)
+      _,clo=instantiate(h, t=t, a=t, S=S)
       rrefs=realizeMany(clo, force_rebuild=[d.dref for d in clo.derivations])
       for rref in rrefdeps(rrefs,S=S)|set(rrefs):
         bstart=rrefbstart(rref,S=S)
@@ -258,7 +258,7 @@ def test_root_drefs(stages):
     assert len(rootdrefs(S))==0
     results=set()
     for stage in stages:
-      results |= set([instantiate(stage,S=S).targets[0]])
+      results |= set([instantiate(stage,S=S)[1].targets[0]])
     roots=rootdrefs(S)
     for dref in results:
       assert dref in roots

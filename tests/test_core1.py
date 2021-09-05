@@ -11,7 +11,8 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir, dirhash,
                         concat, linkrrefs, mkclosure, dref2path, path2dref,
                         linkdref, rrefdeps, drefrrefs, allrrefs, match_only,
                         drefrrefs, drefrrefsC, rrefctx, context_deref,
-                        rrefattrs, rrefbstart, fsstorage, current_manager)
+                        rrefattrs, rrefbstart, fsstorage, current_manager,
+                        realize)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink, isfile,
                            islink, isdir, dirname, List, randint, sleep, rmtree,
@@ -88,7 +89,7 @@ from tests.setup import ( ShouldHaveFailed, setup_storage2,
 def test_no_dref_deps_without_realizers()->None:
   with setup_storage2('test_no_dref_deps_without_realizers') as S:
     try:
-      clo=instantiate(mkstage,{'a':1},S=S)
+      _,clo=instantiate(mkstage,{'a':1},S=S)
       _=realize1(instantiate(mkstage,{'maman':clo.targets[0]},S=S))
       raise ShouldHaveFailed("We shouldn't share DRefs across managers")
     except AssertionError:
@@ -98,9 +99,8 @@ def test_repeated_instantiate()->None:
   with setup_storage2('test_repeated_instantiate') as S:
     def _setting(m:Manager)->DRef:
       return mkstage(m, {'a':'1'})
-
-    cl1 = instantiate(_setting,S=S)
-    cl2 = instantiate(_setting,S=S)
+    _,cl1=instantiate(_setting,S=S)
+    _,cl2=instantiate(_setting,S=S)
     assert len(cl1.derivations)==1
     assert len(cl2.derivations)==1
     assert cl1.derivations[0].dref == cl2.derivations[0].dref
@@ -111,7 +111,7 @@ def test_repeated_realize()->None:
   with setup_storage2('test_repeated_realize') as S:
     def _setting(m:Manager)->DRef:
       return mkstage(m, {'a':'1'})
-    clo=instantiate(_setting,S=S)
+    _,clo=instantiate(_setting,S=S)
     rref1=realize1(clo)
     rref2=realize1(clo)
     rref3=realize1(clo, force_rebuild=[clo.targets[0]])
@@ -204,11 +204,11 @@ def test_no_foreign_dref_deps()->None:
   with setup_storage2('test_no_foreign_dref_deps') as S:
     with setup_storage2('test_no_foreign_dref_deps_2') as S2:
       def _setup(m):
-        clo=instantiate(mkstage, {'name':'foreign', 'foo':'bar'}, S=S2)
+        _,clo=instantiate(mkstage, {'name':'foreign', 'foo':'bar'}, S=S2)
         return mkstage(m,{'bogus':clo.targets[0]})
       try:
-        dref = instantiate(_setup,S=S)
-        raise ShouldHaveFailed(f"Should fail, but got {dref}")
+        xxx=instantiate(_setup,S=S)
+        raise ShouldHaveFailed(f"Should fail, but got {xxx}")
       except FileNotFoundError:
         pass
 
@@ -217,11 +217,11 @@ def test_no_rref_deps()->None:
   with setup_storage2('test_no_rref_deps') as S:
     def _setup(m):
       rref=realize1(instantiate(mkstage, {'foo':'bar'}))
-      n2 = mkstage(m,{'bogus':rref})
+      n2=mkstage(m,{'bogus':rref})
       return n2
     try:
-      dref = instantiate(_setup,S=S)
-      raise ShouldHaveFailed(f"Should fail, but got {dref}")
+      xxx=instantiate(_setup,S=S)
+      raise ShouldHaveFailed(f"Should fail, but got {xxx}")
     except AssertionError:
       pass
 
@@ -233,8 +233,8 @@ def test_no_recursive_instantiate_with_same_manager()->None:
       n2 = mkstage(m,{'bogus':derivs.targets[0]})
       return n2
     try:
-      dref = instantiate(_setup,S=S)
-      raise ShouldHaveFailed(f"Should fail, but got {dref}")
+      xxx=instantiate(_setup,S=S)
+      raise ShouldHaveFailed(f"Should fail, but got {xxx}")
     except AssertionError:
       pass
 
@@ -248,7 +248,7 @@ def test_recursive_realize_with_another_manager()->None:
       rref_inner=realize1(instantiate(_setup_inner,S=S))
       r2=mkstage(m,{'baz':mklens(rref_inner,S=S).foo.val})
       return [rref_inner,r2]
-    clo=instantiate(_setup_outer,S=S)
+    _,clo=instantiate(_setup_outer,S=S)
     rref=realize1(clo)
     [rref_inner,r2]=clo.result
     assert rref_inner is not None
@@ -268,19 +268,18 @@ def test_config_ro():
 
 def test_ignored_stage()->None:
   with setup_storage2('test_ignored_stage') as S:
-    n1:DRef; n2:DRef; n3:DRef; n4:DRef
+    n2:DRef; n4:DRef
     def _setting(m:Manager)->DRef:
-      nonlocal n1, n2, n3, n4
+      nonlocal n2,n4
       n1 = mkstage(m, {'a':'1'})
       n2 = mkstage(m, {'b':'2'}) # this one should not be realized
       n3 = mkstage(m, {'c':'3', 'maman':n1})
       n4 = mkstage(m, {'c':'4', 'papa':n3}) # neither this one
-      return n3
+      return n1,n3
 
-    cl=instantiate(_setting,S=S)
-    rref = realize1(cl)
-    rrefs:List[RRef] = []
-    all_drefs = list(alldrefs(S))
+    (n1,n3),clo=instantiate(_setting,S=S)
+    realize(clo)
+    all_drefs=list(alldrefs(S))
     assert len(all_drefs)==4
     assert len(list(drefrrefs(n1,S)))==1
     assert len(list(drefrrefs(n2,S)))==0
@@ -375,7 +374,7 @@ def test_path2rref(rref):
 def test_linkdref()->None:
   with setup_storage2('test_linkdref') as S:
     s1=partial(mkstage, config={'name':'NaMe'})
-    dref1=instantiate(s1,S=S).targets[0]
+    dref1=instantiate(s1,S=S)[0]
     l=linkdref(dref1, destdir=fsstorage(S), format='result-%(N)s', S=S)
     assert str(l)==join(fsstorage(S),'result-NaMe')
     assert islink(join(fsstorage(S),'result-NaMe'))

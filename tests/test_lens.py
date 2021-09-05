@@ -58,7 +58,7 @@ def test_lens():
                  matcher=match_only(),
                  realizer=build_wrapper(_realize))
 
-    clo=instantiate(_setting, S=S)
+    _,clo=instantiate(_setting, S=S)
     assert isrefpath(mklens(clo.targets[0],S=S).maman.selfref.refpath)
     assert isdir(mklens(clo.targets[0],S=S).syspath)
     rref=realize1(clo)
@@ -115,7 +115,7 @@ def test_lens_closures():
       n3=mkstage(m, {'name':'3', 'maman':n2 })
       return n3
 
-    clo=instantiate(_stage, S=S)
+    _,clo=instantiate(_stage, S=S)
     assert isclosure(clo)
     print(f"{clo.targets}")
 

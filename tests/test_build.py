@@ -84,14 +84,14 @@ def test_build_exception()->None:
   with setup_storage2('test_build_name') as S:
     def _setting(m:Manager)->DRef:
       def _realize(b)->None:
-        raise ValueError('Oops')
+        raise ValueError("An intended failure")
       return mkdrv(m, mkconfig({}), match_only(), build_wrapper(_realize))
-    clo=instantiate(_setting,S=S)
+    res,clo=instantiate(_setting,S=S)
     try:
       realize1(clo)
       raise ShouldHaveFailed()
     except BuildError as e:
       assert isinstance(e.exception, ValueError)
       assert e.dref==clo.targets[0]
-      assert str(e.exception)=='Oops'
+      assert str(e.exception)=='An intended failure'
 

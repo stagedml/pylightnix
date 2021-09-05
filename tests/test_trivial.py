@@ -24,8 +24,8 @@ def test_mknode(d)->None:
     def _setting(m:Manager)->DRef:
       return mknode(m, d)
 
-    cl1 = instantiate(_setting,S=S)
-    cl2 = instantiate(_setting,S=S)
+    _,cl1=instantiate(_setting,S=S)
+    _,cl2=instantiate(_setting,S=S)
     assert len(cl1.derivations)==1
     assert len(cl2.derivations)==1
     assert cl1.derivations[0].dref == cl2.derivations[0].dref
@@ -39,32 +39,13 @@ def test_mknode_with_artifacts(d,a)->None:
     def _setting(m:Manager)->DRef:
       return mknode(m, cfgdict=d, artifacts=a)
 
-    cl = instantiate(_setting,S=S)
+    _,cl=instantiate(_setting,S=S)
     assert len(cl.derivations)==1
 
     rref = realize1(instantiate(_setting,S=S))
     for nm,val in a.items():
       assert isfile(join(rref2path(rref,S=S),nm)), \
           f"RRef {rref} doesn't contain artifact {nm}"
-
-
-
-# def test_mkfile()->None:
-#   with setup_storage('test_mkfile'):
-
-#     def _setting(m:Manager, nm)->DRef:
-#       return mkfile(m, Name('foo'), bytes((nm or 'bar').encode('utf-8')), nm)
-
-#     rref1=realize1(instantiate(_setting, None))
-#     with open(join(rref2path(rref1),'foo'),'r') as f:
-#       bar=f.read()
-#     assert bar=='bar'
-
-#     rref2=realize1(instantiate(_setting, 'baz'))
-#     with open(join(rref2path(rref2),'baz'),'r') as f:
-#       baz=f.read()
-#     assert baz=='baz'
-#     assert rref1!=rref2
 
 
 def test_realized()->None:
@@ -79,9 +60,9 @@ def test_realized()->None:
                    mkconfig({'name':'1'}), match_only(),
                    build_wrapper(_realize))
 
-    dref=instantiate(realized(_setting), assume_realized=True, S=S)
+    dref,clo=instantiate(realized(_setting), assume_realized=True, S=S)
     try:
-      rref=realize1(dref)
+      rref=realize1(clo)
       raise ShouldHaveFailed('Should not be realized')
     except AssertionError:
       pass

@@ -92,7 +92,7 @@ def repl_continue(out_paths:Optional[List[Path]]=None,
   return rrefs[0]
 
 
-def repl_realize(closure:Closure,
+def repl_realize(closure:Union[Closure,Tuple[Any,Closure]],
                  force_interrupt:Union[List[DRef],bool]=True,
                  realize_args:Dict[DRef,RealizeArg]={})->ReplHelper:
   """
@@ -114,16 +114,21 @@ def repl_realize(closure:Closure,
   # holding the result of our hacks.
   ```
   """
+  # FIXME: define a Closure as a datatype and simplify the below check
+  if isinstance(closure,tuple) and len(closure)==2:
+    closure_=closure[1]
+  else:
+    closure_=closure
   global PYLIGHTNIX_REPL_HELPER
   force_interrupt_:List[DRef]=[]
   if isinstance(force_interrupt,bool):
     if force_interrupt:
-      force_interrupt_=closure.targets
+      force_interrupt_=closure_.targets
   elif isinstance(force_interrupt,list):
     force_interrupt_=force_interrupt
   else:
     assert False, "Invalid argument"
-  rh=ReplHelper(realizeSeq(closure,force_interrupt_,realize_args=realize_args))
+  rh=ReplHelper(realizeSeq(closure_,force_interrupt_,realize_args=realize_args))
   PYLIGHTNIX_REPL_HELPER=rh
   assert rh.gen is not None, ERR_INACTIVE_RH
   try:

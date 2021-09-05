@@ -247,6 +247,19 @@ def isclosure(x:Any)->bool:
 
 Mutator=Callable[[Any,Any],Any]
 
+def traverse_tuple(t:tuple,mut:Mutator)->None:
+  """ Traverse an arbitrary Python tuple. Forbids changing items. """
+  assert isinstance(t,tuple)
+  for i in range(len(t)):
+    x=mut(i,t[i])
+    assert x==t[i], "Can't change tuple item"
+    if isinstance(t[i],list):
+      scanref_list(t[i])
+    elif isinstance(t[i],dict):
+      traverse_dict(t[i],mut)
+    elif isinstance(t[i],tuple):
+      traverse_tuple(t[i],mut)
+
 def traverse_list(l:list,mut:Mutator)->None:
   """ Traverse an arbitrary Python list. """
   assert isinstance(l,list)
@@ -256,6 +269,8 @@ def traverse_list(l:list,mut:Mutator)->None:
       traverse_list(l[i],mut)
     elif isinstance(l[i],dict):
       traverse_dict(l[i],mut)
+    elif isinstance(l[i],tuple):
+      traverse_tuple(l[i],mut)
 
 def traverse_dict(d:dict, mut:Mutator)->None:
   """ Traverse an arbitrary Python dict. """
@@ -266,6 +281,8 @@ def traverse_dict(d:dict, mut:Mutator)->None:
       traverse_list(d[k],mut)
     elif isinstance(d[k],dict):
       traverse_dict(d[k],mut)
+    elif isinstance(d[k],tuple):
+      traverse_tuple(d[k],mut)
 
 def scanref_list(l:list)->Tuple[List[DRef],List[RRef]]:
   drefs=[];rrefs=[]
