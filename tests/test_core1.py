@@ -406,14 +406,13 @@ def test_current_storage():
   with setup_storage2('test_current_storage1') as S1,\
        setup_storage2('test_current_storage2') as S2:
     with current_storage(S1):
-      rref=realize1(instantiate(partial(mkstage,config={'a':'1'})))
-      assert_valid_rref(rref)
-      assert len(list(alldrefs()))==1
-    with current_storage(S2):
-      with current_manager(S):
-        rref=realize1(instantiate(mkstage2({'b':'2'})))
-      assert_valid_rref(rref)
-      assert len(list(alldrefs()))==1
-    assert len(list(alldrefs(S1)))==1
+      realize1(instantiate(partial(mkstage,config={'a':'1'})))
+      realize1(instantiate(partial(mkstage,config={'b':'2'})))
+      with current_storage(S2) as S:
+        with current_manager(S):
+          realize1(instantiate(mkstage2({'c':'3'})))
+        assert len(list(alldrefs()))==1
+      assert len(list(alldrefs()))==2
+    assert len(list(alldrefs(S1)))==2
     assert len(list(alldrefs(S2)))==1
 

@@ -642,20 +642,22 @@ def mkdrv(m:Manager,
 @contextmanager
 def current_manager(S:Optional[StorageSettings]=None)->Iterable[Manager]:
   global TL
-  TL.manager=Manager(S)
+  old=getattr(TL,'manager',None)
+  TL.manager=Manager(tlstorage(S))
   try:
     yield TL.manager
   finally:
-    TL.manager=None
+    TL.manager=old
 
 @contextmanager
 def current_storage(S:StorageSettings)->Iterable[StorageSettings]:
   global TL
+  old=getattr(TL,'storage',None)
   TL.storage=S
   try:
     yield TL.storage
   finally:
-    TL.storage=None
+    TL.storage=old
 
 StageResult=TypeVar('StageResult')
 
