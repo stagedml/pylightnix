@@ -98,7 +98,7 @@
     * [output\_realizer](#pylightnix.core.output_realizer)
     * [output\_matcher](#pylightnix.core.output_matcher)
     * [mkdrv](#pylightnix.core.mkdrv)
-    * [current\_manager](#pylightnix.core.current_manager)
+    * [current\_registry](#pylightnix.core.current_registry)
     * [current\_storage](#pylightnix.core.current_storage)
     * [StageResult](#pylightnix.core.StageResult)
     * [mkclosure](#pylightnix.core.mkclosure)
@@ -876,7 +876,7 @@ warning = logger.warning
 TL = threading_local()
 ```
 
-Thread-local storage for [current_manager](#pylightnix.core.current_manager)
+Thread-local storage for [current_registry](#pylightnix.core.current_registry)
 to store its state.
 
 <a name="pylightnix.core.tlmanager"></a>
@@ -1458,12 +1458,12 @@ def somestage(m:Registry)->DRef:
 rref:RRef=realize1(instantiate(somestage))
 ```
 
-<a name="pylightnix.core.current_manager"></a>
-## `current_manager()`
+<a name="pylightnix.core.current_registry"></a>
+## `current_registry()`
 
 ```python
 @contextmanager
-def current_manager(M: Registry) -> Iterable[Registry]
+def current_registry(M: Registry) -> Iterable[Registry]
 ```
 
 

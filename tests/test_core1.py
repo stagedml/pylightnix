@@ -11,7 +11,7 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir, dirhash,
                         concat, linkrrefs, mkclosure, dref2path, path2dref,
                         linkdref, rrefdeps, drefrrefs, allrrefs, match_only,
                         drefrrefs, drefrrefsC, rrefctx, context_deref,
-                        rrefattrs, rrefbstart, fsstorage, current_manager,
+                        rrefattrs, rrefbstart, fsstorage, current_registry,
                         realize, current_storage)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink, isfile,
@@ -381,9 +381,9 @@ def test_linkdref()->None:
     assert fsstorage(S) in l
     assert undref(dref1)[0] in readlink(l)
 
-def test_current_manager():
-  with setup_storage2('test_current_manager') as S:
-    with current_manager(Registry(S)) as m:
+def test_current_registry():
+  with setup_storage2('test_current_registry') as S:
+    with current_registry(Registry(S)) as m:
       n1=mkstage({'a':'1'})
       n2=mkstage({'b':'2'})
       n3=mkstage({'c':'3','maman':n1})
@@ -409,7 +409,7 @@ def test_current_storage():
       realize1(instantiate(partial(mkstage,config={'a':'1'})))
       realize1(instantiate(partial(mkstage,config={'b':'2'})))
       with current_storage(S2) as S:
-        with current_manager(Registry(S)):
+        with current_registry(Registry(S)):
           realize1(instantiate(mkstage({'c':'3'})))
         assert len(list(alldrefs()))==1
       assert len(list(alldrefs()))==2

@@ -58,7 +58,7 @@ logger=getLogger(__name__)
 info=logger.info
 warning=logger.warning
 
-#: Thread-local storage for [current_manager](#pylightnix.core.current_manager)
+#: Thread-local storage for [current_registry](#pylightnix.core.current_registry)
 #: to store its state.
 TL=threading_local()
 
@@ -643,7 +643,7 @@ def mkdrv(config:Config,
   return dref
 
 @contextmanager
-def current_manager(M:Registry)->Iterable[Registry]:
+def current_registry(M:Registry)->Iterable[Registry]:
   global TL
   old=getattr(TL,'manager',None)
   TL.manager=M

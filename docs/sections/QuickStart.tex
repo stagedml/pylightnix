@@ -146,7 +146,7 @@ calling \texttt{instantiate} and ask Pylightnix to provide us with the
 \texttt{realize1}.
 
 \begin{pythontexcode}
-with current_manager(Registry()):
+with current_registry(Registry()):
   ds=stage_params()
   cl=stage_anneal(ds)
   vis=stage_plot(cl)
