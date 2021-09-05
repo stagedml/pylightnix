@@ -22,14 +22,14 @@ from pylightnix.core import (mkdrv, mkconfig, assert_valid_name,
                              drefcfg_, match_only)
 from pylightnix.build import (build_outpath,
                               build_paths, build_deref_, build_wrapper)
-from pylightnix.types import (RefPath, Manager, Context, Build, Name, DRef,
+from pylightnix.types import (RefPath, Registry, Context, Build, Name, DRef,
                               RRef, Any, Optional, Dict, Hash, Path, List,
                               Callable, Matcher, Realizer, Stage, Config,
                               RealizeArg, SPath, Output, StorageSettings)
 from pylightnix.utils import (forcelink, isrefpath, traverse_dict)
 
 
-def mknode(m:Manager,
+def mknode(m:Registry,
            cfgdict:dict,
            artifacts:Dict[Name,bytes]={},
            name:str='mknode')->DRef:
@@ -46,7 +46,7 @@ def mknode(m:Manager,
         f.write(av)
   return mkdrv(mkconfig(config), match_only(), build_wrapper(_realize), m)
 
-# def mkfile(m:Manager,
+# def mkfile(m:Registry,
 #            name:Name,
 #            contents:bytes,
 #            filename:Optional[Name]=None)->DRef:

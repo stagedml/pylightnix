@@ -14,7 +14,7 @@
 
 """ Simple functions imitating unix shell tools.  """
 
-from pylightnix import (DRef, RRef, Path, Build, Manager, mklens, mkdrv,
+from pylightnix import (DRef, RRef, Path, Build, Registry, mklens, mkdrv,
                         selfref, match_some, build_wrapper, instantiate,
                         realize1, isrref, isdref, build_cattrs, build_outpath,
                         build_path, mkconfig, assert_valid_rref, isrefpath,
@@ -33,7 +33,7 @@ from tests.setup import (ShouldHaveFailed, setup_storage2, mkstage)
 
 def test_lens():
   with setup_storage2('test_lens') as S:
-    def _setting(m:Manager)->DRef:
+    def _setting(m:Registry)->DRef:
       n1=mkstage({'name':'1', 'selfref':[selfref,'artifact']},m)
       n2=mkstage({'name':'2', 'selfref':[selfref,'artifact'],
                         'dict':{'d1':1} },m)
@@ -109,7 +109,7 @@ def test_lens():
 
 def test_lens_closures():
   with setup_storage2('test_lens_closures') as S:
-    def _stage(m:Manager)->DRef:
+    def _stage(m:Registry)->DRef:
       n1=mkstage({'name':'1', 'x':33, 'selfref':[selfref,'artifact']},m)
       n2=mkstage({'name':'2', 'papa':n1, 'dict':{'d1':1} },m)
       n3=mkstage({'name':'3', 'maman':n2 },m)

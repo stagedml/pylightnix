@@ -60,17 +60,17 @@ filesystem part by calling
 [fsinit](../Reference.md#pylightnix.core.fsinit) on
 [StorageSettings](../Reference.md#pylightnix.types.StorageSettings) and
 then create the global
-[Manager](../Reference.md#pylightnix.types.Manager). The Manager and the
-part of filesystem described by StorageSettings are the only mutable
+[Registry](../Reference.md#pylightnix.types.Registry). The Registry and
+the part of filesystem described by StorageSettings are the only mutable
 objects that we will operate on.
 
 ``` python
 from os import environ
-from pylightnix import Manager, StorageSettings, mkSS, fsinit
+from pylightnix import Registry, StorageSettings, mkSS, fsinit
 
 S:StorageSettings=mkSS('/tmp/pylightnix_hello_demo')
 fsinit(S,remove_existing=True)
-M=Manager(S)
+M=Registry(S)
 
 hello_version = '2.10'
 ```
@@ -90,14 +90,14 @@ knows how to unpack archives. We import both functions, along with other
 Pylightnix APIs.
 
 ``` python
-from pylightnix import (Manager, DRef, RRef, fetchurl2, unpack, mklens, selfref)
+from pylightnix import (Registry, DRef, RRef, fetchurl2, unpack, mklens, selfref)
 ```
 
 Our first goal is to make derivations ready for realization by
-registering them in the Manager `M`. We call `fetchurl2` with the
+registering them in the Registry `M`. We call `fetchurl2` with the
 appropriate parameters and get an unique
 [DRef](../Reference.md#pylightnix.types.DRef) reference back. Every
-`DRef` value proofs to us that the Manager is aware of our new
+`DRef` value proofs to us that the Registry is aware of our new
 derivation.
 
 ``` python
@@ -147,12 +147,10 @@ rref:29eaa2c8e74cbc939dfdd8e43f3987eb-43323fae07b9e30f65ed0a1b6213b6f0-unpack-he
 
   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
-  6  708k    6 48126    0     0  33678      0  0:00:21  0:00:01  0:00:20 33654
- 22  708k   22  156k    0     0  70449      0  0:00:10  0:00:02  0:00:08 70418
- 42  708k   42  299k    0     0  92788      0  0:00:07  0:00:03  0:00:04 92760
- 63  708k   63  449k    0     0   105k      0  0:00:06  0:00:04  0:00:02  105k
- 87  708k   87  619k    0     0   117k      0  0:00:06  0:00:05  0:00:01  134k
-100  708k  100  708k    0     0   124k      0  0:00:05  0:00:05 --:--:--  154k
+  0  708k    0   934    0     0    922      0  0:13:07  0:00:01  0:13:06   922
+ 32  708k   32  232k    0     0   115k      0  0:00:06  0:00:02  0:00:04  115k
+ 83  708k   83  589k    0     0   194k      0  0:00:03  0:00:03 --:--:--  194k
+100  708k  100  708k    0     0   211k      0  0:00:03  0:00:03 --:--:--  211k
 hello-2.10.tar.gz: extracted to `hello-2.10'
 ```
 
@@ -269,7 +267,7 @@ print(rref)
 ```
 
 ``` stdout
-rref:0d6773d41f3e2c7b2b08d8f5cbb491cc-e48878b9f7760fe0972eb6863775045f-hello-bin
+rref:06de989e548e543b47bf2fff1ed54371-e48878b9f7760fe0972eb6863775045f-hello-bin
 ```
 
 ### Accessing the results
@@ -283,15 +281,15 @@ for line in open(mklens(rref,m=M).out_log.syspath).readlines()[-10:]:
 
 ``` stdout
 fi
-/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/mkdir -p '/tmp/pylightnix_hello_demo/tmp/210905-17:58:09:786872+0300_2b29fe60_tq43om50/usr/share/info'
-/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/install -c -m 644 ./doc/hello.info '/tmp/pylightnix_hello_demo/tmp/210905-17:58:09:786872+0300_2b29fe60_tq43om50/usr/share/info'
-install-info --info-dir='/tmp/pylightnix_hello_demo/tmp/210905-17:58:09:786872+0300_2b29fe60_tq43om50/usr/share/info' '/tmp/pylightnix_hello_demo/tmp/210905-17:58:09:786872+0300_2b29fe60_tq43om50/usr/share/info/hello.info'
-/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/mkdir -p '/tmp/pylightnix_hello_demo/tmp/210905-17:58:09:786872+0300_2b29fe60_tq43om50/usr/share/man/man1'
-/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/install -c -m 644 hello.1 '/tmp/pylightnix_hello_demo/tmp/210905-17:58:09:786872+0300_2b29fe60_tq43om50/usr/share/man/man1'
-make[4]: Leaving directory '/run/user/1000/tmp_jg6297w/src'
-make[3]: Leaving directory '/run/user/1000/tmp_jg6297w/src'
-make[2]: Leaving directory '/run/user/1000/tmp_jg6297w/src'
-make[1]: выход из каталога «/run/user/1000/tmp_jg6297w/src»
+/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/mkdir -p '/tmp/pylightnix_hello_demo/tmp/210905-19:58:20:752102+0300_2b29fe60_cue1k1w2/usr/share/info'
+/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/install -c -m 644 ./doc/hello.info '/tmp/pylightnix_hello_demo/tmp/210905-19:58:20:752102+0300_2b29fe60_cue1k1w2/usr/share/info'
+install-info --info-dir='/tmp/pylightnix_hello_demo/tmp/210905-19:58:20:752102+0300_2b29fe60_cue1k1w2/usr/share/info' '/tmp/pylightnix_hello_demo/tmp/210905-19:58:20:752102+0300_2b29fe60_cue1k1w2/usr/share/info/hello.info'
+/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/mkdir -p '/tmp/pylightnix_hello_demo/tmp/210905-19:58:20:752102+0300_2b29fe60_cue1k1w2/usr/share/man/man1'
+/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/install -c -m 644 hello.1 '/tmp/pylightnix_hello_demo/tmp/210905-19:58:20:752102+0300_2b29fe60_cue1k1w2/usr/share/man/man1'
+make[4]: Leaving directory '/run/user/1000/tmp33e92isl/src'
+make[3]: Leaving directory '/run/user/1000/tmp33e92isl/src'
+make[2]: Leaving directory '/run/user/1000/tmp33e92isl/src'
+make[1]: выход из каталога «/run/user/1000/tmp33e92isl/src»
 ```
 
 Finally, we convert RRef to the system path and run the GNU Hello

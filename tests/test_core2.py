@@ -1,5 +1,5 @@
 from pylightnix import (instantiate, DRef, RRef, Path, SPath, drefdeps,
-                        Manager, Context, RealizeArg, Output, realize1,
+                        Registry, Context, RealizeArg, Output, realize1,
                         rref2dref, Build, match_some, mkdrv, rref2path,
                         alldrefs, build_wrapper, tryread, trywrite,
                         realizeMany, build_outpaths, mklens, Config,
@@ -150,7 +150,7 @@ def test_match_exact(stages,subs):
 #         assert len(grs3)==len(grs2)
 
 
-# def mkstageL(draw, m:Manager, name:str, artifact:int, buildstart:str)->DRef:
+# def mkstageL(draw, m:Registry, name:str, artifact:int, buildstart:str)->DRef:
 #   def _r(S, dref:DRef, c:Context, ra:RealizeArg)->Output[Path]:
 #     r=setup_test_realize(1, buildstart, lambda i:artifact, mustfail=False)
 #     return r(S,dref,c,ra)

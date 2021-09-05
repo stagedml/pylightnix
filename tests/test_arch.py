@@ -1,7 +1,7 @@
 from pylightnix import (instantiate, DRef, RRef, Path, mklogdir, dirhash,
                         assert_valid_dref, assert_valid_rref, drefdeps1,
                         drefdeps, assert_valid_hash, assert_valid_config,
-                        Manager, mkcontext, mkdref, mkrref, unrref, undref,
+                        Registry, mkcontext, mkdref, mkrref, unrref, undref,
                         realize1, rref2dref, mkconfig, Build, Context,
                         build_outpath, mkdrv, rref2path, alldrefs,
                         selfref, allrrefs, realizeMany, fstmpdir)

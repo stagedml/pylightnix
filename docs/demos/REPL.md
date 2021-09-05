@@ -55,7 +55,7 @@ from tensorflow.keras.utils import ( to_categorical )
 from tensorflow.keras.backend import image_data_format
 from tensorflow.keras.callbacks import ModelCheckpoint
 
-from pylightnix import ( Matcher, Build, Path, RefPath, Config, Manager, RRef,
+from pylightnix import ( Matcher, Build, Path, RefPath, Config, Registry, RRef,
     DRef, Context, build_path, build_outpath, build_cattrs, mkdrv, rref2path,
     mkconfig, mkbuild, match_best, build_wrapper_, tryread, fetchurl,
     initialize, realize1, instantiate )
@@ -78,7 +78,7 @@ We will use them to show how to track problems.
 
 ```python
 
-def fetchmnist(m:Manager)->DRef:
+def fetchmnist(m:Registry)->DRef:
   return \
     fetchurl(m, name='mnist',
                 mode='as-is',
@@ -158,7 +158,7 @@ def mnist_realize(b:Model):
   mnist_train(b)
   mnist_eval(b)
 
-def convnn_mnist(m:Manager)->DRef:
+def convnn_mnist(m:Registry)->DRef:
   mnist = fetchmnist(m)
   return mkdrv(m, mnist_config(mnist), match_best('accuracy.txt'),
     build_wrapper_(mnist_realize, Model))
@@ -244,7 +244,7 @@ context, rarg)
      78   mnist_train(b)
 ---> 79   mnist_eval(b)
      80
-     81 def convnn_mnist(m:Manager)->DRef:
+     81 def convnn_mnist(m:Registry)->DRef:
 <ipython-input-1-f38c6dead39e> in mnist_eval(b)
      69 def mnist_eval(b:Model):
      70   o = build_outpath(b)

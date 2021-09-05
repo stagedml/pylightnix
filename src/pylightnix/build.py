@@ -35,7 +35,7 @@ from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional, Iterable,
                               IO, Path, SPath, Hash, DRef, RRef, RefPath,
                               HashPart, Callable, Context, Name, NamedTuple,
                               Build, RConfig, ConfigAttrs, Derivation, Stage,
-                              Manager, Matcher, Realizer, RealizerO, Set,
+                              Registry, Matcher, Realizer, RealizerO, Set,
                               Closure, Generator, TypeVar, BuildArgs, Config,
                               RealizeArg, InstantiateArg, SupportsAbs, Output,
                               PylightnixException, StorageSettings)

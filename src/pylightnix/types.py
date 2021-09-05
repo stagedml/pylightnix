@@ -227,7 +227,7 @@ MatcherO = Callable[[Optional[StorageSettings],Output[RRef]],
 #: Example:
 #:
 #: ```python
-#: def mystage(m:Manager)->DRef:
+#: def mystage(m:Registry)->DRef:
 #:   def _realize(dref:DRef, context:Context)->List[Path]:
 #:     b=mkbuild(dref, context, buildtime=buildtime)
 #:     with open(join(build_outpath(b),'artifact'),'w') as f:
@@ -308,7 +308,7 @@ class Config:
 
   Example:
   ```python
-  def mystage(m:Manager)->Dref:
+  def mystage(m:Registry)->Dref:
     def _config()->dict:
       name = 'mystage'
       nepoches = 4
@@ -393,7 +393,7 @@ class Build:
     m.model = create_model(...)
     ...
 
-  def mymodel(m:Manager)->DRef:
+  def mymodel(m:Registry)->DRef:
     return mkdrv(m, ..., build_wrapper_(TensorFlowModel, train))
   ```
   """
@@ -410,13 +410,13 @@ class Build:
     self.cattrs_cache:Optional[ConfigAttrs]=None
 
 
-class Manager:
+class Registry:
   """ The derivation manager is a mutable storage object where Pylightnix
   stores derivations before combining them into a
   [Closure](#pylightnix.types.Closure).
 
-  Managers doesn't requre any special operations besides creating and passing
-  around. By convention, Manager objects are first arguments of user-defined
+  Registry doesn't requre any special operations besides creating and passing
+  around. By convention, Registry objects are first arguments of user-defined
   stage functions and the `mkdrv` API function of Pylightnix.
   """
   def __init__(self, S:Optional[StorageSettings]=None):
@@ -431,7 +431,7 @@ DRefLike = TypeVar('DRefLike',bound=DRef)
 #: Functions with the `Stage` signature are the top-level building blocks of
 #: Pylightnix. Stage functions call [mkdrv](#pylightnix.core.mkdrv) and each
 #: other to produce linked [Derivations](#pylightnix.types.Derivation) and
-#: register them in the [Manager](#pylightnix.types.Manager).
+#: register them in the [Registry](#pylightnix.types.Registry).
 #:
 #: Some built-in stages are:
 #: - [mknode](#pylightnix.stages.trivial.mknode)
@@ -443,12 +443,12 @@ DRefLike = TypeVar('DRefLike',bound=DRef)
 #: definition would look like:
 #:
 #: ```Python
-#: Stage = Callable[[Manager,VarArg(Any),KwArg(Any)],DRef]
+#: Stage = Callable[[Registry,VarArg(Any),KwArg(Any)],DRef]
 #: ```
 #:
 #: Stage's return value is a [derivation reference](#pylightnix.types.DRef)
 #: which could be either used in other stages, or
 #: [instantiated](#pylightnix.core.instantiate) into the stage realization plan.
-Stage=Callable[[Manager],Union[DRefLike,List[DRefLike]]]
+Stage=Callable[[Registry],Union[DRefLike,List[DRefLike]]]
 
 

@@ -10,7 +10,7 @@ from tensorflow.keras.utils import ( to_categorical )
 from tensorflow.keras.backend import image_data_format
 from tensorflow.keras.callbacks import ModelCheckpoint
 
-from pylightnix import ( Matcher, Build, Path, RefPath, Config, Manager, RRef,
+from pylightnix import ( Matcher, Build, Path, RefPath, Config, Registry, RRef,
     DRef, Context, build_path, build_outpath, build_cattrs, mkdrv, rref2path,
     mkconfig, mkbuild, match_best, build_wrapper_, tryread, fetchurl,
     initialize, realize1, instantiate )
@@ -20,7 +20,7 @@ from typing import Any
 initialize()
 
 
-def fetchmnist(m:Manager)->DRef:
+def fetchmnist(m:Registry)->DRef:
   return \
     fetchurl(m, name='mnist',
                 mode='as-is',
@@ -100,7 +100,7 @@ def mnist_realize(b:Model):
   mnist_train(b)
   mnist_eval(b)
 
-def convnn_mnist(m:Manager)->DRef:
+def convnn_mnist(m:Registry)->DRef:
   mnist = fetchmnist(m)
   return mkdrv(m, mnist_config(mnist), match_best('accuracy.txt'),
     build_wrapper_(mnist_realize, Model))

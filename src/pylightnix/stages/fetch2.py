@@ -18,7 +18,7 @@ from pylightnix.imports import (sha256 as sha256sum, sha1 as sha1sum, urlparse,
                                 Popen, remove, basename, join, rename, isfile,
                                 copyfile, environ, getLogger, isabs, isdir,
                                 splitext, re_sub )
-from pylightnix.types import ( DRef, Manager, Build, Context, Name,
+from pylightnix.types import ( DRef, Registry, Build, Context, Name,
     Path, Optional, List, Config, RefPath )
 from pylightnix.core import ( mkconfig, mkdrv, match_only,
                              PYLIGHTNIX_NAMEPAT, cfgcattrs, selfref,
@@ -50,7 +50,7 @@ def fetchurl2(url:str,
               name:Optional[str]=None,
               filename:Optional[str]=None,
               force_download:bool=False,
-              m:Optional[Manager]=None,
+              m:Optional[Registry]=None,
               **kwargs)->DRef:
   """ Download file given it's URL addess.
 
@@ -58,7 +58,7 @@ def fetchurl2(url:str,
   may be altered by setting the `PYLIGHTNIX_CURL` environment variable.
 
   Agruments:
-  - `m:Manager` the dependency resolution [Manager](#pylightnix.types.Manager).
+  - `m:Registry` the dependency resolution [Registry](#pylightnix.types.Registry).
   - `url:str` URL to download from. Should point to a single file.
   - `sha256:str` SHA-256 hash sum of the file.
   - `name:Optional[str]`: Name of the Derivation. The stage will attempt to
@@ -71,7 +71,7 @@ def fetchurl2(url:str,
 
   Example:
   ```python
-  def hello_src(m:Manager)->DRef:
+  def hello_src(m:Registry)->DRef:
     hello_version = '2.10'
     return fetchurl2(
       m,
@@ -158,7 +158,7 @@ def unpack(path:Optional[str]=None,
            sha256:Optional[str]=None,
            sha1:Optional[str]=None,
            aunpack_args:List[str]=[],
-           m:Optional[Manager]=None,
+           m:Optional[Registry]=None,
            **kwargs)->DRef:
 
   if path:

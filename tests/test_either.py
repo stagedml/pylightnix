@@ -1,5 +1,5 @@
 from pylightnix import (SPath, Context, RealizeArg, Path, instantiate, DRef,
-                        RRef, assert_valid_rref, Manager, Build, realize1,
+                        RRef, assert_valid_rref, Registry, Build, realize1,
                         mklens, either_realizer, readstr, mkconfig, mkdrv,
                         build_wrapper, either_status,
                         either_isRight, either_isLeft, realizeMany, rref2path,
@@ -21,7 +21,7 @@ from tests.setup import (ShouldHaveFailed, mkstage, setup_test_config,
 
 from pylightnix.either import (Either, mkdrvE)
 
-def mkstageE(m:Manager,
+def mkstageE(m:Registry,
             config:dict,
             nondet:Callable[[int],int]=lambda n:0,
             buildstart:Optional[str]='AUTO',
@@ -64,7 +64,7 @@ def test_either_invariant(stages):
 
 # def test_either()->None:
 #   with setup_storage('test_either'):
-#     def _setting(m:Manager)->DRef:
+#     def _setting(m:Registry)->DRef:
 #       n1 = mkeither(m, {'name':'n1', 'foo':'bar'})
 #       n2 = mkeither(m, {'name':'n2', 'bar':'baz'}, should_fail=True)
 #       n3 = mkeither(m, {'name':'n3', 'maman':n1, 'papa':n2})
@@ -80,7 +80,7 @@ def test_either_invariant(stages):
 
 # def test_either_success()->None:
 #   with setup_storage('test_either_success'):
-#     def _setting(m:Manager)->DRef:
+#     def _setting(m:Registry)->DRef:
 #       n1 = mkeither(m, {'name':'n1', 'foo':'bar'})
 #       def _make(b:Build):
 #         build_setoutpaths(b, 1)
@@ -97,7 +97,7 @@ def test_either_invariant(stages):
 
 # def test_either_builderror()->None:
 #   with setup_storage2('test_either_builderror') as T,S:
-#     def _setting(m:Manager)->DRef:
+#     def _setting(m:Registry)->DRef:
 #       def _make(b:Build):
 #         # Make both paths differ from each other
 #         for p in build_setoutpaths(b, 2):

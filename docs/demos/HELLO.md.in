@@ -48,17 +48,17 @@ objects which could depend on each other. Objects reside partly in the
 filesystem, partly in memory as a Python objects. We initialize the filesystem
 part by calling [fsinit](../Reference.md#pylightnix.core.fsinit) on
 [StorageSettings](../Reference.md#pylightnix.types.StorageSettings) and then
-create the global [Manager](../Reference.md#pylightnix.types.Manager). The
-Manager and the part of filesystem described by StorageSettings are the only
+create the global [Registry](../Reference.md#pylightnix.types.Registry). The
+Registry and the part of filesystem described by StorageSettings are the only
 mutable objects that we will operate on.
 
 ```{.python .cb.nb}
 from os import environ
-from pylightnix import Manager, StorageSettings, mkSS, fsinit
+from pylightnix import Registry, StorageSettings, mkSS, fsinit
 
 S:StorageSettings=mkSS('/tmp/pylightnix_hello_demo')
 fsinit(S,remove_existing=True)
-M=Manager(S)
+M=Registry(S)
 
 hello_version = '2.10'
 ```
@@ -77,13 +77,13 @@ knows how to download URLs from the Internet, the second one knows how to unpack
 archives. We import both functions, along with other Pylightnix APIs.
 
 ```{.python .cb.nb}
-from pylightnix import (Manager, DRef, RRef, fetchurl2, unpack, mklens, selfref)
+from pylightnix import (Registry, DRef, RRef, fetchurl2, unpack, mklens, selfref)
 ```
 
 Our first goal is to make derivations ready for realization by registering them
-in the Manager `M`. We call `fetchurl2` with the appropriate parameters and get
+in the Registry `M`. We call `fetchurl2` with the appropriate parameters and get
 an unique [DRef](../Reference.md#pylightnix.types.DRef) reference back. Every
-`DRef` value proofs to us that the Manager is aware of our new derivation.
+`DRef` value proofs to us that the Registry is aware of our new derivation.
 
 ```{.python .cb.nb}
 tarball:DRef = fetchurl2(

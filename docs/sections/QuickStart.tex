@@ -40,13 +40,13 @@ the result of the annealing simulation and (c) a visual plot of the result.
 \subsubsection{Parameter stage}
 
 Pylightnix \pref{Stage}{pylightnix.types.Stage} is a Python function that
-registers a user-defined action in the \pref{Manager}{pylightnix.types.Manager}
+registers a user-defined action in the \pref{Registry}{pylightnix.types.Registry}
 (passing None means asking Pylightnix to use the default one) and returns a
 \pref{DRef}{pylightnix.types.DRef} reference stating that the action is
 accepted.
 
 \begin{pythontexcode}
-def stage_params(m:Optional[Manager]=None)->DRef:
+def stage_params(m:Optional[Registry]=None)->DRef:
   def _config():
     name = 'params'
     out = [selfref, "params.npy"]
@@ -57,7 +57,7 @@ def stage_params(m:Optional[Manager]=None)->DRef:
 \end{pythontexcode}
 
 Here, a user-defind action \texttt{\_make} goes to Pylightnix by calling the
-\pref{mkdrv}{pylightnix.core.mkdrv} with the Manager and the following three
+\pref{mkdrv}{pylightnix.core.mkdrv} with the Registry and the following three
 arguments: (a) the set of \pref{prerequisites}{pylightnix.types.Config} for the
 action; (b) the \pref{Matcher}{pylightnix.types.Matcher} callback function; (c)
 the action itself that takes a \pref{Build}{pylightnix.types.Build} context as
@@ -93,7 +93,7 @@ A few notes on the above code:
 \subsubsection{Annealing stage}
 
 \begin{pythontexcode}
-def stage_anneal(ref_params:DRef, m:Optional[Manager]=None)->DRef:
+def stage_anneal(ref_params:DRef, m:Optional[Registry]=None)->DRef:
   def _config():
     name = 'anneal'
     nonlocal ref_params
@@ -120,7 +120,7 @@ def stage_anneal(ref_params:DRef, m:Optional[Manager]=None)->DRef:
 \subsubsection{Plotting stage}
 
 \begin{pythontexcode}
-def stage_plot(ref_anneal:DRef, m:Optional[Manager]=None)->DRef:
+def stage_plot(ref_anneal:DRef, m:Optional[Registry]=None)->DRef:
   def _config():
     name = 'plot'
     nonlocal ref_anneal
@@ -146,7 +146,7 @@ calling \texttt{instantiate} and ask Pylightnix to provide us with the
 \texttt{realize1}.
 
 \begin{pythontexcode}
-with current_manager(Manager()):
+with current_manager(Registry()):
   ds=stage_params()
   cl=stage_anneal(ds)
   vis=stage_plot(cl)
@@ -159,12 +159,12 @@ with current_manager(Manager()):
 \subsection{Nested stages}
 
 In the previous sections we used a global
-\pref{Manager}{pylightnix.types.Manager} object to register stages. Another way
+\pref{Registry}{pylightnix.types.Registry} object to register stages. Another way
 of combining stages together is to wrap them with an umbrella stage covering the
 whole experiment.
 
 \begin{pythontexcode}
-def stage_all(m:Manager):
+def stage_all(m:Registry):
   ds=stage_params(m)
   cl=stage_anneal(ds,m)
   vis=stage_plot(cl,m)
@@ -172,7 +172,7 @@ def stage_all(m:Manager):
 \end{pythontexcode}
 
 We may pass the top-level stage directly to \texttt{instantiate}
-which would call it with a local disposable Manager.
+which would call it with a local disposable Registry.
 
 \begin{pythontexcode}
 rref_all=realize1(instantiate(stage_all))
@@ -235,7 +235,7 @@ def match_min(S, rrefs:List[RRef])->List[RRef]:
     print(f"Picking Bob ({best[0]}) out of {avail}")
   return [best[1]]
 
-def stage_all2(m:Manager):
+def stage_all2(m:Registry):
   ds=stage_params(m)
   cl=redefine(stage_anneal, new_matcher=match_min)(ds,m=m)
   vis=stage_plot(cl,m)

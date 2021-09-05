@@ -74,7 +74,7 @@ from shutil import copytree
 from os import getcwd, chdir, system
 from os.path import join
 from pylightnix import (
-  Manager, DRef, RRef, Config, RefPath,
+  Registry, DRef, RRef, Config, RefPath,
   mkconfig, Path, Build, build_outpath, mkdrv,
   build_wrapper, match_latest, dirrw, mklens,
   instantiate, realize1, fetchurl, selfref)
@@ -83,7 +83,7 @@ version = '2.10'
 url = f'http://ftp.gnu.org/gnu/hello/hello-{version}.tar.gz'
 sha256 = '31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b'
 
-def stage_hello(m:Manager)->DRef:
+def stage_hello(m:Registry)->DRef:
 
   def _config()->Config:
     name:str = 'hello-bin'

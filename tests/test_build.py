@@ -1,6 +1,6 @@
 from pylightnix import (instantiate, DRef, RRef, Path, mklogdir, dirhash,
                         assert_valid_dref, assert_valid_rref, store_gc,
-                        assert_valid_hash, assert_valid_config, Manager,
+                        assert_valid_hash, assert_valid_config, Registry,
                         mkcontext, mkdref, mkrref, unrref, undref, realize1,
                         rref2dref, drefcfg, mkconfig, Build, Context,
                         build_outpath, mkdrv, rref2path, cfgcattrs,
@@ -24,7 +24,7 @@ from tests.setup import ( ShouldHaveFailed, setup_storage2, mkstage )
 def test_build_deref()->None:
   with setup_storage2('test_build_deref') as S:
 
-    def _depuser(m:Manager, sources:dict)->DRef:
+    def _depuser(m:Registry, sources:dict)->DRef:
       def _instantiate()->Config:
         return mkconfig(sources)
       def _realize(b)->None:
@@ -38,7 +38,7 @@ def test_build_deref()->None:
         return
       return mkdrv(_instantiate(), match_only(), build_wrapper(_realize), m)
 
-    def _setting(m:Manager)->DRef:
+    def _setting(m:Registry)->DRef:
       n1 = mkstage({'a':'1'},m,lambda i:42)
       n2 = mkstage({'b':'2'},m)
       n3 = _depuser(m, {'maman':mkrefpath(n1,['artifact']), 'papa':n2})
@@ -49,7 +49,7 @@ def test_build_deref()->None:
 
 def test_build_cattrs()->None:
   with setup_storage2('test_build_cattrs') as S:
-    def _setting(m:Manager)->DRef:
+    def _setting(m:Registry)->DRef:
       def _instantiate()->Config:
         return mkconfig({'a':1,'b':2})
       def _realize(b)->None:
@@ -69,7 +69,7 @@ def test_build_cattrs()->None:
 
 def test_build_name()->None:
   with setup_storage2('test_build_name') as S:
-    def _setting(m:Manager)->DRef:
+    def _setting(m:Registry)->DRef:
       def _realize(b)->None:
         n=build_name(b)
         assert n=='foobar'
@@ -82,7 +82,7 @@ def test_build_name()->None:
 
 def test_build_exception()->None:
   with setup_storage2('test_build_name') as S:
-    def _setting(m:Manager)->DRef:
+    def _setting(m:Registry)->DRef:
       def _realize(b)->None:
         raise ValueError("An intended failure")
       return mkdrv(mkconfig({}), match_only(), build_wrapper(_realize), m)

@@ -1,5 +1,5 @@
-from pylightnix import (Manager, DRef, RRef, Path, List, mklogdir, dirhash,
-                        rref2path, Manager, mkcontext, instantiate, realize1,
+from pylightnix import (Registry, DRef, RRef, Path, List, mklogdir, dirhash,
+                        rref2path, mkcontext, instantiate, realize1,
                         assert_valid_rref, alldrefs, assert_valid_dref,
                         repl_realize, repl_cancel, repl_continue, repl_rref,
                         repl_build, ReplHelper, build_outpath, tryread,
@@ -23,7 +23,7 @@ def test_repl_basic():
   with setup_storage2('test_repl_default') as S:
 
     n1:DRef; n2:DRef
-    def _setting(m:Manager)->List[DRef]:
+    def _setting(m:Registry)->List[DRef]:
       nonlocal n1,n2
       n1 = mkstage({'a':'1'},m)
       n2 = mkstage({'maman':n1},m)
@@ -46,7 +46,7 @@ def test_repl_basic():
 def test_repl_race():
   with setup_storage2('test_repl_recursion'):
 
-    def _setting(m:Manager)->DRef:
+    def _setting(m:Registry)->DRef:
       n1 = mkstage({'a':'1'},m)
       n2 = mkstage({'maman':n1},m)
       return n2
@@ -67,7 +67,7 @@ def test_repl_override():
   with setup_storage2('test_repl_override') as S:
 
     n1:DRef; n2:DRef
-    def _setting(m:Manager)->DRef:
+    def _setting(m:Registry)->DRef:
       nonlocal n1,n2
       n1 = mkstage({'a':'1'}, m, lambda i: 33)
       n2 = mkstage({'maman':n1}, m, lambda i: 42)
@@ -93,7 +93,7 @@ def test_repl_globalHelper():
   with setup_storage2('test_repl_globalHelper') as S:
 
     n1:DRef; n2:DRef
-    def _setting(m:Manager)->DRef:
+    def _setting(m:Registry)->DRef:
       nonlocal n1,n2
       n1 = mkstage({'a':'1'},m)
       n2 = mkstage({'maman':n1},m)
@@ -114,7 +114,7 @@ def test_repl_globalCancel():
   with setup_storage2('test_repl_globalCancel') as S:
 
     n1:DRef; n2:DRef
-    def _setting(m:Manager)->DRef:
+    def _setting(m:Registry)->DRef:
       nonlocal n1,n2
       n1 = mkstage({'a':'1'},m)
       n2 = mkstage({'maman':n1},m)

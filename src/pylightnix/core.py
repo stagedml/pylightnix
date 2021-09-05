@@ -36,7 +36,7 @@ from pylightnix.types import (StorageSettings, Dict, List, Any, Tuple, Union,
                               Optional, Iterable, IO, Path, SPath, Hash, DRef,
                               RRef, RefPath, HashPart, Callable, Context, Name,
                               NamedTuple, Build, RConfig, ConfigAttrs,
-                              Derivation, Stage, Manager, Matcher, MatcherO,
+                              Derivation, Stage, Registry, Matcher, MatcherO,
                               Realizer, RealizerO, Set, Closure, Generator,
                               BuildArgs, Config, RealizeArg, InstantiateArg,
                               Output, TypeVar, PromiseException)
@@ -62,7 +62,7 @@ warning=logger.warning
 #: to store its state.
 TL=threading_local()
 
-def tlmanager(M:Optional[Manager])->Optional[Manager]:
+def tlmanager(M:Optional[Registry])->Optional[Registry]:
   global TL
   tlm=getattr(TL,'manager',None)
   return M if M else tlm
@@ -226,13 +226,13 @@ def path2rref(p:Path)->Optional[RRef]:
 def mkconfig(d:dict)->Config:
   """ Create a [Config](#pylightnix.types.Config) object out of config
   dictionary. Asserts if the dictionary is not JSON-compatible. As a handy hack,
-  filter out `m:Manager` variable which likely is an utility
-  [Manager](#pylightnix.types.Manager) object.
+  filter out `m:Registry` variable which likely is an utility
+  [Registry](#pylightnix.types.Registry) object.
   """
   # FIXME: Should we assert on invalid Config here?
   return Config(assert_valid_dict(
     {k:v for k,v in d.items()
-     if not (k=='m' and 'Manager' in str(type(v)))},'dict'))
+     if not (k=='m' and 'Registry' in str(type(v)))},'dict'))
 
 def cfgdict(cp:Config)->dict:
   return deepcopy(cp.val)
@@ -611,19 +611,19 @@ def output_matcher(m:MatcherO)->Matcher:
 def mkdrv(config:Config,
           matcher:Matcher,
           realizer:Realizer,
-          m:Optional[Manager]=None)->DRef:
+          m:Optional[Registry]=None)->DRef:
   """ Construct a [Derivation](#pylightnix.types.Derivation) object out of
   [Config](#pylightnix.types.Config), [Matcher](#pylightnix.types.Matcher) and
   [Realizer](#pylightnix.types.Realizer). Register the derivation in the
-  dependency-resolution [Manager](#pylightnix.types.Manager). Return [Derivation
+  dependency-resolution [Registry](#pylightnix.types.Registry). Return [Derivation
   references](#pylightnix.types.DRef) of the newly-obtained derivation.
 
   Arguments:
-  - `m:Manager`: A Manager to update with a new derivation
+  - `m:Registry`: A Registry to update with a new derivation
 
   Example:
   ```python
-  def somestage(m:Manager)->DRef:
+  def somestage(m:Registry)->DRef:
     def _realizer(b:Build):
       with open(join(build_outpath(b),'artifact'),'w') as f:
         f.write(...)
@@ -632,18 +632,18 @@ def mkdrv(config:Config,
   rref:RRef=realize1(instantiate(somestage))
   ```
   """
-  # FIXME: check that all config's dependencies are known to the Manager
+  # FIXME: check that all config's dependencies are known to the Registry
   m=tlmanager(m)
   assert m is not None, "Default manager is not set"
   dref=mkdrv_(config,S=m.S)
   if dref in m.builders:
     warning(f"Overwriting the derivation of '{dref}'. This could be a "
-            f"result of calling the same `mkdrv` twice with the same Manager.")
+            f"result of calling the same `mkdrv` twice with the same Registry.")
   m.builders[dref]=Derivation(dref, matcher, realizer)
   return dref
 
 @contextmanager
-def current_manager(M:Manager)->Iterable[Manager]:
+def current_manager(M:Registry)->Iterable[Registry]:
   global TL
   old=getattr(TL,'manager',None)
   TL.manager=M
@@ -665,7 +665,7 @@ def current_storage(S:StorageSettings)->Iterable[StorageSettings]:
 StageResult=TypeVar('StageResult')
 
 def mkclosure(result:Any,
-              m:Manager,
+              m:Registry,
               S:Optional[StorageSettings]=None)->Closure:
   targets,_=scanref_dict({'result':result})
   assert len(targets)>0, f"No DRefs to instantiate in {result}"
@@ -673,10 +673,10 @@ def mkclosure(result:Any,
   return Closure(result,targets,list(m.builders.values()),S=m.S)
 
 
-def instantiate(stage:Union[StageResult,Callable[[Manager,Any,Any],StageResult]],
+def instantiate(stage:Union[StageResult,Callable[[Registry,Any,Any],StageResult]],
                 *args:Any,
                 S:Optional[StorageSettings]=None,
-                m:Optional[Manager]=None,
+                m:Optional[Registry]=None,
                 **kwargs:Any)->Tuple[StageResult,Closure]:
   """ Instantiate scans a Python data object (list,dict or constant) which
   contains [DRef](#pylightnix.types.DRef) or evaluates a
@@ -689,17 +689,17 @@ def instantiate(stage:Union[StageResult,Callable[[Manager,Any,Any],StageResult]]
   """
   m=tlmanager(m)
   if m is None:
-    m=Manager(S)
+    m=Registry(S)
   else:
     if S is None:
       S=m.S
     else:
       assert S==m.S, (
-        f"S should match the Manager's if specified. 'S={S}' while "
+        f"S should match the Registry's if specified. 'S={S}' while "
         f"manager has '{m.S}'")
   assert not m.in_instantiate, (
     "Recursion detected. `instantiate` should not be called recursively "
-    "by stage functions with the same `Manager` as argument")
+    "by stage functions with the same `Registry` as argument")
   m._in_instantiate=True
   try:
     if callable(stage):
@@ -728,7 +728,7 @@ def realize1(closure:Union[Closure,Tuple[StageResult,Closure]],
 
   Example:
   ```python
-  def mystage(m:Manager)->DRef:
+  def mystage(m:Registry)->DRef:
     ...
     return mkdrv(m, ...)
 
@@ -741,7 +741,7 @@ def realize1(closure:Union[Closure,Tuple[StageResult,Closure]],
   * [realizeMany](#pylightnix.core.realizeMany) - A version for multiple-output
   stages.
   * [repl_realize](#pylightnix.repl.repl_realize) - A REPL-friendly version.
-    version which uses a hardcoded global [Manager](#pylightnix.types.Manager).
+    version which uses a hardcoded global [Registry](#pylightnix.types.Registry).
   """
 
   # FIXME: Stage's context is calculated inefficiently. Maybe one should track
@@ -1021,12 +1021,12 @@ def assert_rref_deps(c:Config)->None:
     f"realizations, because Pylightnix doesn't keep "
     f"records of how did we build it.\n")
 
-def assert_have_realizers(m:Manager, drefs:List[DRef])->None:
+def assert_have_realizers(m:Registry, drefs:List[DRef])->None:
   have_drefs=set(m.builders.keys())
   need_drefs=drefdeps(drefs,m.S) | set(drefs)
   missing=list(need_drefs-have_drefs)
   assert len(missing)==0, (
     f"The following derivations don't have realizers associated with them:\n"
     f"{missing}\n"
-    f"Did you mix DRefs from several `Manager` sessions?")
+    f"Did you mix DRefs from several `Registry` sessions?")
 

@@ -1,5 +1,5 @@
 from pylightnix import (StorageSettings, Matcher, Build, Context, Path, RefPath,
-                        Config, Manager, RRef, DRef, Path, build_path,
+                        Config, Registry, RRef, DRef, Path, build_path,
                         build_outpath, build_cattrs, mkdrv, rref2path, mkconfig,
                         tryread, fetchurl, instantiate, realize1, match_only,
                         build_wrapper, selfref, mklens, instantiate_inplace,
@@ -22,7 +22,7 @@ from contextlib import contextmanager
 
 # 1.
 
-def stage_dataset(m:Manager)->DRef:
+def stage_dataset(m:Registry)->DRef:
   def _config():
     name = 'dataset'
     centers = [1,3,4.5]
@@ -36,7 +36,7 @@ def stage_dataset(m:Manager)->DRef:
   return mkdrv(m, mkconfig(_config()), match_only(), build_wrapper(_make))
 
 
-def stage_cluster(m:Manager, ref_dataset:DRef)->DRef:
+def stage_cluster(m:Registry, ref_dataset:DRef)->DRef:
   def _config():
     name = 'cluster'
     nonlocal ref_dataset
@@ -51,7 +51,7 @@ def stage_cluster(m:Manager, ref_dataset:DRef)->DRef:
   return mkdrv(m, mkconfig(_config()), match_only(), build_wrapper(_make))
 
 
-def stage_plot(m:Manager, ref_cluster:DRef)->DRef:
+def stage_plot(m:Registry, ref_cluster:DRef)->DRef:
   def _config():
     name = 'plot'
     nonlocal ref_cluster
@@ -74,7 +74,7 @@ def run1():
 
 # 2. Functional API
 
-def stage_all(m:Manager):
+def stage_all(m:Registry):
   ds=stage_dataset(m)
   cl=stage_cluster(m,ds)
   vis=stage_plot(m,cl)
@@ -111,7 +111,7 @@ def match_min_distortion(S:Optional[StorageSettings],
   return [best]
 
 
-def stage_all2(m:Manager):
+def stage_all2(m:Registry):
   ds=redefine(stage_dataset, new_matcher=match_latest())(m)
   cl=redefine(stage_cluster, new_matcher=match_min_distortion)(m,ds)
   vis=redefine(stage_plot, new_matcher=match_latest())(m,cl)

@@ -8,16 +8,16 @@ from subprocess import Popen, PIPE
 
 
 from os import environ
-from pylightnix import Manager, StorageSettings, mkSS, fsinit
+from pylightnix import Registry, StorageSettings, mkSS, fsinit
 
 S:StorageSettings=mkSS('/tmp/pylightnix_hello_demo')
 fsinit(S,remove_existing=True)
-M=Manager(S)
+M=Registry(S)
 
 hello_version = '2.10'
 
 
-from pylightnix import (Manager, DRef, RRef, fetchurl2, unpack, mklens, selfref)
+from pylightnix import (Registry, DRef, RRef, fetchurl2, unpack, mklens, selfref)
 
 
 tarball:DRef = fetchurl2(

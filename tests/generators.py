@@ -1,4 +1,4 @@
-from pylightnix import (Manager, RConfig, datahash, PYLIGHTNIX_NAMEPAT, mkdref,
+from pylightnix import (Registry, RConfig, datahash, PYLIGHTNIX_NAMEPAT, mkdref,
                         mkrref, trimhash, encode, dagroots, List,
                         DRef, Callable)
 

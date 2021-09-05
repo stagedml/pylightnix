@@ -28,7 +28,7 @@
     * [ConfigAttrs](#pylightnix.types.ConfigAttrs)
     * [BuildArgs](#pylightnix.types.BuildArgs)
     * [Build](#pylightnix.types.Build)
-    * [Manager](#pylightnix.types.Manager)
+    * [Registry](#pylightnix.types.Registry)
     * [DRefLike](#pylightnix.types.DRefLike)
     * [Stage](#pylightnix.types.Stage)
   * [pylightnix.core](#pylightnix.core)
@@ -529,7 +529,7 @@ provided by the [Build](#pylightnix.types.Build) helper class.
 Example:
 
 ```python
-def mystage(m:Manager)->DRef:
+def mystage(m:Registry)->DRef:
 def _realize(dref:DRef, context:Context)->List[Path]:
 b=mkbuild(dref, context, buildtime=buildtime)
 with open(join(build_outpath(b),'artifact'),'w') as f:
@@ -630,7 +630,7 @@ Configs are normally created from Python dicts by the
 
 Example:
 ```python
-def mystage(m:Manager)->Dref:
+def mystage(m:Registry)->Dref:
   def _config()->dict:
     name = 'mystage'
     nepoches = 4
@@ -739,7 +739,7 @@ def train(m:TensorFlowModel)->None:
   m.model = create_model(...)
   ...
 
-def mymodel(m:Manager)->DRef:
+def mymodel(m:Registry)->DRef:
   return mkdrv(m, ..., build_wrapper_(TensorFlowModel, train))
 ```
 
@@ -751,26 +751,26 @@ def __init__(self, ba: BuildArgs) -> None
 ```
 
 
-<a name="pylightnix.types.Manager"></a>
-## `Manager` Objects
+<a name="pylightnix.types.Registry"></a>
+## `Registry` Objects
 
 ```python
-def __init__(self, S: Optional[StorageSettings])
+def __init__(self, S: Optional[StorageSettings] = None)
 ```
 
 The derivation manager is a mutable storage object where Pylightnix
 stores derivations before combining them into a
 [Closure](#pylightnix.types.Closure).
 
-Managers doesn't requre any special operations besides creating and passing
-around. By convention, Manager objects are first arguments of user-defined
+Registry doesn't requre any special operations besides creating and passing
+around. By convention, Registry objects are first arguments of user-defined
 stage functions and the `mkdrv` API function of Pylightnix.
 
-<a name="pylightnix.types.Manager.__init__"></a>
-### `Manager.__init__()`
+<a name="pylightnix.types.Registry.__init__"></a>
+### `Registry.__init__()`
 
 ```python
-def __init__(self, S: Optional[StorageSettings])
+def __init__(self, S: Optional[StorageSettings] = None)
 ```
 
 
@@ -786,13 +786,13 @@ DRefLike = TypeVar('DRefLike',bound=DRef)
 ## `Stage`
 
 ```python
-Stage = Callable[[Manager],Union[DRefLike,List[DRefLike]]]
+Stage = Callable[[Registry],Union[DRefLike,List[DRefLike]]]
 ```
 
 Functions with the `Stage` signature are the top-level building blocks of
 Pylightnix. Stage functions call [mkdrv](#pylightnix.core.mkdrv) and each
 other to produce linked [Derivations](#pylightnix.types.Derivation) and
-register them in the [Manager](#pylightnix.types.Manager).
+register them in the [Registry](#pylightnix.types.Registry).
 
 Some built-in stages are:
 - [mknode](#pylightnix.stages.trivial.mknode)
@@ -804,7 +804,7 @@ couldn't be handled by the simple MyPy. In a somewhat extended MyPy the Stage
 definition would look like:
 
 ```Python
-Stage = Callable[[Manager,VarArg(Any),KwArg(Any)],DRef]
+Stage = Callable[[Registry,VarArg(Any),KwArg(Any)],DRef]
 ```
 
 Stage's return value is a [derivation reference](#pylightnix.types.DRef)
@@ -883,7 +883,7 @@ to store its state.
 ## `tlmanager()`
 
 ```python
-def tlmanager(M: Optional[Manager]) -> Optional[Manager]
+def tlmanager(M: Optional[Registry]) -> Optional[Registry]
 ```
 
 
@@ -1065,8 +1065,8 @@ def mkconfig(d: dict) -> Config
 
 Create a [Config](#pylightnix.types.Config) object out of config
 dictionary. Asserts if the dictionary is not JSON-compatible. As a handy hack,
-filter out `m:Manager` variable which likely is an utility
-[Manager](#pylightnix.types.Manager) object.
+filter out `m:Registry` variable which likely is an utility
+[Registry](#pylightnix.types.Registry) object.
 
 <a name="pylightnix.core.cfgdict"></a>
 ## `cfgdict()`
@@ -1435,21 +1435,21 @@ def output_matcher(m: MatcherO) -> Matcher
 ## `mkdrv()`
 
 ```python
-def mkdrv(config: Config, matcher: Matcher, realizer: Realizer, m: Optional[Manager] = None) -> DRef
+def mkdrv(config: Config, matcher: Matcher, realizer: Realizer, m: Optional[Registry] = None) -> DRef
 ```
 
 Construct a [Derivation](#pylightnix.types.Derivation) object out of
 [Config](#pylightnix.types.Config), [Matcher](#pylightnix.types.Matcher) and
 [Realizer](#pylightnix.types.Realizer). Register the derivation in the
-dependency-resolution [Manager](#pylightnix.types.Manager). Return [Derivation
+dependency-resolution [Registry](#pylightnix.types.Registry). Return [Derivation
 references](#pylightnix.types.DRef) of the newly-obtained derivation.
 
 Arguments:
-- `m:Manager`: A Manager to update with a new derivation
+- `m:Registry`: A Registry to update with a new derivation
 
 Example:
 ```python
-def somestage(m:Manager)->DRef:
+def somestage(m:Registry)->DRef:
   def _realizer(b:Build):
     with open(join(build_outpath(b),'artifact'),'w') as f:
       f.write(...)
@@ -1463,7 +1463,7 @@ rref:RRef=realize1(instantiate(somestage))
 
 ```python
 @contextmanager
-def current_manager(M: Manager) -> Iterable[Manager]
+def current_manager(M: Registry) -> Iterable[Registry]
 ```
 
 
@@ -1488,7 +1488,7 @@ StageResult = TypeVar('StageResult')
 ## `mkclosure()`
 
 ```python
-def mkclosure(result: Any, m: Manager, S: Optional[StorageSettings] = None) -> Closure
+def mkclosure(result: Any, m: Registry, S: Optional[StorageSettings] = None) -> Closure
 ```
 
 
@@ -1496,7 +1496,7 @@ def mkclosure(result: Any, m: Manager, S: Optional[StorageSettings] = None) -> C
 ## `instantiate()`
 
 ```python
-def instantiate(stage: Union[StageResult,Callable[[Manager,Any,Any],StageResult]], args: Any, *,, ,, =, ,, =, ,, kwargs: Any) -> Tuple[StageResult,Closure]
+def instantiate(stage: Union[StageResult,Callable[[Registry,Any,Any],StageResult]], args: Any, *,, ,, =, ,, =, ,, kwargs: Any) -> Tuple[StageResult,Closure]
 ```
 
 Instantiate scans a Python data object (list,dict or constant) which
@@ -1532,7 +1532,7 @@ procedure](#pylightnix.types.Realizer).
 
 Example:
 ```python
-def mystage(m:Manager)->DRef:
+def mystage(m:Registry)->DRef:
   ...
   return mkdrv(m, ...)
 
@@ -1545,7 +1545,7 @@ Pylightnix contains the following specialized alternatives to `realize1`:
 * [realizeMany](#pylightnix.core.realizeMany) - A version for multiple-output
 stages.
 * [repl_realize](#pylightnix.repl.repl_realize) - A REPL-friendly version.
-  version which uses a hardcoded global [Manager](#pylightnix.types.Manager).
+  version which uses a hardcoded global [Registry](#pylightnix.types.Registry).
 
 <a name="pylightnix.core.realizeMany"></a>
 ## `realizeMany()`
@@ -1775,7 +1775,7 @@ def assert_rref_deps(c: Config) -> None
 ## `assert_have_realizers()`
 
 ```python
-def assert_have_realizers(m: Manager, drefs: List[DRef]) -> None
+def assert_have_realizers(m: Registry, drefs: List[DRef]) -> None
 ```
 
 
@@ -2280,7 +2280,7 @@ AUNPACK = try_executable('aunpack',
 ## `fetchurl2()`
 
 ```python
-def fetchurl2(url: str, sha256: Optional[str] = None, sha1: Optional[str] = None, name: Optional[str] = None, filename: Optional[str] = None, force_download: bool = False, m: Optional[Manager] = None, kwargs) -> DRef
+def fetchurl2(url: str, sha256: Optional[str] = None, sha1: Optional[str] = None, name: Optional[str] = None, filename: Optional[str] = None, force_download: bool = False, m: Optional[Registry] = None, kwargs) -> DRef
 ```
 
 Download file given it's URL addess.
@@ -2289,7 +2289,7 @@ Downloading is done by calling `curl` application. The path to the executable
 may be altered by setting the `PYLIGHTNIX_CURL` environment variable.
 
 Agruments:
-- `m:Manager` the dependency resolution [Manager](#pylightnix.types.Manager).
+- `m:Registry` the dependency resolution [Registry](#pylightnix.types.Registry).
 - `url:str` URL to download from. Should point to a single file.
 - `sha256:str` SHA-256 hash sum of the file.
 - `name:Optional[str]`: Name of the Derivation. The stage will attempt to
@@ -2302,7 +2302,7 @@ Agruments:
 
 Example:
 ```python
-def hello_src(m:Manager)->DRef:
+def hello_src(m:Registry)->DRef:
   hello_version = '2.10'
   return fetchurl2(
     m,
@@ -2318,7 +2318,7 @@ print(rref2path(rref))
 ## `unpack()`
 
 ```python
-def unpack(path: Optional[str] = None, refpath: Optional[RefPath] = None, name: Optional[str] = None, sha256: Optional[str] = None, sha1: Optional[str] = None, aunpack_args: List[str] = [], m: Optional[Manager] = None, kwargs) -> DRef
+def unpack(path: Optional[str] = None, refpath: Optional[RefPath] = None, name: Optional[str] = None, sha256: Optional[str] = None, sha1: Optional[str] = None, aunpack_args: List[str] = [], m: Optional[Registry] = None, kwargs) -> DRef
 ```
 
 
@@ -2383,7 +2383,7 @@ def _unpack_inplace(o: str, fullpath: str, remove_file: bool)
 ## `fetchurl()`
 
 ```python
-def fetchurl(url: str, sha256: Optional[str] = None, sha1: Optional[str] = None, mode: str = 'unpack,remove', name: Optional[str] = None, filename: Optional[str] = None, force_download: bool = False, check_promises: bool = True, m: Optional[Manager] = None, kwargs) -> DRef
+def fetchurl(url: str, sha256: Optional[str] = None, sha1: Optional[str] = None, mode: str = 'unpack,remove', name: Optional[str] = None, filename: Optional[str] = None, force_download: bool = False, check_promises: bool = True, m: Optional[Registry] = None, kwargs) -> DRef
 ```
 
 Download and unpack an URL addess.
@@ -2397,7 +2397,7 @@ package, adding 'remove' instructs it to remove the archive after unpacking.
 If 'unpack' is not expected, then the promise named 'out_path' is created.
 
 Agruments:
-- `m:Manager` the dependency resolution [Manager](#pylightnix.types.Manager).
+- `m:Registry` the dependency resolution [Registry](#pylightnix.types.Registry).
 - `url:str` URL to download from. Should point to a single file.
 - `sha256:str` SHA-256 hash sum of the file.
 - `model:str='unpack,remove'` Additional options. Format: `[unpack[,remove]]`.
@@ -2411,7 +2411,7 @@ Agruments:
 
 Example:
 ```python
-def hello_src(m:Manager)->DRef:
+def hello_src(m:Registry)->DRef:
   hello_version = '2.10'
   return fetchurl(
     m,
@@ -2427,7 +2427,7 @@ print(rref2path(rref))
 ## `fetchlocal()`
 
 ```python
-def fetchlocal(sha256: str, path: Optional[str] = None, envname: Optional[str] = None, mode: str = 'unpack,remove', name: Optional[str] = None, filename: Optional[str] = None, check_promises: bool = True, m: Optional[Manager] = None, kwargs) -> DRef
+def fetchlocal(sha256: str, path: Optional[str] = None, envname: Optional[str] = None, mode: str = 'unpack,remove', name: Optional[str] = None, filename: Optional[str] = None, check_promises: bool = True, m: Optional[Registry] = None, kwargs) -> DRef
 ```
 
 Copy local file into Pylightnix storage. This function is typically
@@ -2449,7 +2449,7 @@ Trivial builtin stages
 ## `mknode()`
 
 ```python
-def mknode(m: Manager, cfgdict: dict, artifacts: Dict[Name,bytes] = {}, name: str = 'mknode') -> DRef
+def mknode(m: Registry, cfgdict: dict, artifacts: Dict[Name,bytes] = {}, name: str = 'mknode') -> DRef
 ```
 
 
@@ -2894,7 +2894,7 @@ FIXME: Filter the closure derivations from unrelated entries.
 ## `mklens()`
 
 ```python
-def mklens(x: Any, o: Optional[Path] = None, b: Optional[Build] = None, rref: Optional[RRef] = None, ctx: Optional[Context] = None, closure: Optional[Closure] = None, build_output_idx: int = 0, S: Optional[StorageSettings] = None, m: Optional[Manager] = None) -> Lens
+def mklens(x: Any, o: Optional[Path] = None, b: Optional[Build] = None, rref: Optional[RRef] = None, ctx: Optional[Context] = None, closure: Optional[Closure] = None, build_output_idx: int = 0, S: Optional[StorageSettings] = None, m: Optional[Registry] = None) -> Lens
 ```
 
 mklens creates [Lens](#pylightnix.lens.Lens) objects from various
@@ -3097,7 +3097,7 @@ Convert an Either-matcher into the regular Matcher
 ## `mkdrvE()`
 
 ```python
-def mkdrvE(config: Config, matcher: MatcherO, realizer: RealizerO, m: Optional[Manager] = None) -> DRef
+def mkdrvE(config: Config, matcher: MatcherO, realizer: RealizerO, m: Optional[Registry] = None) -> DRef
 ```
 
 

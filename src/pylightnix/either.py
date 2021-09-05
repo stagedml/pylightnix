@@ -3,7 +3,7 @@ from pylightnix.imports import (join, mkdtemp, format_exc, isfile)
 from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional, Config,
                               Realizer, RealizerO, DRef, Context, RealizeArg,
                               RRef, Path, SPath, TypeVar, Generic, Callable,
-                              Matcher, MatcherO, Manager, Output, Closure,
+                              Matcher, MatcherO, Registry, Output, Closure,
                               NamedTuple, StorageSettings)
 
 from pylightnix.core import (assert_valid_config, drefcfg_, cfgcattrs,
@@ -161,7 +161,7 @@ def either_matcher(m:MatcherO)->Matcher:
 def mkdrvE(config:Config,
            matcher:MatcherO,
            realizer:RealizerO,
-           m:Optional[Manager]=None
+           m:Optional[Registry]=None
            )->DRef:
   return mkdrv(config, either_matcher(matcher), either_realizer(realizer), m)
 

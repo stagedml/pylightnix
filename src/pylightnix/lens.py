@@ -18,7 +18,7 @@ through the dependent configurations """
 from pylightnix.imports import (join,isfile)
 from pylightnix.types import (Any, Dict, List, Build, DRef, RRef, Optional,
                               RefPath, Tuple, Union, Path, Context, NamedTuple,
-                              Context, Closure, SPath, StorageSettings, Manager)
+                              Context, Closure, SPath, StorageSettings, Registry)
 from pylightnix.utils import (isrefpath, isdref, isrref, tryreadjson )
 from pylightnix.core import (rref2dref, rref2path, cfgdict,
                              dref2path, rrefctx, context_deref,
@@ -264,7 +264,7 @@ def mklens(x:Any, o:Optional[Path]=None,
                   closure:Optional[Closure]=None,
                   build_output_idx:int=0,
                   S:Optional[StorageSettings]=None,
-                  m:Optional[Manager]=None)->Lens:
+                  m:Optional[Registry]=None)->Lens:
   """ mklens creates [Lens](#pylightnix.lens.Lens) objects from various
   Pylightnix objects.
 

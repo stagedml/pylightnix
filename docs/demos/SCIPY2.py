@@ -1,5 +1,5 @@
 from pylightnix import (StorageSettings, Matcher, Build, Context, Path, RefPath,
-                        Config, Manager, RRef, DRef, Path, build_path,
+                        Config, Registry, RRef, DRef, Path, build_path,
                         build_outpath, build_cattrs, mkdrv, rref2path, mkconfig,
                         tryread, fetchurl, instantiate, realize1, match_only,
                         build_wrapper, selfref, mklens, instantiate_inplace,
@@ -32,7 +32,7 @@ def f(z, *params):
 
 # 1.
 
-def stage_params(m:Manager)->DRef:
+def stage_params(m:Registry)->DRef:
   def _config():
     name = 'params'
     out = [selfref, "params.npy"]
@@ -41,7 +41,7 @@ def stage_params(m:Manager)->DRef:
     save(mklens(b).out.syspath, (2, 3, 7, 8, 9, 10, 44, -1, 2, 26, 1, -2, 0.5))
   return mkdrv(m, mkconfig(_config()), match_only(), build_wrapper(_make))
 
-def stage_anneal(m:Manager, ref_params:DRef)->DRef:
+def stage_anneal(m:Registry, ref_params:DRef)->DRef:
   def _config():
     name = 'anneal2'
     nonlocal ref_params
@@ -65,7 +65,7 @@ def stage_anneal(m:Manager, ref_params:DRef)->DRef:
   return mkdrv(m, mkconfig(_config()), match_only(), build_wrapper(_make))
 
 
-def stage_plot(m:Manager, ref_anneal:DRef)->DRef:
+def stage_plot(m:Registry, ref_anneal:DRef)->DRef:
   def _config():
     name = 'plot'
     nonlocal ref_anneal
@@ -90,7 +90,7 @@ def run1():
 
 # 2.
 
-def stage_all(m:Manager):
+def stage_all(m:Registry):
   ds=stage_params(m)
   cl=stage_anneal(m,ds)
   vis=stage_plot(m,cl)
@@ -131,7 +131,7 @@ def match_min(S, rrefs:List[RRef])->List[RRef]:
     print(f"Picking Bob ({best[0]}) out of {avail}")
   return [best[1]]
 
-def stage_all2(m:Manager):
+def stage_all2(m:Registry):
   ds=stage_params(m)
   cl=redefine(stage_anneal, new_matcher=match_min)(m,ds)
   vis=stage_plot(m,cl)

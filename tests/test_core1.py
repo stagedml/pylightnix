@@ -1,6 +1,6 @@
 from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir, dirhash,
                         assert_valid_dref, assert_valid_rref, drefdeps1,
-                        drefdeps, store_gc, assert_valid_config, Manager,
+                        drefdeps, store_gc, assert_valid_config, Registry,
                         mkcontext, allrrefs, mkdref, mkrref, unrref, undref,
                         realize1, rref2dref, drefcfg, mkconfig, Build, Context,
                         build_outpath, mkdrv, rref2path, cfgcattrs, drefattrs,
@@ -29,7 +29,7 @@ from tests.setup import ( ShouldHaveFailed, setup_storage2,
 # @given(d=dicts())
 # def test_realize_base(d)->None:
 #   with setup_storage2('test_realize_base') as S:
-#     m=Manager(storage(S))
+#     m=Registry(storage(S))
 #     mkstage(m, d)
 #     dref=list(m.builders.values())[-1].targets[0]
 #     assert_valid_dref(dref)
@@ -97,7 +97,7 @@ def test_no_dref_deps_without_realizers()->None:
 
 def test_repeated_instantiate()->None:
   with setup_storage2('test_repeated_instantiate') as S:
-    def _setting(m:Manager)->DRef:
+    def _setting(m:Registry)->DRef:
       return mkstage({'a':'1'}, m)
     _,cl1=instantiate(_setting,S=S)
     _,cl2=instantiate(_setting,S=S)
@@ -109,7 +109,7 @@ def test_repeated_instantiate()->None:
 
 def test_repeated_realize()->None:
   with setup_storage2('test_repeated_realize') as S:
-    def _setting(m:Manager)->DRef:
+    def _setting(m:Registry)->DRef:
       return mkstage({'a':'1'},m)
     _,clo=instantiate(_setting,S=S)
     rref1=realize1(clo)
@@ -269,7 +269,7 @@ def test_config_ro():
 def test_ignored_stage()->None:
   with setup_storage2('test_ignored_stage') as S:
     n2:DRef; n4:DRef
-    def _setting(m:Manager)->DRef:
+    def _setting(m:Registry)->DRef:
       nonlocal n2,n4
       n1 = mkstage({'a':'1'},m)
       n2 = mkstage({'b':'2'},m) # this one should not be realized
@@ -290,7 +290,7 @@ def test_ignored_stage()->None:
 def test_overwrite_realizer()->None:
   with setup_storage2('test_overwrite_realizer') as S:
     n1:DRef; n2:DRef; n3:DRef
-    def _setting(m:Manager)->DRef:
+    def _setting(m:Registry)->DRef:
       nonlocal n1, n2, n3
       n1 = mkstage({'a':'1'},m,lambda i:33)
       n2 = mkstage({'maman':n1},m)
@@ -308,11 +308,11 @@ def test_overwrite_realizer()->None:
 
 def test_gc()->None:
   with setup_storage2('test_gc') as S:
-    def _node1(m:Manager)->DRef:
+    def _node1(m:Registry)->DRef:
       return mkstage({'name':'1'},m)
-    def _node2(m:Manager)->DRef:
+    def _node2(m:Registry)->DRef:
       return mkstage({'name':'2', 'maman':_node1(m)},m)
-    def _node3(m:Manager)->DRef:
+    def _node3(m:Registry)->DRef:
       return mkstage({'name':'3', 'maman':_node1(m)},m)
 
     r1=realize1(instantiate(_node1,S=S))
@@ -325,7 +325,7 @@ def test_gc()->None:
 
 # def test_promise()->None:
 #   with setup_storage2('test_promise') as S:
-#     def _setting(m:Manager, fullfill:bool)->DRef:
+#     def _setting(m:Registry, fullfill:bool)->DRef:
 #       n1=mkstage(m, {'name':'1', 'promise':[promise,'artifact']})
 #       def _realize(b:Build):
 #         o=build_outpath(b)
@@ -383,7 +383,7 @@ def test_linkdref()->None:
 
 def test_current_manager():
   with setup_storage2('test_current_manager') as S:
-    with current_manager(Manager(S)) as m:
+    with current_manager(Registry(S)) as m:
       n1=mkstage({'a':'1'})
       n2=mkstage({'b':'2'})
       n3=mkstage({'c':'3','maman':n1})
@@ -409,7 +409,7 @@ def test_current_storage():
       realize1(instantiate(partial(mkstage,config={'a':'1'})))
       realize1(instantiate(partial(mkstage,config={'b':'2'})))
       with current_storage(S2) as S:
-        with current_manager(Manager(S)):
+        with current_manager(Registry(S)):
           realize1(instantiate(mkstage({'c':'3'})))
         assert len(list(alldrefs()))==1
       assert len(list(alldrefs()))==2

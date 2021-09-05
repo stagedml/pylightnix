@@ -1,4 +1,4 @@
-from pylightnix import (Manager, Build, Path, fsinit, DRef, Context,
+from pylightnix import (Registry, Build, Path, fsinit, DRef, Context,
                         Optional, mkbuildargs, build_outpath, allrrefs, RRef,
                         mkconfig, Name, mkdrv, rref2path, dirchmod, Config,
                         RealizeArg, drefrrefsC, tryreadstr_def, StorageSettings,
@@ -68,7 +68,7 @@ def setup_test_realize(nrrefs:int,
   return _realize
 
 def mkstage(config:dict,
-            m:Optional[Manager]=None,
+            m:Optional[Registry]=None,
             nondet:Callable[[int],int]=lambda n:0,
             starttime:Optional[str]='AUTO',
             nrrefs:int=1,
@@ -92,7 +92,7 @@ def rrefdepth(rref:RRef,S=None)->int:
 
 def mkstageP(config:dict,
              nondet:Callable[[int],int]=lambda n:0,
-             m:Optional[Manager]=None,
+             m:Optional[Registry]=None,
              starttime:Optional[str]='AUTO',
              nrrefs:int=1,
              nmatch:int=1,

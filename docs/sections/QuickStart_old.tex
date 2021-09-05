@@ -20,11 +20,11 @@ algorithm calling \texttt{Wget} and \texttt{Aunpack} tools to download GNU Hello
 sources from the Internet.
 
 \begin{pythontexcode}
-from pylightnix import (Manager, DRef, RRef, fetchurl)
+from pylightnix import (Registry, DRef, RRef, fetchurl)
 
 hello_version = '2.10'
 
-def stage_fetch(m:Manager)->DRef: # DRef \label{DREF}
+def stage_fetch(m:Registry)->DRef: # DRef \label{DREF}
   return fetchurl(m,
     name='hello-src',
     url=f'http://ftp.gnu.org/gnu/hello/hello-{hello_version}.tar.gz',
@@ -38,9 +38,9 @@ def stage_fetch(m:Manager)->DRef: # DRef \label{DREF}
     some realization algorithm with its input arguments here called
     prerequisites.
 
-  \item Stage function takes a dependency-resolution \textbf{Manager} context as
-    its first arguments. The Manager holds the information about instantiated
-    stages. Users normally shouldn't operate on Managers or call stage functions
+  \item Stage function takes a dependency-resolution \textbf{Registry} context as
+    its first arguments. The Registry holds the information about instantiated
+    stages. Users normally shouldn't operate on Registry or call stage functions
     directly. Instead, they are to pass the top-level stage to one of Pylightnix
     top-level \texttt{instantiate-} functions.
 
@@ -113,7 +113,7 @@ from pylightnix import (Config, Path, Build, mkconfig, mkdrv,
   build_wrapper, match_only, dirrw, selfref,
   __version__ as pylightnix_version)
 
-def stage_build(m:Manager)->DRef:                           # ST \label{ST}
+def stage_build(m:Registry)->DRef:                           # ST \label{ST}
   def _config()->Config:                                    # CFG \label{CFG}
     name:str = 'hello-bin'
     fetchref:DRef = stage_fetch(m)                          # DEP \label{DEP}
@@ -155,7 +155,7 @@ Output:
 
     \begin{itemize}
 
-      \item \textbf{Manager} utility object. Managers describe dependency
+      \item \textbf{Registry} utility object. Registry describe dependency
         resolution contexts and have no special meaning for end-users. We just
         pass the object we obtain as a stage function argument down to the stage
         constructor.

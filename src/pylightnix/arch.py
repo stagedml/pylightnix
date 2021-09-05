@@ -18,7 +18,7 @@ from pylightnix.imports import (Popen, dirname, basename, remove, join,
                                 relpath, rename, splitext, mkdtemp, isfile,
                                 isdir, shutil_copy, realpath, normpath)
 from pylightnix.types import (RRef, List, Dict, Path, Iterable, Optional,
-                              SPath, Manager, DRef, Config, RConfig, Build,
+                              SPath, Registry, DRef, Config, RConfig, Build,
                               Set, StorageSettings)
 
 from pylightnix.core import (drefdeps, rrefdeps, rref2path, dref2path,
@@ -110,7 +110,7 @@ def copyclosure(rrefs_S:Iterable[RRef],
     visited_drefs:Set[DRef]=set()
     dref_S:DRef=rref2dref(rref_S)
 
-    def _stage(dref:DRef,m:Manager)->DRef:
+    def _stage(dref:DRef,m:Registry)->DRef:
       nonlocal visited_drefs
       cfg=drefcfg_(dref,S=S)
       # print(f"Instantiating {cfg}")

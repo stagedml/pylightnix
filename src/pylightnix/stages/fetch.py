@@ -16,7 +16,7 @@
 
 from pylightnix.imports import (sha256 as sha256sum, sha1 as sha1sum, urlparse,
     Popen, remove, basename, join, rename, isfile, copyfile, environ, getLogger )
-from pylightnix.types import ( DRef, Manager, Build, Context, Name,
+from pylightnix.types import ( DRef, Registry, Build, Context, Name,
     Path, Optional, List, Config )
 from pylightnix.core import ( mkconfig, mkdrv, match_only, cfgcattrs,
                              selfref, fstmpdir )
@@ -60,7 +60,7 @@ def fetchurl(url:str,
              filename:Optional[str]=None,
              force_download:bool=False,
              check_promises:bool=True,
-             m:Optional[Manager]=None,
+             m:Optional[Registry]=None,
              **kwargs)->DRef:
   """ Download and unpack an URL addess.
 
@@ -73,7 +73,7 @@ def fetchurl(url:str,
   If 'unpack' is not expected, then the promise named 'out_path' is created.
 
   Agruments:
-  - `m:Manager` the dependency resolution [Manager](#pylightnix.types.Manager).
+  - `m:Registry` the dependency resolution [Registry](#pylightnix.types.Registry).
   - `url:str` URL to download from. Should point to a single file.
   - `sha256:str` SHA-256 hash sum of the file.
   - `model:str='unpack,remove'` Additional options. Format: `[unpack[,remove]]`.
@@ -87,7 +87,7 @@ def fetchurl(url:str,
 
   Example:
   ```python
-  def hello_src(m:Manager)->DRef:
+  def hello_src(m:Registry)->DRef:
     hello_version = '2.10'
     return fetchurl(
       m,
@@ -177,7 +177,7 @@ def fetchlocal(sha256:str,
                name:Optional[str]=None,
                filename:Optional[str]=None,
                check_promises:bool=True,
-               m:Optional[Manager]=None,
+               m:Optional[Registry]=None,
                **kwargs)->DRef:
   """ Copy local file into Pylightnix storage. This function is typically
   intended to register application-specific files which are distributed with a

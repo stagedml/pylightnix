@@ -1,5 +1,5 @@
-from pylightnix import (Manager, DRef, RRef, Path, mklogdir, dirhash, mknode,
-                        drefdeps1, rref2path, Manager, mkcontext, instantiate,
+from pylightnix import (Registry, DRef, RRef, Path, mklogdir, dirhash, mknode,
+                        drefdeps1, rref2path, Registry, mkcontext, instantiate,
                         realize1, Name, realized, build_wrapper, Build,
                         mkconfig, match_some, mkdrv, build_outpath, redefine,
                         tryread, mklens, selfref, match_only )
@@ -21,7 +21,7 @@ from tests.setup import ( setup_storage2, ShouldHaveFailed )
 def test_mknode(d)->None:
   with setup_storage2('test_mknode') as S:
 
-    def _setting(m:Manager)->DRef:
+    def _setting(m:Registry)->DRef:
       return mknode(m, d)
 
     _,cl1=instantiate(_setting,S=S)
@@ -36,7 +36,7 @@ def test_mknode(d)->None:
 def test_mknode_with_artifacts(d,a)->None:
   with setup_storage2('test_mknode_with_artifacts') as S:
 
-    def _setting(m:Manager)->DRef:
+    def _setting(m:Registry)->DRef:
       return mknode(m, cfgdict=d, artifacts=a)
 
     _,cl=instantiate(_setting,S=S)
@@ -51,7 +51,7 @@ def test_mknode_with_artifacts(d,a)->None:
 def test_realized()->None:
   with setup_storage2('test_realized') as S:
 
-    def _setting(m:Manager, assume_realized:bool)->DRef:
+    def _setting(m:Registry, assume_realized:bool)->DRef:
       def _realize(b:Build):
         if assume_realized:
           raise ShouldHaveFailed('Should not call the real realizer')
@@ -73,7 +73,7 @@ def test_realized()->None:
 def test_redefine()->None:
   with setup_storage2('test_redefine') as S:
 
-    def _setting(m:Manager)->DRef:
+    def _setting(m:Registry)->DRef:
       return mknode(m, {'name':'foo','bar':'baz','output':[selfref,'f']},
                        {Name('f'):bytes(('umgh').encode('utf-8'))})
     def _nc(c):
