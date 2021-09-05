@@ -9,6 +9,7 @@ buildPythonPackage {
   version = "9999";
   src = builtins.filterSource (
     path: type: !( baseNameOf path == "build" && type == "directory" ) &&
+                !( baseNameOf path == "dist" && type == "directory" ) &&
                 !( baseNameOf path == "result" )
     ) ./.;
 
@@ -28,7 +29,9 @@ buildPythonPackage {
   checkInputs = [ pytest pytest-mypy hypothesis ];
 
   checkPhase = ''
-    export PATH="${pkgs.atool}/bin:${pkgs.curl}/bin:${pkgs.wget}/bin:$PATH"
+    export PATH=\
+    "${pkgs.atool}/bin:${pkgs.curl}/bin:${pkgs.wget}/bin:"\
+    "${pkgs.zip}/bin:${pkgs.unzip}/bin:$PATH"
     pytest
   '';
 

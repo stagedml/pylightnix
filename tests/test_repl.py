@@ -44,19 +44,19 @@ def test_repl_basic():
 
 
 def test_repl_race():
-  with setup_storage2('test_repl_recursion'):
+  with setup_storage2('test_repl_recursion') as S:
 
     def _setting(r:Registry)->DRef:
       n1 = mkstage({'a':'1'},r)
       n2 = mkstage({'maman':n1},r)
       return n2
 
-    x:Tuple[DRef,Closure]=instantiate(_setting)
+    x:Tuple[DRef,Closure]=instantiate(_setting,S=S)
     rh=repl_realize(x, force_interrupt=True)
     assert repl_rref(rh) is None
     assert rh.result is None
 
-    x2:Tuple[DRef,Closure]=instantiate(_setting)
+    x2:Tuple[DRef,Closure]=instantiate(_setting,S=S)
     rref2=realize1(x2) # Realize dref while repl_realizing the same dref
 
     repl_cancel(rh)
