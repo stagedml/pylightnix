@@ -33,8 +33,8 @@ Demos:
 
 * [GNU Hello](./docs/demos/HELLO.md), turns Pylightnix into a toy
   package manager to build the GNU Hello from sources.
-* [MDRUN](./docs/demos/MDRUN.py), evaluate code sections in a Markdown document,
-  and cache the results betwee runs.
+* [MDRUN](./docs/demos/MDRUN.py), evaluates code sections of a Markdown document,
+  cache the results between runs.
 
 (Outdated)
 
