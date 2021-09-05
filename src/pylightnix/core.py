@@ -640,10 +640,10 @@ def mkdrv(m:Manager,
   return dref
 
 @contextmanager
-def current_manager(S:Optional[StorageSettings]=None)->Iterable[Manager]:
+def current_manager(M:Manager)->Iterable[Manager]:
   global TL
   old=getattr(TL,'manager',None)
-  TL.manager=Manager(tlstorage(S))
+  TL.manager=M
   try:
     yield TL.manager
   finally:

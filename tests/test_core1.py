@@ -383,7 +383,7 @@ def test_linkdref()->None:
 
 def test_current_manager():
   with setup_storage2('test_current_manager') as S:
-    with current_manager(S) as m:
+    with current_manager(Manager(S)) as m:
       n1=mkstage(m,{'a':'1'})
       n2=mkstage2({'b':'2'})
       n3=mkstage2({'c':'3', 'maman':n1})
@@ -409,7 +409,7 @@ def test_current_storage():
       realize1(instantiate(partial(mkstage,config={'a':'1'})))
       realize1(instantiate(partial(mkstage,config={'b':'2'})))
       with current_storage(S2) as S:
-        with current_manager(S):
+        with current_manager(Manager(S)):
           realize1(instantiate(mkstage2({'c':'3'})))
         assert len(list(alldrefs()))==1
       assert len(list(alldrefs()))==2

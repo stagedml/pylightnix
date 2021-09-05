@@ -61,7 +61,7 @@ def use_session(inpath:str, outpath:str):
     res=interact(fdr,fdw,''.join(mklens(b).code.val))
     writestr(mklens(b).stdout.syspath,res)
 
-  with current_manager(S) as M:
+  with current_manager(Manager(S)) as M:
     prev:Optional[DRef]=None
     of=sys.stdout if outpath=='-' else open(outpath,'w')
     nchunk=0
