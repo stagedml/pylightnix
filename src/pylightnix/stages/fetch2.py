@@ -44,13 +44,13 @@ AUNPACK=try_executable('aunpack',
                        'system package or set PYLIGHTNIX_AUNPACK env var.',
                        '`unpack` stage will fail')
 
-def fetchurl2(m:Manager,
-              url:str,
+def fetchurl2(url:str,
               sha256:Optional[str]=None,
               sha1:Optional[str]=None,
               name:Optional[str]=None,
               filename:Optional[str]=None,
               force_download:bool=False,
+              m:Optional[Manager]=None,
               **kwargs)->DRef:
   """ Download file given it's URL addess.
 
@@ -152,13 +152,13 @@ def fetchurl2(m:Manager,
                m)
 
 
-def unpack(m:Manager,
-           path:Optional[str]=None,
+def unpack(path:Optional[str]=None,
            refpath:Optional[RefPath]=None,
            name:Optional[str]=None,
            sha256:Optional[str]=None,
            sha1:Optional[str]=None,
            aunpack_args:List[str]=[],
+           m:Optional[Manager]=None,
            **kwargs)->DRef:
 
   if path:

@@ -53,81 +53,92 @@ from typing import Any
 from subprocess import Popen, PIPE
 ```
 
-First things first, Pylightnix uses filesystem storage for tracking
-immutable data object (or stages) which could depend on each other. This
-storage is global, it is the central part of library. In order to check
-or create it, we call `initialize`:
+First things first, Pylightnix uses filesystem for tracking immutable
+data objects which could depend on each other. Objects reside partly in
+the filesystem, partly in memory as a Python objects. We initialize the
+filesystem part by calling
+[fsinit](../Reference.md#pylightnix.core.fsinit) on
+[StorageSettings](../Reference.md#pylightnix.types.StorageSettings) and
+then create the global
+[Manager](../Reference.md#pylightnix.types.Manager). The Manager and the
+part of filesystem described by StorageSettings are the only mutable
+objects that we will operate on.
 
 ``` python
 from os import environ
-from pylightnix import fsinit
+from pylightnix import Manager, StorageSettings, mkSS, fsinit
 
-environ['PYLIGHTNIX_ROOT']='/tmp/pylightnix_hello_demo'
-fsinit(remove_existing=True)
+S:StorageSettings=mkSS('/tmp/pylightnix_hello_demo')
+fsinit(S,remove_existing=True)
+M=Manager(S)
+
+hello_version = '2.10'
 ```
 
 ### Fetchurl and Unpack stages
 
-Pylightnix allows us to define, check and execute data processing
-operations called **Stages**. Stages may be defined by writing Python
-functions (as we will do later) or imported from a small builtin
-collection.
+Pylightnix manages data processing operations called Derivations. The
+toolbox provides a generic constructor
+[mkdrv](../Reference.md#pylightnix.core.mkdrv) and a set of pre-defined
+**Stages** which wraps it with problem-specific parameters.
 
-Here we import stages `fetchurl2` and `unpack`, along with other
-Pylightnix API functions.
+In this tutorial we will need
+[fetchurl2](../Reference.md#pylightnix.stages.fetch2.fetchurl2) and
+[unpack](../Reference.md#pylightnix.stages.fetch2.unpack) stages. The
+first one knows how to download URLs from the Internet, the second one
+knows how to unpack archives. We import both functions, along with other
+Pylightnix APIs.
 
 ``` python
-from pylightnix import (fetchurl2, unpack, DRef, RRef, instantiate_inplace,
-                        realize_inplace, mklens, selfref)
+from pylightnix import (Manager, DRef, RRef, fetchurl2, unpack, mklens, selfref)
 ```
 
-Our goal is to prepare stages for execution by **instantiating** them.
-`fetchurl2` is the curl-based web downloader, which accepts the URL
-address, the hash and the expected `out` path. We call
-`instantiate_inplace` API function on it and get the `tarball`
-derivation reference, which identifies both the stage and its parameters
-in the Pylightnix storage. No actual work is performed yet.
+Our first goal is to make derivations ready for realization by
+registering them in the Manager `M`. We call `fetchurl2` with the
+appropriate parameters and get an unique
+[DRef](../Reference.md#pylightnix.types.DRef) reference back. Every
+`DRef` value proofs to us that the Manager is aware of our new
+derivation.
 
 ``` python
-hello_version = '2.10'
-
-tarball:DRef = \
-  instantiate_inplace(
-    fetchurl2,
+tarball:DRef = fetchurl2(
     name='hello-src',
     url=f'http://ftp.gnu.org/gnu/hello/hello-{hello_version}.tar.gz',
     sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b',
-    out=[selfref, f'hello-{hello_version}.tar.gz'])
+    out=[selfref, f'hello-{hello_version}.tar.gz'], m=M)
 ```
 
-Next we pass the path to the tarball to the `unpack` stage by
-dereferencing its `out` attribute using the
-[mklens](../Reference.md#pylightnix.lens.mklens) helper function.
-Pylightnix notes the fact that `unpack` has a reference to `tarball` in
-its configuration.
+In order to link derivations into a chain we should put the derivation
+reference of a prerequisite derivation somewhere into the config of a
+child derivaiton.
 
 ``` python
-hello_src:DRef = \
-  instantiate_inplace(
-    unpack,
+hello_src:DRef = unpack(
     name='unpack-hello',
-    refpath=mklens(tarball).out.refpath,
+    refpath=mklens(tarball,m=M).out.refpath,
     aunpack_args=['-q'],
-    src=[selfref, f'hello-{hello_version}'])
+    src=[selfref, f'hello-{hello_version}'],m=M)
 ```
 
-Now, we ask Pylightnix to give us the artifacts of `unpack` stage by
-**realizing** it. Pylightnix does the dependency handling and decides to
-execute both fetchurl and unpack. The results of realization is
-available via realization reference `hello_rref`.
+The `selfref` path is our promise to Pylightnix that the said path would
+appear after the derivation is realized. Pylightnix checks such promises
+and raises in case they are not fulfilled.
+
+Now we are done with registrations and going to obtain our objects. We
+call [instantiate](../Reference.md#pylightnix.core.instantiate) to
+compute the dependency closure of the target object and pass it to
+[realize1](../Reference.md#pylightnix.core.realize1) which runs the
+show. As a result, we obtain a reference of another kind
+[RRef](../Reference.md#pylightnix.types.RRef)
 
 ``` python
-hello_rref:RRef = realize_inplace(hello_src)
+from pylightnix import instantiate, realize1
+hello_rref:RRef = realize1(instantiate(hello_src, m=M))
 print(hello_rref)
 ```
 
 ``` stdout
-rref:b557aecd2a8cc4615100d8b4a5129874-43323fae07b9e30f65ed0a1b6213b6f0-unpack-hello
+rref:29eaa2c8e74cbc939dfdd8e43f3987eb-43323fae07b9e30f65ed0a1b6213b6f0-unpack-hello
 ```
 
 ``` stderr
@@ -135,29 +146,33 @@ rref:b557aecd2a8cc4615100d8b4a5129874-43323fae07b9e30f65ed0a1b6213b6f0-unpack-he
                                  Dload  Upload   Total   Spent    Left  Speed
 
   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
- 30  708k   30  213k    0     0   295k      0  0:00:02 --:--:--  0:00:02  295k
-100  708k  100  708k    0     0   819k      0 --:--:-- --:--:-- --:--:--  818k
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+  6  708k    6 48126    0     0  33678      0  0:00:21  0:00:01  0:00:20 33654
+ 22  708k   22  156k    0     0  70449      0  0:00:10  0:00:02  0:00:08 70418
+ 42  708k   42  299k    0     0  92788      0  0:00:07  0:00:03  0:00:04 92760
+ 63  708k   63  449k    0     0   105k      0  0:00:06  0:00:04  0:00:02  105k
+ 87  708k   87  619k    0     0   117k      0  0:00:06  0:00:05  0:00:01  134k
+100  708k  100  708k    0     0   124k      0  0:00:05  0:00:05 --:--:--  154k
 hello-2.10.tar.gz: extracted to `hello-2.10'
 ```
 
-Any RRef could be converted to the system path by calling
-[rref2path](../Reference.md#pylightnix.core.rref2path) function or by
-using a more feature-rich `mklens`:
+RRefs could be converted to system paths by calling an
+[mklens](../Reference.md#pylightnix.lens.mklens) the swiss-army-knife
+data accessor of Pylightnix:
 
 ``` python
-from pylightnix import rref2path
+from pylightnix import current_storage
 
-print(rref2path(hello_rref))
-print(mklens(hello_rref).val)
-print(mklens(hello_rref).syspath)
-print(mklens(hello_rref).src.syspath)
+with current_storage(S):
+  print(mklens(hello_rref).val)
+  print(mklens(hello_rref).syspath)
+  print(mklens(hello_rref).src.syspath)
 ```
 
 ``` stdout
-/tmp/pylightnix_hello_demo/store-v0/43323fae07b9e30f65ed0a1b6213b6f0-unpack-hello/b557aecd2a8cc4615100d8b4a5129874
-rref:b557aecd2a8cc4615100d8b4a5129874-43323fae07b9e30f65ed0a1b6213b6f0-unpack-hello
-/tmp/pylightnix_hello_demo/store-v0/43323fae07b9e30f65ed0a1b6213b6f0-unpack-hello/b557aecd2a8cc4615100d8b4a5129874
-/tmp/pylightnix_hello_demo/store-v0/43323fae07b9e30f65ed0a1b6213b6f0-unpack-hello/b557aecd2a8cc4615100d8b4a5129874/hello-2.10
+rref:29eaa2c8e74cbc939dfdd8e43f3987eb-43323fae07b9e30f65ed0a1b6213b6f0-unpack-hello
+/tmp/pylightnix_hello_demo/store-v0/43323fae07b9e30f65ed0a1b6213b6f0-unpack-hello/29eaa2c8e74cbc939dfdd8e43f3987eb
+/tmp/pylightnix_hello_demo/store-v0/43323fae07b9e30f65ed0a1b6213b6f0-unpack-hello/29eaa2c8e74cbc939dfdd8e43f3987eb/hello-2.10
 ```
 
 Pylightnix offers a number of other shell-like helper functions for
@@ -166,11 +181,11 @@ accessing realization, like `lsref`:
 ``` python
 from pylightnix import lsref, catref
 
-print(lsref(hello_rref))
+print(lsref(hello_rref, S))
 ```
 
 ``` stdout
-['context.json', '__buildstart__.txt', 'hello-2.10', '__buildstop__.txt']
+['__buildstop__.txt', '__buildstart__.txt', 'hello-2.10', 'context.json']
 ```
 
 ### A custom compile stage
@@ -198,7 +213,7 @@ from pylightnix import Config, mkconfig, mklens, selfref
 
 def hello_config()->Config:
   name = 'hello-bin'
-  src = mklens(hello_src).src.refpath
+  src = mklens(hello_src,m=M).src.refpath
   out_hello = [selfref, 'usr', 'bin', 'hello']
   out_log = [selfref, 'build.log']
   return mkconfig(locals())
@@ -236,8 +251,7 @@ generic [mkdrv](../Reference.md#pylightnix.core.mkdrv) stage:
 ``` python
 from pylightnix import mkdrv, build_wrapper, match_only
 
-hello:DRef = \
-  instantiate_inplace(mkdrv, hello_config(), match_only(), build_wrapper(hello_realize))
+hello:DRef = mkdrv(hello_config(),match_only(),build_wrapper(hello_realize),M)
 
 print(hello)
 ```
@@ -246,16 +260,16 @@ print(hello)
 dref:e48878b9f7760fe0972eb6863775045f-hello-bin
 ```
 
-As before, we get a `DRef`, which means that basic checks were passed,
-and then call a `realize1` on it:
+As before, we get a `DRef` promise pass it through `instantiate` and
+`realize1` pipeline:
 
 ``` python
-rref:RRef=realize_inplace(hello)
+rref:RRef=realize1(instantiate(hello,m=M))
 print(rref)
 ```
 
 ``` stdout
-rref:1dc4d015ec5e1fa826aabfdb09969375-e48878b9f7760fe0972eb6863775045f-hello-bin
+rref:0d6773d41f3e2c7b2b08d8f5cbb491cc-e48878b9f7760fe0972eb6863775045f-hello-bin
 ```
 
 ### Accessing the results
@@ -263,28 +277,28 @@ rref:1dc4d015ec5e1fa826aabfdb09969375-e48878b9f7760fe0972eb6863775045f-hello-bin
 Lets print the last few lines of the build log:
 
 ``` python
-for line in open(mklens(rref).out_log.syspath).readlines()[-10:]:
+for line in open(mklens(rref,m=M).out_log.syspath).readlines()[-10:]:
   print(line.strip())
 ```
 
 ``` stdout
 fi
-/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/mkdir -p '/tmp/pylightnix_hello_demo/tmp/210827-00:11:23:182473+0300_2b29fe60_sers7__6/usr/share/info'
-/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/install -c -m 644 ./doc/hello.info '/tmp/pylightnix_hello_demo/tmp/210827-00:11:23:182473+0300_2b29fe60_sers7__6/usr/share/info'
-install-info --info-dir='/tmp/pylightnix_hello_demo/tmp/210827-00:11:23:182473+0300_2b29fe60_sers7__6/usr/share/info' '/tmp/pylightnix_hello_demo/tmp/210827-00:11:23:182473+0300_2b29fe60_sers7__6/usr/share/info/hello.info'
-/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/mkdir -p '/tmp/pylightnix_hello_demo/tmp/210827-00:11:23:182473+0300_2b29fe60_sers7__6/usr/share/man/man1'
-/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/install -c -m 644 hello.1 '/tmp/pylightnix_hello_demo/tmp/210827-00:11:23:182473+0300_2b29fe60_sers7__6/usr/share/man/man1'
-make[4]: Leaving directory '/run/user/1000/tmp6potc48c/src'
-make[3]: Leaving directory '/run/user/1000/tmp6potc48c/src'
-make[2]: Leaving directory '/run/user/1000/tmp6potc48c/src'
-make[1]: выход из каталога «/run/user/1000/tmp6potc48c/src»
+/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/mkdir -p '/tmp/pylightnix_hello_demo/tmp/210905-17:58:09:786872+0300_2b29fe60_tq43om50/usr/share/info'
+/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/install -c -m 644 ./doc/hello.info '/tmp/pylightnix_hello_demo/tmp/210905-17:58:09:786872+0300_2b29fe60_tq43om50/usr/share/info'
+install-info --info-dir='/tmp/pylightnix_hello_demo/tmp/210905-17:58:09:786872+0300_2b29fe60_tq43om50/usr/share/info' '/tmp/pylightnix_hello_demo/tmp/210905-17:58:09:786872+0300_2b29fe60_tq43om50/usr/share/info/hello.info'
+/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/mkdir -p '/tmp/pylightnix_hello_demo/tmp/210905-17:58:09:786872+0300_2b29fe60_tq43om50/usr/share/man/man1'
+/nix/store/x0jla3hpxrwz76hy9yckg1iyc9hns81k-coreutils-8.31/bin/install -c -m 644 hello.1 '/tmp/pylightnix_hello_demo/tmp/210905-17:58:09:786872+0300_2b29fe60_tq43om50/usr/share/man/man1'
+make[4]: Leaving directory '/run/user/1000/tmp_jg6297w/src'
+make[3]: Leaving directory '/run/user/1000/tmp_jg6297w/src'
+make[2]: Leaving directory '/run/user/1000/tmp_jg6297w/src'
+make[1]: выход из каталога «/run/user/1000/tmp_jg6297w/src»
 ```
 
 Finally, we convert RRef to the system path and run the GNU Hello
 binary.
 
 ``` python
-print(Popen([mklens(rref).out_hello.syspath],
+print(Popen([mklens(rref,m=M).out_hello.syspath],
             stdout=PIPE, shell=True).stdout.read()) # type:ignore
 ```
 

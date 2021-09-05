@@ -52,8 +52,7 @@ def _unpack_inplace(o:str, fullpath:str, remove_file:bool):
     remove(fullpath)
 
 
-def fetchurl(m:Manager,
-             url:str,
+def fetchurl(url:str,
              sha256:Optional[str]=None,
              sha1:Optional[str]=None,
              mode:str='unpack,remove',
@@ -61,6 +60,7 @@ def fetchurl(m:Manager,
              filename:Optional[str]=None,
              force_download:bool=False,
              check_promises:bool=True,
+             m:Optional[Manager]=None,
              **kwargs)->DRef:
   """ Download and unpack an URL addess.
 
@@ -170,13 +170,14 @@ def fetchurl(m:Manager,
 
 
 
-def fetchlocal(m:Manager, sha256:str,
+def fetchlocal(sha256:str,
                path:Optional[str]=None,
                envname:Optional[str]=None,
                mode:str='unpack,remove',
                name:Optional[str]=None,
                filename:Optional[str]=None,
                check_promises:bool=True,
+               m:Optional[Manager]=None,
                **kwargs)->DRef:
   """ Copy local file into Pylightnix storage. This function is typically
   intended to register application-specific files which are distributed with a

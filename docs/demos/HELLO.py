@@ -8,58 +8,55 @@ from subprocess import Popen, PIPE
 
 
 from os import environ
-from pylightnix import fsinit
+from pylightnix import Manager, StorageSettings, mkSS, fsinit
 
-environ['PYLIGHTNIX_ROOT']='/tmp/pylightnix_hello_demo'
-fsinit(remove_existing=True)
-
-
-from pylightnix import (fetchurl2, unpack, DRef, RRef, instantiate_inplace,
-                        realize_inplace, mklens, selfref)
-
+S:StorageSettings=mkSS('/tmp/pylightnix_hello_demo')
+fsinit(S,remove_existing=True)
+M=Manager(S)
 
 hello_version = '2.10'
 
-tarball:DRef = \
-  instantiate_inplace(
-    fetchurl2,
+
+from pylightnix import (Manager, DRef, RRef, fetchurl2, unpack, mklens, selfref)
+
+
+tarball:DRef = fetchurl2(
     name='hello-src',
     url=f'http://ftp.gnu.org/gnu/hello/hello-{hello_version}.tar.gz',
     sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b',
-    out=[selfref, f'hello-{hello_version}.tar.gz'])
+    out=[selfref, f'hello-{hello_version}.tar.gz'], m=M)
 
 
-hello_src:DRef = \
-  instantiate_inplace(
-    unpack,
+hello_src:DRef = unpack(
     name='unpack-hello',
-    refpath=mklens(tarball).out.refpath,
+    refpath=mklens(tarball,m=M).out.refpath,
     aunpack_args=['-q'],
-    src=[selfref, f'hello-{hello_version}'])
+    src=[selfref, f'hello-{hello_version}'],m=M)
 
 
-hello_rref:RRef = realize_inplace(hello_src)
+from pylightnix import instantiate, realize1
+hello_rref:RRef = realize1(instantiate(hello_src, m=M))
 print(hello_rref)
 
 
-from pylightnix import rref2path
+from pylightnix import current_storage
 
-print(rref2path(hello_rref))
-print(mklens(hello_rref).val)
-print(mklens(hello_rref).syspath)
-print(mklens(hello_rref).src.syspath)
+with current_storage(S):
+  print(mklens(hello_rref).val)
+  print(mklens(hello_rref).syspath)
+  print(mklens(hello_rref).src.syspath)
 
 
 from pylightnix import lsref, catref
 
-print(lsref(hello_rref))
+print(lsref(hello_rref, S))
 
 
 from pylightnix import Config, mkconfig, mklens, selfref
 
 def hello_config()->Config:
   name = 'hello-bin'
-  src = mklens(hello_src).src.refpath
+  src = mklens(hello_src,m=M).src.refpath
   out_hello = [selfref, 'usr', 'bin', 'hello']
   out_log = [selfref, 'build.log']
   return mkconfig(locals())
@@ -85,20 +82,19 @@ def hello_realize(b:Build)->None:
 
 from pylightnix import mkdrv, build_wrapper, match_only
 
-hello:DRef = \
-  instantiate_inplace(mkdrv, hello_config(), match_only(), build_wrapper(hello_realize))
+hello:DRef = mkdrv(hello_config(),match_only(),build_wrapper(hello_realize),M)
 
 print(hello)
 
 
-rref:RRef=realize_inplace(hello)
+rref:RRef=realize1(instantiate(hello,m=M))
 print(rref)
 
 
-for line in open(mklens(rref).out_log.syspath).readlines()[-10:]:
+for line in open(mklens(rref,m=M).out_log.syspath).readlines()[-10:]:
   print(line.strip())
 
 
-print(Popen([mklens(rref).out_hello.syspath],
+print(Popen([mklens(rref,m=M).out_hello.syspath],
             stdout=PIPE, shell=True).stdout.read()) # type:ignore
 

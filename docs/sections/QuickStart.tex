@@ -52,7 +52,7 @@ def stage_params(m:Manager)->DRef:
     return locals()
   def _make(b:Build):
     np.save(mklens(b).out.syspath, (2, 3, 7, 8, 9, 10, 44, -1, 2, 26, 1, -2, 0.5))
-  return mkdrv(m, mkconfig(_config()), match_only(), build_wrapper(_make))
+  return mkdrv(mkconfig(_config()), match_only(), build_wrapper(_make), m)
 \end{pythontexcode}
 
 Here, a user-defind action \texttt{\_make} goes to Pylightnix by calling the
@@ -113,7 +113,7 @@ def stage_anneal(m:Manager, ref_params:DRef)->DRef:
     np.save(mklens(b).trace_xs.syspath, np.array(xs))
     np.save(mklens(b).trace_fs.syspath, np.array(fs))
     np.save(mklens(b).out.syspath, res['x'])
-  return mkdrv(m, mkconfig(_config()), match_only(), build_wrapper(_make))
+  return mkdrv(mkconfig(_config()), match_only(), build_wrapper(_make), m)
 \end{pythontexcode}
 
 \subsubsection{Plotting stage}
@@ -134,7 +134,7 @@ def stage_plot(m:Manager, ref_anneal:DRef)->DRef:
     plt.plot(range(len(fs)),fs)
     plt.grid(True)
     plt.savefig(mklens(b).out.syspath)
-  return mkdrv(m, mkconfig(_config()), match_latest(), build_wrapper(_make))
+  return mkdrv(mkconfig(_config()), match_latest(), build_wrapper(_make), m)
 \end{pythontexcode}
 
 \subsubsection{Running the experiment}

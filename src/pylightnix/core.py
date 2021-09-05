@@ -675,7 +675,7 @@ def mkclosure(result:Any,
 def instantiate(stage:Union[StageResult,Callable[[Manager,Any,Any],StageResult]],
                 *args:Any,
                 S:Optional[StorageSettings]=None,
-                M:Optional[Manager]=None,
+                m:Optional[Manager]=None,
                 **kwargs:Any)->Tuple[StageResult,Closure]:
   """ Instantiate scans a Python data object (list,dict or constant) which
   contains [DRef](#pylightnix.types.DRef) or evaluates a
@@ -686,12 +686,16 @@ def instantiate(stage:Union[StageResult,Callable[[Manager,Any,Any],StageResult]]
 
   See also [realize](#pylightnix.core.realize).
   """
-  m=tlmanager(M)
+  m=tlmanager(m)
   if m is None:
     m=Manager(S)
   else:
-    if S is not None:
-      assert S==m.S, "S should match the Manager's if specified"
+    if S is None:
+      S=m.S
+    else:
+      assert S==m.S, (
+        f"S should match the Manager's if specified. 'S={S}' while "
+        f"manager has '{m.S}'")
   assert not m.in_instantiate, (
     "Recursion detected. `instantiate` should not be called recursively "
     "by stage functions with the same `Manager` as argument")
