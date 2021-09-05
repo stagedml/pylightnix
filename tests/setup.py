@@ -6,7 +6,7 @@ from pylightnix import (Manager, Build, Path, fsinit, DRef, Context,
                         drefattrs, Output, Matcher, MatcherO, Realizer,
                         rrefdeps1, RealizerO, Output, output_realizer,
                         output_matcher, build_markstart, build_markstop,
-                        StorageSettings, mkSS, dirrm, getmanager)
+                        StorageSettings, mkSS, dirrm, tlmanager)
 
 from tests.imports import (rmtree, join, makedirs, listdir, Callable,
                            contextmanager, List, Dict,  Popen, PIPE,
@@ -67,7 +67,7 @@ def setup_test_realize(nrrefs:int,
     return b.outpaths
   return _realize
 
-def mkstage(m:Manager,
+def mkstage(m:Optional[Manager],
             config:dict,
             nondet:Callable[[int],int]=lambda n:0,
             starttime:Optional[str]='AUTO',
@@ -76,11 +76,15 @@ def mkstage(m:Manager,
             mustfail:bool=False,
             S:Optional[StorageSettings]=None
             )->DRef:
-  return mkdrv(getmanager(m), setup_test_config(config),
+  m_=tlmanager(m)
+  assert m_ is not None
+  return mkdrv(m_, setup_test_config(config),
                output_matcher(setup_test_match(nmatch)),
                output_realizer(setup_test_realize(
                  nrrefs, starttime, nondet, mustfail)))
 
+def mkstage2(*args, **kwargs)->DRef:
+  return mkstage(None, *args, **kwargs)
 
 def pipe_stdout(args:List[str], **kwargs)->str:
   return Popen(args, stdout=PIPE, **kwargs).stdout.read().decode() # type:ignore

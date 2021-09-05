@@ -58,6 +58,20 @@ logger=getLogger(__name__)
 info=logger.info
 warning=logger.warning
 
+#: Thread-local storage for [current_manager](#pylightnix.core.current_manager)
+#: to store its state.
+TL=threading_local()
+
+def tlmanager(M:Optional[Manager])->Optional[Manager]:
+  global TL
+  tlm=getattr(TL,'manager',None)
+  return M if M else tlm
+def tlstorage(S:Optional[StorageSettings])->Optional[StorageSettings]:
+  tlm=tlmanager(None)
+  tls=getattr(TL,'storage',None)
+  return S if S else (tls if tls else (tlm.S if tlm else None))
+
+
 def storagename():
   """ Return the name of Pylightnix storage filder. """
   return f"store-v{PYLIGHTNIX_STORE_VERSION}"
@@ -67,6 +81,7 @@ def fsroot(S:Optional[StorageSettings]=None)->Path:
   Default is `~/_pylightnix` or `/var/run/_pylightnix` if no `$HOME` is
   available.  Setting `PYLIGHTNIX_ROOT` environment variable overwrites the
   defaults.  """
+  S=tlstorage(S)
   if S is not None and S.root is not None:
     return S.root
   else:
@@ -76,6 +91,7 @@ def fsroot(S:Optional[StorageSettings]=None)->Path:
 def fstmpdir(S:Optional[StorageSettings]=None)->Path:
   """ Return the location of current Pylightnix temporary folder, defaulting to
   the path set by PYLIGHTNIX_TMP environment variable. """
+  S=tlstorage(S)
   if S is not None and S.tmpdir is not None:
     return S.tmpdir
   else:
@@ -84,6 +100,7 @@ def fstmpdir(S:Optional[StorageSettings]=None)->Path:
 def fsstorage(S:Optional[StorageSettings]=None)->Path:
   """ Return the location of current Pylightnix storage folder, defaulting to
   the path set by PYLIGHTNIX_STORAGE environment variable. """
+  S=tlstorage(S)
   if S is not None and S.storage is not None:
     return S.storage
   else:
@@ -622,8 +639,6 @@ def mkdrv(m:Manager,
   m.builders[dref]=Derivation(dref, matcher, realizer)
   return dref
 
-TL=threading_local()
-
 @contextmanager
 def current_manager(S:Optional[StorageSettings]=None)->Iterable[Manager]:
   global TL
@@ -633,20 +648,14 @@ def current_manager(S:Optional[StorageSettings]=None)->Iterable[Manager]:
   finally:
     TL.manager=None
 
-def getmanager_(M=None)->Optional[Manager]:
+@contextmanager
+def current_storage(S:StorageSettings)->Iterable[StorageSettings]:
   global TL
-  m:Manager=None
-  if m is None:
-    m=M
-  if m is None:
-    m=getattr(TL,'manager',None)
-  return m
-
-def getmanager(M)->Manager:
-  m=getmanager_(M)
-  assert m is not None
-  return m
-
+  TL.storage=S
+  try:
+    yield TL.storage
+  finally:
+    TL.storage=None
 
 StageResult=TypeVar('StageResult')
 
@@ -673,7 +682,7 @@ def instantiate(stage:Union[StageResult,Callable[[Manager,Any,Any],StageResult]]
 
   See also [realize](#pylightnix.core.realize).
   """
-  m=getmanager_(M)
+  m=tlmanager(M)
   if m is None:
     m=Manager(S)
   else:

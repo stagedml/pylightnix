@@ -12,7 +12,7 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir, dirhash,
                         linkdref, rrefdeps, drefrrefs, allrrefs, match_only,
                         drefrrefs, drefrrefsC, rrefctx, context_deref,
                         rrefattrs, rrefbstart, fsstorage, current_manager,
-                        realize)
+                        realize, current_storage)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink, isfile,
                            islink, isdir, dirname, List, randint, sleep, rmtree,
@@ -23,7 +23,7 @@ from tests.generators import (rrefs, drefs, configs, dicts, rootstages,
                               settings)
 
 from tests.setup import ( ShouldHaveFailed, setup_storage2,
-                         mkstage, pipe_stdout )
+                         mkstage, mkstage2, pipe_stdout )
 
 
 # @given(d=dicts())
@@ -381,24 +381,39 @@ def test_linkdref()->None:
     assert fsstorage(S) in l
     assert undref(dref1)[0] in readlink(l)
 
-def test_inplace():
-  with setup_storage2('test_inplace') as S:
+def test_current_manager():
+  with setup_storage2('test_current_manager') as S:
     with current_manager(S) as m:
       n1=mkstage(m,{'a':'1'})
-      n2=mkstage(m,{'b':'2'})
-      n3=mkstage(m,{'c':'3', 'maman':n1})
-      n4=mkstage(m,{'c':'4', 'papa':n3})
+      n2=mkstage2({'b':'2'})
+      n3=mkstage2({'c':'3', 'maman':n1})
+      n4=mkstage2({'c':'4', 'papa':n3})
       assert_valid_dref(n3)
       assert_valid_dref(n4)
 
       rref_n3 = realize1(instantiate(n3))
       assert_valid_rref(rref_n3)
 
-      all_drefs = list(alldrefs(S=S))
+      all_drefs = list(alldrefs(S))
       assert len(all_drefs)==4
-      assert len(list(drefrrefs(n1,S=S)))==1
-      assert len(list(drefrrefs(n2,S=S)))==0
-      assert len(list(drefrrefs(n3,S=S)))==1
-      assert len(list(drefrrefs(n4,S=S)))==0
+      assert len(list(drefrrefs(n1)))==1
+      assert len(list(drefrrefs(n2)))==0
+      assert len(list(drefrrefs(n3)))==1
+      assert len(list(drefrrefs(n4)))==0
 
+
+def test_current_storage():
+  with setup_storage2('test_current_storage1') as S1,\
+       setup_storage2('test_current_storage2') as S2:
+    with current_storage(S1):
+      rref=realize1(instantiate(partial(mkstage,config={'a':'1'})))
+      assert_valid_rref(rref)
+      assert len(list(alldrefs()))==1
+    with current_storage(S2):
+      with current_manager(S):
+        rref=realize1(instantiate(mkstage2({'b':'2'})))
+      assert_valid_rref(rref)
+      assert len(list(alldrefs()))==1
+    assert len(list(alldrefs(S1)))==1
+    assert len(list(alldrefs(S2)))==1
 
