@@ -419,10 +419,10 @@ class Manager:
   around. By convention, Manager objects are first arguments of user-defined
   stage functions and the `mkdrv` API function of Pylightnix.
   """
-  def __init__(self, S:Optional[StorageSettings]):
+  def __init__(self, S:Optional[StorageSettings]=None):
     self.builders:Dict[DRef,Derivation]=OrderedDict()
-    self.in_instantiate:bool=False
     self.S:Optional[StorageSettings]=S
+    self.in_instantiate:bool=False
 
 
 #: DRefLike is a type variable holding DRefs or any of its derivatives

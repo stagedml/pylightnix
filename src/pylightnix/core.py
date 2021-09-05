@@ -453,6 +453,7 @@ def mkdrv_(c:Config,S=None)->DRef:
   """ See [mkdrv](#pylightnix.core.mkdrv) """
 
   # FIXME: Assert or handle possible (but improbable) hash collision [*]
+  # FIXME: Could the replace fail if two processes call it simultaneously?
   assert_valid_storage(S)
   assert_valid_config(c)
   assert_rref_deps(c)
@@ -469,7 +470,7 @@ def mkdrv_(c:Config,S=None)->DRef:
   filero(Path(join(o,'config.json')))
   drefpath=dref2path(dref,S)
   dreftmp=Path(drefpath+'.tmp')
-  replace(o,dreftmp)
+  replace(o,dreftmp) # [**]
 
   try:
     replace(dreftmp, drefpath)

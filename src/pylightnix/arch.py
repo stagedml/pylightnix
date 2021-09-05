@@ -76,7 +76,7 @@ def spack(roots:List[RRef], out:Path, S:Optional[StorageSettings]=None)->None:
 
 def sunpack(archive:Path, S=None)->None:
   rin=realpath(archive)
-  tmppath=Path(mkdtemp(suffix=f"_{basename(rin)}", dir=fstmpdir(S)))
+  tmppath=Path(mkdtemp(suffix=f"_{basename(rin)}", dir=realpath(fstmpdir(S))))
   try:
     p=Popen([AUNPACK(), '-q', '-X', tmppath, rin], cwd=fstmpdir(S))
     p.wait()

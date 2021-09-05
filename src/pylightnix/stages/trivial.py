@@ -84,8 +84,8 @@ def redefine(stage:Any,
   FIXME: Updating configs is dangerous: it changes its dref and thus breaks
   dependencies. Only top-level stages should use `new_confid` currently.
   """
-  def _new_stage(*args,m:Optional[Manager]=None,**kwargs)->DRef:
-    dref=stage(m,*args,**kwargs) # type:ignore
+  def _new_stage(*args,m=None,**kwargs)->DRef:
+    dref=stage(*args,m=m,**kwargs) # type:ignore
     d=cfgdict(drefcfg_(dref,S=m.S))
     new_config(d)
     new_matcher_=new_matcher if new_matcher is not None\

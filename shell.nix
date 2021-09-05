@@ -22,6 +22,7 @@ let
     pyyaml
     wheel
     scipy
+    matplotlib
     pyqt5
   ]);
 
