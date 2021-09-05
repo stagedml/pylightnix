@@ -1,12 +1,11 @@
-from pylightnix import ( Manager, DRef, RRef, Path, List, mklogdir, dirhash,
-                        rref2path, Manager, mkcontext, instantiate,
-                        realize, instantiate_inplace, realize_inplace,
+from pylightnix import (Manager, DRef, RRef, Path, List, mklogdir, dirhash,
+                        rref2path, Manager, mkcontext, instantiate, realize,
                         assert_valid_rref, alldrefs, assert_valid_dref,
                         repl_realize, repl_cancel, repl_continue, repl_rref,
                         repl_build, ReplHelper, build_outpath, tryread,
                         repl_continueBuild, isrref, context_deref, rrefctx,
                         output_validate, repl_result, repl_continueAll,
-                        repl_realize )
+                        repl_realize)
 
 from tests.imports import (
     given, assume, example, note, settings, text, decimals, integers, rmtree,

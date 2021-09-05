@@ -22,7 +22,7 @@ from pylightnix.imports import (sha256, deepcopy, isdir, islink, makedirs,
                                 mkdtemp, replace, environ, split, re_match,
                                 ENOTEMPTY, get_ident, contextmanager,
                                 OrderedDict, lstat, maxsize, readlink, chain,
-                                getLogger, scandir)
+                                getLogger, scandir, threading_local)
 
 from pylightnix.utils import (dirhash, assert_serializable, assert_valid_dict,
                               dicthash, scanref_dict, scanref_list, forcelink,
@@ -622,12 +622,48 @@ def mkdrv(m:Manager,
   m.builders[dref]=Derivation(dref, matcher, realizer)
   return dref
 
+TL=threading_local()
+
+@contextmanager
+def current_manager(S:Optional[StorageSettings]=None)->Iterable[Manager]:
+  global TL
+  TL.manager=Manager(S)
+  try:
+    yield TL.manager
+  finally:
+    TL.manager=None
+
+def getmanager_(M=None)->Optional[Manager]:
+  global TL
+  m:Manager=None
+  if m is None:
+    m=M
+  if m is None:
+    m=getattr(TL,'manager',None)
+  return m
+
+def getmanager(M)->Manager:
+  m=getmanager_(M)
+  assert m is not None
+  return m
+
+
 StageResult=TypeVar('StageResult')
-def instantiate(stage:Callable[[Manager,Any,Any],StageResult],
+
+def instantiate_(result:Any,
+                 m:Manager,
+                 S:Optional[StorageSettings]=None)->Closure:
+  targets,_=scanref_dict({'result':result})
+  assert len(targets)>0, f"No DRefs to instantiate in {result}"
+  assert_have_realizers(m,targets)
+  return Closure(result,targets,list(m.builders.values()),S=m.S)
+
+
+def instantiate(stage:Union[StageResult,Callable[[Manager,Any,Any],StageResult]],
                 *args:Any,
                 S:Optional[StorageSettings]=None,
                 M:Optional[Manager]=None,
-                **kwargs:Any)->Tuple[StageResult,Closure]:
+                **kwargs:Any)->Closure:
   """ Instantiate function evaluates [Stage](#pylightnix.types.Stage) functions
   by calling them and collecting the [Closure](#pylightnix.types.Closure) of
   nested [Derivations](#pylightnix.types.Derivation).
@@ -635,21 +671,23 @@ def instantiate(stage:Callable[[Manager,Any,Any],StageResult],
   The returned closure typically goes to [realize](#pylightnix.core.realize) or
   its analogs.
   """
-  assert M is None or S is None, (
-    f"Can't instantiate when both manager and storage settings are custom.")
-  m=M if M else Manager(S)
+  m=getmanager_(M)
+  if m is None:
+    m=Manager(S)
+  else:
+    assert S is None, "S should be None if Manager exists"
   assert not m.in_instantiate, (
     "Recursion detected. `instantiate` should not be called recursively "
     "by stage functions with the same `Manager` as argument")
   m._in_instantiate=True
   try:
-    result=stage(m,*args,**kwargs)
+    if callable(stage):
+      result=stage(m,*args,**kwargs)
+    else:
+      result=stage
   finally:
     m.in_instantiate=False
-  targets,_=scanref_dict({'result':result})
-  assert len(targets)>0, f"No DRefs to instantiate in {result}"
-  assert_have_realizers(m,targets)
-  return (result,Closure(result,targets,list(m.builders.values()),S=m.S))
+  return instantiate_(result,m,S)
 
 
 RealizeSeqGen = Generator[
@@ -658,7 +696,7 @@ RealizeSeqGen = Generator[
   Context]
 
 
-def realize(closure:Union[Closure,Tuple[Any,Closure]],
+def realize(closure:Closure,
             force_rebuild:Union[List[DRef],bool]=[],
             assert_realized:List[DRef]=[],
             realize_args:Dict[DRef,RealizeArg]={})->RRef:
@@ -707,12 +745,12 @@ def realizeMany(closure:Union[Closure,Tuple[Any,Closure]],
     f"`realize` is to be used with single-targeted derivations. "
     f"Current closure has {len(closure.targets)} targets:\n{closure.targets}\n"
     f"Consider using `realizeMany`." )
-  _,ctx=realizeAll(closure, force_rebuild, assert_realized, realize_args)
+  _,ctx=realizeCtx(closure, force_rebuild, assert_realized, realize_args)
   rrefs=ctx[list(ctx.keys())[0]]
   return rrefs
 
 
-def realizeAll(closure:Union[Closure,Tuple[Any,Closure]],
+def realizeCtx(closure:Union[Closure,Tuple[Any,Closure]],
                force_rebuild:Union[List[DRef],bool]=[],
                assert_realized:List[DRef]=[],
                realize_args:Dict[DRef,RealizeArg]={})->Tuple[Any,Context]:

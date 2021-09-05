@@ -3,7 +3,7 @@ from pylightnix import (DRef, RRef, lsref, catref, instantiate, realize, unrref,
                         du, repl_realize, repl_cancelBuild, repl_build,
                         build_outpath, find, partial, diff, timestring,
                         parsetime, linkdref, linkrref, linkrrefs, readlink,
-                        undref, islink, rrefbstart)
+                        undref, islink, rrefbstart, fstmpdir)
 
 from tests.setup import (ShouldHaveFailed, mkstage, mkstage,
                          setup_storage2 )
@@ -129,17 +129,17 @@ def test_linkrrefs()->None:
   with setup_storage2('test_linkrrefs') as S:
     s1=partial(mkstage, config={'name':'NaMe'})
     rref1=realize(instantiate(s1,S=S))
-    l=linkrrefs([rref1], destdir=S.tmpdir, format='result-%(N)s', S=S)
+    l=linkrrefs([rref1], destdir=fstmpdir(S), format='result-%(N)s', S=S)
     assert len(l)==1
-    assert str(l[0])==join(S.tmpdir,'result-NaMe')
-    assert islink(join(S.tmpdir,'result-NaMe'))
-    assert S.tmpdir in l[0]
+    assert str(l[0])==join(fstmpdir(S),'result-NaMe')
+    assert islink(join(fstmpdir(S),'result-NaMe'))
+    assert fstmpdir(S) in l[0]
     assert unrref(rref1)[0] in readlink(l[0])
     assert unrref(rref1)[1] in readlink(l[0])
     assert undref(rref2dref(rref1))[0] in readlink(l[0])
-    l=linkrrefs([rref1], destdir=S.tmpdir, format='result-%(T)s', S=S)
+    l=linkrrefs([rref1], destdir=fstmpdir(S), format='result-%(T)s', S=S)
     t=rrefbstart(rref1,S)
     assert t is not None
     assert t in l[0]
-    assert S.tmpdir in l[0]
+    assert fstmpdir(S) in l[0]
 

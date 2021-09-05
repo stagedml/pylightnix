@@ -37,7 +37,7 @@ from distutils.spawn import find_executable
 from subprocess import Popen
 from urllib.parse import urlparse
 from errno import ENOTEMPTY
-from threading import get_ident
+from threading import get_ident, local as threading_local
 from contextlib import contextmanager
 from collections import OrderedDict, defaultdict
 from sys import maxsize
@@ -48,5 +48,4 @@ from itertools import chain
 from logging import getLogger
 from traceback import format_exc
 from queue import PriorityQueue
-
 

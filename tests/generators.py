@@ -1,5 +1,5 @@
 from pylightnix import (Manager, RConfig, datahash, PYLIGHTNIX_NAMEPAT, mkdref,
-                        mkrref, trimhash, encode, instantiate_, dagroots, List,
+                        mkrref, trimhash, encode, dagroots, List,
                         DRef, Callable)
 
 from tests.imports import (given, assume, example, note, settings, text,

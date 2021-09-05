@@ -241,9 +241,9 @@ def isselfpath(p:Any)->bool:
          p[0]==PYLIGHTNIX_SELF_TAG
 
 def isclosure(x:Any)->bool:
-  return isinstance(x,tuple) and len(x)==3 and \
-      isinstance(x[1],list) and all([isdref(r) for r in x[0]]) \
-         and isinstance(x[1],list)
+  return isinstance(x,tuple) and len(x)==4 and \
+      isinstance(x[2],list) and all([isdref(r) for r in x[1]]) \
+         and isinstance(x[2],list)
 
 Mutator=Callable[[Any,Any],Any]
 

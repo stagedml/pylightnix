@@ -6,12 +6,11 @@ from pylightnix import (Manager, Build, Path, fsinit, DRef, Context,
                         drefattrs, Output, Matcher, MatcherO, Realizer,
                         rrefdeps1, RealizerO, Output, output_realizer,
                         output_matcher, build_markstart, build_markstop,
-                        StorageSettings, mkSS)
+                        StorageSettings, mkSS, dirrm, getmanager)
 
 from tests.imports import (rmtree, join, makedirs, listdir, Callable,
                            contextmanager, List, Dict,  Popen, PIPE,
-                           gettempdir, mkdtemp, remove, settings, HealthCheck,
-                           dirrm)
+                           gettempdir, mkdtemp, remove, settings, HealthCheck)
 
 
 settings.register_profile("pylightnix", deadline=None, print_blob=True,
@@ -79,11 +78,13 @@ def mkstage(m:Manager,
             starttime:Optional[str]='AUTO',
             nrrefs:int=1,
             nmatch:int=1,
-            mustfail:bool=False)->DRef:
-  return mkdrv(m, setup_test_config(config),
-                  output_matcher(setup_test_match(nmatch)),
-                  output_realizer(setup_test_realize(
-                    nrrefs, starttime, nondet, mustfail)))
+            mustfail:bool=False,
+            S:Optional[StorageSettings]=None
+            )->DRef:
+  return mkdrv(getmanager(m), setup_test_config(config),
+               output_matcher(setup_test_match(nmatch)),
+               output_realizer(setup_test_realize(
+                 nrrefs, starttime, nondet, mustfail)))
 
 
 def pipe_stdout(args:List[str], **kwargs)->str:

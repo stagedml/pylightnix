@@ -85,8 +85,8 @@ def sunpack(archive:Path, S=None)->None:
     archdir=tmppath
     assert isdir(archdir), \
       f"Archive '{rin}' does't contain directory '{storagename()}' " \
-      f"(Its expected location is '{archdir}')"
-    archstore=StorageSettings(Path(archdir),None)
+      f"(The expected location is '{archdir}')"
+    archstore=StorageSettings(Path(archdir),None,None)
     copyclosure(rrefs_S=rootrrefs(S=archstore),S=archstore,D=S)
   finally:
     # dirrm(tmppath)

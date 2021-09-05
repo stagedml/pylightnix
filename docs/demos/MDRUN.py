@@ -57,33 +57,33 @@ def use_session(inpath:str, outpath:str):
   fdr=os.open('_out.pipe', os.O_RDONLY | os.O_SYNC)
   S=mkSS('_pylightnix')
   fsinit(S)
-  M=Manager(S)
 
   def _make(b:Build):
     print(f'Evaluating chunk {mklens(b).name.val}')
     res=interact(fdr,fdw,''.join(mklens(b).code.val))
     writestr(mklens(b).stdout.syspath,res)
 
-  prev:Optional[DRef]=None
-  of=sys.stdout if outpath=='-' else open(outpath,'w')
-  nchunk=0
-  for line,chunk in scanmd(inpath):
-    if line:
-      of.write(line)
-    if chunk:
-      of.write('```python\n')
-      of.write(''.join(chunk))
-      of.write('```\n')
-      cfg={'name':f'chunk_{nchunk}',
-           'code':chunk,
-           'prev':prev,
-           'stdout':[selfref,'stdout.txt']}
-      prev,ctx=realizeAll(instantiate(mkdrv, mkconfig(cfg),
-                           match_only(), build_wrapper(_make), M=M))
-      of.write('```\n')
-      of.write(mklens(prev,ctx=ctx,S=S).stdout.contents)
-      of.write('\n```\n')
-      nchunk+=1
+  with current_manager(S) as M:
+    prev:Optional[DRef]=None
+    of=sys.stdout if outpath=='-' else open(outpath,'w')
+    nchunk=0
+    for line,chunk in scanmd(inpath):
+      if line:
+        of.write(line)
+      if chunk:
+        of.write('```python\n')
+        of.write(''.join(chunk))
+        of.write('```\n')
+        cfg={'name':f'chunk_{nchunk}',
+             'code':chunk,
+             'prev':prev,
+             'stdout':[selfref,'stdout.txt']}
+        prev=mkdrv(M, mkconfig(cfg), match_only(), build_wrapper(_make))
+        rref=realize(instantiate(prev))
+        of.write('```\n')
+        of.write(mklens(rref,S=S).stdout.contents)
+        of.write('\n```\n')
+        nchunk+=1
 
 def start_session():
   system('kill $(cat _pid.txt) >/dev/null 2>&1')

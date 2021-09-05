@@ -17,11 +17,11 @@ functions. Inplace functions store closures in their own global dependency
 resolution [Manager](#pylightnix.types.Manager) and thus offer a simpler API,
 but add usual risks of using gloabl variables. """
 
-from pylightnix.types import (Any, DRef, Stage, Manager, Derivation, List,
-                              RRef, Closure, SPath, TypeVar, Callable, Optional,
-                              Dict, RealizeArg, Context, Union, Tuple)
-from pylightnix.core import (instantiateM, realize, realizeAll)
-from pylightnix.utils import (scanref_dict)
+# from pylightnix.types import (Any, DRef, Stage, Manager, Derivation, List,
+#                               RRef, Closure, SPath, TypeVar, Callable, Optional,
+#                               Dict, RealizeArg, Context, Union, Tuple)
+# from pylightnix.core import (instantiateM, realize, realizeCtx)
+# from pylightnix.utils import (scanref_dict)
 
 
 #: The Global [Derivation manager](#pylightnix.types.Manager) used by
@@ -52,7 +52,7 @@ from pylightnix.utils import (scanref_dict)
 #   drefs,_=scanref_dict({'foo':result})
 #   clo=Closure(result,drefs,list(PYLIGHTNIX_MANAGER.builders.values()),
 #               S=PYLIGHTNIX_MANAGER.S)
-#   return realizeAll(clo,force_rebuild,assert_realized,realize_args)
+#   return realizeCtx(clo,force_rebuild,assert_realized,realize_args)
 
 
 # def realize_inplace(dref:DRef,

@@ -4,7 +4,7 @@ from pylightnix import (instantiate, DRef, RRef, Path, mklogdir, dirhash,
                         Manager, mkcontext, mkdref, mkrref, unrref, undref,
                         realize, rref2dref, mkconfig, Build, Context,
                         build_outpath, mkdrv, rref2path, alldrefs,
-                        selfref, allrrefs, realizeMany)
+                        selfref, allrrefs, realizeMany, fstmpdir)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink,
                            isfile, islink, List, randint, sleep, rmtree,
@@ -39,7 +39,7 @@ def test_pack1()->None:
     print('===================')
     print(list(allrrefs(S)))
     print('===================')
-    arch_path=Path(join(S.tmpdir,'archive.zip'))
+    arch_path=Path(join(fstmpdir(S),'archive.zip'))
     spack([rref3], arch_path, S=S)
     sunpack(arch_path, S=S)
     assert isfile(arch_path)
@@ -60,7 +60,7 @@ def test_pack2(stages)->None:
     for nstage,stage in enumerate(stages):
       rrefs=realizeMany(instantiate(stage,S=S1))
       for nrref,rref in enumerate(rrefs):
-        ap=Path(join(S1.tmpdir,f'archive_{nstage:02d}_{nrref:02d}.zip'))
+        ap=Path(join(fstmpdir(S1),f'archive_{nstage:02d}_{nrref:02d}.zip'))
         note(f'Packing {ap}:{rref}')
         spack([rref], ap, S=S1)
         archives.append(ap)

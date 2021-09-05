@@ -268,7 +268,7 @@ Derivation = NamedTuple('Derivation', [('dref',DRef),
 #: Closures are typically obtained as a result of the
 #: [instantiate](#pylightnix.core.instantiate) and is typically consumed by the
 #: call to [realize](#pylightnix.core.realize) or it's analogs.
-Closure = NamedTuple('Closure', [('value',Any),
+Closure = NamedTuple('Closure', [('result',Any),
                                  ('targets',List[DRef]),
                                  ('derivations',List[Derivation]),
                                  ('S',Optional[StorageSettings])])

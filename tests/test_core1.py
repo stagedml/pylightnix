@@ -3,15 +3,15 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, mklogdir, dirhash,
                         drefdeps, store_gc, assert_valid_config, Manager,
                         mkcontext, allrrefs, mkdref, mkrref, unrref, undref,
                         realize, rref2dref, drefcfg, mkconfig, Build, Context,
-                        build_outpath, mkdrv, rref2path, cfgcattrs,
-                        drefattrs, build_deref, build_path, mkrefpath,
-                        build_config, alldrefs, build_wrapper, build_cattrs,
-                        build_name, tryread, trywrite, realizeMany,
-                        scanref_dict, cfgdict, mklens, isrref, Config,
-                        RConfig, partial, path2rref, concat, linkrrefs,
-                        instantiate_, dref2path, path2dref, linkdref, rrefdeps,
-                        drefrrefs, allrrefs, match_only, drefrrefs, drefrrefsC,
-                        rrefctx, context_deref, rrefattrs, rrefbstart )
+                        build_outpath, mkdrv, rref2path, cfgcattrs, drefattrs,
+                        build_deref, build_path, mkrefpath, build_config,
+                        alldrefs, build_wrapper, build_cattrs, build_name,
+                        tryread, trywrite, realizeMany, scanref_dict, cfgdict,
+                        mklens, isrref, Config, RConfig, partial, path2rref,
+                        concat, linkrrefs, instantiate_, dref2path, path2dref,
+                        linkdref, rrefdeps, drefrrefs, allrrefs, match_only,
+                        drefrrefs, drefrrefsC, rrefctx, context_deref,
+                        rrefattrs, rrefbstart, fsstorage )
 
 from tests.imports import (given, Any, Callable, join, Optional, islink, isfile,
                            islink, isdir, dirname, List, randint, sleep, rmtree,
@@ -241,14 +241,16 @@ def test_no_recursive_instantiate_with_same_manager()->None:
 
 def test_recursive_realize_with_another_manager()->None:
   with setup_storage2('test_recursive_realize_with_another_manager') as S:
-    rref_inner=None
     def _setup_inner(m):
       return mkstage(m,{'foo':'bar'})
     def _setup_outer(m):
-      nonlocal rref_inner
+      # nonlocal rref_inner
       rref_inner=realize(instantiate(_setup_inner,S=S))
-      return mkstage(m,{'baz':mklens(rref_inner,S=S).foo.val})
-    rref=realize(instantiate(_setup_outer,S=S))
+      r2=mkstage(m,{'baz':mklens(rref_inner,S=S).foo.val})
+      return [rref_inner,r2]
+    clo=instantiate(_setup_outer,S=S)
+    rref=realize(clo)
+    [rref_inner,r2]=clo.result
     assert rref_inner is not None
     assert len(drefdeps([rref2dref(rref)],S=S))==0
     assert len(drefdeps([rref2dref(rref_inner)],S=S))==0
@@ -374,9 +376,9 @@ def test_linkdref()->None:
   with setup_storage2('test_linkdref') as S:
     s1=partial(mkstage, config={'name':'NaMe'})
     dref1=instantiate(s1,S=S).targets[0]
-    l=linkdref(dref1, destdir=S.storage, format='result-%(N)s', S=S)
-    assert str(l)==join(S.storage,'result-NaMe')
-    assert islink(join(S.storage,'result-NaMe'))
-    assert S.storage in l
+    l=linkdref(dref1, destdir=fsstorage(S), format='result-%(N)s', S=S)
+    assert str(l)==join(fsstorage(S),'result-NaMe')
+    assert islink(join(fsstorage(S),'result-NaMe'))
+    assert fsstorage(S) in l
     assert undref(dref1)[0] in readlink(l)
 
