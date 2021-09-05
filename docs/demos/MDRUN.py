@@ -58,7 +58,7 @@ def use_session(inpath:str, outpath:str):
   S=mkSS('_pylightnix')
   fsinit(S)
 
-  def _make(b:Build):
+  def _realize(b:Build):
     print(f'Evaluating chunk {mklens(b).name.val}')
     res=interact(fdr,fdw,''.join(mklens(b).code.val))
     writestr(mklens(b).stdout.syspath,res)
@@ -78,10 +78,10 @@ def use_session(inpath:str, outpath:str):
              'code':chunk,
              'prev':prev,
              'stdout':[selfref,'stdout.txt']}
-        prev=mkdrv(M, mkconfig(cfg), match_only(), build_wrapper(_make))
+        prev=mkdrv(M, mkconfig(cfg), match_only(), build_wrapper(_realize))
         rref=realize1(instantiate(prev))
         of.write('```\n')
-        of.write(mklens(rref,S=S).stdout.contents)
+        of.write(mklens(rref).stdout.contents)
         of.write('\n```\n')
         nchunk+=1
 
