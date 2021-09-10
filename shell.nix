@@ -317,6 +317,7 @@ let
       codecov
       pandoc
       codebraid
+      cloc
 
       (let
          mytexlive = texlive.override { python=mypython; };
