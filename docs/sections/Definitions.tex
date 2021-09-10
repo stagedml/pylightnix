@@ -1,40 +1,48 @@
-\section{Core entities}
+\section{Definitions}
 
-Artifacts is any object we could store in the filesystem. Typically, it is
-either a file or a folder which has a name and an arbitrary content.
+\subsection{Notation}
 
-% Derivation = (Config * Matcher * Realizer)
+Functions
+\[ \exists f : A \to B \]
+means that we claim that there exists a function \(f\) mapping items of set \(A\)
+to items of set \(B\). We define sets by enumerating their items using the
+standard \( \set{} \) notation.
 
-% \[
-%   \begin{gathered}
-%   DRefs = \set{ Hash c ; c \in Config } \\
-%   DRefs = \set{ Hash c ; c \in Config }
-%   \end{gathered}
-% \]
+Booleans
+\[ \Bool = \set{ \True, \False } \]
+Natural numbers plus zero
+\[ \mathbb{Z} = \set{ 0,1,2,... } \]
+Tuples (Products)
+\[ (X,Y) = \set{ (x,y) ; x \in X \land y \in Y } \]
+\[ (X,Y,Z,...) = (X,(Y,(Z,...))) \]
+For every tuple there exist two unique functions:
+\[ \exists  \pi_1 : (X,Y) \to X \]
+\[ \exists  \pi_2 : (X,Y) \to Y \]
+We access fields of nested tuples by using composition over these functions.
+Often we want to define tuples together with accessors functions. By
+saying
+\[ T = (a:X,b:Y,c:Z,...) \]
+we mean
+\[ T = (X,(Y,(Z,...))) \land \]
+\[ \exists a : T \to X = \pi_1 \land \exists b : T \to Y = \pi_1 \circ \pi_2
+\land \exists c : T \to Z = \pi_1 \circ \pi_2 \circ \pi_2 \land ... \]
+Unions (Co-products)
+\[ X|Y = \set{u | u \in X \lor u \in Y }\]
+Note: X and Y has to be separable from each other, i.e. for any particular \( u
+\) it should be possible to tell whether it comes from X or from Y.
+\hfill \break \noindent
+Optional
+\[ \mathbb{O}[X] = X | \oslash \]
+Lists
+\[ \List[X] = \mathbb{O}[(X,\mathbb{O}[(X,...)])] \]
+Dictionaries
+\[ \Dict[K,V] = \List[(K,V)] \]
+\[ \exists item : \Dict[K,V] \to K \to \Opt[V] \]
+Note: we assume that \(item \) returns the last \( V \) element with matching \(
+K \).
+\hfill \break \noindent
 
-% \[
-%   \varnothing \\
-%   \mathbb{Q} \subset \mathbb{C} \mathbb{A}
-% \]
 
-% \begin{spreadlines}{20pt}
-%     DRefs = \set{ Hash c ; c \in Config }
-%     DRefs = \set{ Hash c ; c \in Config }
-% \end{spreadlines}
+\subsection{Core entities}
 
-% Realization = (Derivation * a) ; a \leq Artifacts
-
-% RRef = \set{ Hash(d,(Hash a)) ; a \in Artifacts }
-
-% PValue = Int ; String ; Bool ; PList ; PDict ; DRef
-
-% PDict = Dict String PValue
-
-% PList = ...
-
-% Config = \set{ x ; x \in PDict}
-
-
-% \[ D = \set{x \in \N ; 1\leq x\leq 100} \]
-
-% D=\Set{x\in\nat}{1\le x\le 100}
+TODO
