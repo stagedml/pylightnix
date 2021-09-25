@@ -4,7 +4,7 @@
 let
 
 
-  mypython = pkgs.python37.withPackages (
+  mypython = pkgs.python38.withPackages (
     pp: let
       pyls = pp.python-language-server.override { providers=["pycodestyle"]; };
       pyls-mypy = pp.pyls-mypy.override { python-language-server=pyls; };
@@ -27,7 +27,7 @@ let
     twine
   ]);
 
-  bespon = pkgs.python37Packages.buildPythonPackage rec {
+  bespon = pkgs.python38Packages.buildPythonPackage rec {
     pname = "bespon_py";
     version = "0.6.0";
     src = pkgs.fetchFromGitHub {
@@ -38,11 +38,11 @@ let
     };
   };
 
-  codebraid = pkgs.python37Packages.buildPythonPackage rec {
+  codebraid = pkgs.python38Packages.buildPythonPackage rec {
     pname = "codebraid";
     version = "0.5.0";
 
-    propagatedBuildInputs =  with pkgs.python37Packages ; [bespon];
+    propagatedBuildInputs =  with pkgs.python38Packages ; [bespon];
     src = pkgs.fetchFromGitHub {
       owner = "gpoore";
       repo = pname;
@@ -51,16 +51,16 @@ let
     };
   };
 
-  codecov = pkgs.python37Packages.buildPythonPackage rec {
+  codecov = pkgs.python38Packages.buildPythonPackage rec {
     pname = "codecov";
     version = "2.1.10";
 
-    src = pkgs.python37Packages.fetchPypi {
+    src = pkgs.python38Packages.fetchPypi {
       inherit pname version;
       sha256 = "d30ad6084501224b1ba699cbf018a340bb9553eb2701301c14133995fdd84f33";
     };
-    checkInputs = with pkgs.python37Packages; [ unittest2 ]; # Tests only
-    propagatedBuildInputs = with pkgs.python37Packages; [ requests coverage ];
+    checkInputs = with pkgs.python38Packages; [ unittest2 ]; # Tests only
+    propagatedBuildInputs = with pkgs.python38Packages; [ requests coverage ];
     postPatch = ''
       sed -i 's/, "argparse"//' setup.py
     '';
@@ -68,7 +68,7 @@ let
     doCheck = false;
   };
 
-  pydoc-markdown = pkgs.python37Packages.buildPythonPackage rec {
+  pydoc-markdown = pkgs.python38Packages.buildPythonPackage rec {
     pname = "pydoc-markdown";
     version = "1.0";
     propagatedBuildInputs = with mypython.pkgs ; [nr-types pyyaml];
@@ -81,7 +81,7 @@ let
     };
   };
 
-  nr-types = pkgs.python37Packages.buildPythonPackage rec {
+  nr-types = pkgs.python38Packages.buildPythonPackage rec {
     name = "nr.types";
     propagatedBuildInputs = with mypython.pkgs ; [six deprecated];
     patchPhase = ''
@@ -95,7 +95,7 @@ let
   };
 
   # {{{ Newer pydoc-markdown, doesn't work due to te.TypeGuard error
-  nr-pylang-utils = pkgs.python37Packages.buildPythonPackage rec {
+  nr-pylang-utils = pkgs.python38Packages.buildPythonPackage rec {
     name = "nr.pylang.utils";
     propagatedBuildInputs = with mypython.pkgs ; [six deprecated];
     # patchPhase = ''
@@ -109,7 +109,7 @@ let
     };
   };
 
-  nr-stream = pkgs.python37Packages.buildPythonPackage rec {
+  nr-stream = pkgs.python38Packages.buildPythonPackage rec {
     name = "nr.stream";
     propagatedBuildInputs = with mypython.pkgs ; [six deprecated nr-pylang-utils];
     doCheck = false;
@@ -123,7 +123,7 @@ let
     };
   };
 
-  nr-utils-re = pkgs.python37Packages.buildPythonPackage rec {
+  nr-utils-re = pkgs.python38Packages.buildPythonPackage rec {
     name = "nr.utils.re";
     propagatedBuildInputs = with mypython.pkgs ; [six deprecated ];
     doCheck = false;
@@ -137,7 +137,7 @@ let
     };
   };
 
-  nr-parsing-date = pkgs.python37Packages.buildPythonPackage rec {
+  nr-parsing-date = pkgs.python38Packages.buildPythonPackage rec {
     name = "nr.parsing.date";
     propagatedBuildInputs = with mypython.pkgs ; [six deprecated nr-utils-re
     deprecated ];
@@ -155,7 +155,7 @@ let
     };
   };
 
-  nr-preconditions = pkgs.python37Packages.buildPythonPackage rec {
+  nr-preconditions = pkgs.python38Packages.buildPythonPackage rec {
     name = "nr.preconditions";
     propagatedBuildInputs = with mypython.pkgs ; [six deprecated ];
     doCheck = false;
@@ -172,7 +172,7 @@ let
     };
   };
 
-  nr-optional = pkgs.python37Packages.buildPythonPackage rec {
+  nr-optional = pkgs.python38Packages.buildPythonPackage rec {
     name = "nr.optional";
     propagatedBuildInputs = with mypython.pkgs ; [six deprecated ];
     doCheck = false;
@@ -189,7 +189,7 @@ let
     };
   };
 
-  nr-fs = pkgs.python37Packages.buildPythonPackage rec {
+  nr-fs = pkgs.python38Packages.buildPythonPackage rec {
     name = "nr.fs";
     propagatedBuildInputs = with mypython.pkgs ; [six deprecated ];
     doCheck = false;
@@ -215,7 +215,7 @@ let
     };
   };
 
-  databind-core = pkgs.python37Packages.buildPythonPackage rec {
+  databind-core = pkgs.python38Packages.buildPythonPackage rec {
     name = "databind.core";
     propagatedBuildInputs = with mypython.pkgs ; [
       nr-parsing-date nr-stream nr-preconditions nr-optional te ];
@@ -235,7 +235,7 @@ let
     };
   };
 
-  databind-json = pkgs.python37Packages.buildPythonPackage rec {
+  databind-json = pkgs.python38Packages.buildPythonPackage rec {
     name = "databind.json";
     propagatedBuildInputs = with mypython.pkgs ; [ te databind-core ];
     # docheck = false;
@@ -254,7 +254,7 @@ let
     };
   };
 
-  docspec-python = pkgs.python37Packages.buildPythonPackage rec {
+  docspec-python = pkgs.python38Packages.buildPythonPackage rec {
     name = "docspec-python";
     propagatedBuildInputs = with mypython.pkgs ; [ te databind-core databind-json
     docspec ];
@@ -270,7 +270,7 @@ let
   };
 
 
-  docspec = pkgs.python37Packages.buildPythonPackage rec {
+  docspec = pkgs.python38Packages.buildPythonPackage rec {
     name = "docspec";
     propagatedBuildInputs = with mypython.pkgs ; [ te databind-core databind-json ];
     # doCheck = false;
@@ -284,7 +284,7 @@ let
     };
   };
 
-  pydoc-markdown2 = pkgs.python37Packages.buildPythonPackage rec {
+  pydoc-markdown2 = pkgs.python38Packages.buildPythonPackage rec {
     pname = "pydoc-markdown";
     version = "4.2.0";
     propagatedBuildInputs = with mypython.pkgs ; [
@@ -320,7 +320,7 @@ let
       cloc
 
       (let
-         mytexlive = texlive.override { python=mypython; };
+         mytexlive = texlive.override { python3=mypython; };
        in
          mytexlive.combine {
            scheme-medium = mytexlive.scheme-medium;
