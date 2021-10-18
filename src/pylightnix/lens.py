@@ -122,25 +122,25 @@ def val2path(v:Any, ctx:LensContext)->Path:
     assert False, f"Lens doesn't know how to resolve '{v}'"
 
 def traverse(l:"Lens", hint:str)->Any:
-  val=l.start
-  for s in l.steps:
-    d=val2dict(val, l.ctx)
+  val=l._start
+  for s in l._steps:
+    d=val2dict(val, l._ctx)
     if d is None:
       assert False, f"Lens `{hint}` can't be traversed"
     val=d[s]
   return val
 
 def mutate(l:"Lens", v:Any, hint:str)->None:
-  assert len(l.steps)>0, f"Fields to set are not specified"
-  val=l.start
-  for s in l.steps[:-1]:
+  assert len(l._steps)>0, f"Fields to set are not specified"
+  val=l._start
+  for s in l._steps[:-1]:
     assert isinstance(val,dict), f"Lens {hint} can't be mutated"
     assert s in val, f"Lens `{hint}` can't be mutated"
     val=val[s]
-  val[l.steps[-1]]=v
+  val[l._steps[-1]]=v
 
 def lens_repr(l, accessor:str)->str:
-  return f"mklens(x).{'.'.join(l.steps+[accessor])}"
+  return f"mklens(x).{'.'.join(l._steps+[accessor])}"
 
 
 class Lens:
@@ -174,9 +174,9 @@ class Lens:
     * `start` - Source object which we explore
     * `steps` - List of attributes to query
     """
-    self.ctx:LensContext=ctx
-    self.start:Any=start
-    self.steps:List[str]=steps
+    self._ctx:LensContext=ctx
+    self._start:Any=start
+    self._steps:List[str]=steps
 
   def __getattr__(self, key)->"Lens":
     """ Sugar for `Lens.get` """
@@ -185,10 +185,10 @@ class Lens:
   def get(self, key)->"Lens":
     """ Return a new Lens out of the `key` attribute of the current Lens """
     r=lens_repr(self,key)
-    d=val2dict(traverse(self, r), self.ctx)
+    d=val2dict(traverse(self, r), self._ctx)
     assert d is not None, f"In `{r}`: can't convert '{key}' into a dict"
     assert key in d, f"In `{r}`: field '{key}' not found"
-    return Lens(self.ctx, self.start, self.steps+[key])
+    return Lens(self._ctx, self._start, self._steps+[key])
 
   @property
   def optval(self)->Optional[Any]:
@@ -230,7 +230,7 @@ class Lens:
   def syspath(self)->Path:
     """ Check that the current value of Lens is a `Path` and return it """
     v=traverse(self, lens_repr(self,'syspath'))
-    return val2path(v, self.ctx)
+    return val2path(v, self._ctx)
 
   @property
   def contents(self)->str:
@@ -243,7 +243,7 @@ class Lens:
   def rref(self)->RRef:
     """ Check that the current value of Lens is an `RRef` and return it """
     v=traverse(self, lens_repr(self,'rref'))
-    return val2rref(v, self.ctx)
+    return val2rref(v, self._ctx)
 
   @property
   def closure(self)->Closure:
@@ -253,8 +253,8 @@ class Lens:
     r=lens_repr(self,'closure')
     v=traverse(self, r)
     assert isdref(v), f"Lens {r} expected a dref, but got '{v}'"
-    assert self.ctx.closure is not None
-    return Closure([v], [v], self.ctx.closure.derivations, self.ctx.S)
+    assert self._ctx.closure is not None
+    return Closure([v], [v], self._ctx.closure.derivations, self._ctx.S)
 
 
 def mklens(x:Any, o:Optional[Path]=None,
