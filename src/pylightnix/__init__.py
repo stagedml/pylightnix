@@ -13,6 +13,7 @@ from pylightnix.repl import *
 from pylightnix.lens import *
 from pylightnix.either import *
 from pylightnix.garb import *
+from pylightnix.deco import *
 
 try:
   from pylightnix.arch import *

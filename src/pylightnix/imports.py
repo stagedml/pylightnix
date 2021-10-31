@@ -49,3 +49,5 @@ from logging import getLogger
 from traceback import format_exc
 from queue import PriorityQueue
 from inspect import getsourcelines
+from dataclasses import dataclass
+
