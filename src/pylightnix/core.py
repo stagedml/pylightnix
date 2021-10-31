@@ -915,7 +915,7 @@ def match(key:Key,
 
     # Apply filters and filter outputs
     res=trim(sorted(filter(lambda rref: keymap[rref] is not None, rrefs),
-                    key=lambda rref: keymap[rref], reverse=True))
+                    key=lambda rref: keymap[rref], reverse=True)) # type:ignore
     return (mnext(S,res) if res else None) if mnext else res
   return _matcher
 
