@@ -8,7 +8,7 @@ from pylightnix.lens import (mklens)
 
 from pylightnix.imports import dataclass, getsourcelines
 
-from pylightnix.utils import pyobjhash
+from pylightnix.utils import (pyobjhash, isrefpath, isselfpath, isdref)
 
 
 def autodrv(kwargs:dict, sourcedeps:List[Any]=[]):
@@ -27,8 +27,10 @@ def autodrv(kwargs:dict, sourcedeps:List[Any]=[]):
       for k,v in kwargs.items():
         if isinstance(v,Registry):
           pass
-        elif isinstance(v,DRef):
+        elif isinstance(v,DRef) and isdref(v):
           args[k]=mklens(b).get(k).rref
+        elif isrefpath(v) or isselfpath(v):
+          args[k]=mklens(b).get(k).syspath
         else:
           args[k]=v
       f(build=b,**args)

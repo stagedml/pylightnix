@@ -248,8 +248,8 @@ def isselfpath(p:Any)->bool:
 
 def isclosure(x:Any)->bool:
   return isinstance(x,tuple) and len(x)==4 and \
-      isinstance(x[2],list) and all([isdref(r) for r in x[1]]) \
-         and isinstance(x[2],list)
+         isinstance(x[2],list) and all([isdref(r) for r in x[1]]) and \
+         isinstance(x[2],list)
 
 Mutator=Callable[[Any,Any],Any]
 
