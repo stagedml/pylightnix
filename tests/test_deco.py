@@ -55,3 +55,17 @@ def test_autostage():
   with setup_storage2('test_autostage') as S:
     r1=realize1(instantiate(stage_all,S=S))
     assert isrref(r1)
+
+
+def test_autostage_params():
+  @autostage(a=42)
+  def stage(a,build):
+    pass
+  with setup_storage2('test_autostage_params') as S:
+    r1=realize1(instantiate(stage,S=S))
+    assert mklens(r1,S=S).a.val==42
+    r1=realize1(instantiate(stage,a=33,S=S))
+    assert mklens(r1,S=S).a.val==33
+
+
+
