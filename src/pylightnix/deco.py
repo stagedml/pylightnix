@@ -42,7 +42,7 @@ def autodrv(kwargs:dict, sourcedeps:List[Any]=[]):
 class Placeholder:
   pass
 
-def autostage(**decokw):
+def autostage(sourcedeps:List[Any]=[],**decokw):
   def _deco(f:Callable[...,None])->Callable[...,DRef]:
     def _stage(r:Registry,**stagekw)->DRef:
       args:Dict[str,Any]={'r':r}
@@ -58,7 +58,7 @@ def autostage(**decokw):
         else:
           assert k in decokw
           args[k]=v
-      @autodrv(args, sourcedeps=[f])
+      @autodrv(args, sourcedeps=[f]+sourcedeps)
       def drv(build:Build,**drvkw):
         f(build=build,**drvkw)
       return drv
