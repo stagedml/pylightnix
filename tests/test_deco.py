@@ -1,5 +1,6 @@
 from pylightnix import (RRef, DRef, Registry, Build, Placeholder, autodrv,
-                        autostage, mklens, realize1, instantiate, isrref)
+                        autostage, mklens, realize1, instantiate, isrref,
+                        writejson, selfref)
 
 from tests.setup import (setup_storage2)
 
@@ -29,16 +30,20 @@ def test_autodrv():
     assert isrref(r1)
 
 
-@autostage(a=2,b=4)
-def stage1(a,b,build:Build):
+@autostage(a=2,
+           b=4,
+           out_file=[selfref,"result.json"])
+def stage1(a,b,out_file,build:Build):
   print('Building stage1')
-  print(f'a {a} b {b}. 2.ddxx')
+  print(f'a {a} b {b} out_file {out_file}')
+  writejson(out_file,{'field':'Haha'})
 
 @autostage(d=4,e=1,ref1=Placeholder())
 def stage2(d,e,ref1:RRef,build:Build):
   print('Building stage2')
   print(f'd {d} e {e}')
   print(f'ref1 {ref1}')
+  assert mklens(build).ref1.out_file.field.val=='Haha'
 
 
 def stage_all(r:Registry):
