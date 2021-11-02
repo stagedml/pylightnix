@@ -1,64 +1,50 @@
 from pylightnix.types import (Stage, Registry, Build, DRef, RRef, StageResult,
                               Callable, List, Optional, Any, Dict)
 from pylightnix.core import (mkdrv, mkconfig, match_latest, instantiate,
-                             realize, realize1)
+                             realize, realize1, context_deref)
 from pylightnix.build import (build_wrapper)
 
 from pylightnix.lens import (mklens)
 
 from pylightnix.imports import dataclass, getsourcelines
 
-from pylightnix.utils import (pyobjhash, isrefpath, isselfpath, isdref)
+from pylightnix.utils import (pyobjhash, isrefpath, isselfpath, isdref,
+                              traverse_dict)
 
 
-def autodrv(kwargs:dict, sourcedeps:List[Any]=[]):
+def autodrv(kwargs:dict,
+            sourcedeps:List[Any]=[],
+            matcher=match_latest()):
   def _deco(f:Callable[...,None]):
-    r:Optional[Registry]=None
-    cfg:dict={}
-    for k,v in kwargs.items():
-      if isinstance(v,Registry):
-        r=v
-      else:
-        cfg[k]=v
+    r:Optional[Registry]=kwargs['r']
     assert r is not None, "One of arguments should have type Registry"
+    cfg={k:v for k,v in kwargs.items()}
     cfg["__source__"]=pyobjhash([f]+sourcedeps)
     def _make(b:Build):
-      args:dict={}
-      for k,v in kwargs.items():
-        if isinstance(v,Registry):
-          pass
-        elif isinstance(v,DRef) and isdref(v):
-          args[k]=mklens(b).get(k).rref
+      args:dict={k:v for k,v in kwargs.items() if not isinstance(v,Registry)}
+      def _visit(k:Any, v:Any)->Any:
+        if isdref(v) and isinstance(v,DRef):
+          rrefs=context_deref(b.context,v)
+          assert len(rrefs)==1
+          return rrefs[0]
         elif isrefpath(v) or isselfpath(v):
-          args[k]=mklens(b).get(k).syspath
+          # FIXME: resolve refpath by value
+          return mklens(b).get(k).syspath
         else:
-          args[k]=v
+          return v
+      traverse_dict(args,_visit)
       f(build=b,**args)
-    return mkdrv(mkconfig(cfg),match_latest(),build_wrapper(_make),r=r)
+    return mkdrv(mkconfig(cfg),matcher,build_wrapper(_make),r=r)
   return _deco
 
 
-@dataclass
-class Placeholder:
-  pass
-
-def autostage(sourcedeps:List[Any]=[],**decokw):
+def autostage(matcher=match_latest(),**decokw):
   def _deco(f:Callable[...,None])->Callable[...,DRef]:
     def _stage(r:Registry,**stagekw)->DRef:
       args:Dict[str,Any]={'r':r}
-      for k,v in decokw.items():
-        if isinstance(v,Placeholder):
-          assert isinstance(stagekw[k],DRef)
-        else:
-          args[k]=v
-      for k,v in stagekw.items():
-        if isinstance(v,DRef):
-          assert isinstance(decokw[k],Placeholder)
-          args[k]=v
-        else:
-          assert k in decokw
-          args[k]=v
-      @autodrv(args, sourcedeps=[f]+sourcedeps)
+      args.update(decokw)
+      args.update(stagekw)
+      @autodrv(args, sourcedeps=[f], matcher=matcher)
       def drv(build:Build,**drvkw):
         f(build=build,**drvkw)
       return drv

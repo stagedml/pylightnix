@@ -240,11 +240,14 @@ def isdref(ref:Any)->bool:
   return isinstance(ref,str) and len(ref)>=5+32 and ref[:5]=='dref:'
 
 def isrefpath(p:Any)->bool:
-  return isinstance(p,list) and len(p)>0 and isdref(p[0]) and all([isinstance(x,str) for x in p])
+  return isinstance(p,list) and len(p)>0 and isdref(p[0]) and \
+    all([isinstance(x,str) for x in p]) and \
+    all([not isdref(x) for x in p[1:]])
 
 def isselfpath(p:Any)->bool:
-  return isinstance(p,list) and len(p)>0 and all([isinstance(x,str) for x in p]) and \
-         p[0]==PYLIGHTNIX_SELF_TAG
+  return isinstance(p,list) and len(p)>0 and \
+    all([isinstance(x,str) for x in p]) and \
+    p[0]==PYLIGHTNIX_SELF_TAG
 
 def isclosure(x:Any)->bool:
   return isinstance(x,tuple) and len(x)==4 and \
