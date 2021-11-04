@@ -290,6 +290,10 @@ def rref2path(r:RRef, S=None)->Path:
   (rhash,dhash,nm)=unrref(r)
   return Path(join(fsstorage(S),dhash+'-'+nm,rhash))
 
+def rrefpath2path(r:RRef, refpath:RefPath, S=None)->Path:
+  assert isinstance(refpath[0],DRef) and rref2dref(r)==refpath[0]
+  return Path(join(rref2path(r),*refpath[1:]))
+
 def drefcfgpath(r:DRef,S=None)->Path:
   return Path(join(dref2path(r,S),'config.json'))
 
@@ -572,6 +576,14 @@ def context_deref(context:Context, dref:DRef)->List[RRef]:
     f"Context {context} doesn't declare {dref} among it's dependencies so we "
     f"can't dereference it.")
   return context[dref]
+
+def context_derefpath(context:Context,
+                      refpath:RefPath,
+                      S=None)->List[Path]:
+  assert isinstance(refpath[0],DRef)
+  rrefs=context_deref(context,refpath[0])
+  return [Path(join(rref2path(r,S), *refpath[1:])) for r in rrefs]
+
 
 def context_serialize(c:Context)->str:
   assert_valid_context(c)

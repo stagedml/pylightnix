@@ -1,7 +1,7 @@
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from pylightnix import (RRef, DRef, Registry, Build, autodrv, autostage, mklens,
                         realize1, instantiate, isrref, writejson, selfref,
-                        isrref)
+                        isrref, isfile)
 
 from tests.setup import (setup_storage2)
 
@@ -14,9 +14,10 @@ def stage3(r:Registry,a=3,b=True)->DRef:
 
 def stage4(ref:DRef,r:Registry,c=3,d=True)->DRef:
   @autodrv(locals())
-  def drv(c,d,ref:RRef,build:Build):
+  def drv(c,d,ref:Any,build:Build):
     print(f"c={c} d={d} ref:{ref}")
-    print(f"a={mklens(ref).a.val} b={mklens(ref).b.val}")
+    print(f"a={mklens(ref[0]._rref).a.val}")
+    print(f"b={mklens(ref[0]._rref).b.val}")
   return drv
 
 
@@ -40,12 +41,14 @@ def stage1(a,b,out_file,build:Build):
   writejson(out_file,{'field':'Haha'})
 
 @autostage(d=4,e=1)
-def stage2(d,e,ref1:RRef,refs:List[RRef],build:Build):
+def stage2(d,e,ref1,refs,build:Build):
   print('Building stage2')
   print(f'd {d} e {e}')
   print(f'ref1 {ref1}')
   assert mklens(build).ref1.out_file.field.val=='Haha'
-  assert all([isrref(r) for r in refs])
+  assert isrref(ref1[0]._rref)
+  assert isfile(ref1[0].out_file)
+  assert all([isrref(r[0]._rref) for r in refs])
 
 
 def stage_all(r:Registry):
