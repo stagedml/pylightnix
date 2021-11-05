@@ -59,7 +59,8 @@ def unroll(ctx:Context, dref:DRef, b:Optional[Build], rindex:int,
 def autodrv(kwargs:dict,
             sourcedeps:List[Any]=[],
             nouts:int=1,
-            matcher:Optional[Matcher]=None):
+            matcher:Optional[Matcher]=None,
+            always_multyref:bool=False):
   matcher_=match_latest(nouts) if matcher is None else matcher
   def _deco(f:Callable[...,None]):
     r:Optional[Registry]=kwargs['r']
@@ -69,9 +70,12 @@ def autodrv(kwargs:dict,
     def _make(b:Build):
       assert b.outpaths is not None
       for i,_ in enumerate(b.outpaths.val):
-        args=unroll(b.context,b.dref,b,i,None,S=b.S)
+        args=unroll(b.context,b.dref,b,i,None,
+                    always_multyref=always_multyref,S=b.S)
         delattr(args,'__source__')
-        f(build=b,rindex=i,**args.__dict__)
+        if nouts>1 or always_multyref:
+          setattr(args,'rindex',i)
+        f(build=b,**args.__dict__)
     return mkdrv(mkconfig(cfg),matcher_,
                  build_wrapper(_make,nouts=nouts),r=r)
   return _deco
@@ -79,13 +83,15 @@ def autodrv(kwargs:dict,
 def autostage(nouts:int=1,
               sourcedeps:List[Any]=[],
               matcher:Optional[Matcher]=None,
+              always_multyref:bool=False,
               **decokw):
   def _deco(f:Callable[...,None])->Callable[...,DRef]:
     def _stage(r:Registry,**stagekw)->DRef:
       args:Dict[str,Any]={'r':r}
       args.update(decokw)
       args.update(stagekw)
-      @autodrv(args,sourcedeps=[f]+sourcedeps,nouts=nouts,matcher=matcher)
+      @autodrv(args,sourcedeps=[f]+sourcedeps,nouts=nouts,matcher=matcher,
+               always_multyref=always_multyref)
       def drv(build:Build,**drvkw):
         f(build=build,**drvkw)
       return drv

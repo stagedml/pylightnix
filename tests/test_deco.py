@@ -15,19 +15,19 @@ def test_autodrv_semnatics():
                 d:Dict[str,int]={"a":1,"b":2},
                 f:float=3.14,
                 out=[selfref,"file.json"])->DRef:
-      @autodrv(locals(),nouts=3,matcher=match_latest(3))
-      def drv(name,i,b,l,d,f,out,build:Build,rindex:int):
+      @autodrv(locals(),nouts=3)
+      def drv(name,i,b,l,d,f,out,build:Build,rindex):
         writejson(out,rindex)
       return drv
     def _stage2(r:Registry,ref:DRef,
                 name='stage2', p=33, out=[selfref,'out.json'])->DRef:
-      @autodrv(locals())
+      @autodrv(locals(),always_multyref=True)
       def drv(name,p,out,ref,build,rindex):
         writejson(out,rindex)
       return drv
     def _stage3(r:Registry,ref:DRef,name='stage3',
                 out=[selfref,"out.json"])->DRef:
-      @autodrv(locals(),nouts=2,matcher=match_latest(2))
+      @autodrv(locals(),nouts=2)
       def drv(name,ref,out,build,rindex):
         assert isrref(ref._rref)
         for n1 in range(3):
@@ -54,10 +54,10 @@ def test_autodrv_semnatics():
 def test_autostage_semantics():
   with setup_storage2('test_autostage_semantics') as S:
     @autostage(a=2,b="aa",out_file=[selfref,"result.json"])
-    def stage1(a,b,out_file,build:Build,rindex):
+    def stage1(a,b,out_file,build:Build):
       writejson(out_file,{'field':'Haha'})
     @autostage(d=4,e={'a':1,'b':True})
-    def stage2(d,e,ref1,refs,build:Build,rindex):
+    def stage2(d,e,ref1,refs,build:Build):
       assert mklens(build).ref1.out_file.field.val=='Haha'
       assert d==4 and e['a']==1 and e['b']is True
       assert isrref(ref1._rref)
@@ -72,7 +72,7 @@ def test_autostage_semantics():
 
 def test_autostage_overload():
   @autostage(a=42)
-  def stage(a,build,rindex):
+  def stage(a,build):
     pass
   with setup_storage2('test_autostage_overload') as S:
     r1=realize1(instantiate(stage,S=S))
