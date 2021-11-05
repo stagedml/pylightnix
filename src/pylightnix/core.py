@@ -230,10 +230,12 @@ def mkconfig(d:dict)->Config:
   filter out `r:Registry` variable which likely is an utility
   [Registry](#pylightnix.types.Registry) object.
   """
-  # FIXME: Should we assert on invalid Config here?
-  return Config(assert_valid_dict(
-    {k:v for k,v in d.items()
-     if not (k=='r' and 'Registry' in str(type(v)))},'dict'))
+  d2={k:v for k,v in d.items()
+     if not (k=='r' and 'Registry' in str(type(v)))}
+  assert_valid_dict(d2,'dict')
+  cfg=Config(d2)
+  assert_valid_config(cfg)
+  return cfg
 
 def cfgdict(cp:Config)->dict:
   return deepcopy(cp.val)
@@ -300,11 +302,17 @@ def drefcfgpath(r:DRef,S=None)->Path:
 def rrefctx(r:RRef, S=None)->Context:
   """ Return the realization context. """
   assert_valid_rref(r)
-  return readjson(join(rref2path(r,S),'context.json'))
+  ctx=readjson(join(rref2path(r,S),'context.json'))
+  assert isinstance(ctx,dict)
+  return ctx
 
 def drefcfg_(dref:DRef,S=None)->Config:
-  """ Return `dref` configuration, selfrefs are not resolved """
-  return assert_valid_config(Config(readjson(drefcfgpath(dref,S))))
+  """ Return `dref` configuration, selfrefs are _not_ resolved """
+  cfg=readjson(drefcfgpath(dref,S))
+  assert isinstance(cfg,dict)
+  c=Config(cfg)
+  assert_valid_config(c)
+  return c
 
 def drefcfg(dref:DRef,S=None)->RConfig:
   """ Return `dref` configuration, selfrefs are resolved """

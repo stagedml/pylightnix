@@ -349,11 +349,11 @@ def writestr(path:str, data:str)->None:
     f.write(data)
 
 def writejson(path:str,
-              data:Union[dict,list,int,float,bool],
+              data:Union[dict,list,int,float,bool,str],
               indent:Optional[int]=None)->None:
   writestr(path, json_dumps(data, indent=indent))
 
-def readjson(json_path:str)->Any:
+def readjson(json_path:str)->Union[dict,list,int,float,bool,str]:
   with open(json_path, "r") as f:
     return json_load(f)
 
