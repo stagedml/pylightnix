@@ -64,10 +64,13 @@ warning=logger.warning
 TL=threading_local()
 
 def tlregistry(M:Optional[Registry])->Optional[Registry]:
+  """ Return the currently active [Registry](#pylightnix.types.Registry) """
   global TL
   tlm=getattr(TL,'registry',None)
   return M if M else tlm
 def tlstorage(S:Optional[StorageSettings])->Optional[StorageSettings]:
+  """ Return the currently active
+  [StorageSettings](#pylightnix.types.StorageSettings) """
   tlm=tlregistry(None)
   tls=getattr(TL,'storage',None)
   return S if S else (tls if tls else (tlm.S if tlm else None))
@@ -122,19 +125,31 @@ def assert_valid_storage(S:Optional[StorageSettings]=None)->None:
 
 def mkSS(root:str, stordir:Optional[str]=None, tmpdir:Optional[str]=None
          )->StorageSettings:
+  """ Constructor for [StorageSettings](#pylightnix.types.StorageSettings)"""
   return StorageSettings(Path(root),
                          Path(stordir) if stordir else None,
                          Path(tmpdir) if tmpdir else None)
 
-# def mksettings(stordir:str, tmpdir:Optional[str]=None)->StorageSettings:
-#   return StorageSettings(None,Path(stordir),Path(tmpdir) if tmpdir else None)
+def setstorage(S:Optional[StorageSettings])->Optional[StorageSettings]:
+  global TL
+  old=getattr(TL,'storage',None)
+  setattr(TL,'storage',S)
+  return old
 
-def fsinit(S:Optional[StorageSettings]=None,
+def setregistry(r:Optional[Registry])->Optional[Registry]:
+  global TL
+  old=getattr(TL,'registry',None)
+  setattr(TL,'registry',r)
+  return old
+
+def fsinit(ss:Optional[Union[Path,StorageSettings]]=None,
            check_not_exist:bool=False,
-           remove_existing:bool=False)->None:
-  """ Create the storage and/or temp direcory if they don't exist. Default
-  locations are determined by `PYLIGHTNIX_STORAGE` and `PYLIGHTNIX_TMP` env
-  variables. """
+           remove_existing:bool=False,
+           use_as_default:bool=False)->None:
+  """ Imperatively create the filesystem storage and temp direcory if they don't
+  exist.  Default locations may be altered by `PYLIGHTNIX_STORAGE` and
+  `PYLIGHTNIX_TMP` env variables. """
+  S:Optional[StorageSettings]=mkSS(ss) if isinstance(ss,Path) else ss
   if remove_existing:
     dirrm(fsstorage(S))
     dirrm(fstmpdir(S))
@@ -143,6 +158,8 @@ def fsinit(S:Optional[StorageSettings]=None,
   else:
     makedirs(fsstorage(S), exist_ok=False if check_not_exist else True)
     makedirs(fstmpdir(S), exist_ok=False if check_not_exist else True)
+  if use_as_default:
+    setstorage(S)
   assert_valid_storage(S)
 
 def reserved(folder:Path, name:str)->Path:
@@ -665,26 +682,27 @@ def mkdrv(config:Config,
 
 @contextmanager
 def current_registry(r:Registry)->Iterator[Registry]:
-  """ Sets the implicit global registry for the inner scoped code. Implies
+  """ Sets the default global [Registry](#pylightnix.types.Registry) for the
+  inner scoped code. Internally calls
   [current_storage(r.S)](#pylightnix.core.current_storage)"""
   global TL
-  old=getattr(TL,'registry',None)
-  TL.registry=r
+  old=setregistry(r)
   try:
     with current_storage(r.S):
       yield TL.registry
   finally:
-    TL.registry=old
+    setregistry(old)
 
 @contextmanager
 def current_storage(S:Optional[StorageSettings])->Iterator[Optional[StorageSettings]]:
-  global TL
-  old=getattr(TL,'storage',None)
-  TL.storage=S
+  """ Sets the global default
+  [StorageSettings](#pylightnix.types.StorageSettings) for the inner scoped code
+  """
+  old=setstorage(S)
   try:
     yield S
   finally:
-    TL.storage=old
+    setstorage(old)
 
 
 def mkclosure(result:Any,r:Registry)->Closure:
