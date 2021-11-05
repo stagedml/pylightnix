@@ -21,7 +21,7 @@ def test_autodrv_semnatics():
       return drv
     def _stage2(r:Registry,ref:DRef,
                 name='stage2', p=33, out=[selfref,'out.json'])->DRef:
-      @autodrv(locals(),always_multyref=True)
+      @autodrv(locals(),always_multiref=True)
       def drv(name,p,out,ref,build,rindex):
         writejson(out,rindex)
       return drv
