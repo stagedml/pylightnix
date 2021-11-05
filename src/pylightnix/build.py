@@ -172,7 +172,7 @@ def build_markstop(b:Build)->None:
 def build_markstop_noexcept(b:Build)->None:
   try:
     build_markstop(b)
-  except:
+  except Exception as e:
     pass
 
 def rrefbstart(rref:RRef, S=None)->Optional[str]:
