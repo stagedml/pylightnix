@@ -142,14 +142,15 @@ def setregistry(r:Optional[Registry])->Optional[Registry]:
   setattr(TL,'registry',r)
   return old
 
-def fsinit(ss:Optional[Union[Path,StorageSettings]]=None,
+def fsinit(ss:Optional[Union[str,StorageSettings]]=None,
            check_not_exist:bool=False,
            remove_existing:bool=False,
            use_as_default:bool=False)->None:
   """ Imperatively create the filesystem storage and temp direcory if they don't
   exist.  Default locations may be altered by `PYLIGHTNIX_STORAGE` and
   `PYLIGHTNIX_TMP` env variables. """
-  S:Optional[StorageSettings]=mkSS(ss) if isinstance(ss,Path) else ss
+  S:Optional[StorageSettings]=mkSS(Path(join(ss,'_pylightnix'))) \
+                              if isinstance(ss,str) else ss
   if remove_existing:
     dirrm(fsstorage(S))
     dirrm(fstmpdir(S))
