@@ -125,7 +125,7 @@ def test_find():
     # assert rrefs==[rref2]
 
 def test_diff():
-  with setup_storage2('test_find') as S:
+  with setup_storage2('test_diff') as S:
     s1=wrapstage(config={'name':'1'},nondet=lambda i:42)
     s2=wrapstage(config={'name':'2'},nondet=lambda i:33)
     dref1:DRef=instantiate(s1,S=S)[0]

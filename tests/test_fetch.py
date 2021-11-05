@@ -58,7 +58,7 @@ def test_fetchlocal():
 
 
 def test_fetchlocal2():
-  with setup_storage2('test_fetclocal') as S:
+  with setup_storage2('test_fetchlocal2') as S:
     mockdata=join(fstmpdir(S),'mockdata')
     with open(mockdata,'w') as f:
       f.write('dogfood')

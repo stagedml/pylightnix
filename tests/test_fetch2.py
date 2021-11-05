@@ -11,7 +11,7 @@ from tests.setup import (ShouldHaveFailed, setup_storage2, pipe_stdout)
 SHA256SUM=get_executable('sha256sum', 'Please install `sha256sum` tool from `coreutils` package')
 
 def test_fetchurl2():
-  with setup_storage2('test_fetchurl') as S:
+  with setup_storage2('test_fetchurl2') as S:
     with TemporaryDirectory() as tmp:
       mockcurl=join(tmp,'mockcurl')
       print(mockcurl)
@@ -45,7 +45,7 @@ def test_fetchurl2():
 
 
 def test_fetchurl2_file():
-  with setup_storage2('test_fetclocal') as S:
+  with setup_storage2('test_fetchurl2_file') as S:
     tmp=fstmpdir(S)
     mockdata=join(tmp,'mockdata.foo')
     with open(mockdata,'w') as f:

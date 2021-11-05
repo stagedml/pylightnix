@@ -81,7 +81,7 @@ def test_build_name()->None:
     assert 'foobar' in rref
 
 def test_build_exception()->None:
-  with setup_storage2('test_build_name') as S:
+  with setup_storage2('test_build_exception') as S:
     def _setting(r:Optional[Registry])->DRef:
       def _realize(b)->None:
         raise ValueError("An intended failure")
