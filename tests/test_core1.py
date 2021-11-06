@@ -304,53 +304,24 @@ def test_overwrite_realizer()->None:
     rref_n3=context_deref(rrefctx(rref_n2,S), rrefattrs(rref_n2, S).maman)[0]
     assert open(join(rref2path(rref_n3, S),'artifact'),'r').read() == '42'
 
-
-
-def test_gc()->None:
-  with setup_storage2('test_gc') as S:
-    def _node1(r:Registry)->DRef:
-      return mkstage({'name':'1'},r)
-    def _node2(r:Registry)->DRef:
-      return mkstage({'name':'2', 'maman':_node1(r)},r)
-    def _node3(r:Registry)->DRef:
-      return mkstage({'name':'3', 'maman':_node1(r)},r)
-
-    r1=realize1(instantiate(_node1,S=S))
-    r2=realize1(instantiate(_node2,S=S))
-    r3=realize1(instantiate(_node3,S=S))
-
-    rm_drefs,rm_rrefs=store_gc([],[r2],S)
-    assert rm_drefs=={rref2dref(r) for r in [r3]}
-    assert rm_rrefs=={x for x in [r3]}
-
-# def test_promise()->None:
-#   with setup_storage2('test_promise') as S:
-#     def _setting(r:Registry, fullfill:bool)->DRef:
-#       n1=mkstage(r, {'name':'1', 'promise':[promise,'artifact']})
-#       def _realize(b:Build):
-#         o=build_outpath(b)
-#         c=build_cattrs(b)
-#         assert b.targets[0] in c.promise
-#         assert n1 in store_cattrs(c.maman,S).promise
-#         assert build_path(b,c.promise)==join(o,'uber-artifact')
-#         assert build_path(b,store_cattrs(c.maman,S).promise)==build_path(b,c.maman_promise)
-#         if fullfill:
-#           with open(build_path(b,c.promise),'w') as f:
-#             f.write('chickenpoop')
-
-#       return mkdrv(r, mkconfig({'name':'2', 'maman':n1,
-#                                 'promise':[promise,'uber-artifact'],
-#                                 'maman_promise':[n1,'artifact']}),
-#                       matcher=match_only(),
-#                       realizer=build_wrapper(_realize))
-
-#     try:
-#       rref=realize1(instantiate(_setting,False,S=S))
-#       raise ShouldHaveFailed('Promise trigger')
-#     except AssertionError:
-#       pass
-#     rref=realize1(instantiate(_setting,True,S=S))
-#     assert_valid_rref(rref)
+def test_gc_semantics()->None:
+  with setup_storage2('test_gc_semantics') as S:
+    r=Registry(S)
+    d1=mkstage({'name':'1'},r)
+    d2=mkstage({'name':'2','maman':d1},r,nrrefs=2,nmatch=2,nondet=lambda i:i)
+    d3=mkstage({'name':'3','maman':d2},r)
+    r1=realize1(instantiate(d1,r=r))
+    [r2a,r2b]=realizeMany(instantiate(d2,r=r))
+    r3=realize1(instantiate(d3,r=r))
+    rm_drefs,rm_rrefs=store_gc(keep_drefs=[],keep_rrefs=[],S=S)
+    assert rm_drefs=={d1,d2,d3}
+    assert rm_rrefs=={r1,r2a,r2b,r3}
+    rm_drefs,rm_rrefs=store_gc(keep_drefs=[],keep_rrefs=[r2a],S=S)
+    assert rm_drefs=={d3}
+    assert rm_rrefs=={r3,r2b}
+    rm_drefs,rm_rrefs=store_gc(keep_drefs=[d2],keep_rrefs=[],S=S)
+    assert rm_drefs=={d3}
+    assert rm_rrefs=={r3}
 
 
 @settings(max_examples=10)

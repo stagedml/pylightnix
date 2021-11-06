@@ -463,20 +463,23 @@ def store_gc(keep_drefs:List[DRef],
   Default location of `S` may be changed.
 
   See also [rmref](#pylightnix.bashlike.rmref)"""
-  assert_valid_storage(S)
-  keep_rrefs_=set(keep_rrefs)
-  keep_drefs_=set(keep_drefs)
-  closure_rrefs=rrefdeps(keep_rrefs_,S) | keep_rrefs_
-  closure_drefs=drefdeps(keep_drefs_,S) | keep_drefs_ | {rref2dref(rref)
-                                                         for rref in closure_rrefs}
+  clo_drefs=drefdeps(set(keep_drefs),S) | set(keep_drefs)
+  clo_rrefs=rrefdeps(set(keep_rrefs),S) | set(keep_rrefs)
+
+  clo_drefs2=clo_drefs | {rref2dref(rref) for rref in clo_rrefs}
+  clo_rrefs2=clo_rrefs | \
+    set.union(set(),*[drefrrefs(dref,S) for dref in clo_drefs]) # type:ignore
   remove_drefs=set()
   remove_rrefs=set()
   for dref in alldrefs(S):
-    if dref not in closure_drefs:
+    if dref not in clo_drefs2:
       remove_drefs.add(dref)
-    for rref in drefrrefs(dref,S):
-      if rref not in closure_rrefs:
+      for rref in drefrrefs(dref,S):
         remove_rrefs.add(rref)
+    else:
+      for rref in drefrrefs(dref,S):
+        if rref not in clo_rrefs2:
+          remove_rrefs.add(rref)
   return remove_drefs,remove_rrefs
 
 
