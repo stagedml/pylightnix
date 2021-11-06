@@ -435,15 +435,15 @@ def rrefdata(rref:RRef,S=None)->Iterable[Path]:
     if not (fd.is_file() and fd.name in PYLIGHTNIX_RESERVED):
       yield Path(join(root, fd.name))
 
-def drefrrefs(dref:DRef,S=None)->List[RRef]:
+def drefrrefs(dref:DRef,S=None)->Set[RRef]:
   """ Iterate over all realizations of a derivation `dref`. The sort order is
   unspecified. Matchers are not taken into account. """
   (dhash,nm)=undref(dref)
   drefpath=dref2path(dref,S)
-  rrefs:List[RRef]=[]
+  rrefs:Set[RRef]=set()
   for f in listdir(drefpath):
     if f[-4:]!='.tmp' and isdir(join(drefpath,f)):
-      rrefs.append(mkrref(HashPart(f), dhash, nm))
+      rrefs.add(mkrref(HashPart(f), dhash, nm))
   return rrefs
 
 def drefrrefsC(dref:DRef, context:Context, S=None)->Iterable[RRef]:
