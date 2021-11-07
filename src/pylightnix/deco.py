@@ -56,11 +56,11 @@ def unroll(ctx:Context, dref:DRef, b:Optional[Build], rindex:int,
     setattr(attrs,k,v)
   return attrs
 
-def autodrv(kwargs:dict,
-            sourcedeps:List[Any]=[],
-            nouts:int=1,
-            matcher:Optional[Matcher]=None,
-            always_multiref:bool=False):
+def autodrv_(kwargs:dict,
+             nouts:int=1,
+             matcher:Optional[Matcher]=None,
+             always_multiref:bool=False,
+             sourcedeps:List[Any]=[]):
   matcher_=match_latest(nouts) if matcher is None else matcher
   def _deco(f:Callable[...,None]):
     r:Optional[Registry]=kwargs['r']
@@ -69,33 +69,53 @@ def autodrv(kwargs:dict,
     cfg["__source__"]=pyobjhash([f]+sourcedeps)
     def _make(b:Build):
       assert b.outpaths is not None
+      acc=[]
       for i,_ in enumerate(b.outpaths.val):
         args=unroll(b.context,b.dref,b,i,None,
                     always_multiref=always_multiref,S=b.S)
         delattr(args,'__source__')
         if nouts>1 or always_multiref:
           setattr(args,'rindex',i)
-        f(build=b,**args.__dict__)
+        acc.append(args)
+      f(b,acc)
     return mkdrv(mkconfig(cfg),matcher_,
                  build_wrapper(_make,nouts=nouts),r=r)
   return _deco
 
-def autostage(nouts:int=1,
-              sourcedeps:List[Any]=[],
-              matcher:Optional[Matcher]=None,
-              always_multiref:bool=False,
-              **decokw):
+def autodrv(*args,sourcedeps:List[Any]=[],**kwargs):
+  def _deco(f:Callable[...,None])->Callable[...,DRef]:
+    @autodrv_(*args,sourcedeps=[f]+sourcedeps,**kwargs) # type:ignore
+    def _fn(build,arglist):
+      for args in arglist:
+        f(build=build,**args.__dict__)
+    return _fn
+  return _deco
+
+def autostage_(nouts:int=1,
+               matcher:Optional[Matcher]=None,
+               always_multiref:bool=False,
+               sourcedeps:List[Any]=[],
+               **decokw):
   def _deco(f:Callable[...,None])->Callable[...,DRef]:
     def _stage(r:Registry,**stagekw)->DRef:
       args:Dict[str,Any]={'r':r}
       args.update(decokw)
       args.update(stagekw)
-      @autodrv(args,sourcedeps=[f]+sourcedeps,nouts=nouts,matcher=matcher,
+      @autodrv_(args,sourcedeps=[f]+sourcedeps,nouts=nouts,matcher=matcher,
                always_multiref=always_multiref)
-      def drv(build:Build,**drvkw):
-        f(build=build,**drvkw)
+      def drv(build,arglist):
+        f(build,arglist)
       return drv
     return _stage
   return _deco
 
+
+def autostage(*args,sourcedeps=[],**kwargs):
+  def _deco(f:Callable[...,None])->Callable[...,DRef]:
+    @autostage_(*args,sourcedeps=[f]+sourcedeps,**kwargs) # type:ignore
+    def _fn(build,arglist):
+      for args in arglist:
+        f(build=build,**args.__dict__)
+    return _fn
+  return _deco
 
