@@ -24,134 +24,141 @@ algorithm.
 
 \begin{pythontexcode}
 def f(z, *params):
-    x, y = z
-    a, b, c, d, e, f, g, h, i, j, k, l, scale = params
-    return (a * x**2 + b * x * y + c * y**2 + d*x + e*y + f) + \
-           (-g*np.exp(-((x-h)**2 + (y-i)**2) / scale)) + \
-           (-j*np.exp(-((x-k)**2 + (y-l)**2) / scale))
+  x, y = z
+  a, b, c, d, e, f, g, h, i, j, k, l, scale = params
+  return (a * x**2 + b * x * y + c * y**2 + d*x + e*y + f) + \
+         (-g*np.exp(-((x-h)**2 + (y-i)**2) / scale)) + \
+         (-j*np.exp(-((x-k)**2 + (y-l)**2) / scale))
 \end{pythontexcode}
 
-\subsection{Stages basics}
+Suppose we are given the parameters for \texttt{f} and our engineering goals
+are: (a) to save the parameters (b) to run the annealing simulation and (c) to
+make a visual plot of the result.
 
-Suppose we are to get the \texttt{f}'s parameters from elsewhere and
-that we want to get the following results: (a) the parameters themselves (b)
-the result of the annealing simulation and (c) a visual plot of the result.
+\subsection{Pylightnix stages}
+
+Pylightnix offers the \pref{Stage}{pylightnix.types.Stage} mechanism to organize
+non-deterministic Python functions into a directed acycilc graph, where each
+node has the following attributes:
+
+\begin{itemize}
+  \item config - a set of user-defined pre-requisite parameters and references
+    to parent nodes.
+  \item matcher - either built-in or user-defined Python function to filter
+    subsets of possible non-deterministic results.
+  \item realizizer - a user-defined function producing one or many sets of
+    possibly non-deterministic results.
+\end{itemize}
 
 \subsubsection{Parameter stage}
 
-Pylightnix \pref{Stage}{pylightnix.types.Stage} is a Python function that
-registers a user-defined action in the \pref{Registry}{pylightnix.types.Registry}
-(passing None means asking Pylightnix to use the default one) and returns a
-\pref{DRef}{pylightnix.types.DRef} reference stating that the action is
-accepted.
+% \pref{Registry}{pylightnix.types.Registry}
+
+The shortest way of defining Stages is to wrap a future-realizer function into
+an \texttt{autostage} decorator.
 
 \begin{pythontexcode}
-def stage_params(r:Optional[Registry]=None)->DRef:
-  def _config():
-    name = 'params'
-    out = [selfref, "params.npy"]
-    return locals()
-  def _make(b:Build):
-    np.save(mklens(b).out.syspath, (2, 3, 7, 8, 9, 10, 44, -1, 2, 26, 1, -2, 0.5))
-  return mkdrv(mkconfig(_config()), match_only(), build_wrapper(_make), r)
+@autostage(name='params',
+           out=[selfref, "params.npy"])
+def stage_params(build:Build, name:str, out:str)->DRef:
+  np.save(out, (2, 3, 7, 8, 9, 10, 44, -1, 2, 26, 1, -2, 0.5))
 \end{pythontexcode}
 
-Here, a user-defind action \texttt{\_make} goes to Pylightnix by calling the
-\pref{mkdrv}{pylightnix.core.mkdrv} with the Registry and the following three
-arguments: (a) the set of \pref{prerequisites}{pylightnix.types.Config} for the
-action; (b) the \pref{Matcher}{pylightnix.types.Matcher} callback function; (c)
-the action itself that takes a \pref{Build}{pylightnix.types.Build} context as
-an argument. In this example we are pretending to receive input parameters from
-a third-party. We could just as well have downloaded them from the Internet using
+The decorator accepts an arbitrary number of parameters which define
+pre-requisites for the stage. It will pass most of them to the wrapped realizer
+function, but change some types according to the rules explained below.
+
+In the above code the \texttt{selfref} list of strings named \texttt{out}
+is automatically translated to a system path with the same name. Upon the
+realizer's completion, this path should contain a file or a folder. Pylightnix
+doesn't check its contents in any way, but not having this file at all is an
+error.
+
+The decorator also adds the build context object named
+\pref{Build}{pylightnix.types.Build} (which is not used here) and changes the
+type of the function result from \texttt{None} to
+\pref{DRef}{pylightnix.types.DRef} which stands for "Derivation Reference".
+Derivation references may be used to either run corresponding stages or to link
+them to other dependant stages.
+
+In this example we are pretending to receive input parameters from a
+third-party. We could just as well have downloaded them from the Internet using
 a pre-defined stage \pref{fetchurl}{pylightnix.stages.fetchurl2}.
-
-\hfill \break \noindent
-A few notes on the above code:
-
-\begin{itemize}
-  \item We define configuration object by reading a local variables of a helper
-    function named \texttt{\_config()}. The resulting dictionary should match
-    the \pref{Config}{pylightnix.types.Config} requirements. As is often the
-    case in Pylightnix, we use a standalone
-    \pref{mkconfig}{pylightnix.core.mkconfig} constructor rather than create the
-    object directly.
-  \item We promise to produce an artifact named \texttt{out} by specifying its
-    \texttt{selfref} path. Pylightnix will throw an error if it does not find
-    such an artifact after the build action completes.
-  \item When inside the build action, we refer to the pylightnix config items by
-    using the \pref{mklens}{pylightnix.lens.mklens} swiss knife function.
-    \texttt{mklens} returns the \pref{Lens}{pylightnix.lens.Lens} object which
-    has an overloaded dot "\texttt{.}" operator. The middle part of the lens
-    expression encodes the path in the configuration and the last word
-    "\texttt{syspath}" encodes the format of the expression result.
-  \item We pass a \pref{match\_only()}{pylightnix.core.match\_only} matcher in
-    the third argument of \texttt{mkdrv}. By this we say that we expect our
-    action to return a deterministic result. Later we will see how to deal with
-    non-deterministic actions.
-  \end{itemize}
 
 \subsubsection{Annealing stage}
 
 \begin{pythontexcode}
-def stage_anneal(ref_params:DRef, r:Optional[Registry]=None)->DRef:
-  def _config():
-    name = 'anneal'
-    nonlocal ref_params
-    trace_xs = [selfref, 'tracex.npy']
-    trace_fs = [selfref, 'tracef.npy']
-    out = [selfref, 'result.npy']
-    return locals()
-  def _make(b:Build):
-    params = np.load(mklens(b).ref_params.out.syspath)
-    xs = []; fs = []
-    def _trace(x,f,ctx):
-      nonlocal xs,fs
-      xs.append(x.tolist())
-      fs.append(f)
-    res = o.dual_annealing(f, [[-10,10],[-10,10]],
-                         x0=[2.,2.],args=params,
+
+@autostage(name='anneal',
+           trace_xs=[selfref, 'tracex.npy'],
+           trace_fs=[selfref, 'tracef.npy'],
+           out=[selfref, 'result.npy'],
+           sourcedeps=[f])
+def stage_anneal(build:Build, name,
+                 trace_xs:str, trace_fs:str, out:str,
+                 ref_params)->DRef:
+  params = np.load(ref_params.out)
+  xs = []; fs = []
+  def _trace(x, f, ctx):
+    nonlocal xs, fs
+    xs.append(x.tolist())
+    fs.append(f)
+  res = o.dual_annealing(f, [[-10,10],[-10,10]],
+                         x0=[2.,2.], args=params,
                          maxiter=500, callback=_trace)
-    np.save(mklens(b).trace_xs.syspath, np.array(xs))
-    np.save(mklens(b).trace_fs.syspath, np.array(fs))
-    np.save(mklens(b).out.syspath, res['x'])
-  return mkdrv(mkconfig(_config()), match_only(), build_wrapper(_make), r)
+  np.save(trace_xs, np.array(xs))
+  np.save(trace_fs, np.array(fs))
+  np.save(out, res['x'])
 \end{pythontexcode}
+
+In the above stage we see another special decorator parameter named
+\texttt{sourcedeps}. This parameter accepts a list of arbitrary Python objects
+whose source we want Pylightnix to include into the set of pre-requisites. Here
+we want Pylightnix to re-build the stage every time the \texttt{f}'s sources
+change.
+
+Also note \texttt{ref\_params} parameter of the realizer which is not included
+into the decorator. This parameter will be provided additionally as a
+\texttt{DRef} reference. Yes, this is how we specify the dependencies between
+stages. The decorator translates the reference into a Python object which has
+all parent pre-requisites visible as attributes. Pylightnix guarantees that all
+selfref paths of the dependency (like \texttt{out} here) do point to valid
+file-system objects at the time of stage execution.
 
 \subsubsection{Plotting stage}
 
 \begin{pythontexcode}
-def stage_plot(ref_anneal:DRef, r:Optional[Registry]=None)->DRef:
-  def _config():
-    name = 'plot'
-    nonlocal ref_anneal
-    out = [selfref, 'plot.png']
-    return locals()
-  def _make(b:Build):
-    xs=np.load(mklens(b).ref_anneal.trace_xs.syspath)
-    fs=np.load(mklens(b).ref_anneal.trace_fs.syspath)
-    res=np.load(mklens(b).ref_anneal.out.syspath)
-    plt.figure()
-    plt.title(f"Min {fs[-1]}, found at {res}")
-    plt.plot(range(len(fs)),fs)
-    plt.grid(True)
-    plt.savefig(mklens(b).out.syspath)
-  return mkdrv(mkconfig(_config()), match_latest(), build_wrapper(_make), r)
+@autostage(name='plot', out=[selfref, 'plot.png'])
+def stage_plot(build:Build, name:str, out:str, ref_anneal:dict)->DRef:
+  xs=np.load(ref_anneal.trace_xs)
+  fs=np.load(ref_anneal.trace_fs)
+  res=np.load(ref_anneal.out)
+  plt.figure()
+  plt.title(f"Min {fs[-1]}, found at {res}")
+  plt.plot(range(len(fs)),fs)
+  plt.grid(True)
+  plt.savefig(out)
 \end{pythontexcode}
 
 \subsubsection{Running the experiment}
 
-To run the experiment we register all the stages in the internal manager by
-calling \texttt{instantiate} and ask Pylightnix to provide us with the
-\pref{realization reference}{pylightnix.types.RRef} by calling
-\texttt{realize1}.
+To run the experiment we link stages together by calling them under the control
+of dependency \pref{Registry}{pylightnix.types.Registry}.  We pass the last
+reference to \texttt{instantiate} and \texttt{realize1} functions. The realize
+run the realizares in the right order and returns a second kind of reference
+called \pref{realization reference}{pylightnix.types.RRef}. This new reference
+points to both the original derivation and to a particular set of build results.
 
 \begin{pythontexcode}
 with current_registry(Registry()):
-  ds=stage_params()
-  cl=stage_anneal(ds)
-  vis=stage_plot(cl)
-  rref=realize1(instantiate(vis))
+  dref_params = stage_params()
+  dref_anneal = stage_anneal(ref_params=dref_params)
+  dref_plot = stage_plot(ref_anneal=dref_anneal)
+  rref = realize1(instantiate(dref_plot))
   print(rref)
+
+  assert isdref(dref_plot)
+  assert isrref(rref)
 \end{pythontexcode}
 
 \mystdout
@@ -159,25 +166,28 @@ with current_registry(Registry()):
 \subsection{Nested stages}
 
 In the previous sections we used a global
-\pref{Registry}{pylightnix.types.Registry} object to register stages. Another way
-of combining stages together is to wrap them with an umbrella stage covering the
-whole experiment.
+\pref{Registry}{pylightnix.types.Registry} object to register stages. Another
+way of combining stages together is to wrap them with an umbrella stage
+describing the whole experiment.
 
 \begin{pythontexcode}
-def stage_all(r:Registry):
-  ds=stage_params(r)
-  cl=stage_anneal(ds,r)
-  vis=stage_plot(cl,r)
+def stage_all(r:Registry)->DRef:
+  ds = stage_params(r)
+  cl = stage_anneal(r,ref_params=ds)
+  vis = stage_plot(r,ref_anneal=cl)
   return vis
 \end{pythontexcode}
 
-We may pass the top-level stage directly to \texttt{instantiate}
+As you can see, the umbrella stage is a regular Python function which takes a
+\texttt{Registry} and returns a \texttt{DRef}.
+
+Now we may pass the top-level stage directly to \texttt{instantiate}
 which would call it with a local disposable Registry.
 
 \begin{pythontexcode}
-rref_all=realize1(instantiate(stage_all))
-assert rref_all==rref
-print(rref_all)
+rref_2 = realize1(instantiate(stage_all))
+assert rref_2==rref
+print(rref_2)
 \end{pythontexcode}
 
 \mystdout
@@ -237,8 +247,8 @@ def match_min(S, rrefs:List[RRef])->List[RRef]:
 
 def stage_all2(r:Registry):
   ds=stage_params(r)
-  cl=redefine(stage_anneal, new_matcher=match_min)(ds,r=r)
-  vis=stage_plot(cl,r)
+  cl=redefine(stage_anneal, new_matcher=match_min)(r=r,ref_params=ds)
+  vis=stage_plot(r,ref_anneal=cl)
   return vis
 
 rref_best=realize1(instantiate(stage_all2,S=Sb))
