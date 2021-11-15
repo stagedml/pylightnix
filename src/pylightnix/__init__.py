@@ -31,3 +31,4 @@ except ImportError:
   from setuptools_scm import get_version
   from os.path import join
   __version__ = get_version(root=join('..','..'), relative_to=__file__)
+

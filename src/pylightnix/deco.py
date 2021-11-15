@@ -64,8 +64,7 @@ def autodrv_(kwargs:dict,
   matcher_=match_latest(nouts) if matcher is None else matcher
   def _deco(f:Callable[...,None]):
     r:Optional[Registry]=kwargs['r']
-    assert r is not None, "One of arguments should have type Registry"
-    cfg={k:v for k,v in kwargs.items()}
+    cfg={k:v for k,v in kwargs.items() if k!="r"}
     cfg["__source__"]=pyobjhash([f]+sourcedeps)
     def _make(b:Build):
       assert b.outpaths is not None
@@ -97,7 +96,7 @@ def autostage_(nouts:int=1,
                sourcedeps:List[Any]=[],
                **decokw):
   def _deco(f:Callable[...,None])->Callable[...,DRef]:
-    def _stage(r:Registry,**stagekw)->DRef:
+    def _stage(r:Optional[Registry]=None,**stagekw)->DRef:
       args:Dict[str,Any]={'r':r}
       args.update(decokw)
       args.update(stagekw)
