@@ -15,6 +15,8 @@ from pylightnix.utils import (pyobjhash, isrefpath, isselfpath, isdref,
                               traverse_dict)
 
 class Attrs:
+  """ A class for proxy objects where realization config parameters are set as
+  attributs. """
   pass
 
 def unroll(ctx:Context, dref:DRef, b:Optional[Build], rindex:int,
@@ -110,6 +112,24 @@ def autostage_(nouts:int=1,
 
 
 def autostage(*args,sourcedeps=[],**kwargs):
+  """ Builds the pylightnix [Stage](#pylightnix.types.Stage) out of Python
+  function. The decorator arguments form stage
+  [Configuration](#pylightnix.types.Config) according to the rules explained in
+  table below.
+
+  |Argument in decorator|Type in decorator|Argument in function|Type in function| Comment      |
+  |:-----------:|:-----------:|:------------:|:-------------:|:---|
+  | `r` | `Optional[Registry]`  | - | - | [Registry](#pylightnix.types.Registry) to register this stage in |
+  | `sourcedeps` | `List[Any]` | - | - | List of arbitrary Python objects to track by source |
+  | `matcher` | `Matcher` | - | - | [Matcher](#pylightnix.types.Matcher) to set instead of the default one. |
+  | `always_multiref` | `bool` | - | - | Set to `True` to represent dependencies as lists even if they include only one matched realization. |
+  | `name` | `str` | `name` | `str` | Argument named `name` (if any) is also used as a part of the realization name on disk |
+  | x | `[selfref,str,...]`  | x | `str` | A promise to produce a file or folder |
+  | x | `DRef` | x | `Attrs` or `List[Attrs]` or `RRef` or `List[RRef]` | [Attrs](#pylightnix.deco.Attrs) with attributs of parent realization(s) or raw [Realization references](#pylightnix.types.RRef) |
+  | x | t | x | t | JSON-compatible types (`bool`,`int`,`float`,`str`,lists and dicts of thereof) - are passed without changes |
+  | - | - | `build` | `Build` | [Build](#pylightnix.types.Build) context for current stage
+
+  """
   def _deco(f:Callable[...,None])->Callable[...,DRef]:
     @autostage_(*args,sourcedeps=[f]+sourcedeps,**kwargs) # type:ignore
     def _fn(build,arglist):

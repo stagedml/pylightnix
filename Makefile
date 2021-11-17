@@ -30,7 +30,7 @@ TESTS = $(shell find tests -name '*\.py')
 		--modules \
 			pylightnix.types pylightnix.core pylightnix.build \
 			pylightnix.repl pylightnix.stages pylightnix.bashlike pylightnix.lens \
-			pylightnix.either pylightnix.arch \
+			pylightnix.either pylightnix.arch pylightnix.deco \
 		--search-path \
 			$(shell python3 -c "import sys; print(' '.join(sys.path))") >$@  # "
 

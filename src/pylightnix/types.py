@@ -77,8 +77,10 @@ class DRef(str):
   pass
 
 class RRef(str):
-  """ `RRef` stands for *realization reference*. It identifies the collection of
-  artifacts of a [Stage](#pylightnix.types.Stage).
+  """ `RRef` stands for *Realization Reference*. RRefs identify collections of
+  artifacts of a [Stage](#pylightnix.types.Stage). Stages with non-determenistic
+  realizers may have several competing realization instances. Every such
+  instance is identified by a unique RRef.
 
   The format of realization reference is `<HashPart0>-<HashPart1>-<Name>`,
   where:
@@ -87,12 +89,15 @@ class RRef(str):
   - `<HashPart1>-<Name>` forms valid [DRef](#pylightnix.types.DRef) which
     this realizaion was [realized](#pylightnix.core.realize1) from.
 
-  Realization reference is obtained from the process called
-  [realization](#pylightnix.core.realize1).
+  Realization reference is created during the
+  [realization](#pylightnix.core.realize1) process .
 
   Valid realization references may be dereferenced down to system paths of
   *build artifacts* by calling [rref2path](#pylightnix.core.rref2path) or by
-  using [lenses](#pyligntix.lens.Lens). """
+  using [lenses](#pyligntix.lens.Lens).
+
+  [Autostage](#pylightnix.deco.autostage) decorator unwraps RRefs of parent
+  stages into [Attrs](#pylightnix.deco.Attrs) objects."""
   pass
 
 class Name(str):
@@ -164,17 +169,17 @@ InstantiateArg=Dict[str,Any]
 #: Type of user-defined arguments to pass to the Realizer
 RealizeArg=Dict[str,Any]
 
-#: Matchers are user-defined Python functions with fixed signature. They serve
-#: two purposes:
-#: 1. Decide whether to launch a new realization or re-use existing
-#:    realizations.
-#: 2. Filter a matched subset of a realization groups out of the set of
+#: Matchers are user-defined Python functions with the fixed signature. They
+#: serve two purposes:
+#: 1. Decide whether to launch a new realization or re-use the results of
+#:    realizations completed earlier.
+#: 2. Filter a subset of a realizations to depend on out of the set of
 #:    available realizations.
 #:
 #: Matchers answer 'yes' to the first question by returning None. Non-none value
-#: specifies the matched set of groups.
+#: specifies the matched set of realizations.
 #:
-#: Matcher invariants are:
+#: The Matcher's invariants are:
 #:
 #: - Matcher outputs should only depend on the immutable realizations passed to
 #:   them as inputs. Matchers should avoid having side-effects.

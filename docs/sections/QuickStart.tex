@@ -52,10 +52,8 @@ node has the following attributes:
 
 \subsubsection{Parameter stage}
 
-% \pref{Registry}{pylightnix.types.Registry}
-
-The shortest way of defining Stages is to wrap a future-realizer function into
-an \texttt{autostage} decorator.
+The shortest way of defining Stages is to wrap a future-realizer function with
+the \pref{autostage}{pylightnix.deco.autostage} decorator.
 
 \begin{pythontexcode}
 @autostage(name='params',
@@ -64,9 +62,10 @@ def stage_params(build:Build, name:str, out:str)->DRef:
   np.save(out, (2, 3, 7, 8, 9, 10, 44, -1, 2, 26, 1, -2, 0.5))
 \end{pythontexcode}
 
-The decorator accepts an arbitrary number of parameters which define
-pre-requisites for the stage. It will pass most of them to the wrapped realizer
-function, but change some types according to the rules explained below.
+The decorator accepts an arbitrary number of parameters which together form the
+set of pre-requisites for our stage. The decorator passes most of them to the
+wrapped function, but it changes some types according to the rules explained
+below and in the decorator's reference.
 
 In the above code the \texttt{selfref} list of strings named \texttt{out}
 is automatically translated to a system path with the same name. Upon the
