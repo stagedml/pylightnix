@@ -112,7 +112,7 @@ def autostage_(nouts:int=1,
 
 
 def autostage(*args,sourcedeps=[],**kwargs):
-  """ Builds the pylightnix [Stage](#pylightnix.types.Stage) out of Python
+  """ Builds a Pylightnix [Stage](#pylightnix.types.Stage) out of Python
   function. The decorator arguments form stage
   [Configuration](#pylightnix.types.Config) according to the rules explained in
   table below.
