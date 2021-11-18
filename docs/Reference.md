@@ -3295,10 +3295,11 @@ def autostage_(nouts: int = 1, matcher: Optional[Matcher] = None, always_multire
 def autostage(args, *,, ,, =, ,, kwargs)
 ```
 
-Builds a Pylightnix [Stage](#pylightnix.types.Stage) out of Python
-function. The decorator arguments form stage
-[Configuration](#pylightnix.types.Config) according to the rules explained in
-table below.
+Builds a Pylightnix [Stage](#pylightnix.types.Stage) out of a Python
+function. The decorator's arguments form the
+[Configuration](#pylightnix.types.Config) of a stage. After that, they go
+throw the certain transformations and finally appear as the inner function's
+arguments. The transformation rules are explained in the table below.
 
 |Argument in decorator|Type in decorator|Argument in function|Type in function| Comment      |
 |:-----------:|:-----------:|:------------:|:-------------:|:---|
