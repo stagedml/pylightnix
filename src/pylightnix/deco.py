@@ -115,7 +115,7 @@ def autostage(*args,sourcedeps=[],**kwargs):
   """ Builds a Pylightnix [Stage](#pylightnix.types.Stage) out of a Python
   function. The decorator's arguments form the
   [Configuration](#pylightnix.types.Config) of a stage. After that, they go
-  throw the certain transformations and finally appear as the inner function's
+  through the certain transformations and finally appear as the inner function's
   arguments. The transformation rules are explained in the table below.
 
   |Argument in decorator|Type in decorator|Argument in function|Type in function| Comment      |
