@@ -118,7 +118,8 @@ def autostage(*args,sourcedeps=[],**kwargs):
   through the certain transformations and finally appear as the inner function's
   arguments. The transformation rules are explained in the table below.
 
-  |Argument in decorator|Type in decorator|Argument in function|Type in function| Comment      |
+  |Argument name in decorator|Argument type in decorator|Argument name in
+  function| Argument type in function| Comment      |
   |:-----------:|:-----------:|:------------:|:-------------:|:---|
   | `r` | `Optional[Registry]`  | - | - | [Registry](#pylightnix.types.Registry) to register this stage in |
   | `sourcedeps` | `List[Any]` | - | - | List of arbitrary Python objects to track by source |
