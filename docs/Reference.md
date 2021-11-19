@@ -595,16 +595,12 @@ Closure = NamedTuple('Closure', [('result',Any),
      ...
 ```
 
-Closure describes the realization plan of some
-[Derivation](#pylightnix.types.Derivation).
-
-The plan is represented by a sequence of
-[Derivations](#pylightnix.types.Derivation) one need to realize1 in order to
-realize1 a given target derivation.
+Closure describes the build plan for one or many
+[Derivations](#pylightnix.types.Derivation).
 
 Closures are typically obtained as a result of the
-[instantiate](#pylightnix.core.instantiate) and is typically consumed by the
-call to [realize1](#pylightnix.core.realize1) or it's analogs.
+[instantiate](#pylightnix.core.instantiate) and are consumed by the
+call to [realize](#pylightnix.core.realize) or it's analogs.
 
 <a name="pylightnix.types.Config"></a>
 ## `Config` Objects
