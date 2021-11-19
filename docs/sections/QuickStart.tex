@@ -149,7 +149,7 @@ called \pref{realization reference}{pylightnix.types.RRef}. This new reference
 points to both the original derivation and to a particular set of build results.
 
 \begin{pythontexcode}
-with current_registry(Registry()):
+with current_registry(mkregistry()):
   dref_params = stage_params()
   dref_anneal = stage_anneal(ref_params=dref_params)
   dref_plot = stage_plot(ref_anneal=dref_anneal)

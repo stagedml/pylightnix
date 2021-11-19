@@ -130,6 +130,9 @@ def mkSS(root:str, stordir:Optional[str]=None, tmpdir:Optional[str]=None
                          Path(stordir) if stordir else None,
                          Path(tmpdir) if tmpdir else None)
 
+def mkregistry(S:Optional[StorageSettings]=None)->Registry:
+  return Registry(tlstorage(S))
+
 def setstorage(S:Optional[StorageSettings])->Optional[StorageSettings]:
   global TL
   old=getattr(TL,'storage',None)
@@ -149,8 +152,10 @@ def fsinit(ss:Optional[Union[str,StorageSettings]]=None,
   """ Imperatively create the filesystem storage and temp direcory if they don't
   exist.  Default locations may be altered by `PYLIGHTNIX_STORAGE` and
   `PYLIGHTNIX_TMP` env variables. """
-  S:Optional[StorageSettings]=mkSS(Path(join(ss,'_pylightnix'))) \
-                              if isinstance(ss,str) else ss
+  P='_pylightnix'
+  S:Optional[StorageSettings]=\
+    mkSS(Path(join(ss,P) if not ss.endswith(P) else ss)) \
+    if isinstance(ss,str) else ss
   if remove_existing:
     dirrm(fsstorage(S))
     dirrm(fstmpdir(S))
@@ -743,7 +748,7 @@ def instantiate(stage:Union[_A,Callable[...,Any]], # <-- [*]
   # FIXME: mypy can't typecheck _A in place of Any for some reason [*]
   r=tlregistry(r)
   if r is None:
-    r=Registry(S)
+    r=mkregistry(S)
   else:
     if S is None:
       S=r.S

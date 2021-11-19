@@ -29,7 +29,7 @@ from pylightnix import *
 
 fsinit('_pylightnix',use_as_default=True)
 
-with current_registry(Registry()):
+with current_registry(mkregistry()):
 
   @autostage(A=100,out=[selfref,'dataset.npy'])
   def stage_dataset(build,A,out):
