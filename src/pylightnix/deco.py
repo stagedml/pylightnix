@@ -131,6 +131,20 @@ def autostage(*args,sourcedeps=[],**kwargs):
   | nouts | int | rindex | int | Number of realizations to produce for this stage in one run (defaults to 1) |
   | - | - | `build` | `Build` | [Build](#pylightnix.types.Build) context for the current stage
 
+
+  Example:
+  ``` python
+  with current_registry(Registry(S)) as r:
+    @autostage(a=42)
+    def stage1(a,build):
+      assert a==42
+    @autostage(b=33,ref_stage1=stage1())
+    def stage2(b,build,ref_stage1):
+      assert b==33
+      assert ref_stage1.a==42
+    r1=realize1(instantiate(stage2))
+    assert mklens(r1,S=S).b.val==33
+  ```
   """
   def _deco(f:Callable[...,None])->Callable[...,DRef]:
     @autostage_(*args,sourcedeps=[f]+sourcedeps,**kwargs) # type:ignore
