@@ -722,14 +722,23 @@ def instantiate(stage:Union[_A,Callable[...,Any]], # <-- [*]
                 S:Optional[StorageSettings]=None,
                 r:Optional[Registry]=None,
                 **kwargs:Any)->Tuple[_A,Closure]:
-  """ Instantiate scans a Python data object (list,dict or constant) which
-  contains [DRef](#pylightnix.types.DRef) or evaluates a
-  [Stage](#pylightnix.types.Stage) function by calling it.
+  """ Scans a Python [DRef](#pylightnix.types.DRef) container (list, dict alike)
+  or evaluates the [Stage](#pylightnix.types.Stage) function by calling it.
 
-  Returns a ready-to be realized [Closure](#pylightnix.types.Closure) formed out
-  of nested [Derivations](#pylightnix.types.Derivation).
+  Returns the [Closure](#pylightnix.types.Closure) formed out of nested
+  [Derivations](#pylightnix.types.Derivation). The closure returned is ready to
+  be [realized](#pylightnix.core.realize).
 
-  See also [realize](#pylightnix.core.realize).
+  Arguments:
+  - `stage`: `Stage` function to call or `DRef` container to scan.
+  - `r:Optional[Registry]=None`: [Registry](#pylightnix.types.Registry) to
+     register derivations in.
+  - `S:Optional[StorageSettings]=None`:
+    [StorageSettings](#pylightnix.types.StorageSettings) specifies the locations
+    of the on-disk derivation data folders. Should match `r.S` if `r` is passed.
+
+  Returns:
+  - `DRef` container holding references to the newly registered derivations.
   """
   # FIXME: mypy can't typecheck _A in place of Any for some reason [*]
   r=tlregistry(r)
