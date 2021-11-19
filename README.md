@@ -17,9 +17,7 @@ allows user to
     in the filesystem.
 -   Implement (in our terms - **realize**) the prepared computation
     plan, access the resulting artifacts. Pylightnix is able to handle
-    **non-deterministic** results of the computation. As one example, it
-    is possible to define a stage depending on best top-10 instances (in
-    a user-defined sense) of prerequisite stages.
+    **non-deterministic** results of the computation.
 -   Handle changes in the computation plan, re-use the existing
     artifacts whenever possible.
 -   Gain full control over all aspects of the cached data including the
