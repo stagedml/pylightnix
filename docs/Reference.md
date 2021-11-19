@@ -1617,10 +1617,36 @@ RealizeSeqGen = Generator[
 def realize1(closure: Union[Closure,Tuple[StageResult,Closure]], force_rebuild: Union[List[DRef],bool] = [], assert_realized: List[DRef] = [], realize_args: Dict[DRef,RealizeArg] = {}) -> RRef
 ```
 
-realize1 gets the results of building the [Stage](#pylightnix.types.Stage).
-Returns either the [matching](#pylightnix.types.Matcher) realizations
-immediately, or launches the user-defined [realization
-procedure](#pylightnix.types.Realizer).
+[Realize](#pylightnix.core.realize) a closure, assuming that it returns a
+single realization.
+
+<a name="pylightnix.core.realizeMany"></a>
+## `realizeMany()`
+
+```python
+def realizeMany(closure: Union[Closure,Tuple[StageResult,Closure]], force_rebuild: Union[List[DRef],bool] = [], assert_realized: List[DRef] = [], realize_args: Dict[DRef,RealizeArg] = {}) -> List[RRef]
+```
+
+[Realize](#pylightnix.core.realize) a closure, assuming that it returns a
+list of realizations.
+
+<a name="pylightnix.core.realize"></a>
+## `realize()`
+
+```python
+def realize(closure: Union[Closure,Tuple[StageResult,Closure]], force_rebuild: Union[List[DRef],bool] = [], assert_realized: List[DRef] = [], realize_args: Dict[DRef,RealizeArg] = {}) -> Tuple[StageResult,Closure,Context]
+```
+
+Takes the instantiated [Closure](#pylightnix.types.Closure) and evaluates
+its targets. Calls the realizers if derivation
+[matchers](#pylightnix.types.Matcher) require so.
+
+Returns the target [DRefs](#pylightnix.types.DRef), their closure, and the
+resulting [Context](#pylightnix.types.Context).
+
+See also [realize1](#pylightnix.core.realize1),
+[realizeMany](#pylightnix.core.realizeMany),
+[repl_realize](#pylightnix.repl.repl_realize)
 
 Example:
 ```python
@@ -1631,34 +1657,6 @@ def mystage(r:Registry)->DRef:
 rrefs=realize1(instantiate(mystage))
 print(mklen(rref).syspath)
 ```
-
-Pylightnix contains the following specialized alternatives to `realize1`:
-
-* [realizeMany](#pylightnix.core.realizeMany) - A version for multiple-output
-stages.
-* [repl_realize](#pylightnix.repl.repl_realize) - A REPL-friendly version.
-  version which uses a hardcoded global [Registry](#pylightnix.types.Registry).
-
-<a name="pylightnix.core.realizeMany"></a>
-## `realizeMany()`
-
-```python
-def realizeMany(closure: Union[Closure,Tuple[StageResult,Closure]], force_rebuild: Union[List[DRef],bool] = [], assert_realized: List[DRef] = [], realize_args: Dict[DRef,RealizeArg] = {}) -> List[RRef]
-```
-
-
-<a name="pylightnix.core.realize"></a>
-## `realize()`
-
-```python
-def realize(closure: Union[Closure,Tuple[StageResult,Closure]], force_rebuild: Union[List[DRef],bool] = [], assert_realized: List[DRef] = [], realize_args: Dict[DRef,RealizeArg] = {}) -> Tuple[StageResult,Closure,Context]
-```
-
-Takes the instantiated [Closure](#pylightnix.types.Closure) and returns
-its value together with the realization [Context](#pylightnix.types.Context).
-Calls the derivation realizers if their matchers require so.
-
-See also [repl_realize](#pylightnix.repl.repl_realize)
 
 <a name="pylightnix.core.realizeSeq"></a>
 ## `realizeSeq()`
