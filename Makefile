@@ -60,7 +60,7 @@ docs/Manual.pdf: $(SRC) $(TEX) ./docs/compile.sh .stamp_check
 	/bin/sh ./docs/compile.sh docs/Manual.tex
 
 .PHONY: docs
-docs: docs_manual docs_quickstart docs_reference
+docs: docs_readme docs_manual docs_quickstart docs_reference
 
 
 .PHONY: publish-quickstart
