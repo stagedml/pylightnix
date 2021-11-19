@@ -34,6 +34,17 @@ TESTS = $(shell find tests -name '*\.py')
 		--search-path \
 			$(shell python3 -c "import sys; print(' '.join(sys.path))") >$@  # "
 
+.PHONY: docs_readme
+docs_readme: README.md
+README.md: README.md.in
+	codebraid pandoc \
+		-f markdown -t markdown --no-cache --overwrite --standalone \
+		--self-contained -o $@ $< 2>&1 | tee _codebraid.log
+	! grep Traceback _codebraid.log
+	# pandoc -f markdown \
+	# 	--to=markdown-smart-simple_tables-multiline_tables-grid_tables-fenced_code_attributes-inline_code_attributes-raw_attribute-pandoc_title_block-yaml_metadata_block \
+	# 	--toc -s _tmp.md -o $@
+
 .PHONY: docs_reference dr
 docs_reference: ./docs/Reference.md
 dr: docs_reference
