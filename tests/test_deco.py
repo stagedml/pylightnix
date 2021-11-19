@@ -3,7 +3,7 @@ from typing import List, Dict, Optional, Any
 from pylightnix import (RRef, DRef, Registry, Build, autodrv, autostage, mklens,
                         realize1, instantiate, isrref, writejson, selfref,
                         isrref, isfile, readjson, realizeMany,match_latest,
-                        current_registry)
+                        current_registry, writestr)
 
 from tests.setup import (setup_storage2)
 
@@ -98,12 +98,13 @@ def test_autostage_directref1():
 def test_autostage_directref2():
   with setup_storage2('test_autostage_directref2') as S:
     r=Registry(S)
-    @autostage(a=42,r=r)
-    def stage1(a,build):
+    @autostage(a=42,out=[selfref,"out.txt"],r=r,nouts=3)
+    def stage1(a,out,rindex,build):
       assert a==111
+      writestr(out,str(rindex))
     @autostage(b=33,ref_stage1=stage1(a=111),r=r)
     def stage2(b,build,ref_stage1):
       assert b==33
-      assert ref_stage1.a==111
+      assert all(r.a==111 for r in ref_stage1)
     r1=realize1(instantiate(stage2,r=r))
     assert mklens(r1,S=S).b.val==33
