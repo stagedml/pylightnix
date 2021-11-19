@@ -128,6 +128,7 @@ def autostage(*args,sourcedeps=[],**kwargs):
   | x | `[selfref,str,...]`  | x | `str` | A promise to produce a file or folder |
   | x | `DRef` | x | `Attrs` or `List[Attrs]` or `RRef` or `List[RRef]` | [Attrs](#pylightnix.deco.Attrs) with attributs of parent realization(s) or raw [Realization references](#pylightnix.types.RRef) |
   | x | t | x | t | JSON-compatible arguments (`bool`,`int`,`float`,`str`,lists and dicts of thereof) are passed without changes |
+  | nouts | int | rindex | int | Number of realizations to produce for this stage in one run (defaults to 1) |
   | - | - | `build` | `Build` | [Build](#pylightnix.types.Build) context for the current stage
 
   """
