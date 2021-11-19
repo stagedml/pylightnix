@@ -814,22 +814,39 @@ StageResult = Union[DRef,List[DRef],Dict[Any,DRef],Tuple[DRef,...]]
 Stage = Callable[...,StageResult]
 ```
 
-Functions with the `Stage` signature are the top-level building blocks of
-Pylightnix. Stage functions call [mkdrv](#pylightnix.core.mkdrv) and each
-other to produce linked [Derivations](#pylightnix.types.Derivation) and
-register them in the [Registry](#pylightnix.types.Registry).
+Pylightnix `Stage` is a signature of a Python function which creates a
+[Derivations](#pylightnix.types.Derivation) object and registers it in a
+[Registry](#pylightnix.types.Registry).
 
-Some built-in stages are:
+Stages are the top-level building blocks of Pylightnix.
+
+Normally, stage functions create derivations by calling
+[mkdrv](#pylightnix.core.mkdrv) one or many times and returning a
+[StageResult](#pylightnix.types.StageResult) value which is a name for
+a container holding one or many [DRefs](#pylightnix.types.DRef)
+
+A stage `A` may be set to depend on another stage `B` by including the
+[DRefs](#pylightnix.types.DRef) of `B` into the configuration part of the
+`A`'s derivation.
+
+In order to run the registered stage(s), user has to pass the collectoin of
+DRefs to be realized to [instantiate](#pylightnix.core.instantiate) followed
+by the call to [realize](#pylightnix.core.realize) functions.
+
+[autostage](#pylightnix.deco.autostage) decorator turns a Python function
+into a Pylightnix stage.
+
+Pylightnix defines a number of built-in stages:
 - [mknode](#pylightnix.stages.trivial.mknode)
 - [mkfile](#pylightnix.stages.trivial.mkfile)
 - [fetchurl](#pylightnix.stages.fetchurl.fetchurl)
 
-Note: Real stages often accept additional custom arguments which AFAIK
-couldn't be handled by the simple MyPy. In a somewhat extended MyPy the Stage
-definition would look like:
+A note on typing: Real stages often accept additional custom arguments which
+AFAIK couldn't be handled by the simple MyPy. In a somewhat extended MyPy the
+Stage definition would look like:
 
 ```Python
-Stage = Callable[[Registry,VarArg(Any),KwArg(Any)],DRef]
+Stage = Callable[[Registry,VarArg(Any),KwArg(Any)],StageResult]
 ```
 
 Stage's return value is a [derivation reference](#pylightnix.types.DRef)
@@ -1565,14 +1582,23 @@ _A = TypeVar('_A')
 def instantiate(stage: Union[_A,Callable[...,Any]], args: Any, *,, ,, =, ,, =, ,, kwargs: Any) -> Tuple[_A,Closure]
 ```
 
-Instantiate scans a Python data object (list,dict or constant) which
-contains [DRef](#pylightnix.types.DRef) or evaluates a
-[Stage](#pylightnix.types.Stage) function by calling it.
+Scans a Python [DRef](#pylightnix.types.DRef) container (list, dict alike)
+or evaluates the [Stage](#pylightnix.types.Stage) function by calling it.
 
-Returns a ready-to be realized [Closure](#pylightnix.types.Closure) formed out
-of nested [Derivations](#pylightnix.types.Derivation).
+Returns the [Closure](#pylightnix.types.Closure) formed out of nested
+[Derivations](#pylightnix.types.Derivation). The closure returned is ready to
+be [realized](#pylightnix.core.realize).
 
-See also [realize](#pylightnix.core.realize).
+Arguments:
+- `stage`: `Stage` function to call or `DRef` container to scan.
+- `r:Optional[Registry]=None`: [Registry](#pylightnix.types.Registry) to
+   register derivations in.
+- `S:Optional[StorageSettings]=None`:
+  [StorageSettings](#pylightnix.types.StorageSettings) specifies the locations
+  of the on-disk derivation data folders. Should match `r.S` if `r` is passed.
+
+Returns:
+- `DRef` container holding references to the newly registered derivations.
 
 <a name="pylightnix.core.RealizeSeqGen"></a>
 ## `RealizeSeqGen`
