@@ -1,7 +1,9 @@
 from typing import List, Dict, Optional, Any
+
 from pylightnix import (RRef, DRef, Registry, Build, autodrv, autostage, mklens,
                         realize1, instantiate, isrref, writejson, selfref,
-                        isrref, isfile, readjson, realizeMany,match_latest)
+                        isrref, isfile, readjson, realizeMany,match_latest,
+                        current_registry)
 
 from tests.setup import (setup_storage2)
 
@@ -80,3 +82,28 @@ def test_autostage_overload():
     r1=realize1(instantiate(stage,a=33,S=S))
     assert mklens(r1,S=S).a.val==33
 
+def test_autostage_directref1():
+  with setup_storage2('test_autostage_directref1') as S:
+    with current_registry(Registry(S)) as r:
+      @autostage(a=42)
+      def stage1(a,build):
+        assert a==111
+      @autostage(b=33,ref_stage1=stage1(a=111))
+      def stage2(b,build,ref_stage1):
+        assert b==33
+        assert ref_stage1.a==111
+      r1=realize1(instantiate(stage2))
+      assert mklens(r1,S=S).b.val==33
+
+def test_autostage_directref2():
+  with setup_storage2('test_autostage_directref2') as S:
+    r=Registry(S)
+    @autostage(a=42,r=r)
+    def stage1(a,build):
+      assert a==111
+    @autostage(b=33,ref_stage1=stage1(a=111),r=r)
+    def stage2(b,build,ref_stage1):
+      assert b==33
+      assert ref_stage1.a==111
+    r1=realize1(instantiate(stage2,r=r))
+    assert mklens(r1,S=S).b.val==33
