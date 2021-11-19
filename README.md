@@ -25,7 +25,7 @@ allows user to
 -   Gain full control over all aspects of the cached data including the
     garbage-collection.
 
-``` {.python .numberLines startFrom="1"}
+``` python
 import numpy as np
 from pylightnix import *
 
