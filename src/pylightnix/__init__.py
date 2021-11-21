@@ -28,7 +28,11 @@ except ImportError as e:
 try:
   from pylightnix.version import __version__
 except ImportError:
-  from setuptools_scm import get_version
-  from os.path import join
-  __version__ = get_version(root=join('..','..'), relative_to=__file__)
-
+  try:
+    from setuptools_scm import get_version
+    from os.path import join
+    __version__ = get_version(root=join('..','..'), relative_to=__file__)
+  except Exception:
+    warning("Pylightnix failed to determine it's version. Probably you are "
+            "importing the source distribution.")
+    __version__ = None
