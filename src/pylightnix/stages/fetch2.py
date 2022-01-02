@@ -86,8 +86,8 @@ def fetchurl2(url:str,
   r=tlregistry(r)
   assert r is not None, f"The registry is required"
   tmpfetchdir=join(fstmpdir(r.S),'fetchurl2')
-  assert isabs(tmpfetchdir), (f"Expected an absolute PYLIGHTNIX_TMP path, "
-                              f"got {tmpfetchdir}")
+  # assert isabs(tmpfetchdir), (f"Expected an absolute PYLIGHTNIX_TMP path, "
+  #                             f"got {tmpfetchdir}")
 
   filename_=filename or basename(urlparse(url).path)
   assert len(filename_)>0, ("Downloadable filename shouldn't be empty. "
