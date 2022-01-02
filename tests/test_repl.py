@@ -4,8 +4,8 @@ from pylightnix import (Registry, DRef, RRef, Path, List, mklogdir, dirhash,
                         repl_realize, repl_cancel, repl_continue, repl_rref,
                         repl_build, ReplHelper, build_outpath, tryread,
                         repl_continueBuild, isrref, context_deref, rrefctx,
-                        output_validate, repl_result, repl_continueAll,
-                        repl_realize, Tuple, Closure)
+                        output_validate, repl_result, repl_rrefs,
+                        repl_realize, Tuple, Closure, rref2dref, repl_continue1)
 
 from tests.imports import (
     given, assume, example, note, settings, text, decimals, integers, rmtree,
@@ -25,8 +25,8 @@ def test_repl_basic():
     n1:DRef; n2:DRef
     def _setting(r:Registry)->List[DRef]:
       nonlocal n1,n2
-      n1 = mkstage({'a':'1'},r)
-      n2 = mkstage({'maman':n1},r)
+      n1 = mkstage({'name':'1','a':'1'},r)
+      n2 = mkstage({'name':'2','maman':n1},r)
       return [n1,n2]
 
     x:Tuple[List[DRef],Closure]=instantiate(_setting,S=S)
@@ -34,27 +34,26 @@ def test_repl_basic():
     assert repl_result(rh) is not None
     rh=repl_realize(x, force_interrupt=[n1,n2])
     assert repl_result(rh) is None
-    repl_continueAll(rh=rh)
+    repl_continue(rh=rh)
     assert repl_result(rh) is None
-    repl_continueAll(rh=rh)
+    repl_continue(rh=rh)
     res=repl_result(rh)
     assert res is not None
-    assert n1 in res
-    assert n2 in res
+    assert rref2dref(res[0][0])==n1
+    assert rref2dref(res[1][0])==n2
 
 
 def test_repl_race():
   with setup_storage2('test_repl_recursion') as S:
 
     def _setting(r:Registry)->DRef:
-      n1 = mkstage({'a':'1'},r)
-      n2 = mkstage({'maman':n1},r)
+      n1 = mkstage({'name':1,'a':'1'},r)
+      n2 = mkstage({'name':2,'maman':n1},r)
       return n2
 
     x:Tuple[DRef,Closure]=instantiate(_setting,S=S)
     rh=repl_realize(x, force_interrupt=True)
     assert repl_rref(rh) is None
-    assert rh.result is None
 
     x2:Tuple[DRef,Closure]=instantiate(_setting,S=S)
     rref2=realize1(x2) # Realize dref while repl_realizing the same dref
@@ -75,12 +74,11 @@ def test_repl_override():
 
     x:Tuple[DRef,Closure]=instantiate(_setting, S=S)
     rh=repl_realize(x, force_interrupt=[n1])
-    assert rh.result is None
     b=repl_build(rh)
     with open(join(build_outpath(b),'artifact'),'w') as f:
       f.write('777')
     assert b.outpaths is not None
-    repl_continue(output_validate(b.dref, b.outpaths, S=b.S), rh=rh)
+    repl_continue1(output_validate(b.dref, b.outpaths, S=b.S), rh=rh)
     rref=repl_rref(rh)
     assert rref is not None
 

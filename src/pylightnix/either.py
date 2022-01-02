@@ -9,9 +9,10 @@ from pylightnix.types import (Dict, List, Any, Tuple, Union, Optional, Config,
 from pylightnix.core import (assert_valid_config, drefcfg_, cfgcattrs,
                              cfghash, cfgname, context_deref,
                              assert_valid_refpath, rref2path, drefdeps1, mkdrv,
-                             realize, output_validate, fstmpdir, realize1)
+                             realize, output_validate, fstmpdir, realize1,
+                             unpack_closure_arg_)
 
-from pylightnix.utils import (readstr, writestr, readstr, tryread)
+from pylightnix.utils import (readstr, writestr, readstr, tryread, scanref_dict)
 
 # FIXME: Get rid of this dependency. Maybe we need to define core exception
 # `RealizeError`
@@ -172,12 +173,14 @@ def realizeE(closure:Closure,
   rref=realize1(closure,force_rebuild,assert_realized,realize_args)
   return either_loadR([rref],closure.S)
 
-def realizeManyE(closure:Union[Closure,Tuple[Any,Closure]],
-             force_rebuild:Union[List[DRef],bool]=[],
-             assert_realized:List[DRef]=[],
-             realize_args:Dict[DRef,RealizeArg]={})->Either[RRef]:
-  _,clo,ctx=realize(closure,force_rebuild,assert_realized,realize_args)
-  assert len(ctx.keys())==1
-  return either_loadR(list(ctx.values())[0],clo.S)
+def realizeManyE(arg:Union[Closure,Tuple[Any,Closure]],
+                 force_rebuild:Union[List[DRef],bool]=[],
+                 assert_realized:List[DRef]=[],
+                 realize_args:Dict[DRef,RealizeArg]={})->Either[RRef]:
+  result,closure=unpack_closure_arg_(arg)
+  drefs,rrefs=scanref_dict({0:result})
+  assert len(drefs)==1
+  _,clo,ctx=realize(arg,force_rebuild,assert_realized,realize_args)
+  return either_loadR(ctx[drefs[0]],clo.S)
 
 

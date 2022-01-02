@@ -19,24 +19,27 @@ the REPL's main loop. At this point user could alter the state of the whole
 system.  Finally, `repl_continue` or `repl_cancel` could be called to either
 continue or cancel the realization.
 """
+from pylightnix.imports import (deepcopy)
 
-from pylightnix.utils import ( dirrm, timestring, concat )
+from pylightnix.utils import ( dirrm, timestring, concat, scanref_dict,
+                              traverse_dict, isdref )
 
 from pylightnix.types import (Dict, Closure, Context, Derivation, RRef, DRef,
                               List, Tuple, Optional, Generator, Path, Build,
                               Union, Any, BuildArgs, RealizeArg, SPath,
-                              StorageSettings)
+                              StorageSettings, StageResult)
 
-from pylightnix.core import (realizeSeq, RealizeSeqGen, mkrealization)
+from pylightnix.core import (realizeSeq, RealizeSeqGen, mkrealization,
+                             unpack_closure_arg_)
 
 class ReplHelper:
-  def __init__(self, gen:RealizeSeqGen)->None:
+  def __init__(self, gen:RealizeSeqGen, result:StageResult)->None:
     self.gen:Optional[RealizeSeqGen]=gen
     self.S:Optional[StorageSettings]=None
     self.dref:Optional[DRef]=None
     self.context:Optional[Context]=None
     self.drv:Optional[Derivation]=None
-    self.result:Optional[Context]=None
+    self.result:Optional[StageResult]=result
     self.rarg:Optional[RealizeArg]=None
 
 ERR_INVALID_RH="Neither global, nor user-defined ReplHelper is valid"
@@ -44,9 +47,10 @@ ERR_INACTIVE_RH="REPL session is not paused or was already unpaused"
 
 PYLIGHTNIX_REPL_HELPER:Optional[ReplHelper]=None
 
-def repl_continueAll(out_paths:Optional[List[Path]]=None,
-                      out_rrefs:Optional[List[RRef]]=None,
-                      rh:Optional[ReplHelper]=None)->Optional[Context]:
+def repl_continue(out_paths:Optional[List[Path]]=None,
+                  out_rrefs:Optional[List[RRef]]=None,
+                  rh:Optional[ReplHelper]=None
+                  )->Tuple[Any,Context]:
   global PYLIGHTNIX_REPL_HELPER
   if rh is None:
     rh=PYLIGHTNIX_REPL_HELPER
@@ -56,6 +60,7 @@ def repl_continueAll(out_paths:Optional[List[Path]]=None,
   assert rh.context is not None, ERR_INACTIVE_RH
   assert rh.drv is not None, ERR_INACTIVE_RH
   assert rh.S is not None, ERR_INACTIVE_RH
+  assert rh.result is not None, ERR_INACTIVE_RH
   try:
     rrefs:Optional[List[RRef]]
     if out_paths is not None:
@@ -70,19 +75,19 @@ def repl_continueAll(out_paths:Optional[List[Path]]=None,
     rh.S,rh.dref,rh.context,rh.drv,rh.rarg=rh.gen.send((rrefs,False))
   except StopIteration as e:
     rh.gen=None
-    rh.result=e.value
-  return repl_result(rh)
+    rh.context=e.value
+  assert rh.context is not None
+  return rh.result,rh.context
 
 def repl_continueMany(out_paths:Optional[List[Path]]=None,
-                  out_rrefs:Optional[List[RRef]]=None,
-                  rh:Optional[ReplHelper]=None)->Optional[List[RRef]]:
-  ctx=repl_continueAll(out_paths,out_rrefs,rh)
-  if ctx is None:
-    return None
-  assert len(ctx)==1, f"Expected a single-targeted closure"
-  return ctx[list(ctx.keys())[0]]
+                      out_rrefs:Optional[List[RRef]]=None,
+                      rh:Optional[ReplHelper]=None)->Optional[List[RRef]]:
+  res,ctx=repl_continue(out_paths,out_rrefs,rh)
+  drefs,rrefs=scanref_dict({0:res})
+  assert len(drefs)==1, f"Expected a single-targeted closure"
+  return ctx.get(drefs[0])
 
-def repl_continue(out_paths:Optional[List[Path]]=None,
+def repl_continue1(out_paths:Optional[List[Path]]=None,
                   out_rrefs:Optional[List[RRef]]=None,
                   rh:Optional[ReplHelper]=None)->Optional[RRef]:
   rrefs=repl_continueMany(out_paths,out_rrefs,rh)
@@ -92,7 +97,7 @@ def repl_continue(out_paths:Optional[List[Path]]=None,
   return rrefs[0]
 
 
-def repl_realize(closure:Union[Closure,Tuple[Any,Closure]],
+def repl_realize(arg:Union[Closure,Tuple[Any,Closure]],
                  force_interrupt:Union[List[DRef],bool]=True,
                  realize_args:Dict[DRef,RealizeArg]={})->ReplHelper:
   """
@@ -115,11 +120,7 @@ def repl_realize(closure:Union[Closure,Tuple[Any,Closure]],
   ```
   """
   # FIXME: define a Closure as a datatype and simplify the below check
-  closure_:Closure
-  if isinstance(closure,tuple) and len(closure)==2:
-    closure_=closure[1] # type:ignore
-  else:
-    closure_=closure # type:ignore
+  result,closure_=unpack_closure_arg_(arg)
   global PYLIGHTNIX_REPL_HELPER
   force_interrupt_:List[DRef]=[]
   if isinstance(force_interrupt,bool):
@@ -129,25 +130,39 @@ def repl_realize(closure:Union[Closure,Tuple[Any,Closure]],
     force_interrupt_=force_interrupt
   else:
     assert False, "Invalid argument"
-  rh=ReplHelper(realizeSeq(closure_,force_interrupt_,realize_args=realize_args))
+  rh=ReplHelper(realizeSeq(closure_,force_interrupt_,realize_args=realize_args),
+                result=result)
   PYLIGHTNIX_REPL_HELPER=rh
   assert rh.gen is not None, ERR_INACTIVE_RH
   try:
     rh.S,rh.dref,rh.context,rh.drv,rh.rarg=next(rh.gen)
   except StopIteration as e:
     rh.gen=None
-    rh.result=e.value
+    rh.context=e.value
   return rh
 
-def repl_result(rh:ReplHelper)->Optional[Context]:
-  return rh.result
+def repl_result(rh:ReplHelper)->Optional[Any]:
+  incomplete=False
+  def _visit(k,v):
+    nonlocal incomplete
+    assert rh.context is not None
+    if isdref(v):
+      if v not in rh.context:
+        incomplete=True
+        return None
+      else:
+        return rh.context[DRef(v)]
+    else:
+      return v
+  d={0:deepcopy(rh.result)}
+  traverse_dict(d,_visit)
+  return d[0] if not incomplete else None
 
 def repl_rrefs(rh:ReplHelper)->Optional[List[RRef]]:
-  ctx=repl_result(rh)
-  if ctx is None:
-    return None
-  assert len(ctx)==1
-  return ctx[list(ctx.keys())[0]]
+  assert rh.context is not None
+  drefs,rrefs=scanref_dict({0:rh.result})
+  assert len(drefs)==1
+  return rh.context.get(drefs[0])
 
 def repl_rref(rh:ReplHelper)->Optional[RRef]:
   rrefs=repl_rrefs(rh)

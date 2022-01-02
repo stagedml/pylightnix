@@ -249,8 +249,9 @@ def test_recursive_realize_with_another_registry()->None:
       r2=mkstage({'baz':mklens(rref_inner,S=S).foo.val},r)
       return [rref_inner,r2]
     _,clo=instantiate(_setup_outer,S=S)
-    rref=realize1(clo)
+    res,clo,ctx=realize(clo)
     [rref_inner,r2]=clo.result
+    rref=ctx[res[1]][0] # type:ignore
     assert rref_inner is not None
     assert len(drefdeps([rref2dref(rref)],S=S))==0
     assert len(drefdeps([rref2dref(rref_inner)],S=S))==0

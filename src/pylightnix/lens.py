@@ -254,7 +254,7 @@ class Lens:
     v=traverse(self, r)
     assert isdref(v), f"Lens {r} expected a dref, but got '{v}'"
     assert self._ctx.closure is not None
-    return Closure([v], [v], self._ctx.closure.derivations, self._ctx.S)
+    return Closure(v,[v],self._ctx.closure.derivations,self._ctx.S)
 
 
 def mklens(x:Any, o:Optional[Path]=None,

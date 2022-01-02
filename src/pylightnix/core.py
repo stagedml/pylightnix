@@ -802,11 +802,20 @@ def realizeMany(closure:Union[Closure,Tuple[StageResult,Closure]],
                 realize_args:Dict[DRef,RealizeArg]={})->List[RRef]:
   """ [Realize](#pylightnix.core.realize) a closure, assuming that it returns a
   list of realizations. """
-  _,_,ctx=realize(closure, force_rebuild, assert_realized, realize_args)
-  assert len(ctx.keys())==1, (
-    f"realizeMany expects a one-target closure")
-  rrefs=ctx[list(ctx.keys())[0]]
-  return rrefs
+  r,_,ctx=realize(closure, force_rebuild, assert_realized, realize_args)
+  assert isdref(r), f"realizeMany expects a single dref target, not {r}"
+  return ctx[DRef(r)]
+
+def unpack_closure_arg_(arg:Union[Closure,Tuple[StageResult,Closure]]
+                        )->Tuple[StageResult,Closure]:
+  closure_:Closure
+  if isinstance(arg,tuple) and len(arg)==2:
+    result_=arg[0]
+    closure_=arg[1] # type:ignore
+  else:
+    closure_=arg # type:ignore
+    result_=closure_.result
+  return (result_,closure_)
 
 
 def realize(closure:Union[Closure,Tuple[StageResult,Closure]],
@@ -818,12 +827,17 @@ def realize(closure:Union[Closure,Tuple[StageResult,Closure]],
   its targets. Calls the realizers if derivation
   [matchers](#pylightnix.types.Matcher) require so.
 
-  Returns the target [DRefs](#pylightnix.types.DRef), their closure, and the
+  Returns the target [DRefs](#pylightnix.types.DRef), optionally packed in a
+  Python structure like list or dict, the dependency
+  [Closure](#pylightnix.types.Closure) holding the complete set of derivation
+  references, and the
   resulting [Context](#pylightnix.types.Context).
 
-  See also [realize1](#pylightnix.core.realize1),
+  `realize` is the most generic version of the realization algorithm. The
+  simplified or specialized versions are [realizeU](#pylightnix.deco.realizeU),
+  [realize1](#pylightnix.core.realize1),
   [realizeMany](#pylightnix.core.realizeMany),
-  [repl_realize](#pylightnix.repl.repl_realize)
+  [repl_realize](#pylightnix.repl.repl_realize).
 
   Example:
   ```python
@@ -835,14 +849,8 @@ def realize(closure:Union[Closure,Tuple[StageResult,Closure]],
   print(mklen(rref).syspath)
   ```
   """
-  # FIXME: define a Closure as a datatype and simplify the below check
-  closure_:Closure
-  if isinstance(closure,tuple) and len(closure)==2:
-    result_=closure[0]
-    closure_=closure[1] # type:ignore
-  else:
-    closure_=closure # type:ignore
-    result_=closure_.result
+  # FIXME: define a Closure as a datatype and simplify the below line
+  result_,closure_=unpack_closure_arg_(closure)
   force_interrupt:List[DRef]=[]
   if isinstance(force_rebuild,bool):
     if force_rebuild:
@@ -918,7 +926,7 @@ def realizeSeq(closure:Closure,
         rrefs=rrefs_matched
       assert rrefs is not None
       context_acc=context_add(context_acc,dref,rrefs)
-  return {dref:context_acc[dref] for dref in target_drefs}
+  return context_acc
 
 
 def evaluate(stage, *args, **kwargs)->RRef:

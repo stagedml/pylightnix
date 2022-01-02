@@ -312,7 +312,7 @@ def scanref_dict(d:dict)->Tuple[List[DRef],List[RRef]]:
 def dicthash(d:dict)->Hash:
   """ Calculate hashsum of a Python dict. Top-level fields starting from '_' are
   ignored """
-  string="_".join(str(k)+"="+str(v) for k,v in sorted(d.items()) \
+  string="_".join(str(k)+"="+str(v) for k,v in sorted(d.items())
                   if len(k)>0 and k[0]!='_')
   return Hash(sha256(string.encode('utf-8')).hexdigest())
 

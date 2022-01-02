@@ -45,7 +45,7 @@ from pylightnix.core import (assert_valid_config, cfgcattrs,
                              assert_valid_refpath, rref2path, drefdeps1,
                              cfgdict, drefcfg, output_realizer, fstmpdir)
 
-from pylightnix.repl import (ReplHelper, repl_continue, ERR_INVALID_RH,
+from pylightnix.repl import (ReplHelper, repl_continue1, ERR_INVALID_RH,
                              ERR_INACTIVE_RH, repl_cancel)
 
 logger=getLogger(__name__)
@@ -278,7 +278,7 @@ def build_environ(b:Build, env:Optional[Any]=None)->dict:
 
 def repl_continueBuild(b:Build, rh:Optional[ReplHelper]=None)->Optional[RRef]:
   build_markstop(b)
-  return repl_continue(out_paths=b.outpaths.val if b.outpaths else [], rh=rh)
+  return repl_continue1(out_paths=b.outpaths.val if b.outpaths else [], rh=rh)
 
 
 def repl_buildargs(rh:Optional[ReplHelper]=None)->BuildArgs:

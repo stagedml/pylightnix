@@ -1,15 +1,15 @@
 from pylightnix.types import (Stage, Registry, Build, DRef, RRef, StageResult,
                               Callable, List, Optional, Any, Dict, Context,
-                              Config, Union, Path, Matcher)
+                              Config, Union, Path, Matcher, Closure, Tuple)
 from pylightnix.core import (mkdrv, mkconfig, match_latest, instantiate,
                              realize, realize1, context_deref,
                              context_derefpath, drefcfg, rref2dref,
-                             rrefpath2path)
+                             rrefpath2path, unpack_closure_arg_)
 from pylightnix.build import (build_wrapper)
 
 from pylightnix.lens import (mklens)
 
-from pylightnix.imports import dataclass, getsourcelines, join
+from pylightnix.imports import dataclass, getsourcelines, join, deepcopy
 
 from pylightnix.utils import (pyobjhash, isrefpath, isselfpath, isdref,
                               traverse_dict)
@@ -18,6 +18,7 @@ class Attrs:
   """ A class for proxy objects where realization config parameters are set as
   attributs. """
   pass
+
 
 def unroll(ctx:Context, dref:DRef, b:Optional[Build], rindex:int,
            max_depth:Optional[int]=None,
@@ -57,6 +58,41 @@ def unroll(ctx:Context, dref:DRef, b:Optional[Build], rindex:int,
   for k,v in cfg.val.items():
     setattr(attrs,k,v)
   return attrs
+
+
+def unrollR(sr:StageResult,
+            ctx:Context,
+            max_depth:Optional[int]=None,
+            always_multiref:bool=False,
+            S=None)->Any:
+  def _visit(k:Any, v:Any)->Any:
+    if isdref(v):
+      rrefs=context_deref(ctx,DRef(v))
+      acc=[]
+      for i,r in enumerate(rrefs):
+        args=unroll(ctx,DRef(v),None,0,
+                    max_depth=max_depth,
+                    always_multiref=always_multiref,
+                    S=S)
+        setattr(args,'_rref',r)
+        acc.append(args)
+      return acc[0] if len(acc)==1 and not always_multiref else acc
+    else:
+      return v
+  d={0:deepcopy(sr)}
+  traverse_dict(d,_visit)
+  return d[0]
+
+def realizeU(arg:Union[Closure,Tuple[StageResult,Closure]],
+             *args,
+             max_depth:Optional[int]=None,
+             always_multiref:bool=False,
+             **kwargs):
+  result,closure=unpack_closure_arg_(arg)
+  r,_,ctx=realize((result,closure),*args,**kwargs)
+  return unrollR(r,ctx,max_depth=max_depth,always_multiref=always_multiref,
+                 S=closure.S)
+
 
 def autodrv_(kwargs:dict,
              nouts:int=1,

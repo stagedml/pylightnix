@@ -72,12 +72,12 @@ def fetchurl2(url:str,
   Example:
   ```python
   def hello_src(r:Registry)->DRef:
-    hello_version = '2.10'
+    hello_version='2.10'
     return fetchurl2(
-      r,
       name='hello-src',
       url=f'http://ftp.gnu.org/gnu/hello/hello-{hello_version}.tar.gz',
-      sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b')
+      sha256='31e066137a962676e89f69d1b65382de95a7ef7d914b8cb956f41ea72e0f516b',
+      r=r)
 
   rref:RRef=realize1(instantiate(hello_src))
   print(rref2path(rref))
