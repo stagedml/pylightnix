@@ -102,7 +102,13 @@ def autodrv_(kwargs:dict,
   matcher_=match_latest(nouts) if matcher is None else matcher
   def _deco(f:Callable[...,None]):
     r:Optional[Registry]=kwargs['r']
-    cfg={k:v for k,v in kwargs.items() if k!="r"}
+    cfg={}
+    for k,v in kwargs.items():
+      if k!="r":
+        if callable(v):
+          cfg.update({k:v(r=r)})
+        else:
+          cfg.update({k:v})
     cfg["__source__"]=pyobjhash([f]+sourcedeps)
     def _make(b:Build):
       assert b.outpaths is not None
