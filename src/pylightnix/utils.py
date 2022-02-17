@@ -263,7 +263,7 @@ def traverse_tuple(t:tuple,mut:Mutator)->None:
     x=mut(i,t[i])
     assert x==t[i], "Can't change tuple item"
     if isinstance(t[i],list):
-      scanref_list(t[i])
+      traverse_list(t[i],mut)
     elif isinstance(t[i],dict):
       traverse_dict(t[i],mut)
     elif isinstance(t[i],tuple):
