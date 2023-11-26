@@ -22,7 +22,8 @@ from pylightnix.imports import (datetime, gmtime, timegm, join, makedirs,
     normalize, re_sub, split, json_load, find_executable, chmod, S_IWRITE,
     S_IREAD, S_IRGRP, S_IROTH, S_IXUSR, S_IXGRP, S_IXOTH, stat, ST_MODE,
     S_IWGRP, S_IWOTH, rmtree, rename, getsize, readlink, partial, copytree,
-    chain, getLogger, environ, defaultdict, PriorityQueue, getsourcelines)
+    chain, getLogger, environ, defaultdict, PriorityQueue, getsourcelines,
+    parse, dedent, ast_dump)
 
 from pylightnix.types import (Union, Hash, Path, List, Any, Optional,
                               Iterable, IO, DRef, RRef, Tuple, Callable,
@@ -155,7 +156,9 @@ def filehash(path:Path)->Hash:
 def pyobjhash(pyobjs:List[Any])->Hash:
   """ Return the hash of the Python source code of the argument objects as a
   whole, in this order. """
-  return Hash(hash(tuple(['\n'.join(getsourcelines(o)[0]) for o in pyobjs])))
+  return Hash(hash(tuple([
+    ast_dump(parse(dedent('\n'.join(getsourcelines(o)[0])))) for o in pyobjs
+  ])))
 
 def filerw(f:Path)->None:
   assert isfile(f), f"'{f}' is not a file"

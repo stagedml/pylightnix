@@ -9,7 +9,7 @@ from pylightnix.build import (build_wrapper)
 
 from pylightnix.lens import (mklens)
 
-from pylightnix.imports import dataclass, getsourcelines, join, deepcopy
+from pylightnix.imports import dataclass, getsourcelines, join, deepcopy, parse
 
 from pylightnix.utils import (pyobjhash, isrefpath, isselfpath, isdref,
                               traverse_dict)

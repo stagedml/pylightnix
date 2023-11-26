@@ -5,7 +5,8 @@ from pylightnix import (instantiate, DRef, RRef, Path, mklogdir, dirhash,
                         realize1, rref2dref, fsinit, mkconfig,
                         timestring, parsetime, traverse_dict, isrref, isdref,
                         scanref_dict, filehash, readjson, writejson, kahntsort,
-                        fstmpdir)
+                        fstmpdir, pyobjhash, getsourcelines, parse, dedent,
+                        ast_dump)
 
 from tests.imports import (given, text, isdir, isfile, join, from_regex,
                            islink, get_executable, run, dictionaries, binary,
@@ -191,4 +192,21 @@ def test_kahntsort(dags)->None:
       res=run_kahntsort(dag)
       res0=res if res0 is None else res0
       assert res==res0
+
+def test_pyobjhash()->None:
+  def _f(a, b):
+    """ A """ # With spaces
+    a = 0
+    for i in range(10):
+      acc += a
+    return acc + b
+  f1=_f
+  def _f(a,b): # type: ignore
+    """ A """ # Without spaces
+    a=0
+    for i in range(10): # Extra comment
+      acc+=a
+    return acc+b
+  f2=_f
+  assert pyobjhash([f1]) == pyobjhash([f2])
 
