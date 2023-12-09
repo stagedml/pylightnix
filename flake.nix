@@ -1,14 +1,17 @@
 {
   description = "Pylightnix flake";
 
-  inputs.nixpkgs.url = github:grwlf/nixpkgs/local12;
+  inputs = {
+    # nixpkgs.url = github:grwlf/nixpkgs/local12;
+    nixpkgs.url = "path:/home/grwlf/proj/nixcfg/nixpkgs";
+  };
 
   outputs = { self, nixpkgs }: {
 
     defaultPackage.x86_64-linux =
       with import nixpkgs { system = "x86_64-linux"; };
       let
-        python = python38;
+        python = python3;
         doCheck = true;
         version = "0.3";
       in
