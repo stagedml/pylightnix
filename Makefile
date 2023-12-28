@@ -18,8 +18,8 @@ TESTS = $(shell find tests -name '*\.py')
 	touch $@
 
 .stamp_check_codecovrc:
-	@if ! test -f '.codecovrc' ; then \
-		echo "Need '.codecovrc' file containing a codecov token." ;\
+	@if ! test -f '_codecovrc' ; then \
+		echo "The '_codecovrc' file must contain a codecov token." ;\
 		echo "Go and get it at https://codecov.io/gh/stagedml/pylightnix/settings" >&2 ;\
 		exit 1 ;\
 	fi
@@ -90,8 +90,8 @@ coverage: .coverage.xml
 	coverage report -m
 test: coverage
 
-.stamp_codecov: .stamp_check .stamp_check_codecovrc .coverage.xml .codecovrc
-	codecov --required -t `cat .codecovrc` -f $<
+.stamp_codecov: .stamp_check .stamp_check_codecovrc .coverage.xml _codecovrc
+	codecov --required -t `cat _codecovrc` -f $<
 	touch $@
 
 .PHONY: coverage-upload

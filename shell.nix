@@ -17,6 +17,7 @@ let
       hypothesis
       pytest
       pytest-mypy
+      pytest-cov
       pytest_xdist
       # Pweave
       coverage
