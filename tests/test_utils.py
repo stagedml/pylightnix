@@ -197,6 +197,7 @@ def test_pyobjhash()->None:
   def _f(a, b):
     """ A """ # With spaces
     a = 0
+    acc = 0
     for i in range(10):
       acc += a
     return acc + b
@@ -204,6 +205,7 @@ def test_pyobjhash()->None:
   def _f(a,b): # type: ignore
     """ A """ # Without spaces
     a=0
+    acc = 0
     for i in range(10): # Extra comment
       acc+=a
     return acc+b

@@ -25,6 +25,7 @@ try:
 except ImportError as e:
   error(f"{e}; Failed to import pylightnix.stages")
 
+__version__: str|None
 try:
   from pylightnix.version import __version__
 except ImportError:

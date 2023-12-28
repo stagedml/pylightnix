@@ -29,9 +29,22 @@ let
       pyqt5
       twine
 
-      pydoc-markdown
+      # (pydoc-markdown pp)
       codecov
     ]);
+
+    # pydoc-markdown = (py: py.buildPythonPackage rec {
+    #   pname = "pydoc-markdown";
+    #   version = "1.0";
+    #   propagatedBuildInputs = with py ; [ nr-utils pyyaml ];
+    #   doCheck = false; # local HTTP requests don't work
+    #   src = pkgs.fetchFromGitHub {
+    #     owner = "stagedml";
+    #     repo = pname;
+    #     rev = "0662c361b5abca6e1210f94d37c9e244862d9b3a";
+    #     sha256 = "sha256:0vd6bcbjsmw9xpnd9wv7v599d7a6fy0y5wympckip4rqdavzvswv";
+    #   };
+    # });
 
     env = pkgs.mkShell {
       name = "shell";

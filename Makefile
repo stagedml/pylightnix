@@ -6,11 +6,11 @@ TEX = $(shell find docs -name '*\.tex')
 TESTS = $(shell find tests -name '*\.py')
 
 .stamp_check: $(SRC) $(TESTS)
-	@if ! which pydoc-markdown >/dev/null 2>&1 ; then \
-		echo "pydoc-markdown not found. Please install it with"; \
-		echo "> sudo -H pip3 install git+https://github.com/stagedml/pydoc-markdown.git@develop" ;\
-		exit 1 ;\
-	fi
+	# @if ! which pydoc-markdown >/dev/null 2>&1 ; then \
+	# 	echo "pydoc-markdown not found. Please install it with"; \
+	# 	echo "> sudo -H pip3 install git+https://github.com/stagedml/pydoc-markdown.git@develop" ;\
+	# 	exit 1 ;\
+	# fi
 	@if ! which coverage >/dev/null ; then \
 		echo "coverage not found. Install it with 'sudo -H pip3 install coverage'" ;\
 		exit 1 ;\
@@ -60,7 +60,7 @@ docs/Manual.pdf: $(SRC) $(TEX) ./docs/compile.sh .stamp_check
 	/bin/sh ./docs/compile.sh docs/Manual.tex
 
 .PHONY: docs
-docs: docs_readme docs_manual docs_quickstart docs_reference
+docs: docs_readme docs_manual docs_quickstart # docs_reference
 
 
 .PHONY: publish-quickstart
@@ -76,7 +76,7 @@ publish-docs: publish-manual publish-quickstart
 
 .coverage.xml: $(SRC) $(TESTS) .stamp_check
 	rm coverage.xml || true
-	coverage run -m pytest
+	coverage run -m pytest -n 10
 	coverage xml -o $@
 	touch $@
 

@@ -1,6 +1,3 @@
 [run]
-include =
-    src/*
-
-omit =
-    src/pylightnix/tz.py
+source = src
+omit = src/pylightnix/tz.py
