@@ -74,8 +74,8 @@ publish-manual: docs/Manual.pdf
 .PHONY: publish-docs
 publish-docs: publish-manual publish-quickstart
 
-.coverage.xml: $(SRC) $(TESTS) .stamp_check
-	rm coverage.xml || true
+_coverage.xml: $(SRC) $(TESTS) .stamp_check
+	rm _coverage.xml || true
 	coverage run -m pytest -n 10
 	coverage xml -o $@
 	touch $@
@@ -86,12 +86,12 @@ typecheck:
 tc: typecheck
 
 .PHONY: coverage test
-coverage: .coverage.xml
+coverage: _coverage.xml
 	coverage report -m
 test: coverage
 
-.stamp_codecov: .stamp_check .stamp_check_codecovrc .coverage.xml _codecovrc
-	codecov --required -t `cat _codecovrc` -f $<
+.stamp_codecov: .stamp_check .stamp_check_codecovrc _coverage.xml _codecovrc
+	codecov --required -t `cat _codecovrc` -f _coverage.xml
 	touch $@
 
 .PHONY: coverage-upload
