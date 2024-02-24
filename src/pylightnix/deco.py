@@ -20,7 +20,10 @@ class Attrs:
   pass
 
 
-def unroll(ctx:Context, dref:DRef, b:Optional[Build], rindex:int,
+def unroll(ctx:Context,
+           dref:DRef,
+           b:Optional[Build],
+           rindex:int,
            max_depth:Optional[int]=None,
            always_multiref:bool=False,
            S=None)->Attrs:
