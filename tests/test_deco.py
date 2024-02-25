@@ -125,7 +125,7 @@ def test_autostage_directref2():
     r1=realize1(instantiate(stage2,r=r))
     assert mklens(r1,S=S).b.val==33
 
-def test_autostage_minimal():
+def test_autostage_argument():
   with setup_storage2(callername()) as S, current_storage(S):
     @autostage
     def stage1(a=42):
