@@ -9,7 +9,8 @@ from pylightnix.build import (build_wrapper)
 
 from pylightnix.lens import (mklens)
 
-from pylightnix.imports import dataclass, getsourcelines, join, deepcopy, parse
+from pylightnix.imports import (dataclass, getsourcelines, join, deepcopy, parse,
+                                signature, InspectParameter)
 
 from pylightnix.utils import (pyobjhash, isrefpath, isselfpath, isdref,
                               traverse_dict)
@@ -103,7 +104,7 @@ def autodrv_(kwargs:dict,
              always_multiref:bool=False,
              sourcedeps:List[Any]=[]):
   matcher_=match_latest(nouts) if matcher is None else matcher
-  def _deco(f:Callable[...,None]):
+  def _deco(f:Callable[[Build,List[Any]],None]):
     r:Optional[Registry]=kwargs['r']
     cfg={}
     for k,v in kwargs.items():
@@ -115,15 +116,15 @@ def autodrv_(kwargs:dict,
     cfg["__source__"]=pyobjhash([f]+sourcedeps)
     def _make(b:Build):
       assert b.outpaths is not None
-      acc=[]
+      arglist=[]
       for i,_ in enumerate(b.outpaths.val):
         args=unroll(b.context,b.dref,b,i,None,
                     always_multiref=always_multiref,S=b.S)
         delattr(args,'__source__')
         if nouts>1 or always_multiref:
           setattr(args,'rindex',i)
-        acc.append(args)
-      f(b,acc)
+        arglist.append(args)
+      f(b,arglist)
     return mkdrv(mkconfig(cfg),matcher_,
                  build_wrapper(_make,nouts=nouts),r=r)
   return _deco
@@ -137,7 +138,9 @@ def autodrv(*args,sourcedeps:List[Any]=[],**kwargs):
     return _fn
   return _deco
 
-def autostage_(nouts:int=1,
+def autostage_(f=None,
+               *,
+               nouts:int=1,
                matcher:Optional[Matcher]=None,
                always_multiref:bool=False,
                sourcedeps:List[Any]=[],
@@ -153,10 +156,10 @@ def autostage_(nouts:int=1,
         f(build,arglist)
       return drv
     return _stage
-  return _deco
+  return _deco if f is None else _deco(f)
 
 
-def autostage(*args,sourcedeps=[],**kwargs):
+def autostage(fn=None,*,sourcedeps=[],**kwargs):
   """ Builds a Pylightnix [Stage](#pylightnix.types.Stage) out of a Python
   function. The decorator's arguments form the
   [Configuration](#pylightnix.types.Config) of a stage. After that, they go
@@ -191,10 +194,30 @@ def autostage(*args,sourcedeps=[],**kwargs):
   ```
   """
   def _deco(f:Callable[...,None])->Callable[...,DRef]:
-    @autostage_(*args,sourcedeps=[f]+sourcedeps,**kwargs) # type:ignore
+    @autostage_(sourcedeps=[f]+sourcedeps,**kwargs) # type:ignore
     def _fn(build,arglist):
       for args in arglist:
         f(build=build,**args.__dict__)
     return _fn
-  return _deco
+  return _deco if fn is None else _deco(fn)
+
+def autostage2(fn=None,*,sourcedeps=[],**stageargs):
+  def _deco(f:Callable[...,None])->Callable[...,DRef]:
+    sig=signature(f)
+    sigargs={k:v.default for k,v in sig.parameters.items()
+             if v.default is not InspectParameter.empty}
+    stageargs.update(sigargs)
+    has_build='build' in sig.parameters.keys()
+    @autostage_(sourcedeps=[f]+sourcedeps,**stageargs) # type:ignore
+    def _stage(build,arglist):
+      for args in arglist:
+        kwargs=args.__dict__
+        for k in (kwargs.keys()-sigargs.keys()-{'rindex'}):
+          del kwargs[k]
+        if has_build:
+          kwargs.update({'build':build})
+        f(**kwargs)
+    return _stage
+  return _deco if fn is None else _deco(fn)
+
 

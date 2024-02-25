@@ -1,14 +1,15 @@
 from typing import List, Dict, Optional, Any
 
-from pylightnix import (RRef, DRef, Registry, Build, autodrv, autostage, mklens,
-                        realize1, instantiate, isrref, writejson, selfref,
-                        isrref, isfile, readjson, realizeMany,match_latest,
-                        current_registry, writestr, mkregistry)
+from pylightnix import (RRef, DRef, Registry, Build, autodrv, autostage,
+                        autostage2, mklens, realize1, instantiate, isrref,
+                        writejson, selfref, isrref, isfile, readjson,
+                        realizeMany,match_latest, current_registry, writestr,
+                        mkregistry, current_storage)
 
-from tests.setup import (setup_storage2)
+from tests.setup import (setup_storage2, callername)
 
 def test_autodrv_semnatics():
-  with setup_storage2('test_autodrv_semnatics') as S:
+  with setup_storage2(callername()) as S:
     def _stage1(r:Registry,
                 name='stage1',
                 i:int=3,
@@ -52,9 +53,24 @@ def test_autodrv_semnatics():
       acc.add(readjson(mklens(rref,S=S).out.syspath))
     assert acc==set(range(2))
 
+def test_autostage_minimal():
+  with setup_storage2(callername()) as S, current_storage(S):
+    @autostage
+    def stage1(build):
+      pass
+    rref=realize1(instantiate(stage1))
+    assert isrref(rref)
+
+def test_autostage_name():
+  with setup_storage2(callername()) as S, current_storage(S):
+    @autostage(name='foo')
+    def stage1(build,name):
+      pass
+    rref=realize1(instantiate(stage1))
+    assert mklens(rref).name.val == 'foo'
 
 def test_autostage_semantics():
-  with setup_storage2('test_autostage_semantics') as S:
+  with setup_storage2(callername()) as S:
     @autostage(a=2,b="aa",out_file=[selfref,"result.json"])
     def stage1(a,b,out_file,build:Build):
       writejson(out_file,{'field':'Haha'})
@@ -76,14 +92,14 @@ def test_autostage_overload():
   @autostage(a=42)
   def stage(a,build):
     pass
-  with setup_storage2('test_autostage_overload') as S:
+  with setup_storage2(callername()) as S:
     r1=realize1(instantiate(stage,S=S))
     assert mklens(r1,S=S).a.val==42
     r1=realize1(instantiate(stage,a=33,S=S))
     assert mklens(r1,S=S).a.val==33
 
 def test_autostage_directref1():
-  with setup_storage2('test_autostage_directref1') as S:
+  with setup_storage2(callername()) as S:
     with current_registry(mkregistry(S)) as r:
       @autostage(a=42)
       def stage1(a,build):
@@ -96,7 +112,7 @@ def test_autostage_directref1():
       assert mklens(r1,S=S).b.val==33
 
 def test_autostage_directref2():
-  with setup_storage2('test_autostage_directref2') as S:
+  with setup_storage2(callername()) as S:
     r=mkregistry(S)
     @autostage(a=42,out=[selfref,"out.txt"],r=r,nouts=3)
     def stage1(a,out,rindex,build):
@@ -108,3 +124,23 @@ def test_autostage_directref2():
       assert all(r.a==111 for r in ref_stage1)
     r1=realize1(instantiate(stage2,r=r))
     assert mklens(r1,S=S).b.val==33
+
+def test_autostage2():
+  with setup_storage2(callername()) as S, current_storage(S):
+    r=mkregistry()
+    @autostage2(nouts=3)
+    def stage1(rindex:int,a=42,out=[selfref,"out.txt"]):
+      writestr(out,str(rindex))
+    rrefs=realizeMany(instantiate(stage1,r=r,a=111))
+    assert len(rrefs)==3
+    assert all(mklens(rrefs[i]).a.val==111 for i in [0,1,2])
+
+# def test_autostage2_basic():
+#   with setup_storage2(callername()) as S, current_storage(S):
+#     @autostage2
+#     def stage1():
+#       pass
+#     rref=realize1(instantiate(stage1))
+#     assert isrref(rref)
+
+

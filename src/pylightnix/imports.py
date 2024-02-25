@@ -52,4 +52,5 @@ from inspect import getsourcelines
 from dataclasses import dataclass
 from ast import parse, dump as ast_dump
 from textwrap import dedent
+from inspect import signature, Parameter as InspectParameter
 

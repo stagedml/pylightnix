@@ -9,8 +9,10 @@ from pylightnix import (Registry, Build, Path, fsinit, DRef, Context,
                         StorageSettings, mkSS, dirrm, tlregistry)
 
 from tests.imports import (rmtree, join, makedirs, listdir, Callable,
-                           contextmanager, List, Dict,  Popen, PIPE,
-                           gettempdir, mkdtemp, remove, settings, HealthCheck)
+                           contextmanager, List, Dict,  Popen, PIPE, gettempdir,
+                           mkdtemp, remove, settings, HealthCheck,
+                           inspect_stack)
+
 
 
 settings.register_profile("pylightnix", deadline=None, print_blob=True,
@@ -110,3 +112,5 @@ def mkstageP(config:dict,
                output_realizer(_r),
                r)
 
+def callername()->str:
+   return inspect_stack()[1][3]
