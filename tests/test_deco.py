@@ -18,19 +18,19 @@ def test_autodrv_semnatics():
                 d:Dict[str,int]={"a":1,"b":2},
                 f:float=3.14,
                 out=[selfref,"file.json"])->DRef:
-      @autodrv(locals(),nouts=3)
+      @autodrv(nouts=3,**locals())
       def drv(name,i,b,l,d,f,out,build:Build,rindex):
         writejson(out,rindex)
       return drv
     def _stage2(r:Registry,ref:DRef,
                 name='stage2', p=33, out=[selfref,'out.json'])->DRef:
-      @autodrv(locals(),always_multiref=True)
+      @autodrv(always_multiref=True,**locals())
       def drv(name,p,out,ref,build,rindex):
         writejson(out,rindex)
       return drv
     def _stage3(r:Registry,ref:DRef,name='stage3',
                 out=[selfref,"out.json"])->DRef:
-      @autodrv(locals(),nouts=2)
+      @autodrv(nouts=2,**locals())
       def drv(name,ref,out,build,rindex):
         assert isrref(ref._rref)
         for n1 in range(3):

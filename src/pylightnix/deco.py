@@ -98,11 +98,12 @@ def realizeU(arg:Union[Closure,Tuple[StageResult,Closure]],
                  S=closure.S)
 
 
-def autodrv_(kwargs:dict,
+def autodrv_(*,
              nouts:int=1,
              matcher:Optional[Matcher]=None,
              always_multiref:bool=False,
-             sourcedeps:List[Any]=[]):
+             sourcedeps:List[Any]=[],
+             **kwargs):
   matcher_=match_latest(nouts) if matcher is None else matcher
   def _deco(f:Callable[[Build,List[Any]],None]):
     r:Optional[Registry]=kwargs['r']
@@ -147,11 +148,11 @@ def autostage_(f=None,
                **decokw):
   def _deco(f:Callable[...,None])->Callable[...,DRef]:
     def _stage(r:Optional[Registry]=None,**stagekw)->DRef:
-      args:Dict[str,Any]={'r':r}
-      args.update(decokw)
-      args.update(stagekw)
-      @autodrv_(args,sourcedeps=[f]+sourcedeps,nouts=nouts,matcher=matcher,
-               always_multiref=always_multiref)
+      kwargs:Dict[str,Any]={'r':r}
+      kwargs.update(decokw)
+      kwargs.update(stagekw)
+      @autodrv_(sourcedeps=[f]+sourcedeps,nouts=nouts,matcher=matcher,
+               always_multiref=always_multiref,**kwargs)
       def drv(build,arglist):
         f(build,arglist)
       return drv
