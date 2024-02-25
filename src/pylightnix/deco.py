@@ -1,6 +1,7 @@
 from pylightnix.types import (Stage, Registry, Build, DRef, RRef, StageResult,
                               Callable, List, Optional, Any, Dict, Context,
-                              Config, Union, Path, Matcher, Closure, Tuple)
+                              Config, Union, Path, Matcher, Closure, Tuple,
+                              PylightnixException)
 from pylightnix.core import (mkdrv, mkconfig, match_latest, instantiate,
                              realize, realize1, context_deref,
                              context_derefpath, drefcfg, rref2dref,
@@ -103,10 +104,10 @@ def autodrv_(*,
              matcher:Optional[Matcher]=None,
              always_multiref:bool=False,
              sourcedeps:List[Any]=[],
+             r:Optional[Registry]=None,
              **kwargs):
   matcher_=match_latest(nouts) if matcher is None else matcher
   def _deco(f:Callable[[Build,List[Any]],None]):
-    r:Optional[Registry]=kwargs['r']
     cfg={}
     for k,v in kwargs.items():
       if k!="r":
@@ -130,6 +131,31 @@ def autodrv_(*,
                  build_wrapper(_make,nouts=nouts),r=r)
   return _deco
 
+
+def wrapsig(f, extargs):
+  sig=signature(f)
+  args={k:v.default for k,v in sig.parameters.items()
+        if v.default is not InspectParameter.empty}
+  cm=set.intersection(set(args.keys()), set(extargs.keys()))
+  if len(cm)>0:
+    raise PylightnixException(f"Conflicting arguments: {cm}")
+  args.update(extargs)
+  accepts_build='build' in sig.parameters
+  accepts_rindex='rindex' in sig.parameters
+  def _call(build,args):
+    args2={}
+    for k in args.keys():
+      if k in sig.parameters:
+        args2[k]=args[k]
+    if accepts_build:
+      args2.update({'build':build})
+    if accepts_rindex:
+      assert 'rindex' in args, args
+      args2.update({'rindex':args['rindex']})
+    return f(**args2)
+  return args,_call
+
+
 def autodrv(*args,sourcedeps:List[Any]=[],**kwargs):
   def _deco(f:Callable[...,None])->Callable[...,DRef]:
     @autodrv_(*args,sourcedeps=[f]+sourcedeps,**kwargs) # type:ignore
@@ -145,14 +171,16 @@ def autostage_(f=None,
                matcher:Optional[Matcher]=None,
                always_multiref:bool=False,
                sourcedeps:List[Any]=[],
+               r:Optional[Registry]=None,
                **decokw):
-  def _deco(f:Callable[...,None])->Callable[...,DRef]:
+  r2=r
+  def _deco(f:Callable[[Build,List[Any]],None])->Callable[...,DRef]:
     def _stage(r:Optional[Registry]=None,**stagekw)->DRef:
-      kwargs:Dict[str,Any]={'r':r}
+      kwargs:Dict[str,Any]={}
       kwargs.update(decokw)
       kwargs.update(stagekw)
       @autodrv_(sourcedeps=[f]+sourcedeps,nouts=nouts,matcher=matcher,
-               always_multiref=always_multiref,**kwargs)
+               always_multiref=always_multiref,r=(r or r2),**kwargs)
       def drv(build,arglist):
         f(build,arglist)
       return drv
@@ -160,7 +188,7 @@ def autostage_(f=None,
   return _deco if f is None else _deco(f)
 
 
-def autostage(fn=None,*,sourcedeps=[],**kwargs):
+def autostage(fn=None,*,sourcedeps=[],r=None,**kwargs):
   """ Builds a Pylightnix [Stage](#pylightnix.types.Stage) out of a Python
   function. The decorator's arguments form the
   [Configuration](#pylightnix.types.Config) of a stage. After that, they go
@@ -183,11 +211,11 @@ def autostage(fn=None,*,sourcedeps=[],**kwargs):
   Example:
   ``` python
   with current_registry(Registry(S)) as r:
-    @autostage(a=42)
-    def stage1(a,build):
+    @autostage
+    def stage1(a=42):
       assert a==42
-    @autostage(b=33,ref_stage1=stage1())
-    def stage2(b,build,ref_stage1):
+    @autostage(ref_stage1=stage1())
+    def stage2(build,b=33,ref_stage1=stage1()):
       assert b==33
       assert ref_stage1.a==42
     r1=realize1(instantiate(stage2))
@@ -195,30 +223,12 @@ def autostage(fn=None,*,sourcedeps=[],**kwargs):
   ```
   """
   def _deco(f:Callable[...,None])->Callable[...,DRef]:
-    @autostage_(sourcedeps=[f]+sourcedeps,**kwargs) # type:ignore
+    kwargs2,f2=wrapsig(f,kwargs)
+    @autostage_(sourcedeps=[f]+sourcedeps,r=r,**kwargs2) # type:ignore
     def _fn(build,arglist):
       for args in arglist:
-        f(build=build,**args.__dict__)
+        f2(build,args.__dict__)
     return _fn
-  return _deco if fn is None else _deco(fn)
-
-def autostage2(fn=None,*,sourcedeps=[],**stageargs):
-  def _deco(f:Callable[...,None])->Callable[...,DRef]:
-    sig=signature(f)
-    sigargs={k:v.default for k,v in sig.parameters.items()
-             if v.default is not InspectParameter.empty}
-    stageargs.update(sigargs)
-    has_build='build' in sig.parameters.keys()
-    @autostage_(sourcedeps=[f]+sourcedeps,**stageargs) # type:ignore
-    def _stage(build,arglist):
-      for args in arglist:
-        kwargs=args.__dict__
-        for k in (kwargs.keys()-sigargs.keys()-{'rindex'}):
-          del kwargs[k]
-        if has_build:
-          kwargs.update({'build':build})
-        f(**kwargs)
-    return _stage
   return _deco if fn is None else _deco(fn)
 
 

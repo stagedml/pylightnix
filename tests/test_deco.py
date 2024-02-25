@@ -1,10 +1,10 @@
 from typing import List, Dict, Optional, Any
 
-from pylightnix import (RRef, DRef, Registry, Build, autodrv, autostage,
-                        autostage2, mklens, realize1, instantiate, isrref,
-                        writejson, selfref, isrref, isfile, readjson,
-                        realizeMany,match_latest, current_registry, writestr,
-                        mkregistry, current_storage)
+from pylightnix import (RRef, DRef, Registry, Build, autodrv, autostage, mklens,
+                        realize1, instantiate, isrref, writejson, selfref,
+                        isrref, isfile, readjson, realizeMany,match_latest,
+                        current_registry, writestr, mkregistry, current_storage,
+                        isrefpath, isdref)
 
 from tests.setup import (setup_storage2, callername)
 
@@ -125,22 +125,41 @@ def test_autostage_directref2():
     r1=realize1(instantiate(stage2,r=r))
     assert mklens(r1,S=S).b.val==33
 
-def test_autostage2():
+def test_autostage_minimal():
   with setup_storage2(callername()) as S, current_storage(S):
-    r=mkregistry()
-    @autostage2(nouts=3)
-    def stage1(rindex:int,a=42,out=[selfref,"out.txt"]):
+    @autostage
+    def stage1(a=42):
+      assert a==42
+    dref:DRef
+    dref,clo=instantiate(stage1)
+    assert isdref(dref)
+    assert mklens(dref).a.val==42
+    rref=realize1((dref,clo))
+    assert isrref(rref)
+    assert mklens(rref).a.val==42
+
+def test_autostage_parse_signature_nouts():
+  with setup_storage2(callername()) as S, current_storage(S):
+    @autostage(nouts=2)
+    def stage1(rindex,a=42,b=3,out=[selfref,"out.txt"]):
+      assert b==3
+      assert a==111
+      assert isinstance(out,str) and out.endswith('out.txt')
       writestr(out,str(rindex))
-    rrefs=realizeMany(instantiate(stage1,r=r,a=111))
-    assert len(rrefs)==3
-    assert all(mklens(rrefs[i]).a.val==111 for i in [0,1,2])
+    rrefs=realizeMany(instantiate(stage1,a=111))
+    assert len(rrefs)==2
+    assert all(isrref(r) for r in rrefs)
 
-# def test_autostage2_basic():
-#   with setup_storage2(callername()) as S, current_storage(S):
-#     @autostage2
-#     def stage1():
-#       pass
-#     rref=realize1(instantiate(stage1))
-#     assert isrref(rref)
-
+def test_autostage_parse_signature_drefs():
+  with setup_storage2(callername()) as S, current_storage(S):
+    @autostage
+    def stage1(a=42):
+      pass
+    @autostage
+    def stage2(b=33, s1=lambda r:stage1(a=141,r=r)):
+      pass
+    rref=realize1(instantiate(stage2,b=111))
+    assert isrref(rref)
+    assert mklens(rref).b.val==111
+    assert mklens(rref).s1.a.val==141
 
