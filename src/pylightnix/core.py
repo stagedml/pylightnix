@@ -764,6 +764,8 @@ def instantiate(stage:Union[_A,Callable[...,Any]], # <-- [*]
     if callable(stage):
       result=stage(*args,r=r,**kwargs)
     else:
+      # FIXME: Put `assert isdref(stage)` and check
+      # assert isdref(stage)
       result=stage
   finally:
     r.in_instantiate=False
