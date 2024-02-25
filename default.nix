@@ -1,4 +1,4 @@
-{ nixpkgs ?  import <nixpkgs> {}
+{ pkgs ?  import <nixpkgs> {}
 , src ? builtins.filterSource (
         path: type: !( baseNameOf path == "build" && type == "directory" ) &&
                     !( baseNameOf path == "dist" && type == "directory" ) &&
@@ -8,13 +8,13 @@
 
 let
 
-  python = nixpkgs.python3;
+  python = pkgs.python3;
 
   local = rec {
 
-    inherit (nixpkgs) atool curl wget git;
+    inherit (pkgs) atool curl wget git;
 
-    python-dev = nixpkgs.python3.withPackages (
+    python-dev = pkgs.python3.withPackages (
       pp: let
         pylsp = pp.python-lsp-server;
         pylsp-mypy = pp.pylsp-mypy.override { python-lsp-server=pylsp; };
@@ -73,9 +73,9 @@ let
       doCheck = true;
     };
 
-    shell = nixpkgs.mkShell {
+    shell = pkgs.mkShell {
       name = "shell";
-      buildInputs = with nixpkgs; [
+      buildInputs = with pkgs; [
         gnumake
         cloc
         python-dev
@@ -92,7 +92,7 @@ let
         )
       ];
 
-      shellHook = with nixpkgs; ''
+      shellHook = with pkgs; ''
         export PYTHONPATH=`pwd`/src:$PYTHONPATH
         export MYPYPATH=`pwd`/src:`pwd`/tests
         export QT_QPA_PLATFORM_PLUGIN_PATH=`echo ${qt5.qtbase.bin}/lib/qt-*/plugins/platforms/`
