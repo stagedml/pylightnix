@@ -148,7 +148,7 @@ def setregistry(r:Optional[Registry])->Optional[Registry]:
 def fsinit(ss:Optional[Union[str,StorageSettings]]=None,
            check_not_exist:bool=False,
            remove_existing:bool=False,
-           use_as_default:bool=False)->None:
+           use_as_default:bool=True)->None:
   """ Imperatively create the filesystem storage and temp direcory if they don't
   exist.  Default locations may be altered by `PYLIGHTNIX_STORAGE` and
   `PYLIGHTNIX_TMP` env variables. """
@@ -592,7 +592,7 @@ def mkcontext()->Context:
 def context_eq(a:Context,b:Context)->bool:
   return json_dumps(a)==json_dumps(b)
 
-def context_add(ctx:Context, dref:DRef, rrefs:List[RRef])->Context:
+def context_add(ctx:Context, dref:DRef, rrefs:Optional[List[RRef]])->Context:
   """ Add a pair `(dref,rrefs)` into a context `ctx`. `rrefs` are supposed to
   form (a subset of) the realizations of `dref`.
   Return a new context. """
@@ -601,7 +601,7 @@ def context_add(ctx:Context, dref:DRef, rrefs:List[RRef])->Context:
     f"different realization.\n"
     f" * Old realization: {ctx[dref]}\n"
     f" * New realization: {rrefs}\n")
-  return dict(sorted([(dref,list(sorted(rrefs)))]+list(ctx.items())))
+  return dict(sorted([(dref,list(sorted(rrefs)) if rrefs else None)]+list(ctx.items())))
 
 def context_deref(context:Context, dref:DRef)->List[RRef]:
   """ TODO: Should it return Output (aka `UniformList`) rather than Python list?
@@ -779,9 +779,11 @@ RealizeSeqGen = Generator[
 
 
 def realize1(closure:Union[Closure,Tuple[StageResult,Closure]],
-            force_rebuild:Union[List[DRef],bool]=[],
-            assert_realized:List[DRef]=[],
-            realize_args:Dict[DRef,RealizeArg]={})->RRef:
+             force_rebuild:Union[List[DRef],bool]=[],
+             assert_realized:List[DRef]=[],
+             realize_args:Dict[DRef,RealizeArg]={},
+             dry_run:bool=False,
+             )->RRef:
   """ [Realize](#pylightnix.core.realize) a closure, assuming that it returns a
   single realization. """
 
@@ -790,7 +792,7 @@ def realize1(closure:Union[Closure,Tuple[StageResult,Closure]],
   # FIXME: Update derivation's matcher after forced rebuilds. Matchers should
   # remember and reproduce user's preferences.
   rrefs=realizeMany(closure, force_rebuild,
-                    assert_realized, realize_args)
+                    assert_realized, realize_args, dry_run)
   assert len(rrefs)==1, (
     f"`realize1` is to be used with a single-output derivation. "
     f"The current target has {len(rrefs)} outputs:\n{rrefs}\n"
@@ -801,10 +803,12 @@ def realize1(closure:Union[Closure,Tuple[StageResult,Closure]],
 def realizeMany(closure:Union[Closure,Tuple[StageResult,Closure]],
                 force_rebuild:Union[List[DRef],bool]=[],
                 assert_realized:List[DRef]=[],
-                realize_args:Dict[DRef,RealizeArg]={})->List[RRef]:
+                realize_args:Dict[DRef,RealizeArg]={},
+                dry_run:bool=False,
+                )->List[RRef]:
   """ [Realize](#pylightnix.core.realize) a closure, assuming that it returns a
   list of realizations. """
-  r,_,ctx=realize(closure, force_rebuild, assert_realized, realize_args)
+  r,_,ctx=realize(closure, force_rebuild, assert_realized, realize_args, dry_run)
   assert isdref(r), f"realizeMany expects a single dref target, not {r}"
   return ctx[DRef(r)]
 
@@ -823,7 +827,8 @@ def unpack_closure_arg_(arg:Union[Closure,Tuple[StageResult,Closure]]
 def realize(closure:Union[Closure,Tuple[StageResult,Closure]],
             force_rebuild:Union[List[DRef],bool]=[],
             assert_realized:List[DRef]=[],
-            realize_args:Dict[DRef,RealizeArg]={}
+            realize_args:Dict[DRef,RealizeArg]={},
+            dry_run:bool=False
             )->Tuple[StageResult,Closure,Context]:
   """ Takes the instantiated [Closure](#pylightnix.types.Closure) and evaluates
   its targets. Calls the realizers if derivation
@@ -853,19 +858,19 @@ def realize(closure:Union[Closure,Tuple[StageResult,Closure]],
   """
   # FIXME: define a Closure as a datatype and simplify the below line
   result_,closure_=unpack_closure_arg_(closure)
-  force_interrupt:List[DRef]=[]
+  force_interrupt:List[DRef]
   if isinstance(force_rebuild,bool):
-    if force_rebuild:
-      force_interrupt=closure_.targets
+    force_interrupt=closure_.targets if force_rebuild else []
   elif isinstance(force_rebuild,list):
     force_interrupt=force_rebuild
   else:
     assert False, "Ivalid type of `force_rebuild` argument"
   try:
-    gen=realizeSeq(closure_, force_interrupt, assert_realized, realize_args)
+    gen=realizeSeq(closure_, force_interrupt, assert_realized, realize_args,
+                   dry_run)
     next(gen)
     while True:
-      gen.send((None,False)) # Ask for default action
+      gen.send((None,False)) # Ask for the default action
   except StopIteration as e:
     ctx=e.value
   return result_,closure_,ctx
@@ -874,7 +879,8 @@ def realize(closure:Union[Closure,Tuple[StageResult,Closure]],
 def realizeSeq(closure:Closure,
                force_interrupt:List[DRef]=[],
                assert_realized:List[DRef]=[],
-               realize_args:Dict[DRef,RealizeArg]={}
+               realize_args:Dict[DRef,RealizeArg]={},
+               dry_run:bool=False
                )->RealizeSeqGen:
   """ `realizeSeq` encodes low-level details of the realization algorithm.
   Sequentially realize the closure by issuing steps via Python's generator
@@ -901,7 +907,7 @@ def realizeSeq(closure:Closure,
           return {}
       else:
         rrefs=drv.matcher(S, list(drefrrefsC(dref,dref_context,S)))
-      if rrefs is None:
+      if rrefs is None and not dry_run:
         assert dref not in assert_realized, (
           f"Stage '{dref}' was assumed to be already realized. "
           f"Unfortunately, it is not the case. Config:\n"
@@ -926,8 +932,8 @@ def realizeSeq(closure:Closure,
                   f"were matched by the matcher. To capture those "
                   f"realizations explicitly, try `matcher([exact(..)])`")
         rrefs=rrefs_matched
-      assert rrefs is not None
       context_acc=context_add(context_acc,dref,rrefs)
+  assert dry_run or all((context_acc[t] is not None) for t in closure.targets)
   return context_acc
 
 

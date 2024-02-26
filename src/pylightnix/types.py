@@ -161,7 +161,7 @@ class Output(Generic[_REF]):
 #:
 #: For any derivation, the Context stores a mapping from it's dependency's
 #: derivations to realizations.
-Context=Dict[DRef,List[RRef]]
+Context=Dict[DRef,Optional[List[RRef]]]
 
 #: Type of user-defined arguments to pass to the Config
 InstantiateArg=Dict[str,Any]
