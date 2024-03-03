@@ -7,10 +7,7 @@ function! Ident(ident_spaces)
   let &softtabstop=a:ident_spaces
 endfunction
 
-if &filetype == 'python'
-  call Ident(2)
-  set tw=80
-endif
-
+call Ident(2)
+set tw=80
 set wrap
 set conceallevel=0

@@ -4,6 +4,7 @@
                     !( baseNameOf path == "dist" && type == "directory" ) &&
                     !( baseNameOf path == "result" )
         ) ./.
+, litrepl
 } :
 
 let
@@ -79,6 +80,7 @@ let
         gnumake
         cloc
         python-dev
+        litrepl.litrepl-release
 
         (let
            mytexlive = texlive.override { python3=python-dev; };

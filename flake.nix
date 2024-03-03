@@ -1,17 +1,29 @@
 {
   description = "Pylightnix flake";
 
-  inputs = {
-    # nixpkgs.url = github:grwlf/nixpkgs/local15;
-    nixpkgs.url = "path:/home/grwlf/proj/nixcfg/nixpkgs";
+  nixConfig = {
+    bash-prompt = "[ \\w Pylightnix-DEV] $ ";
   };
 
-  outputs = { self, nixpkgs }:
+  inputs = {
+    # nixpkgs.url = github:grwlf/nixpkgs/local15;
+    nixpkgs = {
+      url = "path:/home/grwlf/proj/nixcfg/nixpkgs";
+    };
+
+    litrepl = {
+      url = "github:grwlf/litrepl.vim";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
+
+  outputs = { self, nixpkgs, litrepl }:
     let
       nixpkgsFor = (system: import nixpkgs { inherit system; });
 
       defaults = system : (import ./default.nix) {
         pkgs = (import nixpkgs){ inherit system ; };
+        litrepl = litrepl.outputs.packages.${system};
         src = self;
       };
     in {

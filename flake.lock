@@ -1,5 +1,25 @@
 {
   "nodes": {
+    "litrepl": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1709480910,
+        "narHash": "sha256-seheaz3ABkkjWRohU4G4lHl7MvdzH5FURNsxrXHn6KQ=",
+        "owner": "grwlf",
+        "repo": "litrepl.vim",
+        "rev": "7fa7e8100e4ba97d7ce69e681cad2a06bd8aaaf1",
+        "type": "github"
+      },
+      "original": {
+        "owner": "grwlf",
+        "repo": "litrepl.vim",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1696704474,
@@ -14,6 +34,7 @@
     },
     "root": {
       "inputs": {
+        "litrepl": "litrepl",
         "nixpkgs": "nixpkgs"
       }
     }
