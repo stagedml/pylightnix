@@ -7,11 +7,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1709480910,
-        "narHash": "sha256-seheaz3ABkkjWRohU4G4lHl7MvdzH5FURNsxrXHn6KQ=",
+        "lastModified": 1709481180,
+        "narHash": "sha256-91wWFjqzJEW7DNDHsFL8dgmxvoXuA3F6FjsJC6iM41A=",
         "owner": "grwlf",
         "repo": "litrepl.vim",
-        "rev": "7fa7e8100e4ba97d7ce69e681cad2a06bd8aaaf1",
+        "rev": "c2806b89c3d0058a754b70d6bb08f605a7324398",
         "type": "github"
       },
       "original": {

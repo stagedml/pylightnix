@@ -11,3 +11,6 @@ call Ident(2)
 set tw=80
 set wrap
 set conceallevel=0
+
+nnoremap <F5> :LEval<CR>:w<CR>
+nnoremap <F6> :LEvalAsync<CR>
