@@ -32,17 +32,21 @@ def setup_storage2(tn:str):
   yield S
 
 def setup_test_config(c:dict)->Config:
+  """ Creade a test config, based on `c`, with an additional self-ref named
+  `artifact`. Artifact is supposed to be a file containing a single integer """
   c2=deepcopy(c)
   c2['artifact']=[selfref,'artifact']
   return mkconfig(c2)
 
 def setup_test_match(nmatch:int)->MatcherO:
+  """ Define a test matcher which matches `nmatch` realizations with higher
+  value stored in the `artifact` file. """
   def _match(S, o:Output[RRef])->Optional[Output[RRef]]:
     rrefs=o.val
     values=list(sorted([(maybereadstr(join(rref2path(rref, S),
                                            'artifact'),'0',int),rref)
                         for rref in rrefs], key=lambda x:x[0]))
-    # Return `top-n` matched groups
+    # Return `top-n` matched groups with highest value of `artifact`.
     return Output([tup[1] for tup in values[-nmatch:]]) \
       if len(values)>0 else None
   return _match
@@ -51,8 +55,12 @@ DELIBERATE_TEST_FAILURE='Deliberate test failure'
 
 def setup_test_realize(nrrefs:int,
                        starttime:Optional[str],
-                       nondet,
+                       nondet:Callable,
                        mustfail:bool)->RealizerO:
+  """ Test realization process. Create `nrrefs` outputs with `artifact`
+  continaing the result of `nondet` callable function. This way we can add
+  randomness into the process. `mustfail` equal to True emulates a failure.
+  Optional `starttime` allows to set build starting time explicitly. """
   def _realize(S, dref:DRef, context:Context, ra:RealizeArg)->Output[Path]:
     b=Build(mkbuildargs(S,dref,context,starttime,'AUTO',{},{}))
     paths=build_markstart(b,nrrefs)
@@ -78,6 +86,7 @@ def mkstage(config:dict,
             mustfail:bool=False,
             S:Optional[StorageSettings]=None,
             )->DRef:
+  """ Sets up a test stage """
   return mkdrv(setup_test_config(config),
                output_matcher(setup_test_match(nmatch)),
                output_realizer(setup_test_realize(

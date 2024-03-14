@@ -371,7 +371,7 @@ def rrefdeps1(rrefs:Iterable[RRef],S=None)->Set[RRef]:
       acc|=set(context_deref(rrefctx(rref,S),dref_dep))
   return acc
 
-def drefdeps(drefs:Iterable[DRef], S=None)->Set[DRef]:
+def drefdeps(drefs:Iterable[DRef],S=None)->Set[DRef]:
   """ Return the complete set of `drefs`'s dependencies, not including `drefs`
   themselves. """
   frontier=drefdeps1(drefs,S)

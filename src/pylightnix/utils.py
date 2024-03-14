@@ -385,6 +385,9 @@ def tryreadstr(path:str)->Optional[str]:
 
 D=TypeVar('D')
 def maybereadstr(path:str,default:str,mp:Callable[[str],D])->D:
+  """ Reads a file with filename `path` into a string and apply a parser
+  function `mp`. On file error, use `default` string as a file content
+  placeholder """
   return trycatch(partial(readstr, path=path),default,mp)
 
 def tryreadjson_def(json_path:str, default:Any)->Any:

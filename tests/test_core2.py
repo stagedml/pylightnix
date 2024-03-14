@@ -2,12 +2,12 @@ from pylightnix import (instantiate, DRef, RRef, Path, SPath, drefdeps,
                         Registry, Context, RealizeArg, Output, realize1,
                         rref2dref, Build, match_some, mkdrv, rref2path,
                         alldrefs, build_wrapper, tryread, trywrite,
-                        realizeMany, build_outpaths, mklens, Config,
-                        rrefdeps, drefrrefs, allrrefs,
-                        realizeMany, redefine, match_only, PromiseException,
-                        output_matcher, output_realizer, cfgsp, drefcfg_,
-                        rootrrefs, rootdrefs, match_exact, match_latest,
-                        timestring, rrefbstart, parsetime)
+                        build_outpaths, mklens, Config, rrefdeps, drefrrefs,
+                        allrrefs, realizeMany, redefine, match_only,
+                        PromiseException, output_matcher, output_realizer,
+                        cfgsp, drefcfg_, rootrrefs, rootdrefs, match_exact,
+                        match_latest, timestring, rrefbstart, parsetime,
+                        mkregistry, realize)
 
 from tests.imports import (given, Any, Callable, join, Optional, islink,
                            isfile, islink, List, randint, sleep, rmtree,
@@ -16,7 +16,7 @@ from tests.imports import (given, Any, Callable, join, Optional, islink,
                            lists, remove, isfile, isdir, note, partial)
 
 from tests.generators import (rrefs, drefs, configs, dicts, rootstages,
-                              integers, composite, hierarchies)
+                              integers, composite, hierarchies, sampled_from)
 
 from tests.setup import ( ShouldHaveFailed, setup_storage2, mkstage, mkstage,
                          pipe_stdout , setup_test_realize, setup_test_match,
@@ -239,7 +239,7 @@ def test_promise(stages):
 
 @given(stages=rootstages())
 def test_root_rrefs(stages):
-  """ Check that rootrrefs really enumerates roots """
+  """ Check that `rootrrefs` really enumerates storage roots """
   with setup_storage2('test_root_rrefs') as S:
     assert len(rootrrefs(S))==0
     results=set()
@@ -253,7 +253,7 @@ def test_root_rrefs(stages):
 
 @given(stages=rootstages())
 def test_root_drefs(stages):
-  """ Check that rootdrefs really enumerates roots """
+  """ Check that `rootdrefs` really enumerates storage roots """
   with setup_storage2('test_root_drefs') as S:
     assert len(rootdrefs(S))==0
     results=set()
@@ -262,4 +262,23 @@ def test_root_drefs(stages):
     roots=rootdrefs(S)
     for dref in results:
       assert dref in roots
+
+
+
+@given(h=hierarchies(),data=data())
+def test_dry_run(h,data):
+  """ Check that `dry_run=True` reports unrealized stages correctly """
+  with setup_storage2('test_dry_run') as S:
+    r=mkregistry(S)
+    dref,clo=instantiate(h,S=S,r=r)
+    dref_part,clo_part=instantiate(data.draw(sampled_from(list(rootdrefs(S)))),S=S,r=r)
+    _,_,ctx_part=realize(clo_part)
+    _,_,ctx=realize(clo,dry_run=True)
+    event(f"Number of Nones: {len([k for k,v in ctx.items() if v is None])}")
+    for dref,rrefsMb in ctx.items():
+      if rrefsMb is None:
+        assert dref not in ctx_part
+      else:
+        assert dref in ctx_part
+
 
